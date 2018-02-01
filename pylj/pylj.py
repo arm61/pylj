@@ -5,14 +5,16 @@ from IPython import display
 from pylj import slow
 
 class System:
-    def __init__(self, number_of_particles, kinetic_energy, box_length, timestep_length, number_vel_bins,
+    def __init__(self, number_of_particles, kinetic_energy, box_length, timestep_length,
                  max_vel):
+        if number_of_particles > 289:
+            raise ValueError("Density too high!")
         self.number_of_particles = number_of_particles
         self.kinetic_energy = kinetic_energy
         self.box_length = box_length
         self.timestep_length = timestep_length
         self.temp_sum = 0.
-        self.vel_bins = np.zeros(number_vel_bins)
+        self.vel_bins = np.zeros(500)
         self.max_vel = max_vel
         self.step = 0
         self.step0 = 0
@@ -76,7 +78,6 @@ def initialise(system):
         theta = 2 * np.pi * np.random.randn()
         particles[i].xvel = v * np.cos(theta)
         particles[i].yvel = v * np.sin(theta)
-    #particles, system = compute_accelerations(particles, system)
     particles, system = slow.comp_accel(particles, system)
     system.step0 = reset_histogram(system)
     T = system.kinetic_energy
@@ -87,7 +88,6 @@ def time_step(particles, system, time):
     time += system.timestep_length
     system.step += 1
     K = 0
-    W_sum = 0
     for i in range(0, system.number_of_particles):
         particles[i].xpos += particles[i].xvel * system.timestep_length + 0.5 * particles[i].xacc * system.timestep_length * system.timestep_length
         particles[i].ypos += particles[i].yvel * system.timestep_length + 0.5 * particles[i].yacc * system.timestep_length * system.timestep_length
@@ -101,7 +101,6 @@ def time_step(particles, system, time):
             particles[i].ypos -= system.box_length
         particles[i].xvel += 0.5 * particles[i].xacc * system.timestep_length
         particles[i].yvel += 0.5 * particles[i].yacc * system.timestep_length
-    #particles, system = compute_accelerations(particles, system)
     particles, system = slow.comp_accel(particles, system)
     for i in range(0, system.number_of_particles):
         particles[i].xvel += 0.5 * particles[i].xacc * system.timestep_length
@@ -113,8 +112,7 @@ def time_step(particles, system, time):
             system.vel_bins[bin_s] += 1
     system.temp_sum += K / system.number_of_particles
     T = system.temp_sum / (system.step - system.step0)
-    P = 1 / (3 * system.box_length ** 2) * (2 * K + W_sum)
-    return particles, time, T, P, system
+    return particles, time, T, system
 
 def get_scattering(distances, qs):
     inten = np.array([])
@@ -125,15 +123,12 @@ def get_scattering(distances, qs):
         inten = np.append(inten, np.sum(c))
     return inten
 
-def plot_particles(particles, system, T, P):
+def show(particles, system):
     x = np.array([])
     y = np.array([])
     for i in range(0, system.number_of_particles):
         x = np.append(x, particles[i].xpos)
         y = np.append(y, particles[i].ypos)
-    x_T = []
-    for i in range(0, len(T)):
-        x_T.append(i*10)
     plt.figure(figsize=(18, 9))
     gs = gridspec.GridSpec(2, 2)
     ax0 = plt.subplot(gs[:,0])
@@ -143,53 +138,37 @@ def plot_particles(particles, system, T, P):
     ax0.set_xticks([])
     ax0.set_yticks([])
     qs = np.linspace(4, 25, 50)
-    if (T != []):
+    if system.step > 0:
         ax1 = plt.subplot(gs[0, 1])
-        #ax1.plot(x_T, T, label = 'Step = {:.3e}'.format(system.step))
-        #ax1.set_xlabel('Step')
-        #ax1.set_ylabel('Temperature (arbitrary units)')
-        #ax1.legend(loc='upper right')
-        #ax1.set_xlim(0, np.amax(x_T) + 5)
         bin_width = 0.1
         hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, bin_width))
         gr = hist/(system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
                    (bin_edges[:-1]+bin_width/2.) * bin_width)
-        #a, b, c = ax1.hist(system.distances, histtype='step', normed=True, bins=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
         ax1.plot(bin_edges[:-1]+bin_width/2, gr)
         ax1.set_xlim([0, 8])
-        ax1.set_xlabel('$r$')
-        ax1.set_ylabel('$g(r)$')
+        ax1.set_xlabel('$r$', fontsize=20)
+        ax1.set_ylabel('$g(r)$', fontsize=20)
         ax1.set_ylim([0, np.amax(gr)+0.5])
         ax1.set_xticks([])
-        ax1.text(0.99, 0.99, 'Step={:d}'.format(system.step))
+        ax1.text(0.98, 0.9, 'Step={:d}'.format(system.step), transform=ax1.transAxes, fontsize=20, horizontalalignment='right', verticalalignment='center')
         ax2 = plt.subplot(gs[1, 1])
-        inten = slow.get_scat(system.distances, qs)
-        ax2.plot(qs, np.log10(inten+10000))
-        ax2.set_xlim([2, np.amax(qs)])
+        ax2.plot(np.fft.rfftfreq(len(gr))[5:], np.log10(np.fft.rfft(gr)[5:]))
         ax2.set_xticks([])
-        ax2.set_xlabel('$q$')
+        ax2.set_xlabel('$q$', fontsize=20)
         ax2.set_yticks([])
-        ax2.set_ylabel('log$(I(q))$')
+        ax2.set_ylabel('log$(I(q))$', fontsize=20)
     display.display(plt.gcf())
     display.clear_output(wait=True)
     plt.close()
 
 
 def run(number_of_particles, kinetic_energy, number_steps):
-    if number_of_particles > 289:
-        raise ValueError("Density too high!")
-    time = 0
-    number_vel_bins = 500
-    vel_bins = np.zeros(number_vel_bins)
-    system = System(number_of_particles, kinetic_energy, 16., 0.01, 500, 4)
-    T_arr = []
-    P_arr = []
+    system = System(number_of_particles, kinetic_energy, 16., 0.01, 4)
     particles, T = initialise(system)
-    plot_particles(particles, system, T_arr, P_arr)
+    show(particles, system)
+    time = 0
     for i in range(0, number_steps):
-        particles, time, T, P, system = time_step(particles, system, time)
+        particles, time, T, system = time_step(particles, system, time)
         if system.step % 10 == 0:
-            T_arr.append(T)
-            P_arr.append(P)
-            plot_particles(particles, system, T_arr, P_arr)
+            show(particles, system)
         system.step0 = reset_histogram(system)
