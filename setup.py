@@ -62,13 +62,15 @@ def setup_package():
                                   sources=['src/_cslowstuff.pyx',
                                            'src/slowstuff.cpp'],
                                   include_dirs=[numpy_include],
-				  language='c++',
+				                  language='c++',
                                   extra_compile_args=[],
                                   extra_link_args=['-lpthread']
                                   # libraries=
                                   # extra_compile_args = "...".split(),
                                   )
             ext_modules.append(_cslowstuff)
+
+
 
             info['cmdclass'] = {'build_ext': build_ext}
             info['ext_modules'] = ext_modules

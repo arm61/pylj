@@ -116,6 +116,14 @@ def time_step(particles, system, time):
     P = 1 / (3 * system.box_length ** 2) * (2 * K + W_sum)
     return particles, time, T, P, system
 
+def get_scattering(distances, qs):
+    inten = np.array([])
+    for i in range(0, len(qs)):
+        a = np.sin(qs[i] * distances)
+        b = qs[i] * distances
+        c = a / b
+        inten = np.append(inten, np.sum(c))
+    return inten
 
 def plot_particles(particles, system, T, P):
     x = np.array([])
@@ -134,9 +142,10 @@ def plot_particles(particles, system, T, P):
     ax0.set_ylim([0, system.box_length])
     ax0.set_xticks([])
     ax0.set_yticks([])
+    qs = np.linspace(4, 25, 50)
     if (T != []):
         ax1 = plt.subplot(gs[0, 1])
-        #ax1.plot(x_T, T, label = 'Av. Temperature = {:.3e}'.format(np.average(T[-10:])))
+        #ax1.plot(x_T, T, label = 'Step = {:.3e}'.format(system.step))
         #ax1.set_xlabel('Step')
         #ax1.set_ylabel('Temperature (arbitrary units)')
         #ax1.legend(loc='upper right')
@@ -151,13 +160,23 @@ def plot_particles(particles, system, T, P):
         ax1.set_xlabel('$r$')
         ax1.set_ylabel('$g(r)$')
         ax1.set_ylim([0, np.amax(gr)+0.5])
+        ax1.set_xticks([])
+        ax1.text(0.99, 0.99, 'Step={:d}'.format(system.step))
+        ax2 = plt.subplot(gs[1, 1])
+        inten = slow.get_scat(system.distances, qs)
+        ax2.plot(qs, np.log10(inten+10000))
+        ax2.set_xlim([2, np.amax(qs)])
+        ax2.set_xticks([])
+        ax2.set_xlabel('$q$')
+        ax2.set_yticks([])
+        ax2.set_ylabel('log$(I(q))$')
     display.display(plt.gcf())
     display.clear_output(wait=True)
     plt.close()
 
 
 def run(number_of_particles, kinetic_energy, number_steps):
-    if number_of_particles > 285:
+    if number_of_particles > 289:
         raise ValueError("Density too high!")
     time = 0
     number_vel_bins = 500
@@ -169,8 +188,8 @@ def run(number_of_particles, kinetic_energy, number_steps):
     plot_particles(particles, system, T_arr, P_arr)
     for i in range(0, number_steps):
         particles, time, T, P, system = time_step(particles, system, time)
-        if i % 10 == 0:
+        if system.step % 10 == 0:
             T_arr.append(T)
             P_arr.append(P)
             plot_particles(particles, system, T_arr, P_arr)
-            system.step0 = reset_histogram(system)
+        system.step0 = reset_histogram(system)
