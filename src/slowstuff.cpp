@@ -38,20 +38,3 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
         }
     }
 }
-
-void debye(int len_distances, const double *cdistances, int len_qs, const double *cqs, double *inten)
-{
-    int i = 0;
-    for (i = 0; i < len_qs; i++)
-    {
-        double in = 0, a = 0, b = 0;
-        int j = 0;
-        for (j = 0; j < len_distances; j++)
-        {
-            b = cqs[i] * cdistances[j];
-            a = sin(b);
-            in += a / b;
-        }
-        inten[i] = in;
-    }
-}

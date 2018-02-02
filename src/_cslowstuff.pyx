@@ -6,7 +6,6 @@ cimport numpy as np
 cdef extern from "slowstuff.h":
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
                                double *distances, double box_length)
-    void debye(int len_distances, const double *cdistances, int len_qs, const double *cqs, double *inten)
 
 
 DTYPE = np.float64
@@ -41,17 +40,3 @@ def comp_accel(particles, system):
 
 
     return particles, system
-
-def get_scat(distances, qs):
-    cdef np.ndarray[DTYPE_t, ndim=1] cdistances = distances
-    cdef np.ndarray[DTYPE_t, ndim=1] cqs = qs
-    cdef int len_distances = distances.size
-    cdef int len_qs = qs.size
-    cdef np.ndarray[DTYPE_t, ndim=1] inten = np.zeros(qs.size)
-
-
-    debye(len_distances, <const double*>cdistances.data, len_qs, <const double*>cqs.data, <double*>inten.data)
-
-
-
-    return inten
