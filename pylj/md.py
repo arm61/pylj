@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+import pyqtgraph as pg
 from IPython import display
-from pylj import slow
+from pylj import slow, plot
 
 
 class System:
@@ -137,64 +138,19 @@ def time_step(particles, system, time):
     return particles, time, temp, system
 
 
-def plot_particles(particles, system, gs):
-    x = np.array([])
-    y = np.array([])
-    for i in range(0, particles.size):
-        x = np.append(x, particles[i].xpos)
-        y = np.append(y, particles[i].ypos)
-    ax0 = plt.subplot(gs[:, 0])
-    ax0.plot(x, y, 'o', markersize=30, markeredgecolor='black')
-    ax0.set_xlim([0, system.box_length])
-    ax0.set_ylim([0, system.box_length])
-    ax0.set_xticks([])
-    ax0.set_yticks([])
-
-
-def plot_gr(system, gs):
-    ax1 = plt.subplot(gs[0, 1])
-    bin_width = 0.1
-    hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, bin_width))
-    gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
-                 (bin_edges[:-1] + bin_width / 2.) * bin_width)
-    ax1.plot(bin_edges[:-1] + bin_width / 2, gr)
-    ax1.set_xlim([0, 8])
-    ax1.set_xlabel('$r$', fontsize=20)
-    ax1.set_ylabel('$g(r)$', fontsize=20)
-    ax1.set_ylim([0, np.amax(gr) + 0.5])
-    ax1.set_xticks([])
-    ax1.text(0.98, 0.9, 'Step={:d}'.format(system.step), transform=ax1.transAxes, fontsize=20,
-             horizontalalignment='right', verticalalignment='center')
-    return gr
-
-
-def plot_scat(gr, gs):
-    ax2 = plt.subplot(gs[1, 1])
-    ax2.plot(np.fft.rfftfreq(len(gr))[5:], np.log10(np.fft.rfft(gr)[5:]))
-    ax2.set_xticks([])
-    ax2.set_xlabel('$q$', fontsize=20)
-    ax2.set_yticks([])
-    ax2.set_ylabel('log$(I(q))$', fontsize=20)
-
-def show(particles, system):
-    plt.figure(figsize=(18, 9))
-    gs = gridspec.GridSpec(2, 2)
-    plot_particles(particles, system, gs)
-    if system.step > 0:
-        gr = plot_gr(system, gs)
-        plot_scat(gr, gs)
-    display.display(plt.gcf())
-    display.clear_output(wait=True)
-    plt.close()
-
-
 def run(number_of_particles, kinetic_energy, number_steps):
     system = System(number_of_particles, kinetic_energy, 16., 0.01, 4)
     particles, temp = initialise(system)
-    show(particles, system)
+    plot_ob = plot.liveplot(system)
     time = 0
     for i in range(0, number_steps):
         particles, time, temp, system = time_step(particles, system, time)
         if system.step % 10 == 0:
-            show(particles, system)
+            bin_width = 0.1
+            hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, bin_width))
+            gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
+                         (bin_edges[:-1] + bin_width / 2.) * bin_width)
+            x = bin_edges[:-1] + bin_width / 2
+            plot_ob.update(x, gr, np.fft.rfftfreq(len(gr))[5:], np.log10(np.fft.rfft(gr)[5:]), particles, system)
         system.step0 = reset_histogram(system)
+    plt.show()
