@@ -22,6 +22,7 @@ class System:
         self.step0 = 0
         pairs = (self.number_of_particles-1)*self.number_of_particles/2
         self.distances = np.zeros(int(pairs))
+        self.temp_array = []
 
 
 class Particle:
@@ -135,7 +136,8 @@ def time_step(particles, system, time):
         k += 0.5 * v * v
     system.temp_sum += k / system.number_of_particles
     temp = system.temp_sum / (system.step - system.step0)
-    return particles, time, temp, system
+    system.temp_array.append(temp)
+    return particles, time, system
 
 
 def run(number_of_particles, kinetic_energy, number_steps):
@@ -144,7 +146,7 @@ def run(number_of_particles, kinetic_energy, number_steps):
     plot_ob = plot.liveplot(system)
     time = 0
     for i in range(0, number_steps):
-        particles, time, temp, system = time_step(particles, system, time)
+        particles, time, system = time_step(particles, system, time)
         if system.step % 10 == 0:
             bin_width = 0.1
             hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, bin_width))
