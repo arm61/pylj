@@ -27,9 +27,9 @@ class Scattering(object):
         ax[0, 0].set_yticks([])
 
         ax[1, 0].plot([0] * 20)
-        ax[1, 0].set_ylabel('Temperature', fontsize=16)
+        ax[1, 0].set_ylabel('Pressure', fontsize=16)
         ax[1, 0].set_xlabel('Step', fontsize=16)
-        self.temp_text = ax[1, 0].text(0.98, 0.05, 'Temp={:f}'.format(np.average(system.temp_array)),
+        self.temp_text = ax[1, 0].text(0.98, 0.05, 'Pressure={:f}'.format(np.average(system.press_array)),
                                        transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
                                        verticalalignment='center')
 
@@ -66,13 +66,21 @@ class Scattering(object):
         line2.set_ydata(y3)
         line2.set_xdata(x3)
 
+        #line3 = self.ax[1, 0].lines[0]
+        #line3.set_ydata(system.temp_array)
+        #line3.set_xdata(np.arange(0, len(system.temp_array)))
+        #self.ax[1, 0].set_xlim(0, len(system.temp_array))
+        #self.ax[1, 0].set_ylim(np.amin(system.temp_array)-np.amax(system.temp_array) * 0.05,
+        #                       np.amax(system.temp_array)+np.amax(system.temp_array) * 0.05)
+        #self.temp_text.set_text('Temp={:.3f}'.format(np.average(system.temp_array[-10:])))
+
         line3 = self.ax[1, 0].lines[0]
-        line3.set_ydata(system.temp_array)
-        line3.set_xdata(np.arange(0, len(system.temp_array)))
-        self.ax[1, 0].set_xlim(0, len(system.temp_array))
-        self.ax[1, 0].set_ylim(np.amin(system.temp_array)-np.amax(system.temp_array) * 0.05,
-                               np.amax(system.temp_array)+np.amax(system.temp_array) * 0.05)
-        self.temp_text.set_text('Temp={:.3f}'.format(np.average(system.temp_array[-10:])))
+        line3.set_ydata(system.press_array)
+        line3.set_xdata(np.arange(0, len(system.press_array)))
+        self.ax[1, 0].set_xlim(0, len(system.press_array))
+        self.ax[1, 0].set_ylim(np.amin(system.press_array) - np.amax(system.press_array) * 0.05,
+                               np.amax(system.press_array) + np.amax(system.press_array) * 0.05)
+        self.temp_text.set_text('Pressure={:.3f}'.format(np.average(system.press_array)))
 
 
         self.fig.canvas.draw()

@@ -2,7 +2,7 @@
 #include <math.h>
 
 void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
-                           double *distances, double box_length)
+                           double *distances, double *forces, double box_length)
 {
     int i = 0;
     double dx, dy, dr, f;
@@ -31,6 +31,7 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             distances[k] = dr;
             k++;
             f = 48. * pow(dr, -13.) - 24. * pow(dr, -7.);
+            forces[k] = f;
             xacc[i] += f * dx / dr;
             yacc[i] += f * dy / dr;
             xacc[j] -= f * dx / dr;

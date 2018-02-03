@@ -18,7 +18,9 @@ class System:
         self.step0 = 0
         pairs = (self.number_of_particles-1)*self.number_of_particles/2
         self.distances = np.zeros(int(pairs))
+        self.forces = np.zeros(int(pairs))
         self.temp_array = []
+        self.press_array = [0]
         self.bin_width = 0.1
         self.time = 0
 
@@ -138,6 +140,8 @@ def update_positions(particles, system):
         particles = update_pos(particles, system, i)
         particles = update_velocities(particles, system, i)
     particles, system = calculate_temperature(particles, system)
+    system.press_array.append(system.number_of_particles * system.kinetic_energy + (-1. / 3. *
+                              np.sum(system.distances * -1 * system.forces)))
     return particles, system
 
 

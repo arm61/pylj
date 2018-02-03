@@ -5,7 +5,7 @@ cimport numpy as np
 
 cdef extern from "force.h":
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
-                               double *distances, double box_length)
+                               double *distances, double* forces, double box_length)
     void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double tempature)
 
 
@@ -21,6 +21,7 @@ def compute_forces(particles, system):
     cdef np.ndarray[DTYPE_t, ndim=1] xacc = np.zeros(particles.size)
     cdef np.ndarray[DTYPE_t, ndim=1] yacc = np.zeros(particles.size)
     cdef np.ndarray[DTYPE_t, ndim=1] distances = system.distances
+    cdef np.ndarray[DTYPE_t, ndim=1] forces = system.forces
 
     for i in range(0, particles.size):
         xpos[i] = particles[i].xpos
@@ -29,7 +30,7 @@ def compute_forces(particles, system):
         yacc[i] = particles[i].yacc
 
     compute_accelerations(len_particles, <const double*>xpos.data, <const double*>ypos.data, <double*>xacc.data,
-                          <double*>yacc.data, <double*>distances.data, box_length)
+                          <double*>yacc.data, <double*>distances.data, <double*>forces.data, box_length)
 
     for i in range(0, particles.size):
         particles[i].xpos = xpos[i]
@@ -38,6 +39,7 @@ def compute_forces(particles, system):
         particles[i].yacc = yacc[i]
 
     system.distances = distances
+    system.forces = forces
 
 
     return particles, system
