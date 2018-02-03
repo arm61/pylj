@@ -5,8 +5,8 @@ from pylj import force, sample
 class System:
     def __init__(self, number_of_particles, kinetic_energy, box_length, timestep_length,
                  max_vel):
-        if number_of_particles > 324:
-            raise ValueError("Density too high!")
+        #if number_of_particles > 324:
+        #    raise ValueError("Density too high!")
         self.number_of_particles = number_of_particles
         self.kinetic_energy = kinetic_energy
         self.box_length = box_length

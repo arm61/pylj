@@ -80,7 +80,8 @@ class Scattering(object):
         self.ax[1, 0].set_xlim(0, len(system.press_array))
         self.ax[1, 0].set_ylim(np.amin(system.press_array) - np.amax(system.press_array) * 0.05,
                                np.amax(system.press_array) + np.amax(system.press_array) * 0.05)
-        self.temp_text.set_text('Pressure={:.3f}'.format(np.average(system.press_array)))
+        self.temp_text.set_text('Pressure={:.0f}±{:.0f}'.format(np.average(system.press_array[-100:]),
+                                                                np.std(system.press_array[-100:]) / 100))
 
 
         self.fig.canvas.draw()
