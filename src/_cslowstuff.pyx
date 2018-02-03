@@ -6,6 +6,7 @@ cimport numpy as np
 cdef extern from "slowstuff.h":
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
                                double *distances, double box_length)
+    void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double tempature)
 
 
 DTYPE = np.float64
@@ -40,3 +41,22 @@ def comp_accel(particles, system):
 
 
     return particles, system
+
+def scale_velo(particles, system):
+    cdef int len_particles = particles.size
+    cdef np.ndarray[DTYPE_t, ndim=1] xvel = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] yvel = np.zeros(particles.size)
+    cdef double average_temp = np.average(system.temp_array)
+    cdef double temperature = system.kinetic_energy
+
+    for i in range(0, particles.size):
+        xvel[i] = particles[i].xvel
+        yvel[i] = particles[i].yvel
+
+    scale_velocities(len_particles, <double*>xvel.data, <double*>yvel.data, average_temp, temperature)
+
+    for i in range(0, particles.size):
+        particles[i].xvel = xvel[i]
+        particles[i].yvel = yvel[i]
+
+    return particles

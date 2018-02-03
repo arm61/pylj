@@ -29,7 +29,7 @@ info = {
         'author_email': 'arm61@bath.ac.uk',
         'packages': packages,
         'include_package_data': True,
-        'setup_requires': ['numpy'],
+        'setup_requires': ['numpy', 'matplotlib'],
         'install_requires': ['numpy', 'matplotlib']
         }
 
@@ -56,7 +56,7 @@ def setup_package():
             except AttributeError:
                 numpy_include = np.get_numpy_include()
 
-            # creflect extension module
+            # cslowstff extension module
             _cslowstuff = Extension(
                                   name='pylj.slow',
                                   sources=['src/_cslowstuff.pyx',

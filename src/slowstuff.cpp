@@ -38,3 +38,13 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
         }
     }
 }
+
+void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double temperature)
+{
+    int i = 0;
+    for (i = 0; i < len_particles; i++)
+    {
+        xvel[i] = xvel[i] * sqrt(temperature / average_temp);
+        yvel[i] = yvel[i] * sqrt(temperature / average_temp);
+    }
+}

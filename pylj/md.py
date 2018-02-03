@@ -8,7 +8,7 @@ from pylj import slow, plot
 
 class System:
     def __init__(self, number_of_particles, kinetic_energy, box_length, timestep_length,
-                 max_vel):
+                 max_vel, ntc, temperature):
         if number_of_particles > 324:
             raise ValueError("Density too high!")
         self.number_of_particles = number_of_particles
@@ -23,7 +23,8 @@ class System:
         pairs = (self.number_of_particles-1)*self.number_of_particles/2
         self.distances = np.zeros(int(pairs))
         self.temp_array = []
-
+        self.bin_width = 0.1
+        self.ntc = ntc
 
 class Particle:
     def __init__(self, xpos, ypos, xvel, yvel, xacc, yacc):
@@ -74,7 +75,8 @@ def reset_histogram(system):
     return system.step
 
 
-def initialise(system):
+def initialise(number_of_particles, kinetic_energy, ntc=False):
+    system = System(number_of_particles, kinetic_energy, 16., 0.01, 4, ntc, 1)
     particles = np.array([], dtype=Particle)
     m = int(np.ceil(np.sqrt(system.number_of_particles)))
     d = system.box_length / m
@@ -92,15 +94,12 @@ def initialise(system):
         particles[i].yvel = v * np.sin(theta)
     particles, system = slow.comp_accel(particles, system)
     system.step0 = reset_histogram(system)
-    temp = system.kinetic_energy
-    return particles, temp
+    return particles, system
 
 
 def update_positions(particles, system, i):
-    particles[i].xpos += particles[i].xvel * system.timestep_length + 0.5 * particles[i].xacc * \
-                                                                      system.timestep_length * system.timestep_length
-    particles[i].ypos += particles[i].yvel * system.timestep_length + 0.5 * particles[i].yacc * \
-                                                                      system.timestep_length * system.timestep_length
+    particles[i].xpos += particles[i].xvel * system.timestep_length + 0.5 * particles[i].xacc * system.timestep_length * system.timestep_length
+    particles[i].ypos += particles[i].yvel * system.timestep_length + 0.5 * particles[i].yacc * system.timestep_length * system.timestep_length
     particles[i].xpos = particles[i].xpos % system.box_length
     particles[i].ypos = particles[i].ypos % system.box_length
     return particles
@@ -124,6 +123,7 @@ def update_velocity_bins(particles, system, i):
 
 
 def time_step(particles, system, time):
+    system.step0 = reset_histogram(system)
     time += system.timestep_length
     system.step += 1
     k = 0
@@ -137,22 +137,23 @@ def time_step(particles, system, time):
     system.temp_sum += k / system.number_of_particles
     temp = system.temp_sum / (system.step - system.step0)
     system.temp_array.append(temp)
+    particles = slow.scale_velo(particles, system)
     return particles, time, system
 
 
-def run(number_of_particles, kinetic_energy, number_steps):
-    system = System(number_of_particles, kinetic_energy, 16., 0.01, 4)
-    particles, temp = initialise(system)
-    plot_ob = plot.liveplot(system)
+def scale_velocities(particles, system):
+    for i in range(0, len(particles)):
+        particles[i].xvel *= 1 / np.average(system.temp_array)
+        particles[i].yvel *= 1 / np.average(system.temp_array)
+    return particles
+
+
+def run(number_of_particles, kinetic_energy, number_steps, ntc=False):
+    particles, system = initialise(number_of_particles, kinetic_energy, ntc)
+    plot_ob = plot.LivePlot(system)
     time = 0
     for i in range(0, number_steps):
         particles, time, system = time_step(particles, system, time)
         if system.step % 10 == 0:
-            bin_width = 0.1
-            hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, bin_width))
-            gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
-                         (bin_edges[:-1] + bin_width / 2.) * bin_width)
-            x = bin_edges[:-1] + bin_width / 2
-            plot_ob.update(x, gr, np.fft.rfftfreq(len(gr))[5:], np.log10(np.fft.rfft(gr)[5:]), particles, system)
-        system.step0 = reset_histogram(system)
+            plot_ob.update(particles, system)
     plt.show()
