@@ -1,4 +1,4 @@
-#include "slowstuff.h"
+#include "force.h"
 #include <math.h>
 
 void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,

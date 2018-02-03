@@ -3,7 +3,7 @@ import numpy as np
 
 cimport numpy as np
 
-cdef extern from "slowstuff.h":
+cdef extern from "force.h":
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
                                double *distances, double box_length)
     void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double tempature)
@@ -13,7 +13,7 @@ DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
 
-def comp_accel(particles, system):
+def compute_forces(particles, system):
     cdef int len_particles = particles.size
     cdef double box_length = system.box_length
     cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(particles.size)

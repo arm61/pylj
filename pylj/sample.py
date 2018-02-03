@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class LivePlot(object):
+class Scattering(object):
     def __init__(self, system):
         fig, ax = plt.subplots(2, 2, figsize=(9, 9))
 
@@ -12,16 +12,15 @@ class LivePlot(object):
         ax[0, 1].set_yticks([])
         ax[0, 1].set_ylabel('$g(r)$', fontsize=16)
         ax[0, 1].set_xlabel('$r$', fontsize=16)
-        self.step_text = ax[0, 1].text(0.98, 0.95, 'Step={:d}'.format(system.step), transform=ax[0, 1].transAxes,
+        self.step_text = ax[0, 1].text(0.98, 0.95, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
                                        fontsize=12, horizontalalignment='right', verticalalignment='center')
-        if system.ntc:
-            ax[1, 1].plot([0]*20)
-            ax[1, 1].set_xticks([])
-            ax[1, 1].set_yticks([])
-            ax[1, 1].set_ylabel('log$(I(q))$', fontsize=16)
-            ax[1, 1].set_xlabel('$q$', fontsize=16)
+        ax[1, 1].plot([0]*20)
+        ax[1, 1].set_xticks([])
+        ax[1, 1].set_yticks([])
+        ax[1, 1].set_ylabel('log$(I(q))$', fontsize=16)
+        ax[1, 1].set_xlabel('$q$', fontsize=16)
 
-        ax[0, 0].plot([0]*20, 'o', markersize=15, markeredgecolor='black')
+        ax[0, 0].plot([0]*20, 'o', markersize=13, markeredgecolor='black')
         ax[0, 0].set_xlim([0, system.box_length])
         ax[0, 0].set_ylim([0, system.box_length])
         ax[0, 0].set_xticks([])
@@ -47,16 +46,15 @@ class LivePlot(object):
         line.set_xdata(x)
         line.set_ydata(gr)
         self.ax[0, 1].set_ylim([0, np.amax(gr)+0.5])
-        self.step_text.set_text('Step={:d}'.format(system.step))
+        self.step_text.set_text('Time={:.1f}'.format(system.time))
 
-        if system.ntc:
-            x2 = np.log10(np.fft.rfftfreq(len(gr))[5:])
-            y2 = np.log10(np.fft.rfft(gr)[5:])
-            line1 = self.ax[1, 1].lines[0]
-            line1.set_xdata(x2)
-            line1.set_ydata(y2)
-            self.ax[1, 1].set_ylim([np.amin(y2)-np.amax(y2)*0.05, np.amax(y2)+np.amax(y2)*0.05])
-            self.ax[1, 1].set_xlim([np.amin(x2), np.amax(x2)])
+        x2 = np.log10(np.fft.rfftfreq(len(gr))[5:])
+        y2 = np.log10(np.fft.rfft(gr)[5:])
+        line1 = self.ax[1, 1].lines[0]
+        line1.set_xdata(x2)
+        line1.set_ydata(y2)
+        self.ax[1, 1].set_ylim([np.amin(y2)-np.amax(y2)*0.05, np.amax(y2)+np.amax(y2)*0.05])
+        self.ax[1, 1].set_xlim([np.amin(x2), np.amax(x2)])
 
         x3 = np.array([])
         y3 = np.array([])

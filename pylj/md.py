@@ -1,14 +1,10 @@
 import numpy as np
-import matplotlib.gridspec as gridspec
-import matplotlib.pyplot as plt
-import pyqtgraph as pg
-from IPython import display
-from pylj import slow, plot
+from pylj import force, sample
 
 
 class System:
     def __init__(self, number_of_particles, kinetic_energy, box_length, timestep_length,
-                 max_vel, ntc, temperature):
+                 max_vel):
         if number_of_particles > 324:
             raise ValueError("Density too high!")
         self.number_of_particles = number_of_particles
@@ -24,7 +20,8 @@ class System:
         self.distances = np.zeros(int(pairs))
         self.temp_array = []
         self.bin_width = 0.1
-        self.ntc = ntc
+        self.time = 0
+
 
 class Particle:
     def __init__(self, xpos, ypos, xvel, yvel, xacc, yacc):
@@ -75,8 +72,8 @@ def reset_histogram(system):
     return system.step
 
 
-def initialise(number_of_particles, kinetic_energy, ntc=False):
-    system = System(number_of_particles, kinetic_energy, 16., 0.01, 4, ntc, 1)
+def initialise(number_of_particles, kinetic_energy):
+    system = System(number_of_particles, kinetic_energy, 16., 0.01, 4)
     particles = np.array([], dtype=Particle)
     m = int(np.ceil(np.sqrt(system.number_of_particles)))
     d = system.box_length / m
@@ -92,12 +89,12 @@ def initialise(number_of_particles, kinetic_energy, ntc=False):
         theta = 2 * np.pi * np.random.randn()
         particles[i].xvel = v * np.cos(theta)
         particles[i].yvel = v * np.sin(theta)
-    particles, system = slow.comp_accel(particles, system)
+    particles, system = force.compute_forces(particles, system)
     system.step0 = reset_histogram(system)
     return particles, system
 
 
-def update_positions(particles, system, i):
+def update_pos(particles, system, i):
     particles[i].xpos += particles[i].xvel * system.timestep_length + 0.5 * particles[i].xacc * system.timestep_length * system.timestep_length
     particles[i].ypos += particles[i].yvel * system.timestep_length + 0.5 * particles[i].yacc * system.timestep_length * system.timestep_length
     particles[i].xpos = particles[i].xpos % system.box_length
@@ -122,23 +119,26 @@ def update_velocity_bins(particles, system, i):
     return system, v
 
 
-def time_step(particles, system, time):
-    system.step0 = reset_histogram(system)
-    time += system.timestep_length
-    system.step += 1
+def calculate_temperature(particles, system):
     k = 0
-    for i in range(0, system.number_of_particles):
-        particles = update_positions(particles, system, i)
-        particles = update_velocities(particles, system, i)
-    particles, system = slow.comp_accel(particles, system)
     for i in range(0, system.number_of_particles):
         system, v = update_velocity_bins(particles, system, i)
         k += 0.5 * v * v
     system.temp_sum += k / system.number_of_particles
     temp = system.temp_sum / (system.step - system.step0)
     system.temp_array.append(temp)
-    particles = slow.scale_velo(particles, system)
-    return particles, time, system
+    particles = force.scale_velo(particles, system)
+    return particles, system
+
+
+def update_positions(particles, system):
+    system.step0 = reset_histogram(system)
+    system.step += 1
+    for i in range(0, system.number_of_particles):
+        particles = update_pos(particles, system, i)
+        particles = update_velocities(particles, system, i)
+    particles, system = calculate_temperature(particles, system)
+    return particles, system
 
 
 def scale_velocities(particles, system):
@@ -148,12 +148,13 @@ def scale_velocities(particles, system):
     return particles
 
 
-def run(number_of_particles, kinetic_energy, number_steps, ntc=False):
-    particles, system = initialise(number_of_particles, kinetic_energy, ntc)
-    plot_ob = plot.LivePlot(system)
-    time = 0
+def run(number_of_particles, kinetic_energy, number_steps):
+    particles, system = initialise(number_of_particles, kinetic_energy)
+    plot_ob = sample.Show(system)
+    system.time = 0
     for i in range(0, number_steps):
-        particles, time, system = time_step(particles, system, time)
+        particles, system = force.compute_forces(particles, system)
+        particles, system = update_positions(particles, system)
+        system.time += system.timestep_length
         if system.step % 10 == 0:
             plot_ob.update(particles, system)
-    plt.show()

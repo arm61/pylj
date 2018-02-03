@@ -58,9 +58,9 @@ def setup_package():
 
             # cslowstff extension module
             _cslowstuff = Extension(
-                                  name='pylj.slow',
-                                  sources=['src/_cslowstuff.pyx',
-                                           'src/slowstuff.cpp'],
+                                  name='pylj.force',
+                                  sources=['src/_cforce.pyx',
+                                           'src/force.cpp'],
                                   include_dirs=[numpy_include],
 				                  language='c++',
                                   extra_compile_args=[],
