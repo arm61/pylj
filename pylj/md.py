@@ -132,6 +132,11 @@ def calculate_temperature(particles, system):
     particles = force.scale_velo(particles, system)
     return particles, system
 
+def calculate_pressure(system):
+    w = (-1. / 3. * np.sum(system.distances * -1 * system.forces))
+    system.press_array.append(system.number_of_particles * system.kinetic_energy + w)
+    return system
+
 
 def update_positions(particles, system):
     system.step0 = reset_histogram(system)
@@ -140,8 +145,7 @@ def update_positions(particles, system):
         particles = update_pos(particles, system, i)
         particles = update_velocities(particles, system, i)
     particles, system = calculate_temperature(particles, system)
-    system.press_array.append(system.number_of_particles * system.kinetic_energy + (-1. / 3. *
-                              np.sum(system.distances * -1 * system.forces)))
+    system = calculate_pressure(system)
     return particles, system
 
 
