@@ -162,7 +162,7 @@ class Interactions(object):
 
         self.fig.canvas.draw()
 
-    def average_gr(self):
+    def average_rdf(self):
         gr = np.average(self.avgr, axis=0)
         x = self.xgr
         line = self.ax[0, 1].lines[0]

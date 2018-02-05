@@ -3,10 +3,25 @@ from pylj import force, sample
 
 
 class System:
+    """Whole system.
+
+    This class stores a large amount of information about the job that is being run.
+
+    Parameters
+    ----------
+    number_of_particles: int
+        Number of particles to be simulated.
+    kinetic_energy: float
+        The initial kinetic energy of the system, this same value is used to reweight the velocities.
+    box_length: float
+        Size of the simulation cell.
+    timestep_length: float
+        Duration of timestep in MD integration.
+    max_vel: float, optional
+        Maximum velocity allowed in the velocity rebinning stage.
+    """
     def __init__(self, number_of_particles, kinetic_energy, box_length, timestep_length,
-                 max_vel):
-        #if number_of_particles > 324:
-        #    raise ValueError("Density too high!")
+                 max_vel=4):
         self.number_of_particles = number_of_particles
         self.kinetic_energy = kinetic_energy
         self.box_length = box_length
@@ -26,6 +41,25 @@ class System:
 
 
 class Particle:
+    """Particles
+
+    This stores particle relevant information.
+
+    Parameters
+    ----------
+    xpos: float
+        Position in the x-axis.
+    ypos: float
+        Position in the y-axis.
+    xvel: float
+        Velocity in the x-axis.
+    yvel: float
+        Velocity in the y-axis.
+    xacc: float
+        Acceleration in the x-axis.
+    yacc: float
+        Acceleration in the y-axis.
+    """
     def __init__(self, xpos, ypos, xvel, yvel, xacc, yacc):
         self.xpos = xpos
         self.ypos = ypos
@@ -75,7 +109,7 @@ def reset_histogram(system):
 
 
 def initialise(number_of_particles, kinetic_energy):
-    system = System(number_of_particles, kinetic_energy, 16., 0.01, 4)
+    system = System(number_of_particles, kinetic_energy, 16., 0.01)
     particles = np.array([], dtype=Particle)
     m = int(np.ceil(np.sqrt(system.number_of_particles)))
     d = system.box_length / m
