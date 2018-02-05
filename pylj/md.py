@@ -69,7 +69,19 @@ class Particle:
         self.yacc = yacc
 
 
-def clear_accerlerations(particles):
+def clear_accelerations(particles):
+    """Reset the accelerations to 0.
+
+    Parameters
+    ----------
+    particles: Particle array
+        The particles in the system.
+
+    Returns
+    -------
+    Particle array
+        The particles in the system now with zero acceleration.
+    """
     for i in range(0, len(particles)):
         particles[i].xacc = 0
         particles[i].yacc = 0
@@ -77,14 +89,43 @@ def clear_accerlerations(particles):
 
 
 def pbc_correction(d, l):
+    """Test and correct for the periodic boundary condition.
+
+    Parameters
+    ----------
+    d: float
+        Particle position.
+    l: float
+        Box vector.
+
+    Returns
+    -------
+    float
+        Corrected particle position."""
     if np.abs(d) > 0.5 * l:
         d *= 1 - l / np.abs(d)
     return d
 
 
 def compute_acceleration(particles, system):
+    """A pure python method for the calculation of forces and accelerations on each atom.
+
+    Parameters
+    ----------
+    particles: Particle array
+        The particles in the system.
+    system: System
+        System parameters.
+
+    Returns
+    -------
+    Particle array
+        The particles with the accelerations calculated.
+    System
+        System parameters, where the distances array has been updated.
+    """
     system.distances = []
-    particles = clear_accerlerations(particles)
+    particles = clear_accelerations(particles)
     for i in range(0, len(particles) - 1):
         for j in range(i + 1, len(particles)):
             dx = particles[i].xpos - particles[j].xpos
@@ -102,13 +143,42 @@ def compute_acceleration(particles, system):
 
 
 def reset_histogram(system):
+    """Reset the velocity histogram.
+
+    Parameters
+    ----------
+    system: System
+        System parameters.
+
+    Returns
+    -------
+    System
+        System parameters with the velocity bins and temperature summation set to zero.
+    """
     for i in range(0, len(system.vel_bins)):
         system.vel_bins[i] = 0
     system.temp_sum = 0
-    return system.step
+    system.step0 = system.step
+    return system
 
 
 def initialise(number_of_particles, kinetic_energy):
+    """Initial particle positions (simple square arrangment), velocities and get initial forces/accelerations.
+
+    Parameters
+    ----------
+    number_of_particles: int
+        Number of particles in the system.
+    kinetic_energy: float
+        Initial kinetic energy of the system, also the temperature of the thermostat.
+
+    Returns
+    -------
+    Particle array
+        An array containing the initial particle positions, velocities and accelerations set.
+    System
+        System information.
+    """
     system = System(number_of_particles, kinetic_energy, 16., 0.01)
     particles = np.array([], dtype=Particle)
     m = int(np.ceil(np.sqrt(system.number_of_particles)))
@@ -126,22 +196,52 @@ def initialise(number_of_particles, kinetic_energy):
         particles[i].xvel = v * np.cos(theta)
         particles[i].yvel = v * np.sin(theta)
     particles, system = force.compute_forces(particles, system)
-    system.step0 = reset_histogram(system)
+    system = reset_histogram(system)
     return particles, system
 
 
-def update_pos(particles, system, i):
-    particles[i].xpos += particles[i].xvel * system.timestep_length + 0.5 * particles[i].xacc * system.timestep_length * system.timestep_length
-    particles[i].ypos += particles[i].yvel * system.timestep_length + 0.5 * particles[i].yacc * system.timestep_length * system.timestep_length
-    particles[i].xpos = particles[i].xpos % system.box_length
-    particles[i].ypos = particles[i].ypos % system.box_length
-    return particles
+def update_pos(particle, system):
+    """Update the positions of a given particle based on the integrator.
+
+    Parameters
+    ----------
+    particle: Particle
+        A particle in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    Particle
+        Particle with updated positions.
+    """
+    particle.xpos += particle.xvel * system.timestep_length + 0.5 * particle.xacc * \
+                                                                      system.timestep_length * system.timestep_length
+    particle.ypos += particle.yvel * system.timestep_length + 0.5 * particle.yacc * \
+                                                                      system.timestep_length * system.timestep_length
+    particle.xpos = particle.xpos % system.box_length
+    particle.ypos = particle.ypos % system.box_length
+    return particle
 
 
-def update_velocities(particles, system, i):
-    particles[i].xvel += 0.5 * particles[i].xacc * system.timestep_length
-    particles[i].yvel += 0.5 * particles[i].yacc * system.timestep_length
-    return particles
+def update_velocities(particle, system):
+    """Update the velocities of a given particles based on the acceleration.
+
+    Parameters
+    ----------
+    particle: Particle
+        A particle in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    Particle
+        Particle with updated velocities.
+    """
+    particle.xvel += 0.5 * particle.xacc * system.timestep_length
+    particle.yvel += 0.5 * particle.yacc * system.timestep_length
+    return particle
 
 
 def update_velocity_bins(particles, system, i):
@@ -173,11 +273,11 @@ def calculate_pressure(system):
 
 
 def update_positions(particles, system):
-    system.step0 = reset_histogram(system)
+    system = reset_histogram(system)
     system.step += 1
     for i in range(0, system.number_of_particles):
-        particles = update_pos(particles, system, i)
-        particles = update_velocities(particles, system, i)
+        particles[i] = update_pos(particles[i], system)
+        particles[i] = update_velocities(particles[i], system)
     particles, system = calculate_temperature(particles, system)
     system = calculate_pressure(system)
     return particles, system
