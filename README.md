@@ -6,8 +6,10 @@ The aim of this is to use in a computational/physical chemistry laboratory excer
 
 Install:
 
+```
 python setup.py build
 python setup.py install 
+```
 
 Requires C++ complier.
 
