@@ -116,12 +116,16 @@ class Interactions(object):
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
+        self.avgr = []
+        self.xgr = []
 
     def update(self, particles, system):
         hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, system.bin_width))
         gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
                      (bin_edges[:-1] + system.bin_width / 2.) * system.bin_width)
+        self.avgr.append(gr)
         x = bin_edges[:-1] + system.bin_width / 2
+        self.xgr = x
 
         line = self.ax[0, 1].lines[0]
         line.set_xdata(x)
@@ -157,3 +161,12 @@ class Interactions(object):
                                                                 np.std(system.press_array[-100:])))
 
         self.fig.canvas.draw()
+
+    def average_gr(self):
+        gr = np.average(self.avgr, axis=0)
+        x = self.xgr
+        line = self.ax[0, 1].lines[0]
+        line.set_xdata(x)
+        line.set_ydata(gr)
+        self.ax[0, 1].set_ylim([0, np.amax(gr) + 0.5])
+        self.step_text.set_text('Average')
