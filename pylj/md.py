@@ -244,8 +244,25 @@ def update_velocities(particle, system):
     return particle
 
 
-def update_velocity_bins(particles, system, i):
-    v = np.sqrt(particles[i].xvel * particles[i].xvel + particles[i].yvel * particles[i].yvel)
+def update_velocity_bins(particle, system):
+    """Updates the velocity bins. It is not clear if this is completely required if the velocity bins are not
+    being plotted.
+
+    Parameters
+    ----------
+    particle: Particle
+        A particle in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    System
+        Whole system information with the velocity bin for particle updated.
+    float
+        The total velocity for a given particle.
+    """
+    v = np.sqrt(particle.xvel * particle.xvel + particle.yvel * particle.yvel)
     bin_s = int(len(system.vel_bins) * v / system.max_vel)
     if bin_s < 0:
         bin_s = 0
@@ -256,9 +273,24 @@ def update_velocity_bins(particles, system, i):
 
 
 def calculate_temperature(particles, system):
+    """Determine the instantaneous temperature of the system.
+
+    Parameters
+    ----------
+    particles: Particle array
+        All particles in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    Particle array:
+        All particles updated with their velocities scaled.
+    System:
+        Whole system information with the temperature updated."""
     k = 0
     for i in range(0, system.number_of_particles):
-        system, v = update_velocity_bins(particles, system, i)
+        system, v = update_velocity_bins(particles[i], system)
         k += 0.5 * v * v
     system.temp_sum += k / system.number_of_particles
     temp = system.temp_sum / (system.step - system.step0)
@@ -267,12 +299,40 @@ def calculate_temperature(particles, system):
     return particles, system
 
 def calculate_pressure(system):
+    """Calculates the instantaneous pressure of the system.
+
+    Parameters
+    ----------
+    system: System
+        Whole system information
+
+    Returns
+    -------
+    System
+        System with updated press_array to include newest instantaneous pressure.
+    """
     w = (-1. / 3. * np.sum(system.distances * -1 * system.forces))
     system.press_array.append(system.number_of_particles * system.kinetic_energy + w)
     return system
 
 
-def update_positions(particles, system):
+def update(particles, system):
+    """Update the positions, velocities, get temperature and pressure.
+
+    Parameters
+    ----------
+    particles: Particle array
+        All particles in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    Particle array:
+        Particles with updated positions and velocities.
+    System:
+        Whole system information with new temperature and pressure.
+    """
     system = reset_histogram(system)
     system.step += 1
     for i in range(0, system.number_of_particles):
@@ -284,19 +344,21 @@ def update_positions(particles, system):
 
 
 def scale_velocities(particles, system):
+    """Pure python for the velocity rescaling.
+
+    Parameters
+    ----------
+    particles: Particle array
+        All particles in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    Particle array:
+        All particles with velocities rescaled.
+    """
     for i in range(0, len(particles)):
         particles[i].xvel *= 1 / np.average(system.temp_array)
         particles[i].yvel *= 1 / np.average(system.temp_array)
     return particles
-
-
-def run(number_of_particles, kinetic_energy, number_steps):
-    particles, system = initialise(number_of_particles, kinetic_energy)
-    plot_ob = sample.Show(system)
-    system.time = 0
-    for i in range(0, number_steps):
-        particles, system = force.compute_forces(particles, system)
-        particles, system = update_positions(particles, system)
-        system.time += system.timestep_length
-        if system.step % 10 == 0:
-            plot_ob.update(particles, system)
