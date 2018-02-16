@@ -362,3 +362,23 @@ def scale_velocities(particles, system):
         particles[i].xvel *= 1 / np.average(system.temp_array)
         particles[i].yvel *= 1 / np.average(system.temp_array)
     return particles
+
+def periodic_boundary(number_of_steps):
+    """This is an examplary piece of code to show a single particle travelling across the periodic boundary.
+
+    Parameters
+    ----------
+    number_of_steps: int
+        Number of steps to be taken in the md simulation.
+    """
+    number_of_particles = 1
+    temperature = 1.
+    sample_freq = 10
+    particles, system = initialise(number_of_particles, temperature)
+    sample_system = sample.JustCell(system)
+    for i in range(0, number_of_steps):
+        particles, system = force.compute_forces(particles, system)
+        particles, system = update(particles, system)
+        system.time += system.timestep_length
+        if system.step % sample_freq == 0:
+            sample_system.update(particles, system)

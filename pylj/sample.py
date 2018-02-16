@@ -1,8 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+"""
+These are a series of classes related to how the system should be sampled.
+"""
 
 class Scattering(object):
+    """The scattering class will plot the particle positions, radial distribution function, instantaneous pressure
+    and the scattering profile (determined as a fft for the rdf).
+
+    Parameters
+    ----------
+    system: System
+        The whole system information. 
+    """
     def __init__(self, system):
         fig, ax = plt.subplots(2, 2, figsize=(9, 9))
 
@@ -78,6 +89,34 @@ class Scattering(object):
                                                                 np.std(system.press_array[-100:]) / 100))
 
 
+        self.fig.canvas.draw()
+
+
+class JustCell(object):
+    def __init__(self, system):
+        fig, ax = plt.subplots(figsize=(4.5, 4.5))
+
+        ax.plot([0]*10, 'o', markersize=14, markeredgecolor='black')
+        ax.set_xlim([0, system.box_length])
+        ax.set_ylim([0, system.box_length])
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+        plt.tight_layout()
+
+        self.ax = ax
+        self.fig = fig
+
+    def update(self, particles, system):
+        x3 = np.array([])
+        y3 = np.array([])
+        for i in range(0, particles.size):
+            x3 = np.append(x3, particles[i].xpos)
+            y3 = np.append(y3, particles[i].ypos)
+
+        line2 = self.ax.lines[0]
+        line2.set_ydata(y3)
+        line2.set_xdata(x3)
         self.fig.canvas.draw()
 
 
