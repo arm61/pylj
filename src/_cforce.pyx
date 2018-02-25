@@ -6,6 +6,11 @@ cimport numpy as np
 cdef extern from "force.h":
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
                                double *distances, double* forces, double box_length)
+    void compute_energy_and_force(int len_particles, const double *xpos, const double *ypos, double *energy,
+                                  double *xforce, double *yforce, double *xforcedash, double *yforcedash,
+                                  double box_length)
+    void compute_force(int len_particles, const double *xpos, const double *ypos, double *xforce, double *yforce,
+                       double box_length)
     void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double tempature)
 
 
@@ -41,15 +46,56 @@ def compute_forces(particles, system):
     system.distances = distances
     system.forces = forces
 
-
     return particles, system
+
+def calculate_energy_and_force(particles, system):
+    cdef int len_particles = particles.size
+    cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] ypos = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] energy = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] xforce = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] yforce = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] xforcedash = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] yforcedash = np.zeros(particles.size)
+    cdef double box_length = system.box_length
+
+    for i in range(0, particles.size):
+        xpos[i] = particles[i].xpos
+        ypos[i] = particles[i].ypos
+
+
+    compute_energy_and_force(len_particles, <const double*> xpos.data, <const double*> ypos.data, <double*> energy.data,
+                             <double*>xforce.data, <double*> yforce.data, <double*> xforcedash.data,
+                             <double*> yforcedash.data, box_length)
+
+    return energy, xforce, yforce, xforcedash, yforcedash
+
+
+def get_forces(particles, system):
+    cdef int len_particles = particles.size
+    cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] ypos = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] xforce = np.zeros(particles.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] yforce = np.zeros(particles.size)
+    cdef double box_length = system.box_length
+
+    for i in range(0, particles.size):
+        xpos[i] = particles[i].xpos
+        ypos[i] = particles[i].ypos
+
+
+    compute_force(len_particles, <const double*> xpos.data, <const double*> ypos.data, <double*>xforce.data,
+                  <double*> yforce.data, box_length)
+
+    return xforce, yforce
+
 
 def scale_velo(particles, system):
     cdef int len_particles = particles.size
     cdef np.ndarray[DTYPE_t, ndim=1] xvel = np.zeros(particles.size)
     cdef np.ndarray[DTYPE_t, ndim=1] yvel = np.zeros(particles.size)
     cdef double average_temp = np.average(system.temp_array)
-    cdef double temperature = system.kinetic_energy
+    cdef double temperature = system.temperature
 
     for i in range(0, particles.size):
         xvel[i] = particles[i].xvel
