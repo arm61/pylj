@@ -75,7 +75,13 @@ class Particle:
         self.yvel = yvel
         self.xacc = xacc
         self.yacc = yacc
-        self.force = np.zeros(2)
+        self.xpos_prev = 0.
+        self.ypos_prev = 0.
+        self.energy = 0.
+        self.xforce = 0.
+        self.yforce = 0.
+        self.xforcedash = 0.
+        self.yforcedash = 0.
 
 
 def pbc_correction(d, l):
@@ -136,7 +142,6 @@ def calculate_temperature(particles, system):
     system.temp_sum += k / system.number_of_particles
     temp = system.temp_sum / (system.step - system.step0)
     system.temp_array.append(temp)
-    particles = force.scale_velo(particles, system)
     return particles, system
 
 

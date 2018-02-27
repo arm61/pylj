@@ -15,7 +15,7 @@ def periodic_boundary(number_of_steps, temperature):
     sample_system = sample.JustCell(system)
     for i in range(0, number_of_steps):
         particles, system = force.compute_forces(particles, system)
-        particles, system = md.integrator(particles, system)
+        particles, system = md.NVT(particles, system)
         system.time += system.timestep_length
         if system.step % sample_freq == 0:
             sample_system.update(particles, '')

@@ -107,7 +107,42 @@ def initialise(number_of_particles, temperature, timestep_length, arrangement):
     return particles, system
 
 
-def update_pos(particle, system):
+def initialise_from_em(particles, system, temperature, timestep_length):
+    system.temperature = temperature
+    system.timestep_length = timestep_length
+    v = np.sqrt(2 * system.temperature)
+    for i in range(0, system.number_of_particles):
+        theta = 2 * np.pi * np.random.randn()
+        particles[i].xvel = v * np.cos(theta)
+        particles[i].yvel = v * np.sin(theta)
+    particles, system = force.compute_forces(particles, system)
+    system = reset_histogram(system)
+    return particles, system
+
+
+def update_pos_verlet(particle, system):
+    """Update the positions of a given particle based on the integrator.
+
+    Parameters
+    ----------
+    particle: Particle
+        A particle in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    Particle
+        Particle with updated positions.
+    """
+    particle.xpos = particle.xpos - particle.xpos_prev + particle.xacc * system.timestep_length * system.timestep_length
+    particle.ypos = particle.ypos - particle.ypos_prev + particle.yacc * system.timestep_length * system.timestep_length
+    particle.xpos = particle.xpos % system.box_length
+    particle.ypos = particle.ypos % system.box_length
+    return particle
+
+
+def update_pos_vv(particle, system):
     """Update the positions of a given particle based on the integrator.
 
     Parameters
@@ -131,7 +166,27 @@ def update_pos(particle, system):
     return particle
 
 
-def update_velocities(particle, system):
+def update_velocities_verlet(particle, system):
+    """Update the velocities of a given particles based on the acceleration.
+
+    Parameters
+    ----------
+    particle: Particle
+        A particle in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    Particle
+        Particle with updated velocities.
+    """
+    particle.xvel = (particle.xpos - particle.xpos_prev) / (2 * system.timestep_length)
+    particle.yvel = (particle.ypos - particle.ypos_prev) / (2 * system.timestep_length)
+    return particle
+
+
+def update_velocities_vv(particle, system):
     """Update the velocities of a given particles based on the acceleration.
 
     Parameters
@@ -179,7 +234,7 @@ def update_velocity_bins(particle, system):
     return system, v
 
 
-def integrator(particles, system):
+def velocity_verlet(particles, system):
     """Update the positions, velocities, get temperature and pressure.
 
     Parameters
@@ -199,8 +254,38 @@ def integrator(particles, system):
     system = reset_histogram(system)
     system.step += 1
     for i in range(0, system.number_of_particles):
-        particles[i] = update_pos(particles[i], system)
-        particles[i] = update_velocities(particles[i], system)
+        position_store = [particles[i].xpos, particles[i].ypos]
+        particles[i] = update_pos_vv(particles[i], system)
+        particles[i] = update_velocities_vv(particles[i], system)
+        particles[i].xpos_prev = position_store[0]
+        particles[i].ypos_prev = position_store[1]
+    particles, system = util.calculate_temperature(particles, system)
+    system = util.calculate_pressure(system)
+    return particles, system
+
+
+def verlet(particles, system):
+    """Update the positions, velocities, get temperature and pressure.
+
+    Parameters
+    ----------
+    particles: Particle array
+        All particles in the system.
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    Particle array:
+        Particles with updated positions and velocities.
+    System:
+        Whole system information with new temperature and pressure.
+    """
+    system = reset_histogram(system)
+    system.step += 1
+    for i in range(0, system.number_of_particles):
+        particles[i] = update_pos_verlet(particles[i], system)
+        particles[i] = update_velocities_verlet(particles[i], system)
     particles, system = util.calculate_temperature(particles, system)
     system = util.calculate_pressure(system)
     return particles, system

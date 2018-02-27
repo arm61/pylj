@@ -22,15 +22,15 @@ class Scattering(object):
         ax[0, 1].set_xlim([0, system.box_length/2])
         ax[0, 1].set_xticks([])
         ax[0, 1].set_yticks([])
-        ax[0, 1].set_ylabel('$RDF$', fontsize=16)
-        ax[0, 1].set_xlabel('$r$', fontsize=16)
+        ax[0, 1].set_ylabel('RDF', fontsize=16)
+        ax[0, 1].set_xlabel('r', fontsize=16)
         self.step_text = ax[0, 1].text(0.98, 0.95, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
                                        fontsize=12, horizontalalignment='right', verticalalignment='center')
         ax[1, 1].plot([0]*20)
         ax[1, 1].set_xticks([])
         ax[1, 1].set_yticks([])
-        ax[1, 1].set_ylabel('log$(I(q))$', fontsize=16)
-        ax[1, 1].set_xlabel('$q$', fontsize=16)
+        ax[1, 1].set_ylabel('log(I(q))', fontsize=16)
+        ax[1, 1].set_xlabel('q', fontsize=16)
 
         ax[0, 0].plot([0]*20, 'o', markersize=14, markeredgecolor='black')
         ax[0, 0].set_xlim([0, system.box_length])
@@ -49,12 +49,18 @@ class Scattering(object):
 
         self.ax = ax
         self.fig = fig
+        self.avgr = []
+        self.xgr = []
+        self.aiq = []
+        self.xiq = []
 
     def update(self, particles, system):
         hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, system.bin_width))
         gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
                      (bin_edges[:-1] + system.bin_width / 2.) * system.bin_width)
         x = bin_edges[:-1] + system.bin_width / 2
+        self.avgr.append(gr)
+        self.xgr = x
 
         line = self.ax[0, 1].lines[0]
         line.set_xdata(x)
@@ -69,6 +75,8 @@ class Scattering(object):
         line1.set_ydata(y2)
         self.ax[1, 1].set_ylim([np.amin(y2)-np.amax(y2)*0.05, np.amax(y2)+np.amax(y2)*0.05])
         self.ax[1, 1].set_xlim([np.amin(x2), np.amax(x2)])
+        self.aiq.append(y2)
+        self.xiq = x2
 
         x3 = np.array([])
         y3 = np.array([])
@@ -86,11 +94,28 @@ class Scattering(object):
         self.ax[1, 0].set_xlim(0, len(system.press_array))
         self.ax[1, 0].set_ylim(np.amin(system.press_array) - np.amax(system.press_array) * 0.05,
                                np.amax(system.press_array) + np.amax(system.press_array) * 0.05)
-        self.temp_text.set_text('Pressure={:.0f}±{:.0f}'.format(np.average(system.press_array[-100:]),
+        self.temp_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.press_array[-100:]),
                                                                 np.std(system.press_array[-100:]) / 100))
 
 
         self.fig.canvas.draw()
+
+    def average(self):
+        gr = np.average(self.avgr, axis=0)
+        x = self.xgr
+        line = self.ax[0, 1].lines[0]
+        line.set_xdata(x)
+        line.set_ydata(gr)
+        self.ax[0, 1].set_ylim([0, np.amax(gr) + 0.5])
+        self.step_text.set_text('Average')
+
+        iq = np.average(self.aiq, axis=0)
+        x = self.xiq
+        line = self.ax[1, 1].lines[0]
+        line.set_ydata(iq)
+        line.set_xdata(x)
+        self.ax[1, 1].set_ylim([np.amin(iq) - np.amax(iq) * 0.05, np.amax(iq) + np.amax(iq) * 0.05])
+        self.ax[1, 1].set_xlim([np.amin(x), np.amax(x)])
 
 
 class JustCell(object):
@@ -182,10 +207,10 @@ class ShowForce(object):
         ax.set_ylim([0, system.box_length])
         ax.set_xticks([])
         ax.set_yticks([])
-        self.text1 = ax.text(0.75, 0.95, r'$\mathbf{f}_x$' + '={:.2f}'.format(0), transform=ax.transAxes,
-                                 fontsize=12, horizontalalignment='left', verticalalignment='center')
-        self.text2 = ax.text(0.75, 0.90, r'$\mathbf{f}_y$' + '={:.2f}'.format(0), transform=ax.transAxes,
-                                 fontsize=12, horizontalalignment='left', verticalalignment='center')
+        self.text1 = ax.text(0.98, 0.95, 'fx' + '={:.2f}'.format(0), transform=ax.transAxes,
+                                 fontsize=12, horizontalalignment='right', verticalalignment='center')
+        self.text2 = ax.text(0.98, 0.90, 'fy' + '={:.2f}'.format(0), transform=ax.transAxes,
+                                 fontsize=12, horizontalalignment='right', verticalalignment='center')
 
         plt.tight_layout()
 
@@ -260,8 +285,8 @@ class ShowForce(object):
                     y_new2 = [y4[0] + self.box, y4[1]]
                 line3.set_ydata(y_new1)
                 line4.set_ydata(y_new2)
-        self.text1.set_text(r'$f_x$ = {:.2f}'.format(xf))
-        self.text2.set_text(r'$f_y$ = {:.2f}'.format(yf))
+        self.text1.set_text('fx' + '={:.2f}'.format(xf))
+        self.text2.set_text('fy' + '={:.2f}'.format(yf))
         self.fig.canvas.draw()
         time.sleep(4)
 
@@ -274,8 +299,8 @@ class ShowForce(object):
         line4 = self.ax.lines[1]
         line4.set_xdata(x5)
         line4.set_ydata(y5)
-        self.text1.set_text(r'')
-        self.text2.set_text(r'')
+        self.text1.set_text('')
+        self.text2.set_text('')
         self.fig.canvas.draw()
 
 
@@ -287,8 +312,8 @@ class RDF(object):
         ax[1].set_xlim([0, system.box_length / 2])
         ax[1].set_xticks([])
         ax[1].set_yticks([])
-        ax[1].set_ylabel('$RDF$', fontsize=16)
-        ax[1].set_xlabel('$r$', fontsize=16)
+        ax[1].set_ylabel('RDF', fontsize=16)
+        ax[1].set_xlabel('r', fontsize=16)
         self.step_text = ax[1].text(0.98, 0.95, 'Time={:.1f}'.format(system.step), transform=ax[1].transAxes,
                                     fontsize=12, horizontalalignment='right', verticalalignment='center')
 
@@ -339,6 +364,50 @@ class RDF(object):
         self.ax[1].set_ylim([0, np.amax(gr) + 0.5])
         self.step_text.set_text('Average')
 
+class Temperature(object):
+    def __init__(self, system):
+        fig, ax = plt.subplots(1, 2, figsize=(9, 4.5))
+
+        ax[0].plot([0] * 20, 'o', markersize=14, markeredgecolor='black')
+        ax[0].set_xlim([0, system.box_length])
+        ax[0].set_ylim([0, system.box_length])
+        ax[0].set_xticks([])
+        ax[0].set_yticks([])
+        #self.step_text = ax[0].text(0.98, 0.95, 'Time={:.1f}'.format(system.step), transform=ax[0].transAxes,
+        #                               fontsize=12, horizontalalignment='right', verticalalignment='center')
+        ax[1].plot([0] * 20)
+        ax[1].set_ylabel('Temperature', fontsize=16)
+        ax[1].set_xlabel('Step', fontsize=16)
+        self.temp_text = ax[1].text(0.98, 0.05, 'Temperature={:f}'.format(np.average(system.temp_array)),
+                                       transform=ax[1].transAxes, fontsize=12, horizontalalignment='right',
+                                       verticalalignment='center')
+
+        plt.tight_layout()
+        self.ax = ax
+        self.fig = fig
+
+    def update(self, particles, system):
+        #self.step_text.set_text('Time={:.1f}'.format(system.time))
+
+        x3 = np.array([])
+        y3 = np.array([])
+        for i in range(0, particles.size):
+            x3 = np.append(x3, particles[i].xpos)
+            y3 = np.append(y3, particles[i].ypos)
+
+        line2 = self.ax[0].lines[0]
+        line2.set_ydata(y3)
+        line2.set_xdata(x3)
+
+        line1 = self.ax[1].lines[0]
+        line1.set_ydata(system.temp_array)
+        line1.set_xdata(np.arange(0, len(system.temp_array)))
+        self.ax[1].set_xlim(0, len(system.temp_array))
+        self.ax[1].set_ylim(np.amin(system.temp_array)-np.amax(system.temp_array) * 0.05,
+                               np.amax(system.temp_array)+np.amax(system.temp_array) * 0.05)
+        self.temp_text.set_text('Temp={:.3f}+/-{:.3f}'.format(np.average(system.temp_array), np.std(system.temp_array)))
+
+        self.fig.canvas.draw()
 
 
 class Interactions(object):
@@ -349,8 +418,8 @@ class Interactions(object):
         ax[0, 1].set_xlim([0, system.box_length / 2])
         ax[0, 1].set_xticks([])
         ax[0, 1].set_yticks([])
-        ax[0, 1].set_ylabel('$RDF$', fontsize=16)
-        ax[0, 1].set_xlabel('$r$', fontsize=16)
+        ax[0, 1].set_ylabel('RDF', fontsize=16)
+        ax[0, 1].set_xlabel('r', fontsize=16)
         self.step_text = ax[0, 1].text(0.98, 0.95, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
                                        fontsize=12, horizontalalignment='right', verticalalignment='center')
         ax[1, 1].plot([0] * 20)
