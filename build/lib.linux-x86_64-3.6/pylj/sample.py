@@ -373,12 +373,12 @@ class Temperature(object):
         ax[0].set_ylim([0, system.box_length])
         ax[0].set_xticks([])
         ax[0].set_yticks([])
-        self.step_text = ax[0].text(0.98, 0.02, '', transform=ax[0].transAxes,
+        self.step_text = ax[0].text(1., 0.05, '', transform=ax[0].transAxes,
                                        fontsize=12, horizontalalignment='right', verticalalignment='bottom')
         ax[1].plot([0] * 20)
         ax[1].set_ylabel('Temperature', fontsize=16)
         ax[1].set_xlabel('Step', fontsize=16)
-        self.temp_text = ax[1].text(0.98, 0.02, 'Temperature={:f}'.format(np.average(system.temp_array)),
+        self.temp_text = ax[1].text(1., 0.05, 'Temperature={:f}'.format(np.average(system.temp_array)),
                                        transform=ax[1].transAxes, fontsize=12, horizontalalignment='right',
                                        verticalalignment='bottom')
 

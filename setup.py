@@ -30,7 +30,10 @@ info = {
         'packages': packages,
         'include_package_data': True,
         'setup_requires': ['numpy', 'matplotlib'],
-        'install_requires': ['numpy', 'matplotlib']
+        'install_requires': ['numpy', 'matplotlib'],
+        'version': VERSION,
+        'license': 'MIT',
+        'classifiers': ['Development Status :: 3 - Alpha', 'Intended Audience :: Science/Research', 'Topic :: Scientific/Engineering', 'Topic :: Scientific/Engineering :: Chemistry', 'Topic :: Scientific/Engineering :: Physics', 'Programming Language :: Python :: 3']
         }
 
 ####################################################################
