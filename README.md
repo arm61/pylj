@@ -13,5 +13,13 @@ python setup.py install
 
 Requires C++ complier.
 
+### TODO
+
+- API level documentation
+- Add example lessons
+- Add Monte-Carlo
+- General code cleanup
+- Unit testing
+
 Contact:
 arm61@bath.ac.uk
