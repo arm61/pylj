@@ -27,8 +27,8 @@ def compute_forces(particles, system):
     cdef np.ndarray[DTYPE_t, ndim=1] ypos = np.zeros(particles.size)
     cdef np.ndarray[DTYPE_t, ndim=1] xacc = np.zeros(particles.size)
     cdef np.ndarray[DTYPE_t, ndim=1] yacc = np.zeros(particles.size)
-    cdef np.ndarray[DTYPE_t, ndim=1] distances = system.distances
-    cdef np.ndarray[DTYPE_t, ndim=1] forces = system.forces
+    cdef np.ndarray[DTYPE_t, ndim=1] distances = np.zeros(len(system.distances))
+    cdef np.ndarray[DTYPE_t, ndim=1] forces = np.zeros(len(system.forces))
 
     for i in range(0, particles.size):
         xpos[i] = particles[i].xpos

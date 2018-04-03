@@ -261,6 +261,7 @@ def velocity_verlet(particles, system):
         particles[i].ypos_prev = position_store[1]
     particles, system = util.calculate_temperature(particles, system)
     system = util.calculate_pressure(system)
+    system.force_array.append(np.sum(system.forces))
     return particles, system
 
 

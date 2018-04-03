@@ -46,6 +46,7 @@ class System:
         self.old_total_force = np.zeros(3)
         self.threshold = threshold
         self.max_steps = max_steps
+        self.force_array = []
 
 
 class Particle:

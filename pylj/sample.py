@@ -18,32 +18,32 @@ class Scattering(object):
     def __init__(self, system):
         fig, ax = plt.subplots(2, 2, figsize=(9, 9))
 
-        ax[0, 1].plot([0]*20)
+        ax[0, 1].plot([0]*20, color='#34a5daff')
         ax[0, 1].set_xlim([0, system.box_length/2])
         ax[0, 1].set_xticks([])
         ax[0, 1].set_yticks([])
         ax[0, 1].set_ylabel('RDF', fontsize=16)
         ax[0, 1].set_xlabel('r', fontsize=16)
-        self.step_text = ax[0, 1].text(0.98, 0.95, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
+        self.step_text = ax[0, 1].text(0.98, 0.93, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
                                        fontsize=12, horizontalalignment='right', verticalalignment='bottom')
-        ax[1, 1].plot([0]*20)
+        ax[1, 1].plot([0]*20, color='#34a5daff')
         ax[1, 1].set_xticks([])
         ax[1, 1].set_yticks([])
         ax[1, 1].set_ylabel('log(I(q))', fontsize=16)
         ax[1, 1].set_xlabel('q', fontsize=16)
 
-        ax[0, 0].plot([0]*20, 'o', markersize=14, markeredgecolor='black')
+        ax[0, 0].plot([0]*20, 'o', markersize=14, markeredgecolor='black', color='#34a5daff')
         ax[0, 0].set_xlim([0, system.box_length])
         ax[0, 0].set_ylim([0, system.box_length])
         ax[0, 0].set_xticks([])
         ax[0, 0].set_yticks([])
 
-        ax[1, 0].plot([0] * 20)
+        ax[1, 0].plot([0] * 20, color='#34a5daff')
         ax[1, 0].set_ylabel('Pressure', fontsize=16)
         ax[1, 0].set_xlabel('Step', fontsize=16)
-        self.temp_text = ax[1, 0].text(0.98, 0.05, 'Pressure={:f}'.format(np.average(system.press_array)),
-                                       transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
-                                       verticalalignment='bottom')
+        #self.temp_text = ax[1, 0].text(0.98, 0.05, 'Pressure={:f}'.format(np.average(system.press_array)),
+        #                               transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
+        #                               verticalalignment='bottom')
 
         plt.tight_layout()
 
@@ -94,8 +94,8 @@ class Scattering(object):
         self.ax[1, 0].set_xlim(0, len(system.press_array))
         self.ax[1, 0].set_ylim(np.amin(system.press_array) - np.amax(system.press_array) * 0.05,
                                np.amax(system.press_array) + np.amax(system.press_array) * 0.05)
-        self.temp_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.press_array[-100:]),
-                                                                np.std(system.press_array[-100:]) / 100))
+        #self.temp_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.press_array[-100:]),
+        #                                                        np.std(system.press_array[-100:]) / 100))
 
 
         self.fig.canvas.draw()
@@ -414,52 +414,46 @@ class Interactions(object):
     def __init__(self, system):
         fig, ax = plt.subplots(2, 2, figsize=(9, 9))
 
-        ax[0, 1].plot([0] * 20)
-        ax[0, 1].set_xlim([0, system.box_length / 2])
-        ax[0, 1].set_xticks([])
-        ax[0, 1].set_yticks([])
-        ax[0, 1].set_ylabel('RDF', fontsize=16)
-        ax[0, 1].set_xlabel('r', fontsize=16)
-        self.step_text = ax[0, 1].text(0.98, 0.95, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
+        ax[0, 1].plot([0] * 20, color='#34a5daff')
+        #ax[0, 1].set_xlim([0, system.box_length / 2])
+        ax[0, 1].set_ylabel('Force', fontsize=16)
+        ax[0, 1].set_xlabel('Step', fontsize=16)
+        self.step_text = ax[0, 1].text(0.98, 0.93, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
                                        fontsize=12, horizontalalignment='right', verticalalignment='bottom')
-        ax[1, 1].plot([0] * 20)
+        ax[1, 1].plot([0] * 20, color='#34a5daff')
         ax[1, 1].set_ylabel('Temperature', fontsize=16)
         ax[1, 1].set_xlabel('Step', fontsize=16)
 
-        ax[0, 0].plot([0] * 20, 'o', markersize=14, markeredgecolor='black')
+        ax[0, 0].plot([0] * 20, 'o', markersize=14, markeredgecolor='black', color='#34a5daff')
         ax[0, 0].set_xlim([0, system.box_length])
         ax[0, 0].set_ylim([0, system.box_length])
         ax[0, 0].set_xticks([])
         ax[0, 0].set_yticks([])
-        self.temp_text = ax[1, 1].text(0.98, 0.05, 'Temperature={:f}'.format(np.average(system.temp_array)),
-                                       transform=ax[1, 1].transAxes, fontsize=12, horizontalalignment='right',
-                                       verticalalignment='bottom')
+        #self.temp_text = ax[1, 1].text(0.98, 0.02, 'Temperature={:f}'.format(np.average(system.temp_array)),
+        #                               transform=ax[1, 1].transAxes, fontsize=12, horizontalalignment='right',
+        #                               verticalalignment='bottom')
 
-        ax[1, 0].plot([0] * 20)
+        ax[1, 0].plot([0] * 20, color='#34a5daff')
         ax[1, 0].set_ylabel('Pressure', fontsize=16)
         ax[1, 0].set_xlabel('Step', fontsize=16)
-        self.press_text = ax[1, 0].text(0.98, 0.05, 'Pressure={:f}'.format(np.average(system.press_array)),
-                                       transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
-                                       verticalalignment='bottom')
+        #self.press_text = ax[1, 0].text(0.98, 0.02, 'Pressure={:f}'.format(np.average(system.press_array)),
+        #                               transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
+        #                               verticalalignment='bottom')
 
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
-        self.avgr = []
-        self.xgr = []
+        self.forces = []
 
     def update(self, particles, system):
-        hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, system.bin_width))
-        gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
-                     (bin_edges[:-1] + system.bin_width / 2.) * system.bin_width)
-        self.avgr.append(gr)
-        x = bin_edges[:-1] + system.bin_width / 2
-        self.xgr = x
-
         line = self.ax[0, 1].lines[0]
-        line.set_xdata(x)
-        line.set_ydata(gr)
-        self.ax[0, 1].set_ylim([0, np.amax(gr) + 0.5])
+        #self.forces.append(np.sum(system.force_))
+        line.set_xdata(np.arange(0, len(system.force_array)))
+        line.set_ydata(system.force_array)
+        self.ax[0, 1].set_xlim(0, len(system.force_array))
+
+        self.ax[0, 1].set_ylim(np.amin(system.force_array)-np.amax(system.force_array) * 0.05,
+                               np.amax(system.force_array)+np.amax(system.force_array) * 0.05)
         self.step_text.set_text('Time={:.1f}'.format(system.time))
 
         x3 = np.array([])
@@ -478,7 +472,7 @@ class Interactions(object):
         self.ax[1, 1].set_xlim(0, len(system.temp_array))
         self.ax[1, 1].set_ylim(np.amin(system.temp_array)-np.amax(system.temp_array) * 0.05,
                                np.amax(system.temp_array)+np.amax(system.temp_array) * 0.05)
-        self.temp_text.set_text('Temp={:.3f}+/-{:.3f}'.format(np.average(system.temp_array), np.std(system.temp_array)))
+        #self.temp_text.set_text('Temp={:.3f}+/-{:.3f}'.format(np.average(system.temp_array), np.std(system.temp_array)))
 
         line3 = self.ax[1, 0].lines[0]
         line3.set_ydata(system.press_array)
@@ -486,8 +480,8 @@ class Interactions(object):
         self.ax[1, 0].set_xlim(0, len(system.press_array))
         self.ax[1, 0].set_ylim(np.amin(system.press_array) - np.amax(system.press_array) * 0.05,
                                np.amax(system.press_array) + np.amax(system.press_array) * 0.05)
-        self.press_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.press_array[-100:]),
-                                                                np.std(system.press_array[-100:])))
+        #self.press_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.press_array[-100:]),
+        #                                                        np.std(system.press_array[-100:])))
 
         self.fig.canvas.draw()
 
