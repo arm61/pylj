@@ -39,7 +39,7 @@ class System:
         self.distances = np.zeros(int(pairs))
         self.forces = np.zeros(int(pairs))
         self.temp_array = []
-        self.press_array = [0]
+        self.pressure = np.array([])
         self.bin_width = 0.1
         self.time = 0
         self.total_force = np.zeros(3)
@@ -117,7 +117,7 @@ def calculate_pressure(system):
         System with updated press_array to include newest instantaneous pressure.
     """
     w = (-1. / 3. * np.sum(system.distances * -1 * system.forces))
-    system.press_array.append(system.number_of_particles * system.temperature + w)
+    system.pressure = np.append(system.pressure, system.number_of_particles * system.temperature + w)
     return system
 
 def calculate_temperature(particles, system):

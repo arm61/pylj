@@ -8,6 +8,8 @@ def periodic_boundary(number_of_steps, temperature):
     ----------
     number_of_steps: int
         Number of steps to be taken in the md simulation.
+    temperature: float
+        Temperature of the simulation
     """
     number_of_particles = 1
     sample_freq = 10

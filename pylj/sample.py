@@ -41,7 +41,7 @@ class Scattering(object):
         ax[1, 0].plot([0] * 20, color='#34a5daff')
         ax[1, 0].set_ylabel('Pressure', fontsize=16)
         ax[1, 0].set_xlabel('Step', fontsize=16)
-        #self.temp_text = ax[1, 0].text(0.98, 0.05, 'Pressure={:f}'.format(np.average(system.press_array)),
+        #self.temp_text = ax[1, 0].text(0.98, 0.05, 'Pressure={:f}'.format(np.average(system.pressure)),
         #                               transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
         #                               verticalalignment='bottom')
 
@@ -89,13 +89,13 @@ class Scattering(object):
         line2.set_xdata(x3)
 
         line3 = self.ax[1, 0].lines[0]
-        line3.set_ydata(system.press_array)
-        line3.set_xdata(np.arange(0, len(system.press_array)))
-        self.ax[1, 0].set_xlim(0, len(system.press_array))
-        self.ax[1, 0].set_ylim(np.amin(system.press_array) - np.amax(system.press_array) * 0.05,
-                               np.amax(system.press_array) + np.amax(system.press_array) * 0.05)
-        #self.temp_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.press_array[-100:]),
-        #                                                        np.std(system.press_array[-100:]) / 100))
+        line3.set_ydata(system.pressure)
+        line3.set_xdata(np.arange(0, len(system.pressure)))
+        self.ax[1, 0].set_xlim(0, len(system.pressure))
+        self.ax[1, 0].set_ylim(np.amin(system.pressure) - np.amax(system.pressure) * 0.05,
+                               np.amax(system.pressure) + np.amax(system.pressure) * 0.05)
+        #self.temp_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.pressure[-100:]),
+        #                                                        np.std(system.pressure[-100:]) / 100))
 
 
         self.fig.canvas.draw()
@@ -436,7 +436,7 @@ class Interactions(object):
         ax[1, 0].plot([0] * 20, color='#34a5daff')
         ax[1, 0].set_ylabel('Pressure', fontsize=16)
         ax[1, 0].set_xlabel('Step', fontsize=16)
-        #self.press_text = ax[1, 0].text(0.98, 0.02, 'Pressure={:f}'.format(np.average(system.press_array)),
+        #self.press_text = ax[1, 0].text(0.98, 0.02, 'Pressure={:f}'.format(np.average(system.pressure)),
         #                               transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
         #                               verticalalignment='bottom')
 
@@ -475,13 +475,13 @@ class Interactions(object):
         #self.temp_text.set_text('Temp={:.3f}+/-{:.3f}'.format(np.average(system.temp_array), np.std(system.temp_array)))
 
         line3 = self.ax[1, 0].lines[0]
-        line3.set_ydata(system.press_array)
-        line3.set_xdata(np.arange(0, len(system.press_array)))
-        self.ax[1, 0].set_xlim(0, len(system.press_array))
-        self.ax[1, 0].set_ylim(np.amin(system.press_array) - np.amax(system.press_array) * 0.05,
-                               np.amax(system.press_array) + np.amax(system.press_array) * 0.05)
-        #self.press_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.press_array[-100:]),
-        #                                                        np.std(system.press_array[-100:])))
+        line3.set_ydata(system.pressure)
+        line3.set_xdata(np.arange(0, len(system.pressure)))
+        self.ax[1, 0].set_xlim(0, len(system.pressure))
+        self.ax[1, 0].set_ylim(np.amin(system.pressure) - np.amax(system.pressure) * 0.05,
+                               np.amax(system.pressure) + np.amax(system.pressure) * 0.05)
+        #self.press_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.pressure[-100:]),
+        #                                                        np.std(system.pressure[-100:])))
 
         self.fig.canvas.draw()
 

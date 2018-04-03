@@ -95,7 +95,7 @@ def initialise(number_of_particles, temperature, timestep_length, arrangement):
     System
         System information.
     """
-    system = util.System(number_of_particles, temperature, 16., timestep_length)
+    system = util.System(number_of_particles, temperature, 16, timestep_length)
     particles = arrangement(system)
     v = np.sqrt(2 * system.temperature)
     for i in range(0, system.number_of_particles):
