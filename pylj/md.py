@@ -3,7 +3,7 @@ from pylj import force, sample, util
 
 
 def clear_accelerations(particles):
-    """Reset the accelerations to 0.
+    """Reset all particle accelerations to 0.
 
     Parameters
     ----------
