@@ -2,8 +2,28 @@
 #include <math.h>
 #include <stdio.h>
 
-void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
-                           double *distances, double *forces, double box_length)
+double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, const double *forces, 
+			double box_length)
+{
+	int k = 0;
+	double pres = 0.;
+	int i, j;
+	for (i = 0; i < number_of_particles - 1; i++)
+	{
+		for (j = i + 1; j < number_of_particles; j++)
+		{
+			double v = sqrt(xvel[i] * xvel[i] + yvel[i] * yvel[i]);
+			pres += forces[k] + v;
+		}
+	}
+	pres = pres / 3.;
+	pres = pres / (box_length * box_length);
+	return pres;
+}
+
+void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, 
+		double *yacc, double *distances, double *xforce, double *yforce, double box_length, 
+		double *force_arr)
 {
     int ii = 0;
     double dx, dy, dr, f;
@@ -32,8 +52,12 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             dr = sqrt(dx * dx + dy * dy);
             distances[k] = dr;
             f = 48. * pow(dr, -13.) - 24. * pow(dr, -7.);
-            forces[k] = f;
-            k++;
+	    force_arr[k] = f;
+            xforce[i] += (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dx / dr;
+            yforce[i] += (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dy / dr;
+            xforce[j] -= (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dx / dr;
+            yforce[j] -= (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dy / dr;
+	    k++;
             xacc[i] += f * dx / dr;
             yacc[i] += f * dy / dr;
             xacc[j] -= f * dx / dr;

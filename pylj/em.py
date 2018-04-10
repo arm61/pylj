@@ -55,28 +55,3 @@ def steepest_descent(particles, system, sample_system, alpha):
         sample_system.update(particles, system, 'EM - Steps = {:d}\nEnergy change = {:.3e}'.format(counter,np.abs(
             previous_energy - current_energy)))
     return particles
-
-
-def newton_raphson(particles, system, sample_system):
-    previous_energy = system.threshold + 1
-    current_energy = 0
-    counter = 0
-    while np.abs(previous_energy - current_energy) > system.threshold or counter < system.max_steps:
-        energy = force.calculate_energy_and_force(particles, system)
-        k = np.argmax(energy[0])
-        xforce = energy[1][k]
-        yforce = energy[2][k]
-        xforcedash = energy[3][k]
-        yforcedash = energy[4][k]
-        previous_energy = current_energy
-        current_energy = np.sum(energy[0])
-        if counter % 10 == 0:
-            sample_system.update(particles, 'EM - Steps = {:d}'.format(counter))
-        particles[k].xpos = particles[k].xpos - (xforce / xforcedash)
-        particles[k].xpos = particles[k].xpos % system.box_length
-        particles[k].ypos = particles[k].ypos - (yforce / yforcedash)
-        particles[k].ypos = particles[k].ypos % system.box_length
-        counter += 1
-    if sample_system:
-        sample_system.update(particles, 'EM - Steps = {:d}'.format(counter))
-    return particles

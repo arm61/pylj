@@ -11,79 +11,77 @@ class System:
     ----------
     number_of_particles: int
         Number of particles to be simulated.
-    kinetic_energy: float
-        The initial kinetic energy of the system, this same value is used to reweight the velocities.
+    temperature: float
+        The initial temperature of the system.
     box_length: float
         Size of the simulation cell.
     timestep_length: float
         Duration of timestep in MD integration.
     max_vel: float, optional
         Maximum velocity allowed in the velocity rebinning stage.
-    threshold: float, optional
-        The energy change threshold for running an energy minimisation.
-    max_steps: int, optional
-        The maximum number of steps in the energy minimisation process.
+    init_conf: string, optional
+        Selection for the way the particles are initially populated. Should be one of
+        - 'square'
+        - 'random'
     """
-    def __init__(self, number_of_particles, temperature, box_length, timestep_length,
-                 max_vel=4, threshold=1e-20, max_steps=1000):
+    def __init__(self, number_of_particles, temperature, box_length, timestep_length, 
+                 max_vel=4, init_conf='square'):
         self.number_of_particles = number_of_particles
-        self.temperature = temperature
+        self.init_temp = temperature
         self.box_length = box_length
         self.timestep_length = timestep_length
-        self.temp_sum = 0.
-        self.vel_bins = np.zeros(500)
         self.max_vel = max_vel
+        if init_conf == 'square':
+            self.square()
+        elif init_conf == 'random':
+            self.random()
+        else:
+            raise NotImplementedError('The initial configuration type {} is not recognised. Available options are: square or random'.format(init_conf))
         self.step = 0
-        self.step0 = 0
-        pairs = (self.number_of_particles-1)*self.number_of_particles/2
-        self.distances = np.zeros(int(pairs))
-        self.forces = np.zeros(int(pairs))
-        self.temp_array = []
-        self.pressure = np.array([])
-        self.bin_width = 0.1
-        self.time = 0
-        self.total_force = np.zeros(3)
-        self.old_total_force = np.zeros(3)
-        self.threshold = threshold
-        self.max_steps = max_steps
-        self.force_array = []
+        self.time = 0.
+        self.temp_sum = 0.
+        self.distances = np.zeros(self.number_of_pairs())
+        self.forces = np.zeros(self.number_of_pairs())
+        self.velocity_bins = np.zeros(500)
+        self.temperature = []
+        self.pressure = []
+        self.force = []
 
+    def number_of_pairs(self):
+        return int((self.number_of_particles - 1) * self.number_of_particles / 2)
+        
+    def square(self):
+        """Set the initial particle positions on a square lattice.
 
-class Particle:
-    """Particles
-
-    This stores particle relevant information.
-
-    Parameters
-    ----------
-    xpos: float
-        Position in the x-axis.
-    ypos: float
-        Position in the y-axis.
-    xvel: float
-        Velocity in the x-axis.
-    yvel: float
-        Velocity in the y-axis.
-    xacc: float
-        Acceleration in the x-axis.
-    yacc: float
-        Acceleration in the y-axis.
-    """
-    def __init__(self, xpos, ypos, xvel, yvel, xacc, yacc):
-        self.xpos = xpos
-        self.ypos = ypos
-        self.xvel = xvel
-        self.yvel = yvel
-        self.xacc = xacc
-        self.yacc = yacc
-        self.xpos_prev = 0.
-        self.ypos_prev = 0.
-        self.energy = 0.
-        self.xforce = 0.
-        self.yforce = 0.
-        self.xforcedash = 0.
-        self.yforcedash = 0.
-
+        Returns
+        -------
+        Particle array
+            The particles with positions on a square lattice.
+        """
+        part_dt = particle_dt()
+        self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
+        m = int(np.ceil(np.sqrt(self.number_of_particles)))
+        d = self.box_length / m
+        n = 0
+        for i in range(0, m):
+            for j in range(0, m):
+                if n < self.number_of_particles:
+                    self.particles[n]['xposition'] = (i + 0.5) * d
+                    self.particles[n]['yposition'] = (j + 0.5) * d
+                    n += 1
+    
+    def random(self):
+        """Set the initial particle positions in a random arrangement.
+        
+        Returns
+        -------
+        Particle array
+            The particles with position set randomly.
+        """
+        part_dt = particle_dt()
+        self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
+        self.particles['xposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)
+        self.particles['yposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)   
 
 def pbc_correction(d, l):
     """Test and correct for the periodic boundary condition.
@@ -103,7 +101,7 @@ def pbc_correction(d, l):
         d *= 1 - l / np.abs(d)
     return d
 
-def calculate_pressure(system):
+def calculate_pressure(number_of_particles, particles, forces, box_length, velocity_bins, max_vel):
     """Calculates the instantaneous pressure of the system.
 
     Parameters
@@ -116,17 +114,21 @@ def calculate_pressure(system):
     System
         System with updated press_array to include newest instantaneous pressure.
     """
-    w = (-1. / 3. * np.sum(system.distances * -1 * system.forces))
-    system.pressure = np.append(system.pressure, system.number_of_particles * system.temperature + w)
-    return system
+    k = 0
+    pres = 0.
+    for i in range(0, number_of_particles-1):
+        for j in range(i+1, number_of_particles):
+            velocity_bins, v = md.update_velocity_bins(particles[i], velocity_bins, max_vel)
+            pres += forces[k] + v
+    pres /= 3
+    pres /= (box_length * box_length)
+    return pres, velocity_bins
 
-def calculate_temperature(particles, system):
+def calculate_temperature(system):
     """Determine the instantaneous temperature of the system.
 
     Parameters
     ----------
-    particles: Particle array
-        All particles in the system.
     system: System
         Whole system information.
 
@@ -138,56 +140,12 @@ def calculate_temperature(particles, system):
         Whole system information with the temperature updated."""
     k = 0
     for i in range(0, system.number_of_particles):
-        system, v = md.update_velocity_bins(particles[i], system)
+        system.velocity_bins, v = md.update_velocity_bins(system.particles[i], system.velocity_bins, system.max_vel)
         k += 0.5 * v * v
     system.temp_sum += k / system.number_of_particles
-    temp = system.temp_sum / (system.step - system.step0)
-    system.temp_array.append(temp)
-    return particles, system
+    temp = system.temp_sum
+    system.temperature.append(temp)
+    return system
 
-
-def set_particles_square(system):
-    """Set the initial particle positions on a square lattice.
-
-    Parameters
-    ----------
-    system: System
-        Whole system information.
-
-    Returns
-    -------
-    Particle array
-        The particles with positions on a square lattice.
-    """
-    particles = np.array([], dtype=Particle)
-    m = int(np.ceil(np.sqrt(system.number_of_particles)))
-    d = system.box_length / m
-    n = 0
-    for i in range(0, m):
-        for j in range(0, m):
-            if n < system.number_of_particles:
-                part = Particle((i + 0.5) * d, (j + 0.5) * d, 0, 0, 0, 0)
-                particles = np.append(particles, part)
-                n += 1
-    return particles
-
-
-def set_particles_random(system):
-    """Set the initial particle positions in a random arrangement.
-
-    Parameters
-    ----------
-    system: System
-        Whole system information.
-
-    Returns
-    -------
-    Particle array
-        The particles with position set randomly.
-    """
-    particles = np.array([], dtype=Particle)
-    for i in range(0, system.number_of_particles):
-        part = Particle(np.random.uniform(0, system.box_length), np.random.uniform(0, system.box_length),
-                        0, 0, 0, 0)
-        particles = np.append(particles, part)
-    return particles
+def particle_dt():
+    return np.dtype([('xposition', np.float64), ('yposition', np.float64), ('xvelocity', np.float64), ('yvelocity', np.float64), ('xacceleration', np.float64), ('yacceleration', np.float64), ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('xforce', np.float64), ('yforce', np.float64), ('energy', np.float64)])

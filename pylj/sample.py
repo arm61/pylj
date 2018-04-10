@@ -412,84 +412,78 @@ class Temperature(object):
 
 class Interactions(object):
     def __init__(self, system):
-        fig, ax = plt.subplots(2, 2, figsize=(9, 9))
+        fig, ax = environment(4)
 
-        ax[0, 1].plot([0] * 20, color='#34a5daff')
-        #ax[0, 1].set_xlim([0, system.box_length / 2])
-        ax[0, 1].set_ylabel('Force', fontsize=16)
-        ax[0, 1].set_xlabel('Step', fontsize=16)
-        self.step_text = ax[0, 1].text(0.98, 0.93, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
-                                       fontsize=12, horizontalalignment='right', verticalalignment='bottom')
-        ax[1, 1].plot([0] * 20, color='#34a5daff')
-        ax[1, 1].set_ylabel('Temperature', fontsize=16)
-        ax[1, 1].set_xlabel('Step', fontsize=16)
-
-        ax[0, 0].plot([0] * 20, 'o', markersize=14, markeredgecolor='black', color='#34a5daff')
-        ax[0, 0].set_xlim([0, system.box_length])
-        ax[0, 0].set_ylim([0, system.box_length])
-        ax[0, 0].set_xticks([])
-        ax[0, 0].set_yticks([])
-        #self.temp_text = ax[1, 1].text(0.98, 0.02, 'Temperature={:f}'.format(np.average(system.temp_array)),
-        #                               transform=ax[1, 1].transAxes, fontsize=12, horizontalalignment='right',
-        #                               verticalalignment='bottom')
-
-        ax[1, 0].plot([0] * 20, color='#34a5daff')
-        ax[1, 0].set_ylabel('Pressure', fontsize=16)
-        ax[1, 0].set_xlabel('Step', fontsize=16)
-        #self.press_text = ax[1, 0].text(0.98, 0.02, 'Pressure={:f}'.format(np.average(system.pressure)),
-        #                               transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
-        #                               verticalalignment='bottom')
+        setup_cellview(ax[0, 0], system)
+        setup_forceview(ax[0, 1])
+        setup_pressureview(ax[1, 0])
+        setup_tempview(ax[1, 1])
 
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
-        self.forces = []
 
-    def update(self, particles, system):
-        line = self.ax[0, 1].lines[0]
-        #self.forces.append(np.sum(system.force_))
-        line.set_xdata(np.arange(0, len(system.force_array)))
-        line.set_ydata(system.force_array)
-        self.ax[0, 1].set_xlim(0, len(system.force_array))
-
-        self.ax[0, 1].set_ylim(np.amin(system.force_array)-np.amax(system.force_array) * 0.05,
-                               np.amax(system.force_array)+np.amax(system.force_array) * 0.05)
-        self.step_text.set_text('Time={:.1f}'.format(system.time))
-
-        x3 = np.array([])
-        y3 = np.array([])
-        for i in range(0, particles.size):
-            x3 = np.append(x3, particles[i].xpos)
-            y3 = np.append(y3, particles[i].ypos)
-
-        line2 = self.ax[0, 0].lines[0]
-        line2.set_ydata(y3)
-        line2.set_xdata(x3)
-
-        line1 = self.ax[1, 1].lines[0]
-        line1.set_ydata(system.temp_array)
-        line1.set_xdata(np.arange(0, len(system.temp_array)))
-        self.ax[1, 1].set_xlim(0, len(system.temp_array))
-        self.ax[1, 1].set_ylim(np.amin(system.temp_array)-np.amax(system.temp_array) * 0.05,
-                               np.amax(system.temp_array)+np.amax(system.temp_array) * 0.05)
-        #self.temp_text.set_text('Temp={:.3f}+/-{:.3f}'.format(np.average(system.temp_array), np.std(system.temp_array)))
-
-        line3 = self.ax[1, 0].lines[0]
-        line3.set_ydata(system.pressure)
-        line3.set_xdata(np.arange(0, len(system.pressure)))
-        self.ax[1, 0].set_xlim(0, len(system.pressure))
-        self.ax[1, 0].set_ylim(np.amin(system.pressure) - np.amax(system.pressure) * 0.05,
-                               np.amax(system.pressure) + np.amax(system.pressure) * 0.05)
-        #self.press_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.pressure[-100:]),
-        #                                                        np.std(system.pressure[-100:])))
+    def update(self, system):
+        update_cellview(self.ax[0, 0], system)
+        update_tempview(self.ax[1, 1], system)
+        update_pressureview(self.ax[1, 0], system)
 
         self.fig.canvas.draw()
 
-    def average_rdf(self):
-        gr = np.average(self.avgr, axis=0)
-        x = self.xgr
-        line = self.ax[0, 1].lines[0]
-        line.set_xdata(x)
-        line.set_ydata(gr)
-        self.ax[0, 1].set_ylim([0, np.amax(gr) + 0.5])
-        self.step_text.set_text('Average')
+
+def environment(panes):
+    if panes == 1:
+        fig, ax = plt.subplots(figsize=(4.5, 4.5))
+    elif panes == 2:
+        fig, ax = plt.subplots(1, 2, figsize=(9, 4.5))
+    elif panes == 4:
+        fig, ax = plt.subplots(2, 2, figsize=(9, 9))
+    return fig, ax
+        
+def setup_cellview(ax, system):
+    xpos = system.particles['xposition']
+    ypos = system.particles['yposition']
+    ax.plot(xpos, ypos, 'o', markersize=14, markeredgecolor='black', color='#34a5daff')
+    ax.set_xlim([0, system.box_length])
+    ax.set_ylim([0, system.box_length])
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+def setup_forceview(ax):
+    ax.plot([0], color='#34a5daff')
+    ax.set_ylabel('Force', fontsize=16)
+    ax.set_xlabel('Time', fontsize=16)
+
+def setup_pressureview(ax):
+    ax.plot([0], color='#34a5daff')
+    ax.set_ylabel('Pressure', fontsize=16)
+    ax.set_xlabel('Time', fontsize=16)
+
+def setup_tempview(ax):
+    ax.plot([0], color='#34a5daff')
+    ax.set_ylabel('Temperature', fontsize=16)
+    ax.set_xlabel('Time', fontsize=16)
+
+def update_cellview(ax, system):
+    x3 = system.particles['xposition']
+    y3 = system.particles['yposition']
+    line = ax.lines[0]
+    line.set_ydata(y3)
+    line.set_xdata(x3)
+ 
+def update_tempview(ax, system):
+    line = ax.lines[0]
+    line.set_ydata(system.temperature)
+    line.set_xdata(np.arange(0, system.step) * system.timestep_length)
+    ax.set_xlim(0, system.step * system.timestep_length) 
+    ax.set_ylim(np.amin(system.temperature)-np.amax(system.temperature) * 0.05,
+                     np.amax(system.temperature)+np.amax(system.temperature) * 0.05)
+
+def update_pressureview(ax, system):
+    line = ax.lines[0]
+    line.set_ydata(system.pressure)
+    line.set_xdata(np.arange(0, system.step) * system.timestep_length)
+    ax.set_xlim(0, system.step * system.timestep_length)
+    ax.set_ylim(np.amin(system.pressure) - np.amax(system.pressure) * 0.05,
+                           np.amax(system.pressure) + np.amax(system.pressure) * 0.05)
+    
