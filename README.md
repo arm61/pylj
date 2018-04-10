@@ -15,11 +15,11 @@ Requires C++ complier.
 
 ### TODO
 
+- General code cleanup
 - API level documentation
+- Unit testing
 - Add example lessons
 - Add Monte-Carlo
-- General code cleanup
-- Unit testing
 
 Contact:
 arm61@bath.ac.uk
