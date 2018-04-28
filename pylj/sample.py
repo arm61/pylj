@@ -16,101 +16,43 @@ class Scattering(object):
         The whole system information. 
     """
     def __init__(self, system):
-        fig, ax = plt.subplots(2, 2, figsize=(9, 9))
+        fig, ax = environment(4) 
+        self.average_rdf = []
+        self.r = []
+        self.average_diff = []
+        self.q = []
 
-        ax[0, 1].plot([0]*20, color='#34a5daff')
-        ax[0, 1].set_xlim([0, system.box_length/2])
-        ax[0, 1].set_xticks([])
-        ax[0, 1].set_yticks([])
-        ax[0, 1].set_ylabel('RDF', fontsize=16)
-        ax[0, 1].set_xlabel('r', fontsize=16)
-        self.step_text = ax[0, 1].text(0.98, 0.93, 'Time={:.1f}'.format(system.step), transform=ax[0, 1].transAxes,
-                                       fontsize=12, horizontalalignment='right', verticalalignment='bottom')
-        ax[1, 1].plot([0]*20, color='#34a5daff')
-        ax[1, 1].set_xticks([])
-        ax[1, 1].set_yticks([])
-        ax[1, 1].set_ylabel('log(I(q))', fontsize=16)
-        ax[1, 1].set_xlabel('q', fontsize=16)
+        setup_cellview(ax[0, 0], system)
+        setup_rdfview(ax[0, 1], system)
+        setup_diffview(ax[1, 1])
+        setup_pressureview(ax[1, 0])
 
-        ax[0, 0].plot([0]*20, 'o', markersize=14, markeredgecolor='black', color='#34a5daff')
-        ax[0, 0].set_xlim([0, system.box_length])
-        ax[0, 0].set_ylim([0, system.box_length])
-        ax[0, 0].set_xticks([])
-        ax[0, 0].set_yticks([])
-
-        ax[1, 0].plot([0] * 20, color='#34a5daff')
-        ax[1, 0].set_ylabel('Pressure', fontsize=16)
-        ax[1, 0].set_xlabel('Step', fontsize=16)
-        #self.temp_text = ax[1, 0].text(0.98, 0.05, 'Pressure={:f}'.format(np.average(system.pressure)),
-        #                               transform=ax[1, 0].transAxes, fontsize=12, horizontalalignment='right',
-        #                               verticalalignment='bottom')
+        ax[1, 0].plot([0], color='#34a5daff')
 
         plt.tight_layout()
-
         self.ax = ax
         self.fig = fig
-        self.avgr = []
-        self.xgr = []
-        self.aiq = []
-        self.xiq = []
 
-    def update(self, particles, system):
-        hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, system.bin_width))
-        gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
-                     (bin_edges[:-1] + system.bin_width / 2.) * system.bin_width)
-        x = bin_edges[:-1] + system.bin_width / 2
-        self.avgr.append(gr)
-        self.xgr = x
-
-        line = self.ax[0, 1].lines[0]
-        line.set_xdata(x)
-        line.set_ydata(gr)
-        self.ax[0, 1].set_ylim([0, np.amax(gr)+0.5])
-        self.step_text.set_text('Time={:.1f}'.format(system.time))
-
-        x2 = np.log10(np.fft.rfftfreq(len(gr))[5:])
-        y2 = np.log10(np.fft.rfft(gr)[5:])
-        line1 = self.ax[1, 1].lines[0]
-        line1.set_xdata(x2)
-        line1.set_ydata(y2)
-        self.ax[1, 1].set_ylim([np.amin(y2)-np.amax(y2)*0.05, np.amax(y2)+np.amax(y2)*0.05])
-        self.ax[1, 1].set_xlim([np.amin(x2), np.amax(x2)])
-        self.aiq.append(y2)
-        self.xiq = x2
-
-        x3 = np.array([])
-        y3 = np.array([])
-        for i in range(0, particles.size):
-            x3 = np.append(x3, particles[i].xpos)
-            y3 = np.append(y3, particles[i].ypos)
-
-        line2 = self.ax[0, 0].lines[0]
-        line2.set_ydata(y3)
-        line2.set_xdata(x3)
-
-        line3 = self.ax[1, 0].lines[0]
-        line3.set_ydata(system.pressure)
-        line3.set_xdata(np.arange(0, len(system.pressure)))
-        self.ax[1, 0].set_xlim(0, len(system.pressure))
-        self.ax[1, 0].set_ylim(np.amin(system.pressure) - np.amax(system.pressure) * 0.05,
-                               np.amax(system.pressure) + np.amax(system.pressure) * 0.05)
-        #self.temp_text.set_text('Pressure={:.0f}+/-{:.0f}'.format(np.average(system.pressure[-100:]),
-        #                                                        np.std(system.pressure[-100:]) / 100))
-
-
+    def update(self, system):
+        update_cellview(self.ax[0, 0], system)
+        update_rdfview(self.ax[0, 1], system, self.average_rdf, self.r)
+        update_diffview(self.ax[1, 1], system, self.average_diff, self.q)
+        update_pressureview(self.ax[1, 0], system)
         self.fig.canvas.draw()
 
     def average(self):
-        gr = np.average(self.avgr, axis=0)
-        x = self.xgr
+        gr = np.average(self.average_rdf, axis=0)
+        x = np.average(self.r, axis=0)
         line = self.ax[0, 1].lines[0]
         line.set_xdata(x)
         line.set_ydata(gr)
         self.ax[0, 1].set_ylim([0, np.amax(gr) + 0.5])
-        self.step_text.set_text('Average')
+        self.fig.canvas.draw()
 
-        iq = np.average(self.aiq, axis=0)
-        x = self.xiq
+        #self.step_text.set_text('Average')
+
+        iq = np.average(self.average_diff, axis=0)
+        x = np.average(self.q, axis=0)
         line = self.ax[1, 1].lines[0]
         line.set_ydata(iq)
         line.set_xdata(x)
@@ -330,11 +272,11 @@ class RDF(object):
         self.xgr = []
 
     def update(self, particles, system):
-        hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, system.bin_width))
+        hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, 0.1))
         gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
-                     (bin_edges[:-1] + system.bin_width / 2.) * system.bin_width)
+                     (bin_edges[:-1] + 0.1 / 2.) * 0.1)
         self.avgr.append(gr)
-        x = bin_edges[:-1] + system.bin_width / 2
+        x = bin_edges[:-1] + 0.1 / 2
         self.xgr = x
 
         line = self.ax[1].lines[0]
@@ -425,6 +367,7 @@ class Interactions(object):
 
     def update(self, system):
         update_cellview(self.ax[0, 0], system)
+        update_forceview(self.ax[0, 1], system)
         update_tempview(self.ax[1, 1], system)
         update_pressureview(self.ax[1, 0], system)
 
@@ -433,11 +376,11 @@ class Interactions(object):
 
 def environment(panes):
     if panes == 1:
-        fig, ax = plt.subplots(figsize=(4.5, 4.5))
+        fig, ax = plt.subplots(figsize=(4, 4))
     elif panes == 2:
-        fig, ax = plt.subplots(1, 2, figsize=(9, 4.5))
+        fig, ax = plt.subplots(1, 2, figsize=(8, 4))
     elif panes == 4:
-        fig, ax = plt.subplots(2, 2, figsize=(9, 9))
+        fig, ax = plt.subplots(2, 2, figsize=(8, 8))
     return fig, ax
         
 def setup_cellview(ax, system):
@@ -453,6 +396,21 @@ def setup_forceview(ax):
     ax.plot([0], color='#34a5daff')
     ax.set_ylabel('Force', fontsize=16)
     ax.set_xlabel('Time', fontsize=16)
+
+def setup_rdfview(ax, system):
+    ax.plot([0], color='#34a5daff')
+    ax.set_xlim([0, system.box_length/2])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_ylabel('RDF', fontsize=16)
+    ax.set_xlabel('r', fontsize=16)
+
+def setup_diffview(ax):
+    ax.plot([0], color='#34a5daff')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_ylabel('log(I(q))', fontsize=16)
+    ax.set_xlabel('q', fontsize=16)
 
 def setup_pressureview(ax):
     ax.plot([0], color='#34a5daff')
@@ -470,7 +428,43 @@ def update_cellview(ax, system):
     line = ax.lines[0]
     line.set_ydata(y3)
     line.set_xdata(x3)
- 
+
+def update_rdfview(ax, system, average_rdf, r):
+    hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, 0.1))
+    gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
+                 (bin_edges[:-1] + 0.1 / 2.) * 0.1)
+    average_rdf.append(gr)
+    x = bin_edges[:-1] + 0.1 / 2
+    r.append(x)
+
+    line = ax.lines[0]
+    line.set_xdata(x)
+    line.set_ydata(gr)
+    ax.set_ylim([0, np.amax(gr) + np.amax(gr) * 0.05])
+
+
+def update_diffview(ax, system, average_diff, q):
+    hist, bin_edges = np.histogram(system.distances, bins=np.arange(0, 12.5, 0.1))
+    gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
+                 (bin_edges[:-1] + 0.1 / 2.) * 0.1)
+    x2 = np.log10(np.fft.rfftfreq(len(gr))[5:])
+    y2 = np.log10(np.fft.rfft(gr)[5:])
+    average_diff.append(y2)
+    q.append(x2)
+    line1 = ax.lines[0]
+    line1.set_xdata(x2)
+    line1.set_ydata(y2)
+    ax.set_ylim([np.amin(y2) - np.amax(y2) * 0.05, np.amax(y2) + np.amax(y2) * 0.05])
+    ax.set_xlim([np.amin(x2), np.amax(x2)])
+
+def update_forceview(ax, system):
+    line = ax.lines[0]
+    line.set_ydata(system.force)
+    line.set_xdata(np.arange(0, system.step) * system.timestep_length)
+    ax.set_xlim(0, system.step * system.timestep_length) 
+    ax.set_ylim(np.amin(system.force)-np.amax(system.force) * 0.05,
+                np.amax(system.force)+np.amax(system.force) * 0.05)
+
 def update_tempview(ax, system):
     line = ax.lines[0]
     line.set_ydata(system.temperature)

@@ -43,9 +43,9 @@ class System:
         self.distances = np.zeros(self.number_of_pairs())
         self.forces = np.zeros(self.number_of_pairs())
         self.velocity_bins = np.zeros(500)
-        self.temperature = []
-        self.pressure = []
-        self.force = []
+        self.temperature = np.array([])
+        self.pressure = np.array([])
+        self.force = np.array([])
 
     def number_of_pairs(self):
         return int((self.number_of_particles - 1) * self.number_of_particles / 2)
@@ -101,30 +101,7 @@ def pbc_correction(d, l):
         d *= 1 - l / np.abs(d)
     return d
 
-def calculate_pressure(number_of_particles, particles, forces, box_length, velocity_bins, max_vel):
-    """Calculates the instantaneous pressure of the system.
-
-    Parameters
-    ----------
-    system: System
-        Whole system information
-
-    Returns
-    -------
-    System
-        System with updated press_array to include newest instantaneous pressure.
-    """
-    k = 0
-    pres = 0.
-    for i in range(0, number_of_particles-1):
-        for j in range(i+1, number_of_particles):
-            velocity_bins, v = md.update_velocity_bins(particles[i], velocity_bins, max_vel)
-            pres += forces[k] + v
-    pres /= 3
-    pres /= (box_length * box_length)
-    return pres, velocity_bins
-
-def calculate_temperature(system):
+def calculate_temperature(number_of_particles, particles):
     """Determine the instantaneous temperature of the system.
 
     Parameters
@@ -139,13 +116,10 @@ def calculate_temperature(system):
     System:
         Whole system information with the temperature updated."""
     k = 0
-    for i in range(0, system.number_of_particles):
-        system.velocity_bins, v = md.update_velocity_bins(system.particles[i], system.velocity_bins, system.max_vel)
+    for i in range(0, number_of_particles):
+        v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] * particles['yvelocity'][i])
         k += 0.5 * v * v
-    system.temp_sum += k / system.number_of_particles
-    temp = system.temp_sum
-    system.temperature.append(temp)
-    return system
+    return k / number_of_particles
 
 def particle_dt():
     return np.dtype([('xposition', np.float64), ('yposition', np.float64), ('xvelocity', np.float64), ('yvelocity', np.float64), ('xacceleration', np.float64), ('yacceleration', np.float64), ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('xforce', np.float64), ('yforce', np.float64), ('energy', np.float64)])
