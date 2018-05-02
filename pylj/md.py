@@ -2,7 +2,7 @@ import numpy as np
 from pylj import comp, sample, util
 
 
-def initialise(number_of_particles, temperature, timestep_length, init_conf):
+def initialise(number_of_particles, temperature, timestep_length, box_length, init_conf):
     """Initial particle positions (simple square arrangment), velocities and get initial forces/accelerations.
 
     Parameters
@@ -13,6 +13,8 @@ def initialise(number_of_particles, temperature, timestep_length, init_conf):
         Temperature of the system.
     timestep_length: float
         Length for each integration step.
+    box_length: float
+        Size of a single dimension of the simulation square.
     init_conf: string, optional
         Selection for the way the particles are initially populated. Should be one of
         - 'square'
@@ -23,7 +25,7 @@ def initialise(number_of_particles, temperature, timestep_length, init_conf):
     System
         System information.
     """
-    system = util.System(number_of_particles, temperature, 16, timestep_length, init_conf=init_conf)
+    system = util.System(number_of_particles, temperature, box_length, timestep_length, init_conf=init_conf)
     v = np.sqrt(2 * system.init_temp)
     theta = 2 * np.pi * np.random.randn(system.particles.size)
     system.particles['xvelocity'] = v * np.cos(theta)

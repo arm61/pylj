@@ -379,7 +379,8 @@ def environment(panes):
 def setup_cellview(ax, system):
     xpos = system.particles['xposition']
     ypos = system.particles['yposition']
-    ax.plot(xpos, ypos, 'o', markersize=14, markeredgecolor='black', color='#34a5daff')
+    mk = (-0.8125 * system.box_length) + 31.5
+    ax.plot(xpos, ypos, 'o', markersize=mk, markeredgecolor='black', color='#34a5daff')
     ax.set_xlim([0, system.box_length])
     ax.set_ylim([0, system.box_length])
     ax.set_xticks([])
