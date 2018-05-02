@@ -1,4 +1,4 @@
-from pylj import md, force, sample, util
+from pylj import md, comp, sample, util
 
 
 def periodic_boundary(number_of_steps, temperature):
@@ -16,7 +16,7 @@ def periodic_boundary(number_of_steps, temperature):
     particles, system = md.initialise(number_of_particles, temperature, 0.01, util.set_particles_random)
     sample_system = sample.JustCell(system)
     for i in range(0, number_of_steps):
-        particles, system = force.compute_forces(particles, system)
+        particles, system = comp.compute_forces(particles, system)
         particles, system = md.velocity_verlet(particles, system)
         system.time += system.timestep_length
         if system.step % sample_freq == 0:

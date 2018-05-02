@@ -1,5 +1,4 @@
 import numpy as np
-from pylj import md, force
 
 
 class System:

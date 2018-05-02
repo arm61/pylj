@@ -3,8 +3,8 @@ import numpy as np
 
 cimport numpy as np
 
-cdef extern from "force.h":
-    double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, const double *forces, 
+cdef extern from "comp.h":
+    double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, const double *forces,
                           double box_length)
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
                                double *distances, double *xforce, double *yforce, double box_length, double *force_arr)
@@ -36,12 +36,12 @@ def calculate_pressure(parts, partic, forc, box_l):
     pres = compute_pressure(number_of_particles, <const double*>xvel.data, <const double*>yvel.data, <const double*>forces.data, box_length)
 
     return pres
-    
+
 
 def compute_forces(system):
-    cdef int len_particles = system.number_of_particles 
+    cdef int len_particles = system.number_of_particles
     cdef double box_length = system.box_length
-    cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(len_particles) 
+    cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(len_particles)
     cdef np.ndarray[DTYPE_t, ndim=1] ypos = np.zeros(len_particles)
     cdef np.ndarray[DTYPE_t, ndim=1] xacc = np.zeros(len_particles)
     cdef np.ndarray[DTYPE_t, ndim=1] yacc = np.zeros(len_particles)
@@ -55,7 +55,7 @@ def compute_forces(system):
         ypos[i] = system.particles['yposition'][i]
         xacc[i] = system.particles['xacceleration'][i]
         yacc[i] = system.particles['yacceleration'][i]
-    
+
     compute_accelerations(len_particles, <const double*>xpos.data, <const double*>ypos.data, <double*>xacc.data,
                           <double*>yacc.data, <double*>distances.data, <double*>xforce.data, <double*>yforce.data,
                           box_length, <double*>force_arr.data)
@@ -67,7 +67,7 @@ def compute_forces(system):
         system.particles['yacceleration'][i] = yacc[i]
         system.particles['xforce'][i] = xforce[i]
         system.particles['yforce'][i] = yforce[i]
-    
+
     system.distances = distances
     system.forces = force_arr
 

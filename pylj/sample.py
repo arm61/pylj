@@ -27,8 +27,6 @@ class Scattering(object):
         setup_diffview(ax[1, 1])
         setup_pressureview(ax[1, 0])
 
-        ax[1, 0].plot([0], color='#34a5daff')
-
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
@@ -48,9 +46,7 @@ class Scattering(object):
         line.set_ydata(gr)
         self.ax[0, 1].set_ylim([0, np.amax(gr) + 0.5])
         self.fig.canvas.draw()
-
-        #self.step_text.set_text('Average')
-
+ 
         iq = np.average(self.average_diff, axis=0)
         x = np.average(self.q, axis=0)
         line = self.ax[1, 1].lines[0]
@@ -59,6 +55,26 @@ class Scattering(object):
         self.ax[1, 1].set_ylim([np.amin(iq) - np.amax(iq) * 0.05, np.amax(iq) + np.amax(iq) * 0.05])
         self.ax[1, 1].set_xlim([np.amin(x), np.amax(x)])
 
+class Interactions(object):
+    def __init__(self, system):
+        fig, ax = environment(4)
+
+        setup_cellview(ax[0, 0], system)
+        setup_forceview(ax[0, 1])
+        setup_pressureview(ax[1, 0])
+        setup_tempview(ax[1, 1])
+
+        plt.tight_layout()
+        self.ax = ax
+        self.fig = fig
+
+    def update(self, system):
+        update_cellview(self.ax[0, 0], system)
+        update_forceview(self.ax[0, 1], system)
+        update_tempview(self.ax[1, 1], system)
+        update_pressureview(self.ax[1, 0], system)
+
+        self.fig.canvas.draw()
 
 class JustCell(object):
     def __init__(self, system):
@@ -350,29 +366,6 @@ class Temperature(object):
         self.temp_text.set_text('Temp={:.3f}+/-{:.3f}'.format(np.average(system.temp_array), np.std(system.temp_array)))
 
         self.fig.canvas.draw()
-
-
-class Interactions(object):
-    def __init__(self, system):
-        fig, ax = environment(4)
-
-        setup_cellview(ax[0, 0], system)
-        setup_forceview(ax[0, 1])
-        setup_pressureview(ax[1, 0])
-        setup_tempview(ax[1, 1])
-
-        plt.tight_layout()
-        self.ax = ax
-        self.fig = fig
-
-    def update(self, system):
-        update_cellview(self.ax[0, 0], system)
-        update_forceview(self.ax[0, 1], system)
-        update_tempview(self.ax[1, 1], system)
-        update_pressureview(self.ax[1, 0], system)
-
-        self.fig.canvas.draw()
-
 
 def environment(panes):
     if panes == 1:

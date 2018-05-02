@@ -1,5 +1,5 @@
 import numpy as np
-from pylj import force, sample, util
+from pylj import comp, sample, util
 
 
 def initialise(number_of_particles, temperature, timestep_length, init_conf):
@@ -11,6 +11,8 @@ def initialise(number_of_particles, temperature, timestep_length, init_conf):
         Number of particles in the system.
     temperature: float
         Temperature of the system.
+    timestep_length: float
+        Length for each integration step.
     init_conf: string, optional
         Selection for the way the particles are initially populated. Should be one of
         - 'square'
@@ -26,8 +28,43 @@ def initialise(number_of_particles, temperature, timestep_length, init_conf):
     theta = 2 * np.pi * np.random.randn(system.particles.size)
     system.particles['xvelocity'] = v * np.cos(theta)
     system.particles['yvelocity'] = v * np.sin(theta)
-    system = force.compute_forces(system)
+    system = comp.compute_forces(system)
     system.temp_sum = 0.
+    return system
+
+def velocity_verlet(system):
+    """Updates the particles positions and velocities in terms of the Velocity Verlet algorithm. Also calculates the
+    instanteous temperature, pressure, and force and appends these to the appropriate system array.
+
+    Parameters
+    ----------
+    system: System
+        Whole system information.
+
+    Returns
+    -------
+    System:
+        Whole system information with new temperature and pressure.
+    """
+    xposition_store = system.particles['xposition']
+    yposition_store = system.particles['yposition']
+    system.particles['xposition'], system.particles['yposition'] = \
+        update_pos_vv([system.particles['xposition'], system.particles['yposition']],
+                      [system.particles['xvelocity'], system.particles['yvelocity']],
+                      [system.particles['xacceleration'], system.particles['yacceleration']], system.timestep_length,
+                      system.box_length)
+    system.particles['xvelocity'], system.particles['yvelocity'] = \
+        update_velocities_vv([system.particles['xvelocity'], system.particles['yvelocity']],
+                             [system.particles['xacceleration'], system.particles['yacceleration']],
+                             system.timestep_length)
+    system.particles['xprevious_position'] = xposition_store
+    system.particles['yprevious_position'] = yposition_store
+
+    temp = util.calculate_temperature(system.number_of_particles, system.particles)
+    pres = comp.calculate_pressure(system.number_of_particles, system.particles, system.forces, system.box_length)
+    system.temperature = np.append(system.temperature, temp)
+    system.pressure = np.append(system.pressure, pres)
+    system.force = np.append(system.force, np.sum(system.forces))
     return system
 
 def reset_histogram(system):
@@ -45,37 +82,6 @@ def reset_histogram(system):
     """
     system.velocity_bins[:]= 0
     system.temp_sum = 0
-
-def velocity_verlet(system):
-    """Update the positions, velocities, get temperature and pressure.
-
-    Parameters
-    ----------
-    particles: Particle array
-        All particles in the system.
-    system: System
-        Whole system information.
-
-    Returns
-    -------
-    Particle array:
-        Particles with updated positions and velocities.
-    System:
-        Whole system information with new temperature and pressure.
-    """
-    xposition_store = system.particles['xposition']
-    yposition_store = system.particles['yposition']
-    system.particles['xposition'], system.particles['yposition'] = update_pos_vv([system.particles['xposition'], system.particles['yposition']], [system.particles['xvelocity'], system.particles['yvelocity']], [system.particles['xacceleration'], system.particles['yacceleration']], system.timestep_length, system.box_length)
-    system.particles['xvelocity'], system.particles['yvelocity'] = update_velocities_vv([system.particles['xvelocity'], system.particles['yvelocity']], [system.particles['xacceleration'], system.particles['yacceleration']], system.timestep_length)
-    system.particles['xprevious_position'] = xposition_store
-    system.particles['yprevious_position'] = yposition_store
-
-    temp = util.calculate_temperature(system.number_of_particles, system.particles)
-    pres = force.calculate_pressure(system.number_of_particles, system.particles, system.forces, system.box_length)
-    system.temperature = np.append(system.temperature, temp)
-    system.pressure = np.append(system.pressure, pres)
-    system.force = np.append(system.force, np.sum(system.forces))
-    return system
 
 def clear_accelerations(particles):
     """Reset all particle accelerations to 0.
@@ -102,7 +108,7 @@ def initialise_from_em(particles, system, temperature, timestep_length):
         theta = 2 * np.pi * np.random.randn()
         particles[i].xvel = v * np.cos(theta)
         particles[i].yvel = v * np.sin(theta)
-    particles, system = force.compute_forces(particles, system)
+    particles, system = comp.compute_forces(particles, system)
     system = reset_histogram(system)
     return particles, system
 

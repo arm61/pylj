@@ -1,8 +1,8 @@
-#include "force.h"
+#include "comp.h"
 #include <math.h>
 #include <stdio.h>
 
-double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, const double *forces, 
+double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, const double *forces,
 			double box_length)
 {
 	int k = 0;
@@ -21,8 +21,8 @@ double compute_pressure(int number_of_particles, const double *xvel, const doubl
 	return pres;
 }
 
-void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, 
-		double *yacc, double *distances, double *xforce, double *yforce, double box_length, 
+void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc,
+		double *yacc, double *distances, double *xforce, double *yforce, double box_length,
 		double *force_arr)
 {
     int ii = 0;

@@ -1,2 +1,2 @@
-include src/force.cpp
-include src/force.h
+include src/comp.cpp
+include src/comp.h

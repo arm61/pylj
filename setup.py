@@ -61,9 +61,9 @@ def setup_package():
 
             # cslowstff extension module
             _cslowstuff = Extension(
-                                  name='pylj.force',
-                                  sources=['src/_cforce.pyx',
-                                           'src/force.cpp'],
+                                  name='pylj.comp',
+                                  sources=['src/_ccomp.pyx',
+                                           'src/comp.cpp'],
                                   include_dirs=[numpy_include],
 				                  language='c++',
                                   extra_compile_args=[],
@@ -78,6 +78,10 @@ def setup_package():
             info['cmdclass'] = {'build_ext': build_ext}
             info['ext_modules'] = ext_modules
             info['zip_safe'] = False
+
+    else:
+        print("Please install cython.")
+        exit()
 
     try:
         setup(**info)

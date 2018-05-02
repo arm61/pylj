@@ -1,5 +1,5 @@
 import numpy as np
-from pylj import util, force, sample
+from pylj import util, comp, sample
 
 
 def initialise(number_of_particles, arrangement, threshold, max_steps):
@@ -31,7 +31,7 @@ def steepest_descent(particles, system, sample_system, alpha):
     while counter < system.max_steps:
         if np.abs(previous_energy - current_energy) < system.threshold:
             break
-        particles = force.calculate_energy_and_force(particles, system)
+        particles = comp.calculate_energy_and_force(particles, system)
         energy = []
         for i in range(0, len(particles)):
             energy.append(particles[i].energy)
