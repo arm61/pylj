@@ -1,5 +1,5 @@
 import numpy as np
-from pylj import comp, sample, util
+from pylj import comp, util
 
 
 def initialise(number_of_particles, temperature, timestep_length, box_length, init_conf):
@@ -63,7 +63,7 @@ def velocity_verlet(system):
     system.particles['yprevious_position'] = yposition_store
 
     temp = util.calculate_temperature(system.number_of_particles, system.particles)
-    pres = comp.calculate_pressure(system.number_of_particles, system.particles, system.forces, system.box_length)
+    pres = comp.calculate_pressure(system.number_of_particles, system.particles, system.forces, system.box_length, temp)
     system.temperature = np.append(system.temperature, temp)
     system.pressure = np.append(system.pressure, pres)
     system.force = np.append(system.force, np.sum(system.forces))

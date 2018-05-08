@@ -379,7 +379,7 @@ def environment(panes):
 def setup_cellview(ax, system):
     xpos = system.particles['xposition']
     ypos = system.particles['yposition']
-    mk = (3291.429 / (system.box_length ** 2 + 73.143) + 4.)
+    mk = (1052.2 / (system.box_length - 0.78921) - 1.2174)
     ax.plot(xpos, ypos, 'o', markersize=mk, markeredgecolor='black', color='#34a5daff')
     ax.set_xlim([0, system.box_length])
     ax.set_ylim([0, system.box_length])
@@ -388,8 +388,8 @@ def setup_cellview(ax, system):
 
 def setup_forceview(ax):
     ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Force', fontsize=16)
-    ax.set_xlabel('Time', fontsize=16)
+    ax.set_ylabel('Force/N', fontsize=16)
+    ax.set_xlabel('Time/s', fontsize=16)
 
 def setup_rdfview(ax, system):
     ax.plot([0], color='#34a5daff')
@@ -408,13 +408,13 @@ def setup_diffview(ax):
 
 def setup_pressureview(ax):
     ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Pressure', fontsize=16)
-    ax.set_xlabel('Time', fontsize=16)
+    ax.set_ylabel('Pressure/Pa', fontsize=16)
+    ax.set_xlabel('Time/s', fontsize=16)
 
 def setup_tempview(ax):
     ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Temperature', fontsize=16)
-    ax.set_xlabel('Time', fontsize=16)
+    ax.set_ylabel('Temperature/K', fontsize=16)
+    ax.set_xlabel('Time/s', fontsize=16)
 
 def update_cellview(ax, system):
     x3 = system.particles['xposition']
@@ -453,11 +453,11 @@ def update_diffview(ax, system, average_diff, q):
 
 def update_forceview(ax, system):
     line = ax.lines[0]
-    line.set_ydata(system.force)
+    line.set_ydata(system.force * 1e-10)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length) 
-    ax.set_ylim(np.amin(system.force)-np.amax(system.force) * 0.05,
-                np.amax(system.force)+np.amax(system.force) * 0.05)
+    ax.set_ylim(np.amin(system.force * 1e-10)-np.amax(system.force * 1e-10) * 0.05,
+                np.amax(system.force * 1e-10)+np.amax(system.force * 1e-10) * 0.05)
 
 def update_tempview(ax, system):
     line = ax.lines[0]
@@ -465,13 +465,13 @@ def update_tempview(ax, system):
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length) 
     ax.set_ylim(np.amin(system.temperature)-np.amax(system.temperature) * 0.05,
-                     np.amax(system.temperature)+np.amax(system.temperature) * 0.05)
+                np.amax(system.temperature)+np.amax(system.temperature) * 0.05)
 
 def update_pressureview(ax, system):
     line = ax.lines[0]
-    line.set_ydata(system.pressure)
+    line.set_ydata(system.pressure * 1e10)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length)
-    ax.set_ylim(np.amin(system.pressure) - np.amax(system.pressure) * 0.05,
-                           np.amax(system.pressure) + np.amax(system.pressure) * 0.05)
+    ax.set_ylim(np.amin(system.pressure * 1e10) - np.amax(system.pressure * 1e10) * 0.05,
+                np.amax(system.pressure * 1e10) + np.amax(system.pressure * 1e10) * 0.05)
     

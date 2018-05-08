@@ -1,5 +1,5 @@
 import numpy as np
-from pylj import util, comp, sample
+from pylj import util, comp
 
 
 def initialise(number_of_particles, arrangement, threshold, max_steps):

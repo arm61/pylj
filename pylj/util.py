@@ -35,7 +35,8 @@ class System:
         elif init_conf == 'random':
             self.random()
         else:
-            raise NotImplementedError('The initial configuration type {} is not recognised. Available options are: square or random'.format(init_conf))
+            raise NotImplementedError('The initial configuration type {} is not recognised. '
+                                      'Available options are: square or random'.format(init_conf))
         self.step = 0
         self.time = 0.
         self.temp_sum = 0.
@@ -116,9 +117,13 @@ def calculate_temperature(number_of_particles, particles):
         Whole system information with the temperature updated."""
     k = 0
     for i in range(0, number_of_particles):
-        v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] * particles['yvelocity'][i])
+        v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] *
+                    particles['yvelocity'][i])
         k += 0.5 * v * v
     return k / number_of_particles
 
 def particle_dt():
-    return np.dtype([('xposition', np.float64), ('yposition', np.float64), ('xvelocity', np.float64), ('yvelocity', np.float64), ('xacceleration', np.float64), ('yacceleration', np.float64), ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('xforce', np.float64), ('yforce', np.float64), ('energy', np.float64)])
+    return np.dtype([('xposition', np.float64), ('yposition', np.float64), ('xvelocity', np.float64),
+                     ('yvelocity', np.float64), ('xacceleration', np.float64), ('yacceleration', np.float64),
+                     ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('xforce', np.float64),
+                     ('yforce', np.float64), ('energy', np.float64)])

@@ -4,8 +4,8 @@ import numpy as np
 cimport numpy as np
 
 cdef extern from "comp.h":
-    double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, const double *forces,
-                          double box_length)
+    double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, double box_length,
+                            double temperature)
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
                                double *distances, double *xforce, double *yforce, double box_length, double *force_arr)
     void compute_energy_and_force(int len_particles, const double *xpos, const double *ypos, double *energy,
@@ -19,19 +19,20 @@ cdef extern from "comp.h":
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
-def calculate_pressure(parts, partic, forc, box_l):
+def calculate_pressure(parts, partic, forc, box_l, temp):
     cdef int number_of_particles = parts
-    cdef np.ndarray[DTYPE_t, ndim=1] xvel = np.zeros(number_of_particles)
-    cdef np.ndarray[DTYPE_t, ndim=1] yvel = np.zeros(number_of_particles)
-    cdef np.ndarray[DTYPE_t, ndim=1] forces = np.zeros(len(forc))
+    cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(number_of_particles)
+    cdef np.ndarray[DTYPE_t, ndim=1] ypos = np.zeros(number_of_particles)
     cdef double box_length = box_l
     cdef double pres = 0.
+    cdef double temperature = temp
 
     for i in range(0, number_of_particles):
-        xvel[i] = partic['xvelocity'][i]
-        yvel[i] = partic['yvelocity'][i]
+        xpos[i] = partic['xposition'][i]
+        ypos[i] = partic['yposition'][i]
 
-    pres = compute_pressure(number_of_particles, <const double*>xvel.data, <const double*>yvel.data, <const double*>forces.data, box_length)
+    pres = compute_pressure(number_of_particles, <const double*>xpos.data, <const double*>ypos.data, box_length,
+                            temperature)
 
     return pres
 

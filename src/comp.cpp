@@ -2,22 +2,34 @@
 #include <math.h>
 #include <stdio.h>
 
-double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, const double *forces,
-			double box_length)
+double compute_pressure(int number_of_particles, const double *xpos, const double *ypos, double box_length,
+                        double temperature)
 {
 	int k = 0;
 	double pres = 0.;
 	int i, j;
+	double dx, dy, dr, f;
 	for (i = 0; i < number_of_particles - 1; i++)
 	{
 		for (j = i + 1; j < number_of_particles; j++)
 		{
-			double v = sqrt(xvel[i] * xvel[i] + yvel[i] * yvel[i]);
-			pres += forces[k] + v;
+			dx = xpos[i] - xpos[j];
+            dy = ypos[i] - ypos[j];
+            if (fabs(dx) > 0.5 * box_length)
+            {
+                dx *= 1 - box_length / fabs(dx);
+            }
+            if (fabs(dy) > 0.5 * box_length)
+            {
+                dy *= 1 - box_length / fabs(dy);
+            }
+            dr = sqrt(dx * dx + dy * dy);
+            f = (1.89774e-13 * pow(dr, -13.) - 5.1186e-19 * pow(dr, -7.));
+			pres += f * dr;
 		}
 	}
-	pres = pres / 3.;
-	pres = pres / (box_length * box_length);
+	pres = 1. / (3 * box_length * box_length) * pres +
+	       ((double)number_of_particles / (box_length * box_length) * 1.3806e-3 * temperature);
 	return pres;
 }
 
@@ -51,17 +63,17 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             }
             dr = sqrt(dx * dx + dy * dy);
             distances[k] = dr;
-            f = 48. * pow(dr, -13.) - 24. * pow(dr, -7.);
-	    force_arr[k] = f;
-            xforce[i] += (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dx / dr;
-            yforce[i] += (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dy / dr;
-            xforce[j] -= (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dx / dr;
-            yforce[j] -= (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dy / dr;
-	    k++;
-            xacc[i] += f * dx / dr;
-            yacc[i] += f * dy / dr;
-            xacc[j] -= f * dx / dr;
-            yacc[j] -= f * dy / dr;
+            f = (1.89774e-13 * pow(dr, -13.) - 5.1186e-19 * pow(dr, -7.));
+	        force_arr[k] = f;
+            xforce[i] += f * dx / dr;
+            yforce[i] += f * dy / dr;
+            xforce[j] -= f * dx / dr;
+            yforce[j] -= f * dy / dr;
+	        k++;
+            xacc[i] += (f * dx / dr) / 66.234e-27;
+            yacc[i] += (f * dy / dr) / 66.234e-27;
+            xacc[j] -= (f * dx / dr) / 66.234e-27;
+            yacc[j] -= (f * dy / dr) / 66.234e-27;
         }
     }
 }
@@ -88,10 +100,11 @@ void compute_force(int len_particles, const double *xpos, const double *ypos, do
                 dy *= 1 - box_length / fabs(dy);
             }
             dr = sqrt(dx * dx + dy * dy);
-            xforce[i] += (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dx / dr;
-            yforce[i] += (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dy / dr;
-            xforce[j] -= (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dx / dr;
-            yforce[j] -= (48. * pow(dr, -13.) - 24. * pow(dr, -7.)) * dy / dr;
+            double f = (1.89774e-13 * pow(dr, -13.) - 5.1186e-19 * pow(dr, -7.));
+            xforce[i] += f * dx / dr;
+            yforce[i] += f * dy / dr;
+            xforce[j] -= f * dx / dr;
+            yforce[j] -= f * dy / dr;
         }
     }
 }
