@@ -2,252 +2,153 @@ import numpy as np
 from pylj import comp, util
 
 
-def initialise(number_of_particles, temperature, timestep_length, box_length, init_conf):
-    """Initial particle positions (simple square arrangment), velocities and get initial forces/accelerations.
+def initialise(number_of_particles, temperature, box_length, init_conf, timestep_length=5e-3):
+    """Initialise the particle positions (this can be either as a square or random arrangement), velocities (based on
+    the temperature defined, and calculate the initial forces/accelerations.
 
     Parameters
     ----------
     number_of_particles: int
-        Number of particles in the system.
+        Number of particles to simulate.
     temperature: float
-        Temperature of the system.
-    timestep_length: float
-        Length for each integration step.
+        Initial temperature of the particles, in Kelvin.
     box_length: float
-        Size of a single dimension of the simulation square.
+        Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string, optional
-        Selection for the way the particles are initially populated. Should be one of
+        The way that the particles are initially positioned. Should be one of:
+
         - 'square'
         - 'random'
+    timestep_length: float (optional)
+        Length for each Velocity-Verlet integration step, in seconds.
 
     Returns
     -------
     System
         System information.
     """
-    system = util.System(number_of_particles, temperature, box_length, timestep_length, init_conf=init_conf)
+    system = util.System(number_of_particles, temperature, box_length, init_conf=init_conf,
+                         timestep_length=timestep_length)
     v = np.sqrt(2 * system.init_temp)
     theta = 2 * np.pi * np.random.randn(system.particles.size)
     system.particles['xvelocity'] = v * np.cos(theta)
     system.particles['yvelocity'] = v * np.sin(theta)
-    system = comp.compute_forces(system)
-    system.temp_sum = 0.
+    system.particles, system.distances, system.forces = comp.compute_forces(system.particles, system.distances,
+                                                                            system.forces, system.box_length)
     return system
 
-def velocity_verlet(system):
-    """Updates the particles positions and velocities in terms of the Velocity Verlet algorithm. Also calculates the
+def velocity_verlet(particles, timestep_length, box_length):
+    """Uses the Velocity-Verlet integrator to move forward in time. The
+
+    Updates the particles positions and velocities in terms of the Velocity Verlet algorithm. Also calculates the
     instanteous temperature, pressure, and force and appends these to the appropriate system array.
 
     Parameters
     ----------
+    particles: util.particle_dt, array_like
+        Information about the particles.
+    timestep_length: float
+        Length for each Velocity-Verlet integration step, in seconds.
+    box_length: float
+        Length of a single dimension of the simulation square, in Angstrom.
+
+    Returns
+    -------
+    util.particle_dt, array_like:
+        Information about the particles, with new positions and velocities.
+    """
+    xposition_store = particles['xposition']
+    yposition_store = particles['yposition']
+    [particles['xposition'], particles['yposition']] = update_positions([particles['xposition'],
+                                                                         particles['yposition']],
+                                                                        [particles['xvelocity'],
+                                                                         particles['yvelocity']],
+                                                                        [particles['xacceleration'],
+                                                                         particles['yacceleration']], timestep_length,
+                                                                        box_length)
+    [particles['xvelocity'], particles['yvelocity']] = update_velocities([particles['xvelocity'], particles['yvelocity']],
+                                                                       [particles['xacceleration'],
+                                                                        particles['yacceleration']], timestep_length)
+    particles['xprevious_position'] = xposition_store
+    particles['yprevious_position'] = yposition_store
+    return particles
+
+def sample(particles, box_length, initial_particles, system):
+    """Sample parameters of interest in the simulation.
+
+    Parameters
+    ----------
+    particles: util.particle_dt, array_like
+        Information about the particles.
+    box_length: float
+        Length of a single dimension of the simulation square, in Angstrom.
+    initial_particles: util.particle_dt, array-like
+        Information about the initial particle conformation.
     system: System
-        Whole system information.
+        Details about the whole system
 
     Returns
     -------
     System:
-        Whole system information with new temperature and pressure.
+        Details about the whole system, with the new temperature, pressure, msd, and force appended to the appropriate
+        arrays.
     """
-    xposition_store = system.particles['xposition']
-    yposition_store = system.particles['yposition']
-    system.particles['xposition'], system.particles['yposition'] = \
-        update_pos_vv([system.particles['xposition'], system.particles['yposition']],
-                      [system.particles['xvelocity'], system.particles['yvelocity']],
-                      [system.particles['xacceleration'], system.particles['yacceleration']], system.timestep_length,
-                      system.box_length)
-    system.particles['xvelocity'], system.particles['yvelocity'] = \
-        update_velocities_vv([system.particles['xvelocity'], system.particles['yvelocity']],
-                             [system.particles['xacceleration'], system.particles['yacceleration']],
-                             system.timestep_length)
-    system.particles['xprevious_position'] = xposition_store
-    system.particles['yprevious_position'] = yposition_store
-
-    temp = util.calculate_temperature(system.number_of_particles, system.particles)
-    pres = comp.calculate_pressure(system.number_of_particles, system.particles, system.forces, system.box_length, temp)
-    system.temperature = np.append(system.temperature, temp)
-    system.pressure = np.append(system.pressure, pres)
-    system.force = np.append(system.force, np.sum(system.forces))
+    temperature_new = util.calculate_temperature(particles)
+    pressure_new = comp.calculate_pressure(particles, box_length, temperature_new)
+    msd_new = util.calculate_msd(particles, initial_particles, box_length)
+    system.temperature_sample = np.append(system.temperature_sample, temperature_new)
+    system.pressure_sample = np.append(system.pressure_sample, pressure_new)
+    system.force_sample = np.append(system.force_sample, np.sum(system.forces))
+    system.msd_sample = np.append(system.msd_sample, msd_new)
     return system
 
-def reset_histogram(system):
-    """Reset the velocity histogram.
+def update_positions(positions, velocities, accelerations, timestep_length, box_length):
+    """Update the particle positions using the Velocity-Verlet integrator.
 
     Parameters
     ----------
-    system: System
-        System parameters.
+    positions: (2, N) array_like
+        Where N is the number of particles, and the first row are the x positions and the second row the y positions.
+    velocities: (2, N) array_like
+        Where N is the number of particles, and the first row are the x velocities and the second row the y velocities.
+    accelerations: (2, N) array_like
+        Where N is the number of particles, and the first row are the x accelerations and the second row the y
+        accelerations.
+    timestep_length: float
+        Length for each Velocity-Verlet integration step, in seconds.
+    box_length: float
+        Length of a single dimension of the simulation square, in Angstrom.
 
     Returns
     -------
-    System
-        System parameters with the velocity bins and temperature summation set to zero.
-    """
-    system.velocity_bins[:]= 0
-    system.temp_sum = 0
-
-def clear_accelerations(particles):
-    """Reset all particle accelerations to 0.
-
-    Parameters
-    ----------
-    particles: Particle array
-        The particles in the system.
-
-    Returns
-    -------
-    Particle array
-        The particles in the system now with zero acceleration.
-    """
-    particles['xacceleration'] = np.zeros(particles.size)
-    particles['yacceleration'] = np.zeros(particles.size)
-    return particles
-
-def initialise_from_em(particles, system, temperature, timestep_length):
-    system.temperature = temperature
-    system.timestep_length = timestep_length
-    v = np.sqrt(2 * system.temperature)
-    for i in range(0, system.number_of_particles):
-        theta = 2 * np.pi * np.random.randn()
-        particles[i].xvel = v * np.cos(theta)
-        particles[i].yvel = v * np.sin(theta)
-    particles, system = comp.compute_forces(particles, system)
-    system = reset_histogram(system)
-    return particles, system
-
-
-def update_pos_verlet(particle, system):
-    """Update the positions of a given particle based on the integrator.
-
-    Parameters
-    ----------
-    particle: Particle
-        A particle in the system.
-    system: System
-        Whole system information.
-
-    Returns
-    -------
-    Particle
-        Particle with updated positions.
-    """
-    particle.xpos = particle.xpos - particle.xpos_prev + particle.xacc * system.timestep_length * system.timestep_length
-    particle.ypos = particle.ypos - particle.ypos_prev + particle.yacc * system.timestep_length * system.timestep_length
-    particle.xpos = particle.xpos % system.box_length
-    particle.ypos = particle.ypos % system.box_length
-    return particle
-
-
-def update_pos_vv(positions, velocities, accelerations, timestep_length, box_length):
-    """Update the positions of a given particle based on the integrator.
-
-    Parameters
-    ----------
-    particle: Particle
-        A particle in the system.
-    system: System
-        Whole system information.
-
-    Returns
-    -------
-    Particle
-        Particle with updated positions.
+    (2, N) array_like:
+        Updated positions.
     """
     positions[0] += velocities[0] * timestep_length + 0.5 * accelerations[0] * timestep_length * timestep_length
     positions[1] += velocities[1] * timestep_length + 0.5 * accelerations[1] * timestep_length * timestep_length
     positions[0] = positions[0] % box_length
     positions[1] = positions[1] % box_length
-    return positions[0], positions[1] 
+    return [positions[0], positions[1]]
 
-
-def update_velocities_verlet(particle, system):
-    """Update the velocities of a given particles based on the acceleration.
-
-    Parameters
-    ----------
-    particle: Particle
-        A particle in the system.
-    system: System
-        Whole system information.
-
-    Returns
-    -------
-    Particle
-        Particle with updated velocities.
-    """
-    particle.xvel = (particle.xpos - particle.xpos_prev) / (2 * system.timestep_length)
-    particle.yvel = (particle.ypos - particle.ypos_prev) / (2 * system.timestep_length)
-    return particle
-
-
-def update_velocities_vv(velocities, accelerations, timestep_length):
-    """Update the velocities of a given particles based on the acceleration.
+def update_velocities(velocities, accelerations, timestep_length):
+    """Update the particle velocities using the Velocity-Verlet algoritm.
 
     Parameters
     ----------
-    particle: Particle
-        A particle in the system.
-    system: System
-        Whole system information.
+    velocities: (2, N) array_like
+        Where N is the number of particles, and the first row are the x velocities and the second row the y velocities.
+    accelerations: (2, N) array_like
+        Where N is the number of particles, and the first row are the x accelerations and the second row the y
+        accelerations.
+    timestep_length: float
+        Length for each Velocity-Verlet integration step, in seconds.
 
     Returns
     -------
-    Particle
-        Particle with updated velocities.
+    (2, N) array_like:
+        Updated velocities.
     """
     velocities[0] += 0.5 * accelerations[0] * timestep_length
     velocities[1] += 0.5 * accelerations[1] * timestep_length
-    return velocities[0], velocities[1] 
-
-def verlet(particles, system):
-    """Update the positions, velocities, get temperature and pressure.
-
-    Parameters
-    ----------
-    particles: Particle array
-        All particles in the system.
-    system: System
-        Whole system information.
-
-    Returns
-    -------
-    Particle array:
-        Particles with updated positions and velocities.
-    System:
-        Whole system information with new temperature and pressure.
-    """
-    system = reset_histogram(system)
-    system.step += 1
-    for i in range(0, system.number_of_particles):
-        particles[i] = update_pos_verlet(particles[i], system)
-        particles[i] = update_velocities_verlet(particles[i], system)
-    particles, system = util.calculate_temperature(particles, system)
-    system = util.calculate_pressure(system)
-    return particles, system
-
-def update_velocity_bins(particle, velocity_bins, max_vel):
-    """Updates the velocity bins. It is not clear if this is completely required if the velocity bins are not
-    being plotted.
-    
-    Parameters
-    ----------
-    particle: Particle
-        A particle in the system.
-    system: System
-        Whole system information.
-    
-    Returns
-    -------
-    System
-        Whole system information with the velocity bin for particle updated.
-    float
-        The total velocity for a given particle.
-    """
-    v = np.sqrt(particle['xvelocity'] * particle['xvelocity'] + particle['yvelocity'] * particle['yvelocity'])
-    bin_s = int(len(velocity_bins) * v / max_vel)
-    if bin_s < 0:
-        bin_s = 0
-    if bin_s >= len(velocity_bins):
-        bin_s = len(velocity_bins) - 1
-    velocity_bins[bin_s] += 1
-    return velocity_bins, v
+    return [velocities[0], velocities[1]]
 

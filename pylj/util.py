@@ -2,34 +2,37 @@ import numpy as np
 
 
 class System:
-    """Whole system.
+    """Simulation system.
 
-    This class stores a large amount of information about the job that is being run.
+    This class is designed to store all of the information about the job that is being run. This includes the particles
+    object, as will as sampling objects such as the temperature, pressure, etc. arrays.
 
     Parameters
     ----------
     number_of_particles: int
-        Number of particles to be simulated.
+        Number of particles to simulate.
     temperature: float
-        The initial temperature of the system.
+        Initial temperature of the particles, in Kelvin.
     box_length: float
-        Size of the simulation cell.
-    timestep_length: float
-        Duration of timestep in MD integration.
-    max_vel: float, optional
-        Maximum velocity allowed in the velocity rebinning stage.
+        Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string, optional
-        Selection for the way the particles are initially populated. Should be one of
+        The way that the particles are initially positioned. Should be one of:
+
         - 'square'
         - 'random'
+    timestep_length: float (optional)
+        Length for each Velocity-Verlet integration step, in seconds.
     """
-    def __init__(self, number_of_particles, temperature, box_length, timestep_length, 
-                 max_vel=4, init_conf='square'):
+    def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=5e-3):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
-        self.box_length = box_length
+        if box_length <= 600:
+            self.box_length = box_length
+        else:
+            raise AttributeError('With a box length of {} the particles are probably too small to be seen in the '
+                                 'viewer. Try something (much) less than 600.'.format(box_length))
         self.timestep_length = timestep_length
-        self.max_vel = max_vel
+        self.particles = None
         if init_conf == 'square':
             self.square()
         elif init_conf == 'random':
@@ -39,24 +42,26 @@ class System:
                                       'Available options are: square or random'.format(init_conf))
         self.step = 0
         self.time = 0.
-        self.temp_sum = 0.
         self.distances = np.zeros(self.number_of_pairs())
         self.forces = np.zeros(self.number_of_pairs())
-        self.velocity_bins = np.zeros(500)
-        self.temperature = np.array([])
-        self.pressure = np.array([])
-        self.force = np.array([])
+        self.temperature_sample = np.array([])
+        self.pressure_sample = np.array([])
+        self.force_sample = np.array([])
+        self.msd_sample = np.array([])
+        self.initial_particles = np.array(self.particles)
 
     def number_of_pairs(self):
-        return int((self.number_of_particles - 1) * self.number_of_particles / 2)
-        
-    def square(self):
-        """Set the initial particle positions on a square lattice.
+        """Calculates the number of pairwise interactions in the simulation.
 
         Returns
         -------
-        Particle array
-            The particles with positions on a square lattice.
+        int:
+            Number of pairwise interactions in the system.
+        """
+        return int((self.number_of_particles - 1) * self.number_of_particles / 2)
+        
+    def square(self):
+        """Sets the initial positions of the particles on a square lattice.
         """
         part_dt = particle_dt()
         self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
@@ -71,58 +76,88 @@ class System:
                     n += 1
     
     def random(self):
-        """Set the initial particle positions in a random arrangement.
-        
-        Returns
-        -------
-        Particle array
-            The particles with position set randomly.
+        """Sets the initial positions of the particles in a random arrangement.
         """
         part_dt = particle_dt()
         self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
         self.particles['xposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)
         self.particles['yposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)   
 
-def pbc_correction(d, l):
-    """Test and correct for the periodic boundary condition.
+def pbc_correction(position, cell):
+    """Correct for the periodic boundary condition.
 
     Parameters
     ----------
-    d: float
+    position: float
         Particle position.
-    l: float
-        Box vector.
+    cell: float
+        Cell vector.
 
     Returns
     -------
-    float
+    float:
         Corrected particle position."""
-    if np.abs(d) > 0.5 * l:
-        d *= 1 - l / np.abs(d)
-    return d
+    if np.abs(position) > 0.5 * cell:
+        position *= 1 - cell / np.abs(position)
+    return position
 
-def calculate_temperature(number_of_particles, particles):
+def calculate_temperature(particles):
     """Determine the instantaneous temperature of the system.
 
     Parameters
     ----------
-    system: System
-        Whole system information.
+    particles: util.particle_dt, array_like
+        Information about the particles.
 
     Returns
     -------
-    Particle array:
-        All particles updated with their velocities scaled.
-    System:
-        Whole system information with the temperature updated."""
+    float:
+        Calculated instantaneous simulation temperature.
+    """
     k = 0
-    for i in range(0, number_of_particles):
+    for i in range(0, particles['xposition'].size):
         v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] *
                     particles['yvelocity'][i])
         k += 0.5 * v * v
-    return k / number_of_particles
+    return k / particles['xposition'].size
+
+def calculate_msd(particles, initial_particles, box_length):
+    """Determines the mean squared displacement of the particles in the system.
+
+    Parameters
+    ----------
+    particles: util.particle_dt, array_like
+        Information about the particles.
+    initial_particles: util.particle_dt, array_like
+        Information about the initial state of the particles.
+    box_length: float
+        Size of the cell vector.
+
+    Returns
+    -------
+    float:
+        Mean squared deviation for the particles at the given timestep.
+    """
+    dx = particles['xposition'] - initial_particles['xposition']
+    dy = particles['yposition'] - initial_particles['yposition']
+    for i in range(0, particles['xposition'].size):
+        if (np.abs(dx[i]) > 0.5 * box_length):
+            dx[i] *= 1 - box_length / np.abs(dx[i])
+        if (np.abs(dy[i]) > 0.5 * box_length):
+            dy[i] *= 1 - box_length / np.abs(dy[i])
+    dr = np.sqrt(dx * dx + dy * dy)
+    return np.average(dr ** 2)
 
 def particle_dt():
+    """Builds the data type for the particles, this consists of:
+
+    - xposition and yposition
+    - xvelocity and yvelocity
+    - xacceleration and yacceleration
+    - xprevious_position and ypresvious_position
+    - xforce and yforce
+    - energy
+    """
     return np.dtype([('xposition', np.float64), ('yposition', np.float64), ('xvelocity', np.float64),
                      ('yvelocity', np.float64), ('xacceleration', np.float64), ('yacceleration', np.float64),
                      ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('xforce', np.float64),
