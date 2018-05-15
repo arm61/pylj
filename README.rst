@@ -2,7 +2,7 @@ pylj
 ====
 
 .. image:: https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true
-   :height: 100 px
+
 what is pylj?
 -------------
 
