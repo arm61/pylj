@@ -1,0 +1,8 @@
+cff-version: 1.0.3 
+message: If you use this software, please cite it as below. Also we would love feedback on pylj (arm61 'at' bath.ac.uk). 
+authors:
+  - family-names: McCluskey
+    given-names: Andrew
+title: pylj
+version: 0.0.6
+date-released: 2018-05-15
