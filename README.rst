@@ -46,7 +46,7 @@ To run pylj locally it is necessary to have:
 
 todo
 ----
-- build webpages
+- get a cite funciton 
 - unit testing 
 - complete example lesssons
 - add Monte-Carlo
