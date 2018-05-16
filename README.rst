@@ -5,6 +5,9 @@ pylj
 
 .. image:: https://zenodo.org/badge/119863480.svg
    :target: https://zenodo.org/badge/latestdoi/119863480
+.. image:: https://readthedocs.org/projects/pylj/badge/?version=latest
+   :target: http://pylj.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
 
 what is pylj?
 -------------
