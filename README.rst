@@ -3,6 +3,9 @@ pylj
 
 .. image:: https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true
 
+.. image:: https://zenodo.org/badge/119863480.svg
+   :target: https://zenodo.org/badge/latestdoi/119863480
+
 what is pylj?
 -------------
 
