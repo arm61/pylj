@@ -1,6 +1,6 @@
 authors = {0: 'Andrew R. McCluskey', 1:'Benjamin J. Morgan', 2:'Karen J. Edler', 3:'Stephen C. Parker'}
 
-citation = {'released':'2018-05-15', 'name':'pylj', 'version':'0.0.6a', 'doi':'N/A',
+citation = {'released':'2018-05-15', 'name':'pylj', 'version':'0.0.6a', 'doi':'10.5281/zenodo.1212792',
             'note':'Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would use the following citation.'}
 
 def __cite__():
