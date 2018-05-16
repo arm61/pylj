@@ -4,11 +4,14 @@ visualisation
 sample classes
 --------------
 
-pylj aims to provide a straightforward environment to designing custom classes for the inclusion of custom visualisation. This takes the shape of sample classes, currently pylj comes with 4:
+pylj comes with four different methods for visualising the simulation that is taking place:
 
 - JustCell
 - RDF
 - Scattering
 - Interactions
+
+Full information about the existing classes can be found in the sample class documentation. 
  
-Using the built in pylj tools we hope that course developers and users can design custom classes to use in their on laboratory exercises. 
+Using the inbuild tools it is straightforward to build your own custom sample class, or to have students design their own. 
+
