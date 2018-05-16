@@ -4,10 +4,18 @@ pylj package
 Submodules
 ----------
 
-pylj\.util module
------------------
+pylj\.comp module
+-------------------
 
-.. automodule:: pylj.util
+.. automodule:: pylj.comp
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+pylj\.examples module
+---------------------
+
+.. automodule:: pylj.examples
     :members:
     :undoc-members:
     :show-inheritance:
@@ -28,18 +36,10 @@ pylj\.sample module
     :undoc-members:
     :show-inheritance:
 
-pylj\.examples module
----------------------
+pylj\.util module
+-----------------
 
-.. automodule:: pylj.examples
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-pylj\.comp module
--------------------
-
-.. automodule:: pylj.comp
+.. automodule:: pylj.util
     :members:
     :undoc-members:
     :show-inheritance:

@@ -42,65 +42,80 @@
   <h1>Source code for pylj.examples</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">pylj</span> <span class="k">import</span> <span class="n">md</span><span class="p">,</span> <span class="n">comp</span><span class="p">,</span> <span class="n">sample</span>
 
-<div class="viewcode-block" id="md_nvt"><a class="viewcode-back" href="../../pylj.html#pylj.examples.md_nvt">[docs]</a><span class="k">def</span> <span class="nf">md_nvt</span><span class="p">(</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">number_of_steps</span><span class="p">,</span> <span class="n">sample_frequency</span><span class="p">):</span>
-    <span class="c1"># Creates the visualisation environment</span>
-    <span class="c1">#%matplotlib notebook</span>
-    <span class="c1"># Initialise the system</span>
+<div class="viewcode-block" id="md_nvt"><a class="viewcode-back" href="../../examples.html#pylj.examples.md_nvt">[docs]</a><span class="k">def</span> <span class="nf">md_nvt</span><span class="p">(</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">number_of_steps</span><span class="p">,</span> <span class="n">sample_frequency</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This is an example NVT (constant number of particles, system volume and temperature) simulation. The temperature</span>
+<span class="sd">    is controlled using a velocity rescaling.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    number_of_particles: int</span>
+<span class="sd">        Number of particles to simulate.</span>
+<span class="sd">    temperature: float</span>
+<span class="sd">        Initial temperature of the particles and the temperature of the heat bath, in Kelvin.</span>
+<span class="sd">    box_length: float</span>
+<span class="sd">        Length of a single dimension of the simulation square, in Angstrom.</span>
+<span class="sd">    number_of_steps: int</span>
+<span class="sd">        Number of integration steps to be performed.</span>
+<span class="sd">    sample_frequency: int</span>
+<span class="sd">        Frequency with which the visualisation environment is to be updated.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    System</span>
+<span class="sd">        System information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">system</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">initialise</span><span class="p">(</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="s1">&#39;square&#39;</span><span class="p">)</span>
-    <span class="c1"># This sets the sampling class</span>
     <span class="n">sample_system</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">Interactions</span><span class="p">(</span><span class="n">system</span><span class="p">)</span>
-    <span class="c1"># Start at time 0</span>
     <span class="n">system</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="c1"># Begin the molecular dynamics loop</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">number_of_steps</span><span class="p">):</span>
-        <span class="c1"># At each step, calculate the forces on each particle</span>
-        <span class="c1"># and get acceleration</span>
         <span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">forces</span> <span class="o">=</span> <span class="n">comp</span><span class="o">.</span><span class="n">compute_forces</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span>
                                                                                 <span class="n">system</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span>
                                                                                 <span class="n">system</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">)</span>
-        <span class="c1"># Run the equations of motion integrator algorithm</span>
         <span class="n">system</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">velocity_verlet</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">)</span>
-        <span class="c1"># Sample the thermodynamic and structural parameters of the system</span>
         <span class="n">system</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">initial_particles</span><span class="p">,</span> <span class="n">system</span><span class="p">)</span>
-        <span class="c1"># Allow the system to interact with a heat bath</span>
         <span class="n">system</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="n">comp</span><span class="o">.</span><span class="n">heat_bath</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)</span>
-        <span class="c1"># Iterate the time</span>
         <span class="n">system</span><span class="o">.</span><span class="n">time</span> <span class="o">+=</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span>
         <span class="n">system</span><span class="o">.</span><span class="n">step</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="c1"># At a given frequency sample the positions and plot the RDF</span>
         <span class="k">if</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span> <span class="o">%</span> <span class="n">sample_frequency</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">sample_system</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">system</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">system</span></div>
 
 
-<div class="viewcode-block" id="md_nve"><a class="viewcode-back" href="../../pylj.html#pylj.examples.md_nve">[docs]</a><span class="k">def</span> <span class="nf">md_nve</span><span class="p">(</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">number_of_steps</span><span class="p">,</span> <span class="n">sample_frequency</span><span class="p">):</span>
-    <span class="c1"># Creates the visualisation environment</span>
-    <span class="c1">#%matplotlib notebook</span>
-    <span class="c1"># Initialise the system</span>
+<div class="viewcode-block" id="md_nve"><a class="viewcode-back" href="../../examples.html#pylj.examples.md_nve">[docs]</a><span class="k">def</span> <span class="nf">md_nve</span><span class="p">(</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">number_of_steps</span><span class="p">,</span> <span class="n">sample_frequency</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;This is an example NVE (constant number of particles, system volume and system energy) simulation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    number_of_particles: int</span>
+<span class="sd">        Number of particles to simulate.</span>
+<span class="sd">    temperature: float</span>
+<span class="sd">        Initial temperature of the particles, in Kelvin.</span>
+<span class="sd">    box_length: float</span>
+<span class="sd">        Length of a single dimension of the simulation square, in Angstrom.</span>
+<span class="sd">    number_of_steps: int</span>
+<span class="sd">        Number of integration steps to be performed.</span>
+<span class="sd">    sample_frequency: int</span>
+<span class="sd">        Frequency with which the visualisation environment is to be updated.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    System</span>
+<span class="sd">        System information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">system</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">initialise</span><span class="p">(</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="s1">&#39;square&#39;</span><span class="p">)</span>
-    <span class="c1"># This sets the sampling class</span>
     <span class="n">sample_system</span> <span class="o">=</span> <span class="n">sample</span><span class="o">.</span><span class="n">Interactions</span><span class="p">(</span><span class="n">system</span><span class="p">)</span>
-    <span class="c1"># Start at time 0</span>
     <span class="n">system</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="c1"># Begin the molecular dynamics loop</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">number_of_steps</span><span class="p">):</span>
-        <span class="c1"># At each step, calculate the forces on each particle</span>
-        <span class="c1"># and get acceleration</span>
         <span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">forces</span> <span class="o">=</span> <span class="n">comp</span><span class="o">.</span><span class="n">compute_forces</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span>
                                                                                 <span class="n">system</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span>
                                                                                 <span class="n">system</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">)</span>
-        <span class="c1"># Run the equations of motion integrator algorithm</span>
         <span class="n">system</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">velocity_verlet</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">)</span>
-        <span class="c1"># Sample the thermodynamic and structural parameters of the system</span>
         <span class="n">system</span> <span class="o">=</span> <span class="n">md</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">initial_particles</span><span class="p">,</span> <span class="n">system</span><span class="p">)</span>
-        <span class="c1"># Iterate the time</span>
         <span class="n">system</span><span class="o">.</span><span class="n">time</span> <span class="o">+=</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span>
         <span class="n">system</span><span class="o">.</span><span class="n">step</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="c1"># At a given frequency sample the positions and plot the RDF</span>
         <span class="k">if</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span> <span class="o">%</span> <span class="n">sample_frequency</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">sample_system</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">system</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">system</span></div>
-
 </pre></div>
 
           </div>
@@ -120,7 +135,8 @@
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../modules.html">pylj</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">pylj modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../visualisation.html">visualisation</a></li>
 </ul>
 
 <div class="relations">

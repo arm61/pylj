@@ -24,7 +24,6 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="pylj" href="modules.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -45,81 +44,26 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-pylj.util">
-<span id="pylj-util-module"></span><h2>pylj.util module<a class="headerlink" href="#module-pylj.util" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="pylj.util.System">
-<em class="property">class </em><code class="descclassname">pylj.util.</code><code class="descname">System</code><span class="sig-paren">(</span><em>number_of_particles</em>, <em>temperature</em>, <em>box_length</em>, <em>init_conf='square'</em>, <em>timestep_length=0.005</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#System"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.System" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
-<p>Simulation system.</p>
-<p>This class is designed to store all of the information about the job that is being run. This includes the particles
-object, as will as sampling objects such as the temperature, pressure, etc. arrays.</p>
+<div class="section" id="module-pylj.comp">
+<span id="pylj-comp-module"></span><h2>pylj.comp module<a class="headerlink" href="#module-pylj.comp" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="pylj.comp.calculate_pressure">
+<code class="descclassname">pylj.comp.</code><code class="descname">calculate_pressure</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pylj.comp.calculate_pressure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the instantaneous pressure of the simulation cell, found with the following relationship:</p>
+<div class="math">
+\[p = \langle \rho k_b T \rangle + \bigg\langle \frac{1}{3V}\sum_{i}\sum_{j&lt;i} \mathbf{r}_{ij}\mathbf{f}_{ij} \bigg\rangle\]</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>number_of_particles</strong> (<em>int</em>) – Number of particles to simulate.</li>
-<li><strong>temperature</strong> (<em>float</em>) – Initial temperature of the particles, in Kelvin.</li>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
 <li><strong>box_length</strong> (<em>float</em>) – Length of a single dimension of the simulation square, in Angstrom.</li>
-<li><strong>init_conf</strong> (<em>string</em><em>, </em><em>optional</em>) – <p>The way that the particles are initially positioned. Should be one of:</p>
-<ul>
-<li>’square’</li>
-<li>’random’</li>
-</ul>
-</li>
-<li><strong>timestep_length</strong> (<em>float</em><em> (</em><em>optional</em><em>)</em>) – Length for each Velocity-Verlet integration step, in seconds.</li>
+<li><strong>temperature</strong> (<em>float</em>) – Instantaneous temperature of the simulation.</li>
 </ul>
 </td>
 </tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="pylj.util.System.number_of_pairs">
-<code class="descname">number_of_pairs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#System.number_of_pairs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.System.number_of_pairs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculates the number of pairwise interactions in the simulation.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of pairwise interactions in the system.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">int</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pylj.util.System.random">
-<code class="descname">random</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#System.random"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.System.random" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the initial positions of the particles in a random arrangement.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pylj.util.System.square">
-<code class="descname">square</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#System.square"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.System.square" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the initial positions of the particles on a square lattice.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="function">
-<dt id="pylj.util.calculate_msd">
-<code class="descclassname">pylj.util.</code><code class="descname">calculate_msd</code><span class="sig-paren">(</span><em>particles</em>, <em>initial_particles</em>, <em>box_length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#calculate_msd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.calculate_msd" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determines the mean squared displacement of the particles in the system.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
-<li><strong>initial_particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the initial state of the particles.</li>
-<li><strong>box_length</strong> (<em>float</em>) – Size of the cell vector.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Mean squared deviation for the particles at the given timestep.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Instantaneous pressure of the simulation.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
@@ -130,60 +74,78 @@ object, as will as sampling objects such as the temperature, pressure, etc. arra
 </dd></dl>
 
 <dl class="function">
-<dt id="pylj.util.calculate_temperature">
-<code class="descclassname">pylj.util.</code><code class="descname">calculate_temperature</code><span class="sig-paren">(</span><em>particles</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#calculate_temperature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.calculate_temperature" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine the instantaneous temperature of the system.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Calculated instantaneous simulation temperature.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pylj.util.particle_dt">
-<code class="descclassname">pylj.util.</code><code class="descname">particle_dt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#particle_dt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.particle_dt" title="Permalink to this definition">¶</a></dt>
-<dd><p>Builds the data type for the particles, this consists of:</p>
+<dt id="pylj.comp.compute_forces">
+<code class="descclassname">pylj.comp.</code><code class="descname">compute_forces</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pylj.comp.compute_forces" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the forces and therefore the accelerations on each of the particles in the simulation. This uses a
+12-6 Lennard-Jones potential model for Argon with values:</p>
 <ul class="simple">
-<li>xposition and yposition</li>
-<li>xvelocity and yvelocity</li>
-<li>xacceleration and yacceleration</li>
-<li>xprevious_position and ypresvious_position</li>
-<li>xforce and yforce</li>
-<li>energy</li>
+<li>A = 1.89774e-13 J Å <span class="math">\(^{12}\)</span></li>
+<li>B = 5.1186e-19 J Å <span class="math">\(^6\)</span></li>
 </ul>
-</dd></dl>
-
-<dl class="function">
-<dt id="pylj.util.pbc_correction">
-<code class="descclassname">pylj.util.</code><code class="descname">pbc_correction</code><span class="sig-paren">(</span><em>position</em>, <em>cell</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#pbc_correction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.pbc_correction" title="Permalink to this definition">¶</a></dt>
-<dd><p>Correct for the periodic boundary condition.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>position</strong> (<em>float</em>) – Particle position.</li>
-<li><strong>cell</strong> (<em>float</em>) – Cell vector.</li>
+<li><strong>particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
+<li><strong>box_length</strong> (<em>float</em>) – Length of a single dimension of the simulation square, in Angstrom.</li>
+<li><strong>distances</strong> (<em>float</em><em>, </em><em>array_like</em>) – Old distances between each of the pairs of particles in the simulation.</li>
+<li><strong>forces</strong> (<em>float</em><em>, </em><em>array_like</em>) – Old forces between each of the pairs of particles in the simulation.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Corrected particle position.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><em>util.particle_dt, array_like</em> – Information about particles, with updated accelerations and forces.</li>
+<li><em>float, array_like</em> – Current distances between pairs of particles in the simulation.</li>
+<li><em>float, array_like</em> – Current forces between pairs of particles in the simulation.</li>
+</ul>
+</p>
 </td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
+
+<dl class="function">
+<dt id="pylj.comp.heat_bath">
+<code class="descclassname">pylj.comp.</code><code class="descname">heat_bath</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pylj.comp.heat_bath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rescales the velocities of the particles in the system to control the temperature of the simulation. Thereby
+allowing for an NVT ensemble. The velocities are rescaled according the following relationship,</p>
+<div class="math">
+\[v_{\text{new}} = v_{\text{old}} \times \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}\]</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
+<li><strong>temperature_sample</strong> (<em>float</em><em>, </em><em>array_like</em>) – The temperature at each timestep in the simulation.</li>
+<li><strong>bath_temp</strong> (<em>float</em>) – The desired temperature of the simulation.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Information about the particles with new, rescaled velocities.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt">util.particle_dt</a>, array_like</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-pylj.examples">
+<span id="pylj-examples-module"></span><h2>pylj.examples module<a class="headerlink" href="#module-pylj.examples" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="pylj.examples.md_nve">
+<code class="descclassname">pylj.examples.</code><code class="descname">md_nve</code><span class="sig-paren">(</span><em>number_of_particles</em>, <em>temperature</em>, <em>box_length</em>, <em>number_of_steps</em>, <em>sample_frequency</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/examples.html#md_nve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.examples.md_nve" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="pylj.examples.md_nvt">
+<code class="descclassname">pylj.examples.</code><code class="descname">md_nvt</code><span class="sig-paren">(</span><em>number_of_particles</em>, <em>temperature</em>, <em>box_length</em>, <em>number_of_steps</em>, <em>sample_frequency</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/examples.html#md_nvt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.examples.md_nvt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </div>
 <div class="section" id="module-pylj.md">
@@ -214,7 +176,7 @@ the temperature defined, and calculate the initial forces/accelerations.</p>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">System information.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pylj.util.System" title="pylj.util.System">System</a></p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System">System</a></p>
 </td>
 </tr>
 </tbody>
@@ -230,10 +192,10 @@ the temperature defined, and calculate the initial forces/accelerations.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
+<li><strong>particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
 <li><strong>box_length</strong> (<em>float</em>) – Length of a single dimension of the simulation square, in Angstrom.</li>
-<li><strong>initial_particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array-like</em>) – Information about the initial particle conformation.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – Details about the whole system</li>
+<li><strong>initial_particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array-like</em>) – Information about the initial particle conformation.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – Details about the whole system</li>
 </ul>
 </td>
 </tr>
@@ -241,7 +203,7 @@ the temperature defined, and calculate the initial forces/accelerations.</p>
 arrays.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pylj.util.System" title="pylj.util.System">System</a></p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System">System</a></p>
 </td>
 </tr>
 </tbody>
@@ -313,7 +275,7 @@ instanteous temperature, pressure, and force and appends these to the appropriat
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
+<li><strong>particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
 <li><strong>timestep_length</strong> (<em>float</em>) – Length for each Velocity-Verlet integration step, in seconds.</li>
 <li><strong>box_length</strong> (<em>float</em>) – Length of a single dimension of the simulation square, in Angstrom.</li>
 </ul>
@@ -322,7 +284,7 @@ instanteous temperature, pressure, and force and appends these to the appropriat
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Information about the particles, with new positions and velocities.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt">util.particle_dt</a>, array_like</p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt">util.particle_dt</a>, array_like</p>
 </td>
 </tr>
 </tbody>
@@ -343,7 +305,7 @@ deviation when the conditions of an ideal gas are not met.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
 </tr>
 </tbody>
 </table>
@@ -356,7 +318,7 @@ so used is wisely.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
 </tr>
 </tbody>
 </table>
@@ -374,7 +336,7 @@ visualisation.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
 </tr>
 </tbody>
 </table>
@@ -387,7 +349,7 @@ so used is wisely.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
 </tr>
 </tbody>
 </table>
@@ -405,7 +367,7 @@ used to show the relative RDFs for solid, liquid, gas.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
 </tr>
 </tbody>
 </table>
@@ -423,7 +385,7 @@ so used is wisely.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
 </tr>
 </tbody>
 </table>
@@ -442,7 +404,7 @@ solid, liquid, gas.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
 </tr>
 </tbody>
 </table>
@@ -460,7 +422,7 @@ so used is wisely.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</td>
 </tr>
 </tbody>
 </table>
@@ -500,7 +462,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 </ul>
 </td>
 </tr>
@@ -574,7 +536,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 </ul>
 </td>
 </tr>
@@ -606,7 +568,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 </ul>
 </td>
 </tr>
@@ -624,7 +586,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 <li><strong>average_diff</strong> (<em>array_like</em>) – The scattering profile’s i(q) for each timestep, to later be averaged.</li>
 <li><strong>q</strong> (<em>array_like</em>) – The scattering profile’s q for each timestep, to later be averaged.</li>
 </ul>
@@ -644,7 +606,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 </ul>
 </td>
 </tr>
@@ -662,7 +624,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 </ul>
 </td>
 </tr>
@@ -680,7 +642,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 </ul>
 </td>
 </tr>
@@ -698,7 +660,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 <li><strong>average_rdf</strong> (<em>array_like</em>) – The radial distribution functions g(r) for each timestep, to later be averaged.</li>
 <li><strong>r</strong> (<em>array_like</em>) – The radial distribution functions r for each timestep, to later be averaged.</li>
 </ul>
@@ -718,7 +680,7 @@ for panes=4 it is a 2-D array.</li>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>ax</strong> (<em>Axes object</em>) – The axes position that the pane should be placed in.</li>
-<li><strong>system</strong> (<a class="reference internal" href="#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
+<li><strong>system</strong> (<a class="reference internal" href="util.html#pylj.util.System" title="pylj.util.System"><em>System</em></a>) – The whole system information.</li>
 </ul>
 </td>
 </tr>
@@ -727,39 +689,81 @@ for panes=4 it is a 2-D array.</li>
 </dd></dl>
 
 </div>
-<div class="section" id="module-pylj.examples">
-<span id="pylj-examples-module"></span><h2>pylj.examples module<a class="headerlink" href="#module-pylj.examples" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="pylj.examples.md_nve">
-<code class="descclassname">pylj.examples.</code><code class="descname">md_nve</code><span class="sig-paren">(</span><em>number_of_particles</em>, <em>temperature</em>, <em>box_length</em>, <em>number_of_steps</em>, <em>sample_frequency</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/examples.html#md_nve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.examples.md_nve" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<div class="section" id="module-pylj.util">
+<span id="pylj-util-module"></span><h2>pylj.util module<a class="headerlink" href="#module-pylj.util" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pylj.util.System">
+<em class="property">class </em><code class="descclassname">pylj.util.</code><code class="descname">System</code><span class="sig-paren">(</span><em>number_of_particles</em>, <em>temperature</em>, <em>box_length</em>, <em>init_conf='square'</em>, <em>timestep_length=0.005</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#System"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.System" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Simulation system.</p>
+<p>This class is designed to store all of the information about the job that is being run. This includes the particles
+object, as will as sampling objects such as the temperature, pressure, etc. arrays.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>number_of_particles</strong> (<em>int</em>) – Number of particles to simulate.</li>
+<li><strong>temperature</strong> (<em>float</em>) – Initial temperature of the particles, in Kelvin.</li>
+<li><strong>box_length</strong> (<em>float</em>) – Length of a single dimension of the simulation square, in Angstrom.</li>
+<li><strong>init_conf</strong> (<em>string</em><em>, </em><em>optional</em>) – <p>The way that the particles are initially positioned. Should be one of:</p>
+<ul>
+<li>’square’</li>
+<li>’random’</li>
+</ul>
+</li>
+<li><strong>timestep_length</strong> (<em>float</em><em> (</em><em>optional</em><em>)</em>) – Length for each Velocity-Verlet integration step, in seconds.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="pylj.util.System.number_of_pairs">
+<code class="descname">number_of_pairs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#System.number_of_pairs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.System.number_of_pairs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the number of pairwise interactions in the simulation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Number of pairwise interactions in the system.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">int</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pylj.util.System.random">
+<code class="descname">random</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#System.random"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.System.random" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the initial positions of the particles in a random arrangement.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pylj.util.System.square">
+<code class="descname">square</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#System.square"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.System.square" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the initial positions of the particles on a square lattice.</p>
+</dd></dl>
+
+</dd></dl>
 
 <dl class="function">
-<dt id="pylj.examples.md_nvt">
-<code class="descclassname">pylj.examples.</code><code class="descname">md_nvt</code><span class="sig-paren">(</span><em>number_of_particles</em>, <em>temperature</em>, <em>box_length</em>, <em>number_of_steps</em>, <em>sample_frequency</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/examples.html#md_nvt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.examples.md_nvt" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</div>
-<div class="section" id="module-pylj.comp">
-<span id="pylj-comp-module"></span><h2>pylj.comp module<a class="headerlink" href="#module-pylj.comp" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="pylj.comp.calculate_pressure">
-<code class="descclassname">pylj.comp.</code><code class="descname">calculate_pressure</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pylj.comp.calculate_pressure" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculates the instantaneous pressure of the simulation cell, found with the following relationship:</p>
-<div class="math">
-\[p = \langle \rho k_b T \rangle + \bigg\langle \frac{1}{3V}\sum_{i}\sum_{j&lt;i} \mathbf{r}_{ij}\mathbf{f}_{ij} \bigg\rangle\]</div>
+<dt id="pylj.util.calculate_msd">
+<code class="descclassname">pylj.util.</code><code class="descname">calculate_msd</code><span class="sig-paren">(</span><em>particles</em>, <em>initial_particles</em>, <em>box_length</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#calculate_msd"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.calculate_msd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determines the mean squared displacement of the particles in the system.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
-<li><strong>box_length</strong> (<em>float</em>) – Length of a single dimension of the simulation square, in Angstrom.</li>
-<li><strong>temperature</strong> (<em>float</em>) – Instantaneous temperature of the simulation.</li>
+<li><strong>particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
+<li><strong>initial_particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the initial state of the particles.</li>
+<li><strong>box_length</strong> (<em>float</em>) – Size of the cell vector.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Instantaneous pressure of the simulation.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Mean squared deviation for the particles at the given timestep.</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
@@ -770,60 +774,55 @@ for panes=4 it is a 2-D array.</li>
 </dd></dl>
 
 <dl class="function">
-<dt id="pylj.comp.compute_forces">
-<code class="descclassname">pylj.comp.</code><code class="descname">compute_forces</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pylj.comp.compute_forces" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculates the forces and therefore the accelerations on each of the particles in the simulation. This uses a
-12-6 Lennard-Jones potential model for Argon with values:</p>
-<ul class="simple">
-<li>A = 1.89774e-13 J Å <span class="math">\(^{12}\)</span></li>
-<li>B = 5.1186e-19 J Å <span class="math">\(^6\)</span></li>
-</ul>
+<dt id="pylj.util.calculate_temperature">
+<code class="descclassname">pylj.util.</code><code class="descname">calculate_temperature</code><span class="sig-paren">(</span><em>particles</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#calculate_temperature"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.calculate_temperature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine the instantaneous temperature of the system.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
-<li><strong>box_length</strong> (<em>float</em>) – Length of a single dimension of the simulation square, in Angstrom.</li>
-<li><strong>distances</strong> (<em>float</em><em>, </em><em>array_like</em>) – Old distances between each of the pairs of particles in the simulation.</li>
-<li><strong>forces</strong> (<em>float</em><em>, </em><em>array_like</em>) – Old forces between each of the pairs of particles in the simulation.</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>particles</strong> (<a class="reference internal" href="util.html#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
-<li><em>util.particle_dt, array_like</em> – Information about particles, with updated accelerations and forces.</li>
-<li><em>float, array_like</em> – Current distances between pairs of particles in the simulation.</li>
-<li><em>float, array_like</em> – Current forces between pairs of particles in the simulation.</li>
-</ul>
-</p>
-</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Calculated instantaneous simulation temperature.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="function">
-<dt id="pylj.comp.heat_bath">
-<code class="descclassname">pylj.comp.</code><code class="descname">heat_bath</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pylj.comp.heat_bath" title="Permalink to this definition">¶</a></dt>
-<dd><p>Rescales the velocities of the particles in the system to control the temperature of the simulation. Thereby
-allowing for an NVT ensemble. The velocities are rescaled according the following relationship,</p>
-<div class="math">
-\[v_{\text{new}} = v_{\text{old}} \times \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}\]</div>
+<dt id="pylj.util.particle_dt">
+<code class="descclassname">pylj.util.</code><code class="descname">particle_dt</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#particle_dt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.particle_dt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Builds the data type for the particles, this consists of:</p>
+<ul class="simple">
+<li>xposition and yposition</li>
+<li>xvelocity and yvelocity</li>
+<li>xacceleration and yacceleration</li>
+<li>xprevious_position and ypresvious_position</li>
+<li>xforce and yforce</li>
+<li>energy</li>
+</ul>
+</dd></dl>
+
+<dl class="function">
+<dt id="pylj.util.pbc_correction">
+<code class="descclassname">pylj.util.</code><code class="descname">pbc_correction</code><span class="sig-paren">(</span><em>position</em>, <em>cell</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pylj/util.html#pbc_correction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#pylj.util.pbc_correction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Correct for the periodic boundary condition.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>particles</strong> (<a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt"><em>util.particle_dt</em></a><em>, </em><em>array_like</em>) – Information about the particles.</li>
-<li><strong>temperature_sample</strong> (<em>float</em><em>, </em><em>array_like</em>) – The temperature at each timestep in the simulation.</li>
-<li><strong>bath_temp</strong> (<em>float</em>) – The desired temperature of the simulation.</li>
+<li><strong>position</strong> (<em>float</em>) – Particle position.</li>
+<li><strong>cell</strong> (<em>float</em>) – Cell vector.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Information about the particles with new, rescaled velocities.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Corrected particle position.</p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#pylj.util.particle_dt" title="pylj.util.particle_dt">util.particle_dt</a>, array_like</p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
 </td>
 </tr>
 </tbody>
@@ -850,20 +849,14 @@ allowing for an NVT ensemble. The velocities are rescaled according the followin
 
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="modules.html">pylj</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">pylj package</a></li>
-</ul>
-</li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">pylj</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-  <li><a href="modules.html">pylj</a><ul>
-      <li>Previous: <a href="modules.html" title="previous chapter">pylj</a></li>
-  </ul></li>
   </ul></li>
 </ul>
 </div>

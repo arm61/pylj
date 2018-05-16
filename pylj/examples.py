@@ -1,61 +1,76 @@
 from pylj import md, comp, sample
 
 def md_nvt(number_of_particles, temperature, box_length, number_of_steps, sample_frequency):
-    # Creates the visualisation environment
-    #%matplotlib notebook
-    # Initialise the system
+    """This is an example NVT (constant number of particles, system volume and temperature) simulation. The temperature
+    is controlled using a velocity rescaling.
+
+    Parameters
+    ----------
+    number_of_particles: int
+        Number of particles to simulate.
+    temperature: float
+        Initial temperature of the particles and the temperature of the heat bath, in Kelvin.
+    box_length: float
+        Length of a single dimension of the simulation square, in Angstrom.
+    number_of_steps: int
+        Number of integration steps to be performed.
+    sample_frequency: int
+        Frequency with which the visualisation environment is to be updated.
+
+    Returns
+    -------
+    System
+        System information.
+    """
     system = md.initialise(number_of_particles, temperature, box_length, 'square')
-    # This sets the sampling class
     sample_system = sample.Interactions(system)
-    # Start at time 0
     system.time = 0
-    # Begin the molecular dynamics loop
     for i in range(0, number_of_steps):
-        # At each step, calculate the forces on each particle
-        # and get acceleration
         system.particles, system.distances, system.forces = comp.compute_forces(system.particles,
                                                                                 system.distances,
                                                                                 system.forces, system.box_length)
-        # Run the equations of motion integrator algorithm
         system.particles = md.velocity_verlet(system.particles, system.timestep_length, system.box_length)
-        # Sample the thermodynamic and structural parameters of the system
         system = md.sample(system.particles, system.box_length, system.initial_particles, system)
-        # Allow the system to interact with a heat bath
         system.particles = comp.heat_bath(system.particles, system.temperature_sample, temperature)
-        # Iterate the time
         system.time += system.timestep_length
         system.step += 1
-        # At a given frequency sample the positions and plot the RDF
         if system.step % sample_frequency == 0:
             sample_system.update(system)
     return system
 
 
 def md_nve(number_of_particles, temperature, box_length, number_of_steps, sample_frequency):
-    # Creates the visualisation environment
-    #%matplotlib notebook
-    # Initialise the system
+    """This is an example NVE (constant number of particles, system volume and system energy) simulation.
+
+    Parameters
+    ----------
+    number_of_particles: int
+        Number of particles to simulate.
+    temperature: float
+        Initial temperature of the particles, in Kelvin.
+    box_length: float
+        Length of a single dimension of the simulation square, in Angstrom.
+    number_of_steps: int
+        Number of integration steps to be performed.
+    sample_frequency: int
+        Frequency with which the visualisation environment is to be updated.
+
+    Returns
+    -------
+    System
+        System information.
+    """
     system = md.initialise(number_of_particles, temperature, box_length, 'square')
-    # This sets the sampling class
     sample_system = sample.Interactions(system)
-    # Start at time 0
     system.time = 0
-    # Begin the molecular dynamics loop
     for i in range(0, number_of_steps):
-        # At each step, calculate the forces on each particle
-        # and get acceleration
         system.particles, system.distances, system.forces = comp.compute_forces(system.particles,
                                                                                 system.distances,
                                                                                 system.forces, system.box_length)
-        # Run the equations of motion integrator algorithm
         system.particles = md.velocity_verlet(system.particles, system.timestep_length, system.box_length)
-        # Sample the thermodynamic and structural parameters of the system
         system = md.sample(system.particles, system.box_length, system.initial_particles, system)
-        # Iterate the time
         system.time += system.timestep_length
         system.step += 1
-        # At a given frequency sample the positions and plot the RDF
         if system.step % sample_frequency == 0:
             sample_system.update(system)
     return system
-

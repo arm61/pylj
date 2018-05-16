@@ -1,2 +1,3 @@
 include src/comp.cpp
 include src/comp.h
+include CITATION.cff

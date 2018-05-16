@@ -44,7 +44,7 @@
 <span class="kn">from</span> <span class="nn">pylj</span> <span class="k">import</span> <span class="n">comp</span><span class="p">,</span> <span class="n">util</span>
 
 
-<div class="viewcode-block" id="initialise"><a class="viewcode-back" href="../../pylj.html#pylj.md.initialise">[docs]</a><span class="k">def</span> <span class="nf">initialise</span><span class="p">(</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">init_conf</span><span class="p">,</span> <span class="n">timestep_length</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">):</span>
+<div class="viewcode-block" id="initialise"><a class="viewcode-back" href="../../md.html#pylj.md.initialise">[docs]</a><span class="k">def</span> <span class="nf">initialise</span><span class="p">(</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">init_conf</span><span class="p">,</span> <span class="n">timestep_length</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Initialise the particle positions (this can be either as a square or random arrangement), velocities (based on</span>
 <span class="sd">    the temperature defined, and calculate the initial forces/accelerations.</span>
 
@@ -79,7 +79,7 @@
                                                                             <span class="n">system</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">)</span></div>
     <span class="k">return</span> <span class="n">system</span>
 
-<div class="viewcode-block" id="velocity_verlet"><a class="viewcode-back" href="../../pylj.html#pylj.md.velocity_verlet">[docs]</a><span class="k">def</span> <span class="nf">velocity_verlet</span><span class="p">(</span><span class="n">particles</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">,</span> <span class="n">box_length</span><span class="p">):</span>
+<div class="viewcode-block" id="velocity_verlet"><a class="viewcode-back" href="../../md.html#pylj.md.velocity_verlet">[docs]</a><span class="k">def</span> <span class="nf">velocity_verlet</span><span class="p">(</span><span class="n">particles</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">,</span> <span class="n">box_length</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Uses the Velocity-Verlet integrator to move forward in time. The</span>
 
 <span class="sd">    Updates the particles positions and velocities in terms of the Velocity Verlet algorithm. Also calculates the</span>
@@ -115,7 +115,7 @@
     <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yprevious_position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">yposition_store</span></div>
     <span class="k">return</span> <span class="n">particles</span>
 
-<div class="viewcode-block" id="sample"><a class="viewcode-back" href="../../pylj.html#pylj.md.sample">[docs]</a><span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="n">particles</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">initial_particles</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
+<div class="viewcode-block" id="sample"><a class="viewcode-back" href="../../md.html#pylj.md.sample">[docs]</a><span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="n">particles</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">initial_particles</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Sample parameters of interest in the simulation.</span>
 
 <span class="sd">    Parameters</span>
@@ -144,7 +144,7 @@
     <span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span><span class="p">,</span> <span class="n">msd_new</span><span class="p">)</span></div>
     <span class="k">return</span> <span class="n">system</span>
 
-<div class="viewcode-block" id="update_positions"><a class="viewcode-back" href="../../pylj.html#pylj.md.update_positions">[docs]</a><span class="k">def</span> <span class="nf">update_positions</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">velocities</span><span class="p">,</span> <span class="n">accelerations</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">,</span> <span class="n">box_length</span><span class="p">):</span>
+<div class="viewcode-block" id="update_positions"><a class="viewcode-back" href="../../md.html#pylj.md.update_positions">[docs]</a><span class="k">def</span> <span class="nf">update_positions</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">velocities</span><span class="p">,</span> <span class="n">accelerations</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">,</span> <span class="n">box_length</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Update the particle positions using the Velocity-Verlet integrator.</span>
 
 <span class="sd">    Parameters</span>
@@ -172,7 +172,7 @@
     <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="n">box_length</span></div>
     <span class="k">return</span> <span class="p">[</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
 
-<div class="viewcode-block" id="update_velocities"><a class="viewcode-back" href="../../pylj.html#pylj.md.update_velocities">[docs]</a><span class="k">def</span> <span class="nf">update_velocities</span><span class="p">(</span><span class="n">velocities</span><span class="p">,</span> <span class="n">accelerations</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">):</span>
+<div class="viewcode-block" id="update_velocities"><a class="viewcode-back" href="../../md.html#pylj.md.update_velocities">[docs]</a><span class="k">def</span> <span class="nf">update_velocities</span><span class="p">(</span><span class="n">velocities</span><span class="p">,</span> <span class="n">accelerations</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Update the particle velocities using the Velocity-Verlet algoritm.</span>
 
 <span class="sd">    Parameters</span>
@@ -213,7 +213,8 @@
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../modules.html">pylj</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">pylj modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../visualisation.html">visualisation</a></li>
 </ul>
 
 <div class="relations">
