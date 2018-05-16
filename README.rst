@@ -6,11 +6,6 @@
    :target: http://pylj.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
 
-how to cite pylj
-----------------
-Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would use the following citation.
-Andrew R. McCluskey, Benjamin J. Morgan, Karen J. Edler, Stephen C. Parker (2018). pylj, version 0.0.6a. Released: 2018-05-15, DOI: 10.5281/zenodo.1212792. 
-
 what is pylj?
 -------------
 
@@ -41,10 +36,7 @@ To run pylj locally it is necessary to have:
 - cython
 - C++ complier
 
-todo
-----
-- get a cite funciton 
-- unit testing 
-- complete example lesssons
-- add Monte-Carlo
-- add energy minimisation
+how to cite pylj
+----------------
+Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would use the following citation.
+Andrew R. McCluskey, Benjamin J. Morgan, Karen J. Edler, Stephen C. Parker (2018). pylj, version 0.0.6a. Released: 2018-05-15, DOI: 10.5281/zenodo.1212792. 
