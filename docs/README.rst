@@ -15,19 +15,3 @@ how to cite pylj
 ----------------
 Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would use the following citation.
 Andrew R. McCluskey, Benjamin J. Morgan, Karen J. Edler, Stephen C. Parker (2018). pylj, version 0.0.6a. Released: 2018-05-15, DOI: 10.5281/zenodo.1212792. 
-
-how do i get pylj?
-------------------
-
-If you are interested in using pylj, in any sense, fork the code at http://www.github.com/arm61/pylj or email Andrew (arm61 'at' bath.ac.uk). We are currently investigating the feasibility of hosting a freely available test instance on Amazon Web Services.
-
-requirements
-------------
-To run pylj locally it is necessary to have:
-
-- python 3
-- numpy
-- matplotlib
-- cython
-- C++ complier
-

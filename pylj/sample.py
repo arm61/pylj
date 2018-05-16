@@ -122,7 +122,7 @@ class JustCell(object):
 
     def update(self, system):
         """This updates the visualisation environment. Often this can be slower than the cythonised force calculation
-        so used is wisely.
+        so use this wisely.
 
         Parameters
         ----------
