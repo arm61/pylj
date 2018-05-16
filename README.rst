@@ -1,6 +1,3 @@
-pylj
-====
-
 .. image:: https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true
 
 .. image:: https://zenodo.org/badge/119863480.svg
