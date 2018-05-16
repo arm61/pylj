@@ -17,9 +17,9 @@ packages = find_packages()
 # versioning
 MAJOR = 0
 MINOR = 0
-MICRO = 5
+MICRO = '6a'
 ISRELEASED = False
-VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
+VERSION = '%d.%d.%s' % (MAJOR, MINOR, MICRO)
 
 
 info = {'name': 'pylj',

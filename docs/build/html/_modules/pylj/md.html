@@ -4,20 +4,12 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>pylj.md &#8212; pylj 0.0.6a documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../../',
-        VERSION:     '0.0.6a',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
-      };
-    </script>
+    <script type="text/javascript" src="../../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
@@ -30,8 +22,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
-  </head>
-  <body>
+  </head><body>
   
 
     <div class="document">
@@ -76,8 +67,8 @@
     <span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xvelocity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
     <span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yvelocity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
     <span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">forces</span> <span class="o">=</span> <span class="n">comp</span><span class="o">.</span><span class="n">compute_forces</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span>
-                                                                            <span class="n">system</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">)</span></div>
-    <span class="k">return</span> <span class="n">system</span>
+                                                                            <span class="n">system</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">system</span></div>
 
 <div class="viewcode-block" id="velocity_verlet"><a class="viewcode-back" href="../../md.html#pylj.md.velocity_verlet">[docs]</a><span class="k">def</span> <span class="nf">velocity_verlet</span><span class="p">(</span><span class="n">particles</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">,</span> <span class="n">box_length</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Uses the Velocity-Verlet integrator to move forward in time. The</span>
@@ -112,8 +103,8 @@
                                                                        <span class="p">[</span><span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xacceleration&#39;</span><span class="p">],</span>
                                                                         <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yacceleration&#39;</span><span class="p">]],</span> <span class="n">timestep_length</span><span class="p">)</span>
     <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xprevious_position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xposition_store</span>
-    <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yprevious_position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">yposition_store</span></div>
-    <span class="k">return</span> <span class="n">particles</span>
+    <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yprevious_position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">yposition_store</span>
+    <span class="k">return</span> <span class="n">particles</span></div>
 
 <div class="viewcode-block" id="sample"><a class="viewcode-back" href="../../md.html#pylj.md.sample">[docs]</a><span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="n">particles</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">initial_particles</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Sample parameters of interest in the simulation.</span>
@@ -141,8 +132,8 @@
     <span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">,</span> <span class="n">temperature_new</span><span class="p">)</span>
     <span class="n">system</span><span class="o">.</span><span class="n">pressure_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">pressure_sample</span><span class="p">,</span> <span class="n">pressure_new</span><span class="p">)</span>
     <span class="n">system</span><span class="o">.</span><span class="n">force_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">force_sample</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">forces</span><span class="p">))</span>
-    <span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span><span class="p">,</span> <span class="n">msd_new</span><span class="p">)</span></div>
-    <span class="k">return</span> <span class="n">system</span>
+    <span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span><span class="p">,</span> <span class="n">msd_new</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">system</span></div>
 
 <div class="viewcode-block" id="update_positions"><a class="viewcode-back" href="../../md.html#pylj.md.update_positions">[docs]</a><span class="k">def</span> <span class="nf">update_positions</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">velocities</span><span class="p">,</span> <span class="n">accelerations</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">,</span> <span class="n">box_length</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Update the particle positions using the Velocity-Verlet integrator.</span>
@@ -169,8 +160,8 @@
     <span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">velocities</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">timestep_length</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">accelerations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">timestep_length</span> <span class="o">*</span> <span class="n">timestep_length</span>
     <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">velocities</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">timestep_length</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">accelerations</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">timestep_length</span> <span class="o">*</span> <span class="n">timestep_length</span>
     <span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="n">box_length</span>
-    <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="n">box_length</span></div>
-    <span class="k">return</span> <span class="p">[</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">%</span> <span class="n">box_length</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">positions</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">positions</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span></div>
 
 <div class="viewcode-block" id="update_velocities"><a class="viewcode-back" href="../../md.html#pylj.md.update_velocities">[docs]</a><span class="k">def</span> <span class="nf">update_velocities</span><span class="p">(</span><span class="n">velocities</span><span class="p">,</span> <span class="n">accelerations</span><span class="p">,</span> <span class="n">timestep_length</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Update the particle velocities using the Velocity-Verlet algoritm.</span>
@@ -191,8 +182,8 @@
 <span class="sd">        Updated velocities.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">velocities</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">accelerations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">timestep_length</span>
-    <span class="n">velocities</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">accelerations</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">timestep_length</span></div>
-    <span class="k">return</span> <span class="p">[</span><span class="n">velocities</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">velocities</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="n">velocities</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">accelerations</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">timestep_length</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">velocities</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">velocities</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span></div>
 
 </pre></div>
 
@@ -228,12 +219,14 @@
 </div>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -244,7 +237,7 @@
       &copy;2018, Andrew R. McCluskey.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
       
     </div>

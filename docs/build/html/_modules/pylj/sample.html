@@ -4,20 +4,12 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>pylj.sample &#8212; pylj 0.0.6a documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../../',
-        VERSION:     '0.0.6a',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
-      };
-    </script>
+    <script type="text/javascript" src="../../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
@@ -30,8 +22,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
-  </head>
-  <body>
+  </head><body>
   
 
     <div class="document">
@@ -84,8 +75,8 @@
         <span class="n">update_rdfview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">system</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_rdf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">)</span>
         <span class="n">update_diffview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">system</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_diff</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="p">)</span>
         <span class="n">update_msdview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">system</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+</div>
 <div class="viewcode-block" id="Scattering.average"><a class="viewcode-back" href="../../sample.html#pylj.sample.Scattering.average">[docs]</a>    <span class="k">def</span> <span class="nf">average</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">gr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">average_rdf</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
@@ -101,8 +92,8 @@
         <span class="n">line</span><span class="o">.</span><span class="n">set_ydata</span><span class="p">(</span><span class="n">iq</span><span class="p">)</span>
         <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">iq</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">iq</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">iq</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">iq</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">x</span><span class="p">)])</span></div></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">x</span><span class="p">)])</span>
+</div></div>
 
 <div class="viewcode-block" id="Interactions"><a class="viewcode-back" href="../../sample.html#pylj.sample.Interactions">[docs]</a><span class="k">class</span> <span class="nc">Interactions</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The Interactions class will plot the particle positions, total force, simulation pressure and temperature. This</span>
@@ -140,8 +131,8 @@
         <span class="n">update_tempview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">system</span><span class="p">)</span>
         <span class="n">update_pressureview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">system</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span></div></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+</div></div>
 
 <div class="viewcode-block" id="JustCell"><a class="viewcode-back" href="../../sample.html#pylj.sample.JustCell">[docs]</a><span class="k">class</span> <span class="nc">JustCell</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The JustCell class will plot just the particles positions. This is a simplistic sampling class for quick</span>
@@ -173,8 +164,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">update_cellview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span></div></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+</div></div>
 
 <div class="viewcode-block" id="RDF"><a class="viewcode-back" href="../../sample.html#pylj.sample.RDF">[docs]</a><span class="k">class</span> <span class="nc">RDF</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The RDF class will plot the particle positions and radial distribution function. This sampling class is can be</span>
@@ -211,8 +202,8 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">update_cellview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">system</span><span class="p">)</span>
         <span class="n">update_rdfview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">system</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">average_rdf</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+</div>
 <div class="viewcode-block" id="RDF.average"><a class="viewcode-back" href="../../sample.html#pylj.sample.RDF.average">[docs]</a>    <span class="k">def</span> <span class="nf">average</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">gr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">average_rdf</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
@@ -220,8 +211,8 @@
         <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
         <span class="n">line</span><span class="o">.</span><span class="n">set_ydata</span><span class="p">(</span><span class="n">gr</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">gr</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span></div></div>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+</div></div>
 
 <div class="viewcode-block" id="environment"><a class="viewcode-back" href="../../sample.html#pylj.sample.environment">[docs]</a><span class="k">def</span> <span class="nf">environment</span><span class="p">(</span><span class="n">panes</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;The visualisation environment consists of a series of panes (1, 2, or 4 are allowed). This function allows the</span>
@@ -249,8 +240,8 @@
         <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="ne">AttributeError</span><span class="p">(</span><span class="s1">&#39;The only options for the number of panes are 1, 2, or 4&#39;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
-        
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span>
+        </div>
 
 <div class="viewcode-block" id="setup_cellview"><a class="viewcode-back" href="../../sample.html#pylj.sample.setup_cellview">[docs]</a><span class="k">def</span> <span class="nf">setup_cellview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Builds the particle position visualisation pane.</span>
@@ -269,8 +260,8 @@
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">])</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="p">])</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([])</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
+</div>
 
 <div class="viewcode-block" id="setup_forceview"><a class="viewcode-back" href="../../sample.html#pylj.sample.setup_forceview">[docs]</a><span class="k">def</span> <span class="nf">setup_forceview</span><span class="p">(</span><span class="n">ax</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Builds the total force visualisation pane.</span>
@@ -282,8 +273,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#34a5daff&#39;</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Force/N&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time/s&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time/s&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="setup_rdfview"><a class="viewcode-back" href="../../sample.html#pylj.sample.setup_rdfview">[docs]</a><span class="k">def</span> <span class="nf">setup_rdfview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Builds the radial distribution function visualisation pane.</span>
@@ -299,8 +290,8 @@
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">box_length</span><span class="o">/</span><span class="mi">2</span><span class="p">])</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;RDF&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;r/Å&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;r/Å&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="setup_diffview"><a class="viewcode-back" href="../../sample.html#pylj.sample.setup_diffview">[docs]</a><span class="k">def</span> <span class="nf">setup_diffview</span><span class="p">(</span><span class="n">ax</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Builds the scattering profile visualisation pane.</span>
@@ -313,8 +304,8 @@
     <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#34a5daff&#39;</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;log(I[q])&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;log(q)/Å$^{-1}$&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;log(q)/Å$^{-1}$&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="setup_pressureview"><a class="viewcode-back" href="../../sample.html#pylj.sample.setup_pressureview">[docs]</a><span class="k">def</span> <span class="nf">setup_pressureview</span><span class="p">(</span><span class="n">ax</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Builds the simulation instantaneous pressure visualisation pane.</span>
@@ -326,8 +317,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#34a5daff&#39;</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Pressure/Pa&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time/s&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time/s&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="setup_tempview"><a class="viewcode-back" href="../../sample.html#pylj.sample.setup_tempview">[docs]</a><span class="k">def</span> <span class="nf">setup_tempview</span><span class="p">(</span><span class="n">ax</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Builds the simulation instantaneous temperature visualisation pane.</span>
@@ -339,8 +330,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#34a5daff&#39;</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Temperature/K&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time/s&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time/s&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="update_cellview"><a class="viewcode-back" href="../../sample.html#pylj.sample.update_cellview">[docs]</a><span class="k">def</span> <span class="nf">update_cellview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Updates the particle positions visualisation pane.</span>
@@ -356,8 +347,8 @@
     <span class="n">y3</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yposition&#39;</span><span class="p">]</span>
     <span class="n">line</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">line</span><span class="o">.</span><span class="n">set_ydata</span><span class="p">(</span><span class="n">y3</span><span class="p">)</span>
-    <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">x3</span><span class="p">)</span></div>
-
+    <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">x3</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="update_rdfview"><a class="viewcode-back" href="../../sample.html#pylj.sample.update_rdfview">[docs]</a><span class="k">def</span> <span class="nf">update_rdfview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">average_rdf</span><span class="p">,</span> <span class="n">r</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Updates the radial distribution function visualisation pane.</span>
@@ -383,8 +374,8 @@
     <span class="n">line</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
     <span class="n">line</span><span class="o">.</span><span class="n">set_ydata</span><span class="p">(</span><span class="n">gr</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">gr</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">gr</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">])</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">gr</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">gr</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">])</span>
+</div>
 
 <div class="viewcode-block" id="update_diffview"><a class="viewcode-back" href="../../sample.html#pylj.sample.update_diffview">[docs]</a><span class="k">def</span> <span class="nf">update_diffview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">,</span> <span class="n">average_diff</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Updates the scattering profile visualisation pane.</span>
@@ -411,8 +402,8 @@
     <span class="n">line1</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
     <span class="n">line1</span><span class="o">.</span><span class="n">set_ydata</span><span class="p">(</span><span class="n">y2</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">y2</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">y2</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">y2</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">y2</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">])</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">x2</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">x2</span><span class="p">)])</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">x2</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">x2</span><span class="p">)])</span>
+</div>
 
 <div class="viewcode-block" id="update_forceview"><a class="viewcode-back" href="../../sample.html#pylj.sample.update_forceview">[docs]</a><span class="k">def</span> <span class="nf">update_forceview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Updates the total force visualisation pane.</span>
@@ -429,8 +420,8 @@
     <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span><span class="p">)</span> <span class="o">*</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span> <span class="o">*</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">)</span> 
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">force_sample</span> <span class="o">*</span> <span class="mf">1e-10</span><span class="p">)</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">force_sample</span> <span class="o">*</span> <span class="mf">1e-10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">force_sample</span> <span class="o">*</span> <span class="mf">1e-10</span><span class="p">)</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">force_sample</span> <span class="o">*</span> <span class="mf">1e-10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span></div>
-
+                <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">force_sample</span> <span class="o">*</span> <span class="mf">1e-10</span><span class="p">)</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">force_sample</span> <span class="o">*</span> <span class="mf">1e-10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="update_tempview"><a class="viewcode-back" href="../../sample.html#pylj.sample.update_tempview">[docs]</a><span class="k">def</span> <span class="nf">update_tempview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Updates the simulation instantaneous temperature visualisation pane.</span>
@@ -447,8 +438,8 @@
     <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span><span class="p">)</span> <span class="o">*</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span> <span class="o">*</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">)</span> 
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">)</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">)</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span></div>
-
+                <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">)</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="update_pressureview"><a class="viewcode-back" href="../../sample.html#pylj.sample.update_pressureview">[docs]</a><span class="k">def</span> <span class="nf">update_pressureview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Updates the simulation instantaneous pressure visualisation pane.</span>
@@ -465,8 +456,8 @@
     <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span><span class="p">)</span> <span class="o">*</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span> <span class="o">*</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">pressure_sample</span> <span class="o">*</span> <span class="mf">1e10</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">pressure_sample</span> <span class="o">*</span> <span class="mf">1e10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">pressure_sample</span> <span class="o">*</span> <span class="mf">1e10</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">pressure_sample</span> <span class="o">*</span> <span class="mf">1e10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span></div>
-
+                <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">pressure_sample</span> <span class="o">*</span> <span class="mf">1e10</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">pressure_sample</span> <span class="o">*</span> <span class="mf">1e10</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="setup_msdview"><a class="viewcode-back" href="../../sample.html#pylj.sample.setup_msdview">[docs]</a><span class="k">def</span> <span class="nf">setup_msdview</span><span class="p">(</span><span class="n">ax</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Builds the simulation mean squared deviation visualisation pane.</span>
@@ -478,8 +469,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#34a5daff&#39;</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;MSD/Å$^2$&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time/s&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span></div>
-
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Time/s&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+</div>
 
 <div class="viewcode-block" id="update_msdview"><a class="viewcode-back" href="../../sample.html#pylj.sample.update_msdview">[docs]</a><span class="k">def</span> <span class="nf">update_msdview</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">system</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Updates the simulation mean squared deviation visualisation pane.</span>
@@ -496,8 +487,8 @@
     <span class="n">line</span><span class="o">.</span><span class="n">set_ydata</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span><span class="p">)</span>
     <span class="n">line</span><span class="o">.</span><span class="n">set_xdata</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span><span class="p">)</span> <span class="o">*</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">system</span><span class="o">.</span><span class="n">step</span> <span class="o">*</span> <span class="n">system</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span><span class="p">)</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span></div>
-</pre></div>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span><span class="p">)</span><span class="o">+</span><span class="n">np</span><span class="o">.</span><span class="n">amax</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">msd_sample</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">)</span>
+</pre></div></div>
 
           </div>
         </div>
@@ -531,12 +522,14 @@
 </div>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -547,7 +540,7 @@
       &copy;2018, Andrew R. McCluskey.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
       
     </div>
