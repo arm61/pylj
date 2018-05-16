@@ -11,7 +11,9 @@ pylj comes with four different methods for visualising the simulation that is ta
 - Scattering
 - Interactions
 
-Full information about the existing classes can be found in the sample class documentation. 
- 
+Full information about the existing classes can be found in the sample_ class documentation. 
+
+.. _sample: /sample.html
+
 Using the inbuild tools it is straightforward to build your own custom sample class, or to have students design their own. 
 
