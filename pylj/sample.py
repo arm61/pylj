@@ -58,8 +58,8 @@ class Scattering(object):
         line = self.ax[1, 1].lines[0]
         line.set_ydata(iq)
         line.set_xdata(x)
-        self.ax[1, 1].set_ylim([np.amin(iq) - np.amax(iq) * 0.05, np.amax(iq) + np.amax(iq) * 0.05])
-        self.ax[1, 1].set_xlim([np.amin(x), np.amax(x)])
+        self.ax[1, 1].set_ylim([0, np.amax(iq) + np.amax(iq) * 0.05])
+        self.ax[1, 1].set_xlim([0, np.amax(x)])
 
 
 class Interactions(object):
@@ -76,9 +76,9 @@ class Interactions(object):
         fig, ax = environment(4)
 
         setup_cellview(ax[0, 0], system)
-        setup_forceview(ax[0, 1])
+        setup_forceview(ax[1, 1])
         setup_pressureview(ax[1, 0])
-        setup_tempview(ax[1, 1])
+        setup_tempview(ax[0, 1])
 
         plt.tight_layout()
         self.ax = ax
@@ -94,8 +94,8 @@ class Interactions(object):
             The whole system information.
         """
         update_cellview(self.ax[0, 0], system)
-        update_forceview(self.ax[0, 1], system)
-        update_tempview(self.ax[1, 1], system)
+        update_forceview(self.ax[1, 1], system)
+        update_tempview(self.ax[0, 1], system)
         update_pressureview(self.ax[1, 0], system)
 
         self.fig.canvas.draw()
@@ -198,7 +198,6 @@ def environment(panes):
         The axes related to each of the panes. For panes=1 this is a single object, for panes=2 it is a 1-D array and
         for panes=4 it is a 2-D array.
     """
-    fig, ax = plt.subplot()
     if panes == 1:
         fig, ax = plt.subplots(figsize=(4, 4))
     elif panes == 2:
@@ -271,7 +270,7 @@ def setup_diffview(ax):
     ax.plot([0], color='#34a5daff')
     ax.set_yticks([])
     ax.set_ylabel('log(I[q])', fontsize=16)
-    ax.set_xlabel('log(q)/Å$^{-1}$', fontsize=16)
+    ax.set_xlabel('q/Å$^{-1}$', fontsize=16)
 
 
 def setup_pressureview(ax):
@@ -358,18 +357,21 @@ def update_diffview(ax, system, average_diff, q):
     q: array_like
         The scattering profile's q for each timestep, to later be averaged.
     """
-    hist, bin_edges = np.histogram(system.distances, bins=np.linspace(0, system.box_length/2 + 0.5, 100))
-    gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
-                 (bin_edges[:-1] + 0.5 / 2.) * 0.5)
-    x2 = np.log(np.fft.rfftfreq(len(gr))[5:])
-    y2 = np.log(np.fft.rfft(gr)[5:])
+    qw = np.linspace(2 * np.pi /(system.box_length/2)*4, system.box_length/10, 100)
+    i = np.zeros_like(qw)
+    for j in range(0, len(qw)):
+        i[j] = np.sum(3.644 * (np.sin(qw[j] * system.distances))/(qw[j] * system.distances))
+        if i[j] < 0:
+            i[j] = 0
+    x2 = qw
+    y2 = i
     average_diff.append(y2)
     q.append(x2)
     line1 = ax.lines[0]
     line1.set_xdata(x2)
     line1.set_ydata(y2)
-    ax.set_ylim([np.amin(y2) - np.amax(y2) * 0.05, np.amax(y2) + np.amax(y2) * 0.05])
-    ax.set_xlim([np.amin(x2), np.amax(x2)])
+    ax.set_ylim([0, np.amax(y2) + np.amax(y2) * 0.05])
+    ax.set_xlim(0, np.amax(x2))
 
 
 def update_forceview(ax, system):
