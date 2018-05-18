@@ -1,3 +1,4 @@
+CITATION.cff
 MANIFEST.in
 README.md
 setup.py

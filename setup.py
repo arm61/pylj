@@ -17,7 +17,7 @@ packages = find_packages()
 # versioning
 MAJOR = 0
 MINOR = 0
-MICRO = 16 
+MICRO = 17 
 ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
@@ -26,6 +26,7 @@ info = {'name': 'pylj',
         'description': 'Simple teaching tool for classical MD simulation',
         'author': 'Andrew R. McCluskey',
         'author_email': 'arm61@bath.ac.uk',
+        'long_description':open('README.md').read(),
         'packages': packages,
         'include_package_data': True,
         'setup_requires': ['numpy', 'matplotlib'],
