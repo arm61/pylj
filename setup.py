@@ -6,9 +6,9 @@ import subprocess
 
 
 try:
-   from Cython.Distutils import build_ext
+    from Cython.Distutils import build_ext
 except ImportError:
-   USE_CYTHON = False
+    USE_CYTHON = False
 else:
     USE_CYTHON = True
 
@@ -17,25 +17,23 @@ packages = find_packages()
 # versioning
 MAJOR = 0
 MINOR = 0
-MICRO = 14 
+MICRO = 16 
 ISRELEASED = False
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 
 info = {'name': 'pylj',
-                    'description': 'Simple teaching tool for classical MD simulation',
-                    'author': 'Andrew R. McCluskey',
-                    'author_email': 'arm61@bath.ac.uk',
-                    'packages': packages,
-                    'include_package_data': True,
-                    'url':'http://pythoninchemistry.org/pylj',
-                    'long_description':open('README.md').read(),
-                    'setup_requires': ['numpy', 'matplotlib'],
-                    'install_requires': ['numpy', 'matplotlib'],
-                    'version': VERSION,
-                    'license': 'MIT',
-                    'classifiers': ['Development Status :: 3 - Alpha', 'Intended Audience :: Science/Research', 'Topic :: Scientific/Engineering', 'Topic :: Scientific/Engineering :: Chemistry', 'Topic :: Scientific/Engineering :: Physics', 'Programming Language :: Python :: 3']
-                    }
+        'description': 'Simple teaching tool for classical MD simulation',
+        'author': 'Andrew R. McCluskey',
+        'author_email': 'arm61@bath.ac.uk',
+        'packages': packages,
+        'include_package_data': True,
+        'setup_requires': ['numpy', 'matplotlib'],
+        'install_requires': ['numpy', 'matplotlib'],
+        'version': VERSION,
+        'license': 'MIT',
+        'classifiers': ['Development Status :: 3 - Alpha', 'Intended Audience :: Science/Research', 'Topic :: Scientific/Engineering', 'Topic :: Scientific/Engineering :: Chemistry', 'Topic :: Scientific/Engineering :: Physics', 'Programming Language :: Python :: 3']
+        }
 
 ####################################################################
 # this is where setup starts
