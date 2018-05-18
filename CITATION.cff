@@ -3,6 +3,13 @@ message: If you use this software, please cite it as below. Also we would love f
 authors:
   - family-names: McCluskey
     given-names: Andrew
+	email: "arm61@bath.ac.uk"
+  - family-names: Morgan
+    given-names: Benjamin
+  - family-names: Edler 
+    given-names: Karen
+  - family-names: Parker
+    given-names: Stephen
 title: pylj
 version: 0.0.16
-date-released: 2018-05-15
+date-released: 2018-05-18
