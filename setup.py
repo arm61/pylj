@@ -17,9 +17,9 @@ packages = find_packages()
 # versioning
 MAJOR = 0
 MINOR = 0
-MICRO = '6b'
+MICRO = 14 
 ISRELEASED = False
-VERSION = '%d.%d.%s' % (MAJOR, MINOR, MICRO)
+VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 
 info = {'name': 'pylj',
@@ -28,6 +28,8 @@ info = {'name': 'pylj',
                     'author_email': 'arm61@bath.ac.uk',
                     'packages': packages,
                     'include_package_data': True,
+                    'url':'http://pythoninchemistry.org/pylj',
+                    'long_description':open('README.md').read(),
                     'setup_requires': ['numpy', 'matplotlib'],
                     'install_requires': ['numpy', 'matplotlib'],
                     'version': VERSION,
