@@ -1,6 +1,7 @@
 CITATION.cff
 MANIFEST.in
 README.md
+setup.cfg
 setup.py
 pylj/__init__.py
 pylj/examples.py
