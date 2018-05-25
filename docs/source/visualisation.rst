@@ -11,9 +11,7 @@ pylj comes with four different methods for visualising the simulation that is ta
 - Scattering
 - Interactions
 
-Full information about the existing classes can be found in the sample_ class documentation. 
-
-.. _sample: /en/latest/sample.html
+Full information about the existing classes can be found in the :doc:`sample` class documentation. 
 
 building your own class
 -----------------------
