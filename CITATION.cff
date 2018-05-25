@@ -3,7 +3,7 @@ message: If you use this software, please cite it as below. Also we would love f
 authors:
   - family-names: McCluskey
     given-names: Andrew
-	email: "arm61@bath.ac.uk"
+    email: "arm61@bath.ac.uk"
   - family-names: Morgan
     given-names: Benjamin
   - family-names: Edler 
