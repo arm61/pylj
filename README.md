@@ -10,7 +10,7 @@ Currently pylj will perform the simulation of a 2D argon system by molecular dyn
 
 ### example exercises
 
-We are currently in the process of developing example laboratory exercises that make use of pylj. These will include a study of ideal and non-ideal gas conditions and the effect of the phase transitions on the radial distribution function, scattering profiles and mean squared deviation.
+We are currently in the process of developing example laboratory exercises that make use of pylj. These will include a study of ideal and non-ideal gas conditions and the effect of the phase transitions on the radial distribution function, scattering profiles and mean squared deviation. Currently Andrew's interactive lecture on molecular dynamics for neutron scattering is available [here](http://pythoninchemistry.org/introduction-to-md-ntc).
 
 ### how to get pylj?
 
