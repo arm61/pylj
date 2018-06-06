@@ -1,6 +1,7 @@
 #include "comp.h"
 #include <math.h>
 #include <stdio.h>
+#include <iostream>
 
 void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc,
 		double *yacc, double *distances_arr, double *xforce, double *yforce, double box_l,
@@ -12,6 +13,7 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
     {
         xacc[ii] = 0.;
         yacc[ii] = 0.;
+        force_arr[ii] = 0;
     }
     int k = 0;
     int i = 0;
@@ -32,7 +34,7 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             }
             dr = sqrt(dx * dx + dy * dy);
             distances_arr[k] = dr;
-            f = (1.89774e-13 * pow(dr, -13.) - 5.1186e-19 * pow(dr, -7.));
+            f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
 	        force_arr[k] = f;
             xforce[i] += f * dx / dr;
             yforce[i] += f * dy / dr;
@@ -69,12 +71,12 @@ double compute_pressure(int number_of_particles, const double *xpos, const doubl
                 dy *= 1 - box_length / fabs(dy);
             }
             dr = sqrt(dx * dx + dy * dy);
-            f = (1.89774e-13 * pow(dr, -13.) - 5.1186e-19 * pow(dr, -7.));
-			pres += f * dr;
+            f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
+            pres += f * dr;
 		}
 	}
-	pres = 1. / (3 * box_length * box_length) * pres +
-	       ((double)number_of_particles / (box_length * box_length) * 1.3806e-3 * temperature);
+	pres = 1. / (2 * box_length * box_length) * pres +
+	       ((double)number_of_particles / (box_length * box_length) * 1.3806e-23 * temperature);
 	return pres;
 }
 

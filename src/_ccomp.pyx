@@ -56,8 +56,8 @@ def compute_forces(particles, distances, forces, box_length):
     for i in range(0, len_particles):
         xpos[i] = particles['xposition'][i]
         ypos[i] = particles['yposition'][i]
-        xacc[i] = particles['xacceleration'][i]
-        yacc[i] = particles['yacceleration'][i]
+        xacc[i] = 0
+        yacc[i] = 0
 
     compute_accelerations(len_particles, <const double*>xpos.data, <const double*>ypos.data, <double*>xacc.data,
                           <double*>yacc.data, <double*>distances_arr.data, <double*>xforce.data, <double*>yforce.data,

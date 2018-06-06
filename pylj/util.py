@@ -23,14 +23,19 @@ class System:
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     """
-    def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=5e-3):
+    def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=1e-14):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         if box_length <= 600:
-            self.box_length = box_length
+            self.box_length = box_length * 1e-10
         else:
             raise AttributeError('With a box length of {} the particles are probably too small to be seen in the '
                                  'viewer. Try something (much) less than 600.'.format(box_length))
+        if box_length >= 4:
+            self.box_length = box_length * 1e-10
+        else:
+            raise AttributeError('With a box length of {} the cell is too big to really hold more than one '
+                                 'particle.'.format(box_length))
         self.timestep_length = timestep_length
         self.particles = None
         if init_conf == 'square':
@@ -118,8 +123,8 @@ def calculate_temperature(particles):
     for i in range(0, particles['xposition'].size):
         v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] *
                     particles['yvelocity'][i])
-        k += 0.5 * v * v
-    return k / particles['xposition'].size
+        k += 66.234e-27 * v * v / ( 1.3806e-23 * 2 * particles['xposition'].size)
+    return k
 
 def calculate_msd(particles, initial_particles, box_length):
     """Determines the mean squared displacement of the particles in the system.

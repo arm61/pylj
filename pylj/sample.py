@@ -221,7 +221,7 @@ def setup_cellview(ax, system):
     """
     xpos = system.particles['xposition']
     ypos = system.particles['yposition']
-    mk = (1052.2 / (system.box_length - 0.78921) - 1.2174)
+    mk = (6.00555e-8 / (system.box_length - 2.2727e-10) - 1e-10)
     ax.plot(xpos, ypos, 'o', markersize=mk, markeredgecolor='black', color='#34a5daff')
     ax.set_xlim([0, system.box_length])
     ax.set_ylim([0, system.box_length])
@@ -253,11 +253,10 @@ def setup_rdfview(ax, system):
         The whole system information.
     """
     ax.plot([0], color='#34a5daff')
-    ax.set_xlim([0, system.box_length/2])
+    ax.set_xlim([0, system.box_length / 2])
     ax.set_yticks([])
     ax.set_ylabel('RDF', fontsize=16)
-    ax.set_xlabel('r/Å', fontsize=16)
-
+    ax.set_xlabel('r/m', fontsize=16)
 
 def setup_diffview(ax):
     """Builds the scattering profile visualisation pane.
@@ -269,8 +268,10 @@ def setup_diffview(ax):
     """
     ax.plot([0], color='#34a5daff')
     ax.set_yticks([])
-    ax.set_ylabel('log(I[q])', fontsize=16)
-    ax.set_xlabel('q/Å$^{-1}$', fontsize=16)
+    ax.set_xscale('log')
+    ax.set_yscale('symlog')
+    ax.set_ylabel('I(q)', fontsize=16)
+    ax.set_xlabel('q/m$^{-1}$', fontsize=16)
 
 
 def setup_pressureview(ax):
@@ -282,7 +283,7 @@ def setup_pressureview(ax):
         The axes position that the pane should be placed in.
     """
     ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Pressure/Pa', fontsize=16)
+    ax.set_ylabel(r'Pressure/$\times10^6$Pa m$^{-1}$', fontsize=16)
     ax.set_xlabel('Time/s', fontsize=16)
 
 
@@ -330,11 +331,11 @@ def update_rdfview(ax, system, average_rdf, r):
     r: array_like
         The radial distribution functions r for each timestep, to later be averaged.
     """
-    hist, bin_edges = np.histogram(system.distances, bins=np.linspace(0, system.box_length/2 + 0.5, 100))
+    hist, bin_edges = np.histogram(system.distances, bins=np.linspace(0, system.box_length/2 + 0.5e-10, 100))
     gr = hist / (system.number_of_particles * (system.number_of_particles / system.box_length ** 2) * np.pi *
-                 (bin_edges[:-1] + 0.5 / 2.) * 0.5)
+                 (bin_edges[:-1] + 0.5e-10 / 2.) * 0.5)
     average_rdf.append(gr)
-    x = bin_edges[:-1] + 0.5 / 2
+    x = bin_edges[:-1] + 0.5e-10 / 2
     r.append(x)
 
     line = ax.lines[0]
@@ -357,7 +358,7 @@ def update_diffview(ax, system, average_diff, q):
     q: array_like
         The scattering profile's q for each timestep, to later be averaged.
     """
-    qw = np.linspace(2 * np.pi /(system.box_length/2)*4, system.box_length/10, 100)
+    qw = np.logspace(np.log10(2 * np.pi /(system.box_length)), 10.47, num=1000, base=10)
     i = np.zeros_like(qw)
     for j in range(0, len(qw)):
         i[j] = np.sum(3.644 * (np.sin(qw[j] * system.distances))/(qw[j] * system.distances))
@@ -371,7 +372,7 @@ def update_diffview(ax, system, average_diff, q):
     line1.set_xdata(x2)
     line1.set_ydata(y2)
     ax.set_ylim([0, np.amax(y2) + np.amax(y2) * 0.05])
-    ax.set_xlim(0, np.amax(x2))
+    ax.set_xlim(np.amin(x2), np.amax(x2))
 
 
 def update_forceview(ax, system):
@@ -385,11 +386,11 @@ def update_forceview(ax, system):
         The whole system information.
     """
     line = ax.lines[0]
-    line.set_ydata(system.force_sample * 1e-10)
+    line.set_ydata(system.force_sample)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length) 
-    ax.set_ylim(np.amin(system.force_sample * 1e-10)-np.amax(system.force_sample * 1e-10) * 0.05,
-                np.amax(system.force_sample * 1e-10)+np.amax(system.force_sample * 1e-10) * 0.05)
+    ax.set_ylim(np.amin(system.force_sample)-np.amax(system.force_sample) * 0.05,
+                np.amax(system.force_sample)+np.amax(system.force_sample) * 0.05)
 
 
 def update_tempview(ax, system):
@@ -421,11 +422,12 @@ def update_pressureview(ax, system):
         The whole system information.
     """
     line = ax.lines[0]
-    line.set_ydata(system.pressure_sample * 1e10)
+    data = system.pressure_sample * 1e6
+    line.set_ydata(data)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length)
-    ax.set_ylim(np.amin(system.pressure_sample * 1e10) - np.amax(system.pressure_sample * 1e10) * 0.05,
-                np.amax(system.pressure_sample * 1e10) + np.amax(system.pressure_sample * 1e10) * 0.05)
+    ax.set_ylim(np.amin(data) - np.amax(data) * 0.05,
+                np.amax(data) + np.amax(data) * 0.05)
 
 
 def setup_msdview(ax):
@@ -437,7 +439,7 @@ def setup_msdview(ax):
         The axes position that the pane should be placed in.
     """
     ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('MSD/Å$^2$', fontsize=16)
+    ax.set_ylabel('MSD/m$^2$', fontsize=16)
     ax.set_xlabel('Time/s', fontsize=16)
 
 

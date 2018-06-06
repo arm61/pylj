@@ -2,7 +2,7 @@ import numpy as np
 from pylj import comp, util
 
 
-def initialise(number_of_particles, temperature, box_length, init_conf, timestep_length=5e-3):
+def initialise(number_of_particles, temperature, box_length, init_conf, timestep_length=1e-14):
     """Initialise the particle positions (this can be either as a square or random arrangement), velocities (based on
     the temperature defined, and calculate the initial forces/accelerations.
 
@@ -29,10 +29,11 @@ def initialise(number_of_particles, temperature, box_length, init_conf, timestep
     """
     system = util.System(number_of_particles, temperature, box_length, init_conf=init_conf,
                          timestep_length=timestep_length)
-    v = np.sqrt(2 * system.init_temp)
-    theta = 2 * np.pi * np.random.randn(system.particles.size)
-    system.particles['xvelocity'] = v * np.cos(theta)
-    system.particles['yvelocity'] = v * np.sin(theta)
+    v = np.random.rand(system.particles.size, 2) - 0.5
+    v2sum = np.average(np.square(v))
+    v = (v - np.average(v)) * np.sqrt(2 * system.init_temp / (v2sum))
+    system.particles['xvelocity'] = v[:, 0]
+    system.particles['yvelocity'] = v[:, 1]
     system.particles, system.distances, system.forces = comp.compute_forces(system.particles, system.distances,
                                                                             system.forces, system.box_length)
     return system
@@ -94,9 +95,9 @@ def sample(particles, box_length, initial_particles, system):
         arrays.
     """
     temperature_new = util.calculate_temperature(particles)
+    system.temperature_sample = np.append(system.temperature_sample, temperature_new)
     pressure_new = comp.calculate_pressure(particles, box_length, temperature_new)
     msd_new = util.calculate_msd(particles, initial_particles, box_length)
-    system.temperature_sample = np.append(system.temperature_sample, temperature_new)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.force_sample = np.append(system.force_sample, np.sum(system.forces))
     system.msd_sample = np.append(system.msd_sample, msd_new)
@@ -151,4 +152,3 @@ def update_velocities(velocities, accelerations, timestep_length):
     velocities[0] += 0.5 * accelerations[0] * timestep_length
     velocities[1] += 0.5 * accelerations[1] * timestep_length
     return [velocities[0], velocities[1]]
-
