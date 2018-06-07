@@ -22,7 +22,7 @@ To run pylj locally we recommend installing the [anaconda](http://pythoninchemis
 
 ### how to cite pylj 
 
-Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would use the following citation. Andrew R. McCluskey, Benjamin J. Morgan, Karen J. Edler, Stephen C. Parker (2018). pylj, version 0.0.6a. Released: 2018-05-15, DOI: 10.5281/zenodo.1212792.
+Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would cite the DOI from the Zenodo link below.
 
 <p><a href="https://zenodo.org/badge/latestdoi/119863480"><img src="https://zenodo.org/badge/119863480.svg" alt="DOI"></a><a href='http://pylj.readthedocs.io/en/latest/?badge=latest'><img src='https://readthedocs.org/projects/pylj/badge/?version=latest' alt='Documentation Status' /></a></p>
 
