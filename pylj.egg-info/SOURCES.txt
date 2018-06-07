@@ -1,10 +1,9 @@
-CITATION.cff
 MANIFEST.in
 README.md
-setup.cfg
 setup.py
 pylj/__init__.py
 pylj/examples.py
+pylj/mc.py
 pylj/md.py
 pylj/sample.py
 pylj/util.py
