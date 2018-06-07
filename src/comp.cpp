@@ -44,6 +44,37 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
     }
 }
 
+void compute_energies(int len_particles, const double *xpos, const double *ypos, double *distances_arr, double box_l,
+                      double *energy_arr)
+{
+    int ii = 0;
+    double dx, dy, dr, e;
+    int k = 0;
+    int i = 0;
+    for (i = 0; i < len_particles - 1; i++)
+    {
+        int j = 0;
+        for (j = i + 1; j < len_particles; j++)
+        {
+            dx = xpos[i] - xpos[j];
+            dy = ypos[i] - ypos[j];
+            if (fabs(dx) > 0.5 * box_l)
+            {
+                dx *= 1 - box_l / fabs(dx);
+            }
+            if (fabs(dy) > 0.5 * box_l)
+            {
+                dy *= 1 - box_l / fabs(dy);
+            }
+            dr = sqrt(dx * dx + dy * dy);
+            distances_arr[k] = dr;
+            e = (1.363e-134 * pow(dr, -12.) - 9.273e-78 * pow(dr, -6.));
+	        energy_arr[k] = e;
+	        k++;
+	    }
+    }
+}
+
 double compute_pressure(int number_of_particles, const double *xpos, const double *ypos, double box_length,
                         double temperature)
 {

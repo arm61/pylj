@@ -1,6 +1,6 @@
 ## todo
 
+- add citation file and function
 - unit testing 
 - complete example lesssons
-- add Monte-Carlo
 - add energy minimisation

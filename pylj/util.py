@@ -49,11 +49,14 @@ class System:
         self.time = 0.
         self.distances = np.zeros(self.number_of_pairs())
         self.forces = np.zeros(self.number_of_pairs())
+        self.energies = np.zeros(self.number_of_pairs())
         self.temperature_sample = np.array([])
         self.pressure_sample = np.array([])
         self.force_sample = np.array([])
         self.msd_sample = np.array([])
+        self.energy_sample = np.array([])
         self.initial_particles = np.array(self.particles)
+        self.position_store = [0, 0]
 
     def number_of_pairs(self):
         """Calculates the number of pairwise interactions in the simulation.

@@ -100,7 +100,6 @@ class Interactions(object):
 
         self.fig.canvas.draw()
 
-
 class JustCell(object):
     """The JustCell class will plot just the particles positions. This is a simplistic sampling class for quick
     visualisation.
@@ -131,6 +130,39 @@ class JustCell(object):
         """
         update_cellview(self.ax, system)
 
+        self.fig.canvas.draw()
+
+
+class Energy(object):
+    """The RDF class will plot the particle positions and radial distribution function. This sampling class is can be
+    used to show the relative RDFs for solid, liquid, gas.
+
+    Parameters
+    ----------
+    system: System
+        The whole system information.
+    """
+    def __init__(self, system):
+        fig, ax = environment(2)
+
+        setup_cellview(ax[0], system)
+        setup_energyview(ax[1])
+
+        plt.tight_layout()
+        self.ax = ax
+        self.fig = fig
+
+    def update(self, system):
+        """This updates the visualisation environment. Often this can be slower than the cythonised force calculation
+        so used is wisely.
+
+        Parameters
+        ----------
+        system: System
+            The whole system information.
+        """
+        update_cellview(self.ax[0], system)
+        update_energyview(self.ax[1], system)
         self.fig.canvas.draw()
 
 
@@ -240,6 +272,18 @@ def setup_forceview(ax):
     ax.plot([0], color='#34a5daff')
     ax.set_ylabel('Force/N', fontsize=16)
     ax.set_xlabel('Time/s', fontsize=16)
+
+def setup_energyview(ax):
+    """Builds the total force visualisation pane.
+
+    Parameters
+    ----------
+    ax: Axes object
+        The axes position that the pane should be placed in.
+    """
+    ax.plot([0], color='#34a5daff')
+    ax.set_ylabel('Energy/J', fontsize=16)
+    ax.set_xlabel('Step', fontsize=16)
 
 
 def setup_rdfview(ax, system):
@@ -391,6 +435,24 @@ def update_forceview(ax, system):
     ax.set_xlim(0, system.step * system.timestep_length) 
     ax.set_ylim(np.amin(system.force_sample)-np.amax(system.force_sample) * 0.05,
                 np.amax(system.force_sample)+np.amax(system.force_sample) * 0.05)
+
+
+def update_energyview(ax, system):
+    """Updates the total force visualisation pane.
+
+    Parameters
+    ----------
+    ax: Axes object
+        The axes position that the pane should be placed in.
+    system: System
+        The whole system information.
+    """
+    line = ax.lines[0]
+    line.set_ydata(system.energy_sample)
+    line.set_xdata(np.arange(0, system.step+1))
+    ax.set_xlim(0, system.step)
+    ax.set_ylim(np.amin(system.energy_sample)-np.abs(np.amax(system.energy_sample)) * 0.05,
+                np.amax(system.energy_sample)+np.abs(np.amax(system.energy_sample)) * 0.05)
 
 
 def update_tempview(ax, system):

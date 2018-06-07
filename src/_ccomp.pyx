@@ -6,6 +6,8 @@ cimport numpy as np
 cdef extern from "comp.h":
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
                                double *distances_arr, double box_l, double *force_arr)
+    void compute_energies(int len_particles, const double *xpos, const double *ypos, double *distances_arr, double box_l,
+                        double *energy_arr)
     double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, double box_length,
                             double temperature)
     void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double tempature)
@@ -18,8 +20,8 @@ def compute_forces(particles, distances, forces, box_length):
     """Calculates the forces and therefore the accelerations on each of the particles in the simulation. This uses a
     12-6 Lennard-Jones potential model for Argon with values:
 
-    - A = 1.89774e-13 J Å :math:`^{12}`
-    - B = 5.1186e-19 J Å :math:`^6`
+    - A = 1.363e-134 J m :math:`^{12}`
+    - B = 9.273e-78 J m :math:`^6`
 
     Parameters
     ----------
@@ -67,6 +69,53 @@ def compute_forces(particles, distances, forces, box_length):
     forces = force_arr
 
     return particles, distances, forces
+
+def compute_energy(particles, distances, energies, box_length):
+    """Calculates the total energy of the simulation. This uses a
+    12-6 Lennard-Jones potential model for Argon with values:
+
+    - A = 1.363e-134 J m :math:`^{12}`
+    - B = 9.273e-78 J m :math:`^6`
+
+    Parameters
+    ----------
+    particles: util.particle_dt, array_like
+        Information about the particles.
+    box_length: float
+        Length of a single dimension of the simulation square, in Angstrom.
+    distances: float, array_like
+        Old distances between each of the pairs of particles in the simulation.
+    energies: float, array_like
+        Old energies between each of the pairs of particles in the simulation.
+
+    Returns
+    -------
+    util.particle_dt, array_like
+        Information about particles, with updated accelerations and forces.
+    float, array_like
+        Current distances between pairs of particles in the simulation.
+    float, array_like
+        Current energies between pairs of particles in the simulation.
+    """
+    cdef int len_particles = particles['xposition'].size
+    cdef double box_l = box_length
+    cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(len_particles)
+    cdef np.ndarray[DTYPE_t, ndim=1] ypos = np.zeros(len_particles)
+    cdef np.ndarray[DTYPE_t, ndim=1] distances_arr = np.zeros(len(distances))
+    cdef np.ndarray[DTYPE_t, ndim=1] energy_arr = np.zeros(len(distances))
+
+    for i in range(0, len_particles):
+        xpos[i] = particles['xposition'][i]
+        ypos[i] = particles['yposition'][i]
+
+
+    compute_energies(len_particles, <const double*>xpos.data, <const double*>ypos.data,
+                          <double*>distances_arr.data, box_l, <double*>energy_arr.data)
+
+    distances = distances_arr
+    energies = energy_arr
+
+    return particles, distances, energies
 
 def calculate_pressure(particles, box_length, temperature):
     r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:
