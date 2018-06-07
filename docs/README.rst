@@ -13,5 +13,5 @@ This is the documention for the open-source Python project, pylj. A library desi
 
 how to cite pylj
 ----------------
-Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would use the following citation.
-Andrew R. McCluskey, Benjamin J. Morgan, Karen J. Edler, Stephen C. Parker (2018). pylj, version 0.0.6a. Released: 2018-05-15, DOI: 10.5281/zenodo.1212792. 
+Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would cite the Zenodo DO above.  
+
