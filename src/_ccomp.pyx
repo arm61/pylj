@@ -5,8 +5,7 @@ cimport numpy as np
 
 cdef extern from "comp.h":
     void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
-                               double *distances_arr, double *xforce, double *yforce, double box_l,
-                               double *force_arr)
+                               double *distances_arr, double box_l, double *force_arr)
     double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, double box_length,
                             double temperature)
     void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double tempature)
@@ -50,8 +49,6 @@ def compute_forces(particles, distances, forces, box_length):
     cdef np.ndarray[DTYPE_t, ndim=1] yacc = np.zeros(len_particles)
     cdef np.ndarray[DTYPE_t, ndim=1] distances_arr = np.zeros(len(distances))
     cdef np.ndarray[DTYPE_t, ndim=1] force_arr = np.zeros(len(distances))
-    cdef np.ndarray[DTYPE_t, ndim=1] xforce = np.zeros(len_particles)
-    cdef np.ndarray[DTYPE_t, ndim=1] yforce = np.zeros(len_particles)
 
     for i in range(0, len_particles):
         xpos[i] = particles['xposition'][i]
@@ -60,14 +57,11 @@ def compute_forces(particles, distances, forces, box_length):
         yacc[i] = 0
 
     compute_accelerations(len_particles, <const double*>xpos.data, <const double*>ypos.data, <double*>xacc.data,
-                          <double*>yacc.data, <double*>distances_arr.data, <double*>xforce.data, <double*>yforce.data,
-                          box_l, <double*>force_arr.data)
+                          <double*>yacc.data, <double*>distances_arr.data, box_l, <double*>force_arr.data)
 
     for i in range(0, len_particles):
         particles['xacceleration'][i] = xacc[i]
         particles['yacceleration'][i] = yacc[i]
-        particles['xforce'][i] = xforce[i]
-        particles['yforce'][i] = yforce[i]
 
     distances = distances_arr
     forces = force_arr

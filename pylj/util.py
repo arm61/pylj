@@ -165,5 +165,4 @@ def particle_dt():
     """
     return np.dtype([('xposition', np.float64), ('yposition', np.float64), ('xvelocity', np.float64),
                      ('yvelocity', np.float64), ('xacceleration', np.float64), ('yacceleration', np.float64),
-                     ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('xforce', np.float64),
-                     ('yforce', np.float64), ('energy', np.float64)])
+                     ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('energy', np.float64)])
