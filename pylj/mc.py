@@ -40,8 +40,6 @@ def sample(particles, box_length, total_energy, system):
         Information about the particles.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
-    initial_particles: util.particle_dt, array-like
-        Information about the initial particle conformation.
     total_energy: float
         The total system energy.
     system: System
