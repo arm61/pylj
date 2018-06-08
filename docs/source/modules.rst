@@ -6,6 +6,7 @@ pylj modules
 
    comp
    examples
+   mc
    md
    sample
    util
