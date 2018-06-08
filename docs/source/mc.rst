@@ -1,4 +1,4 @@
-pylj\.md
+pylj\.mc
 ========
 
 Functions related to the Monte-Carlo components of pylj. 
