@@ -69,7 +69,7 @@ def compute_forces(particles, box_length):
 
     return particles, distances_arr, force_arr, energy_arr
 
-def compute_energy(particles, distances, energies, box_length):
+def compute_energy(particles, box_length):
     """Calculates the total energy of the simulation. This uses a
     12-6 Lennard-Jones potential model for Argon with values:
 
@@ -82,10 +82,6 @@ def compute_energy(particles, distances, energies, box_length):
         Information about the particles.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
-    distances: float, array_like
-        Old distances between each of the pairs of particles in the simulation.
-    energies: float, array_like
-        Old energies between each of the pairs of particles in the simulation.
 
     Returns
     -------
@@ -97,11 +93,12 @@ def compute_energy(particles, distances, energies, box_length):
         Current energies between pairs of particles in the simulation.
     """
     cdef int len_particles = particles['xposition'].size
+    pairs = int((len_particles - 1) * len_particles / 2)
     cdef double box_l = box_length
     cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(len_particles)
     cdef np.ndarray[DTYPE_t, ndim=1] ypos = np.zeros(len_particles)
-    cdef np.ndarray[DTYPE_t, ndim=1] distances_arr = np.zeros(len(distances))
-    cdef np.ndarray[DTYPE_t, ndim=1] energy_arr = np.zeros(len(distances))
+    cdef np.ndarray[DTYPE_t, ndim=1] distances_arr = np.zeros(pairs)
+    cdef np.ndarray[DTYPE_t, ndim=1] energy_arr = np.zeros(pairs)
 
     for i in range(0, len_particles):
         xpos[i] = particles['xposition'][i]
@@ -111,10 +108,7 @@ def compute_energy(particles, distances, energies, box_length):
     compute_energies(len_particles, <const double*>xpos.data, <const double*>ypos.data,
                           <double*>distances_arr.data, box_l, <double*>energy_arr.data)
 
-    distances = distances_arr
-    energies = energy_arr
-
-    return particles, distances, energies
+    return particles, distances_arr, energy_arr
 
 def calculate_pressure(particles, box_length, temperature):
     r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:

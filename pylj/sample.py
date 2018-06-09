@@ -454,7 +454,7 @@ def update_energyview(ax, system):
         ax.set_xlim(0, system.step * system.timestep_length)
         ax.set_xlabel('Time/s', fontsize=16)
     else:
-        line.set_xdata(np.arange(0, system.step))
+        line.set_xdata(np.arange(0, system.step+1))
         ax.set_xlim(0, system.step)
     ax.set_ylim(np.amin(system.energy_sample)-np.abs(np.amax(system.energy_sample)) * 0.05,
                 np.amax(system.energy_sample)+np.abs(np.amax(system.energy_sample)) * 0.05)
