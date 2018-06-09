@@ -4,10 +4,10 @@
 #include <iostream>
 
 void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc,
-		double *yacc, double *distances_arr, double box_l, double *force_arr)
+		double *yacc, double *distances_arr, double box_l, double *force_arr, double *energy_arr)
 {
     int ii = 0;
-    double dx, dy, dr, f;
+    double dx, dy, dr, f, e;
     for (ii = 0; ii < len_particles; ii++)
     {
         xacc[ii] = 0.;
@@ -35,6 +35,8 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             distances_arr[k] = dr;
             f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
 	        force_arr[k] = f;
+	        e = (1.363e-134 * pow(dr, -12.) - 9.273e-78 * pow(dr, -6.));
+	        energy_arr[k] = e;
 	        k++;
             xacc[i] += (f * dx / dr) / 66.234e-27;
             yacc[i] += (f * dy / dr) / 66.234e-27;

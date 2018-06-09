@@ -1,5 +1,5 @@
 void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
-                           double *distances_arr, double box_l, double *force_arr);
+                           double *distances_arr, double box_l, double *force_arr, double *energy_arr);
 
 void compute_energies(int len_particles, const double *xpos, const double *ypos, double *distances_arr, double box_l,
                     double *energy_arr);

@@ -33,8 +33,8 @@ def initialise(number_of_particles, temperature, box_length, init_conf, timestep
     v = (v - np.average(v)) * np.sqrt(2 * system.init_temp / (v2sum))
     system.particles['xvelocity'] = v[:, 0]
     system.particles['yvelocity'] = v[:, 1]
-    system.particles, system.distances, system.forces = comp.compute_forces(system.particles, system.distances,
-                                                                            system.forces, system.box_length)
+    system.particles, system.distances, system.forces, system.energies = comp.compute_forces(system.particles,
+                                                                                             system.box_length)
     return system
 
 def velocity_verlet(particles, timestep_length, box_length):
@@ -99,6 +99,7 @@ def sample(particles, box_length, initial_particles, system):
     msd_new = util.calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.force_sample = np.append(system.force_sample, np.sum(system.forces))
+    system.energy_sample = np.append(system.energy_sample, np.sum(system.energies))
     system.msd_sample = np.append(system.msd_sample, msd_new)
     return system
 

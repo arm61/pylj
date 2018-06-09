@@ -449,7 +449,7 @@ def update_energyview(ax, system):
     """
     line = ax.lines[0]
     line.set_ydata(system.energy_sample)
-    line.set_xdata(np.arange(0, system.step+1))
+    line.set_xdata(np.arange(0, system.step))
     ax.set_xlim(0, system.step)
     ax.set_ylim(np.amin(system.energy_sample)-np.abs(np.amax(system.energy_sample)) * 0.05,
                 np.amax(system.energy_sample)+np.abs(np.amax(system.energy_sample)) * 0.05)
