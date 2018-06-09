@@ -4,5 +4,7 @@
 
 All development discussion can take place on [Slack](https://pylj.slack.com) .
 
-<p><a href="https://zenodo.org/badge/latestdoi/119863480"><img src="https://zenodo.org/badge/119863480.svg" alt="DOI"></a><a href='http://pylj.readthedocs.io/en/latest/?badge=latest'><img src='https://readthedocs.org/projects/pylj/badge/?version=latest' alt='Documentation Status' /></a></p>
+[![DOI](https://zenodo.org/badge/119863480.svg)](https://zenodo.org/badge/latestdoi/119863480)
+[![Documentation Status](https://readthedocs.org/projects/falass/badge/?version=latest)](https://falass.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/pylj.svg)](https://badge.fury.io/py/pylj)
 
