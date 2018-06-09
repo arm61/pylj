@@ -13,5 +13,5 @@ This is the documention for the open-source Python project, pylj. A library desi
 
 how to cite pylj
 ----------------
-Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would cite the Zenodo DO above.  
+Thank you for using pylj. If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would cite the Zenodo DOI above, alternatively run :code:`pylj.__cite__()` in the Jupyter notebook to launch the a webpage to the Zenodo page.
 
