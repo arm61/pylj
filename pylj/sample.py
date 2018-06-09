@@ -282,7 +282,7 @@ def setup_energyview(ax):
         The axes position that the pane should be placed in.
     """
     ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Energy/J', fontsize=16)
+    ax.set_ylabel('Potential Energy/J', fontsize=16)
     ax.set_xlabel('Step', fontsize=16)
 
 
@@ -449,8 +449,13 @@ def update_energyview(ax, system):
     """
     line = ax.lines[0]
     line.set_ydata(system.energy_sample)
-    line.set_xdata(np.arange(0, system.step))
-    ax.set_xlim(0, system.step)
+    if system.force_sample != []:
+        line.set_xdata(np.arange(0, system.step) * system.timestep_length)
+        ax.set_xlim(0, system.step * system.timestep_length)
+        ax.set_xlabel('Time/s', fontsize=16)
+    else:
+        line.set_xdata(np.arange(0, system.step))
+        ax.set_xlim(0, system.step)
     ax.set_ylim(np.amin(system.energy_sample)-np.abs(np.amax(system.energy_sample)) * 0.05,
                 np.amax(system.energy_sample)+np.abs(np.amax(system.energy_sample)) * 0.05)
 

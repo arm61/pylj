@@ -132,7 +132,7 @@ Hopefully, it is clear how a custom enivornment could be created. Currently ther
 - :code:`pressureview`: the instantaneous pressure against time
 - :code:`tempview`: the instantaneous temperature against time
 - :code:`forceview`: the total force against time
-- :code:`energyview`: the total energy against time (only compatible with MC)
+- :code:`energyview`: the total energy against time
 
 For those plotted against time, the samples are stored as np.arrays in the System object. To design a new sampling pane based on a different variable it may be necessary to impliment this in the System class, and the sampling of it would be added to the sample function in the particular module being used e.g. :code:`md`. 
 
