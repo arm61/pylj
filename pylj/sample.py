@@ -100,6 +100,7 @@ class Interactions(object):
 
         self.fig.canvas.draw()
 
+
 class JustCell(object):
     """The JustCell class will plot just the particles positions. This is a simplistic sampling class for quick
     visualisation.
@@ -273,6 +274,7 @@ def setup_forceview(ax):
     ax.set_ylabel('Force/N', fontsize=16)
     ax.set_xlabel('Time/s', fontsize=16)
 
+
 def setup_energyview(ax):
     """Builds the total force visualisation pane.
 
@@ -301,6 +303,7 @@ def setup_rdfview(ax, system):
     ax.set_yticks([])
     ax.set_ylabel('RDF', fontsize=16)
     ax.set_xlabel('r/m', fontsize=16)
+
 
 def setup_diffview(ax):
     """Builds the scattering profile visualisation pane.
@@ -402,7 +405,7 @@ def update_diffview(ax, system, average_diff, q):
     q: array_like
         The scattering profile's q for each timestep, to later be averaged.
     """
-    qw = np.logspace(np.log10(2 * np.pi /(system.box_length)), 10.47, num=1000, base=10)
+    qw = np.logspace(np.log10(2 * np.pi / system.box_length), 10.47, num=1000, base=10)
     i = np.zeros_like(qw)
     for j in range(0, len(qw)):
         i[j] = np.sum(3.644 * (np.sin(qw[j] * system.distances))/(qw[j] * system.distances))
