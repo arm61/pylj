@@ -23,7 +23,8 @@ class System:
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     """
-    def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=1e-14):
+    def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=1e-14,
+                 cut_off=15):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         if box_length <= 600:
@@ -45,6 +46,7 @@ class System:
         else:
             raise NotImplementedError('The initial configuration type {} is not recognised. '
                                       'Available options are: square or random'.format(init_conf))
+        self.cut_off = cut_off * 1e-10
         self.step = 0
         self.time = 0.
         self.distances = np.zeros(self.number_of_pairs())

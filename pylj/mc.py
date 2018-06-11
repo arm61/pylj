@@ -52,7 +52,7 @@ def sample(particles, box_length, total_energy, system):
     """
     temperature_new = util.calculate_temperature(particles)
     system.temperature_sample = np.append(system.temperature_sample, temperature_new)
-    pressure_new = comp.calculate_pressure(particles, box_length, temperature_new)
+    pressure_new = comp.calculate_pressure(particles, box_length, temperature_new, system.cut_off)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.energy_sample = np.append(system.energy_sample, total_energy)
     return system
@@ -73,7 +73,7 @@ def select_random_particle(particles):
     float, array_like:
         The current position of the chosen particle.
     """
-    random_particle = np.random.randint(0, particles.size-1)
+    random_particle = np.random.randint(0, particles.size)
     position_store = [particles['xposition'][random_particle], particles['yposition'][random_particle]]
     return random_particle, position_store
 

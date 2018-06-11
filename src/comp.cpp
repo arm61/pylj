@@ -4,7 +4,7 @@
 #include <iostream>
 
 void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc,
-		double *yacc, double *distances_arr, double box_l, double *force_arr, double *energy_arr)
+		double *yacc, double *distances_arr, double box_l, double *force_arr, double *energy_arr, double cut)
 {
     int ii = 0;
     double dx, dy, dr, f, e;
@@ -33,21 +33,29 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             }
             dr = sqrt(dx * dx + dy * dy);
             distances_arr[k] = dr;
-            f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
-	        force_arr[k] = f;
-	        e = (1.363e-134 * pow(dr, -12.) - 9.273e-78 * pow(dr, -6.));
-	        energy_arr[k] = e;
-	        k++;
-            xacc[i] += (f * dx / dr) / 66.234e-27;
-            yacc[i] += (f * dy / dr) / 66.234e-27;
-            xacc[j] -= (f * dx / dr) / 66.234e-27;
-            yacc[j] -= (f * dy / dr) / 66.234e-27;
+            if (dr <= cut)
+            {
+                f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
+                force_arr[k] = f;
+                e = (1.363e-134 * pow(dr, -12.) - 9.273e-78 * pow(dr, -6.));
+                energy_arr[k] = e;
+                xacc[i] += (f * dx / dr) / 66.234e-27;
+                yacc[i] += (f * dy / dr) / 66.234e-27;
+                xacc[j] -= (f * dx / dr) / 66.234e-27;
+                yacc[j] -= (f * dy / dr) / 66.234e-27;
+            }
+            else
+            {
+                force_arr[k] = 0.;
+                energy_arr[k] = 0.;
+            }
+            k++;
         }
     }
 }
 
 void compute_energies(int len_particles, const double *xpos, const double *ypos, double *distances_arr, double box_l,
-                      double *energy_arr)
+                      double *energy_arr, double cut)
 {
     int ii = 0;
     double dx, dy, dr, e;
@@ -70,15 +78,22 @@ void compute_energies(int len_particles, const double *xpos, const double *ypos,
             }
             dr = sqrt(dx * dx + dy * dy);
             distances_arr[k] = dr;
-            e = (1.363e-134 * pow(dr, -12.) - 9.273e-78 * pow(dr, -6.));
-	        energy_arr[k] = e;
+            if (dr <= cut)
+            {
+                e = (1.363e-134 * pow(dr, -12.) - 9.273e-78 * pow(dr, -6.));
+	            energy_arr[k] = e;
+            }
+            else
+            {
+                energy_arr[k] = 0.;
+            }
 	        k++;
 	    }
     }
 }
 
 double compute_pressure(int number_of_particles, const double *xpos, const double *ypos, double box_length,
-                        double temperature)
+                        double temperature, double cut)
 {
 	int k = 0;
 	double pres = 0.;
@@ -99,8 +114,11 @@ double compute_pressure(int number_of_particles, const double *xpos, const doubl
                 dy *= 1 - box_length / fabs(dy);
             }
             dr = sqrt(dx * dx + dy * dy);
-            f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
-            pres += f * dr;
+            if (dr <= cut)
+            {
+                f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
+                pres += f * dr;
+            }
 		}
 	}
 	pres = 1. / (2 * box_length * box_length) * pres +
