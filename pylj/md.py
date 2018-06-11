@@ -30,13 +30,14 @@ def initialise(number_of_particles, temperature, box_length, init_conf, timestep
                          timestep_length=timestep_length)
     v = np.random.rand(system.particles.size, 2) - 0.5
     v2sum = np.average(np.square(v))
-    v = (v - np.average(v)) * np.sqrt(2 * system.init_temp / (v2sum))
+    v = (v - np.average(v)) * np.sqrt(2 * system.init_temp / v2sum)
     system.particles['xvelocity'] = v[:, 0]
     system.particles['yvelocity'] = v[:, 1]
     system.particles, system.distances, system.forces, system.energies = comp.compute_forces(system.particles,
                                                                                              system.box_length,
                                                                                              system.cut_off)
     return system
+
 
 def velocity_verlet(particles, timestep_length, box_length):
     """Uses the Velocity-Verlet integrator to move forward in time. The
@@ -67,12 +68,14 @@ def velocity_verlet(particles, timestep_length, box_length):
                                                                         [particles['xacceleration'],
                                                                          particles['yacceleration']], timestep_length,
                                                                         box_length)
-    [particles['xvelocity'], particles['yvelocity']] = update_velocities([particles['xvelocity'], particles['yvelocity']],
-                                                                       [particles['xacceleration'],
-                                                                        particles['yacceleration']], timestep_length)
+    [particles['xvelocity'], particles['yvelocity']] = update_velocities([particles['xvelocity'],
+                                                                          particles['yvelocity']],
+                                                                         [particles['xacceleration'],
+                                                                          particles['yacceleration']], timestep_length)
     particles['xprevious_position'] = xposition_store
     particles['yprevious_position'] = yposition_store
     return particles
+
 
 def sample(particles, box_length, initial_particles, system):
     """Sample parameters of interest in the simulation.
@@ -104,6 +107,7 @@ def sample(particles, box_length, initial_particles, system):
     system.msd_sample = np.append(system.msd_sample, msd_new)
     return system
 
+
 def update_positions(positions, velocities, accelerations, timestep_length, box_length):
     """Update the particle positions using the Velocity-Verlet integrator.
 
@@ -131,6 +135,7 @@ def update_positions(positions, velocities, accelerations, timestep_length, box_
     positions[0] = positions[0] % box_length
     positions[1] = positions[1] % box_length
     return [positions[0], positions[1]]
+
 
 def update_velocities(velocities, accelerations, timestep_length):
     """Update the particle velocities using the Velocity-Verlet algoritm.

@@ -93,6 +93,7 @@ class System:
         self.particles['xposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)
         self.particles['yposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)   
 
+
 def pbc_correction(position, cell):
     """Correct for the periodic boundary condition.
 
@@ -111,6 +112,7 @@ def pbc_correction(position, cell):
         position *= 1 - cell / np.abs(position)
     return position
 
+
 def calculate_temperature(particles):
     """Determine the instantaneous temperature of the system.
 
@@ -128,8 +130,9 @@ def calculate_temperature(particles):
     for i in range(0, particles['xposition'].size):
         v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] *
                     particles['yvelocity'][i])
-        k += 66.234e-27 * v * v / ( 1.3806e-23 * 2 * particles['xposition'].size)
+        k += 66.234e-27 * v * v / (1.3806e-23 * 2 * particles['xposition'].size)
     return k
+
 
 def calculate_msd(particles, initial_particles, box_length):
     """Determines the mean squared displacement of the particles in the system.
@@ -151,12 +154,13 @@ def calculate_msd(particles, initial_particles, box_length):
     dx = particles['xposition'] - initial_particles['xposition']
     dy = particles['yposition'] - initial_particles['yposition']
     for i in range(0, particles['xposition'].size):
-        if (np.abs(dx[i]) > 0.5 * box_length):
+        if np.abs(dx[i]) > 0.5 * box_length:
             dx[i] *= 1 - box_length / np.abs(dx[i])
-        if (np.abs(dy[i]) > 0.5 * box_length):
+        if np.abs(dy[i]) > 0.5 * box_length:
             dy[i] *= 1 - box_length / np.abs(dy[i])
     dr = np.sqrt(dx * dx + dy * dy)
     return np.average(dr ** 2)
+
 
 def particle_dt():
     """Builds the data type for the particles, this consists of:
