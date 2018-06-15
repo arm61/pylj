@@ -1,7 +1,8 @@
 ## todo
 
 - improve citation methods
-- clean up examples
-- unit testing 
+- testing for md sample function
+- testing for sample module
 - complete example lesssons
+- create example notebooks 
 - add energy minimisation
