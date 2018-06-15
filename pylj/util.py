@@ -35,7 +35,7 @@ class System:
         if box_length >= 4:
             self.box_length = box_length * 1e-10
         else:
-            raise AttributeError('With a box length of {} the cell is too big to really hold more than one '
+            raise AttributeError('With a box length of {} the cell is too small to really hold more than one '
                                  'particle.'.format(box_length))
         self.timestep_length = timestep_length
         self.particles = None

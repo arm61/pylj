@@ -30,15 +30,11 @@ def initialise(number_of_particles, temperature, box_length, init_conf):
     return system
 
 
-def sample(particles, box_length, total_energy, system):
+def sample(total_energy, system):
     """Sample parameters of interest in the simulation.
 
     Parameters
     ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
     total_energy: float
         The total system energy.
     system: System
@@ -50,10 +46,6 @@ def sample(particles, box_length, total_energy, system):
         Details about the whole system, with the new temperature, pressure, msd, and force appended to the appropriate
         arrays.
     """
-    temperature_new = util.calculate_temperature(particles)
-    system.temperature_sample = np.append(system.temperature_sample, temperature_new)
-    pressure_new = comp.calculate_pressure(particles, box_length, temperature_new, system.cut_off)
-    system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.energy_sample = np.append(system.energy_sample, total_energy)
     return system
 
@@ -138,7 +130,7 @@ def reject(position_store, particles, random_particle):
     return particles
 
 
-def metropolis(temperature, old_energy, new_energy):
+def metropolis(temperature, old_energy, new_energy, n = np.random.rand()):
     """Determines if the move is accepted or rejected based on the metropolis condition.
 
     Parameters
@@ -149,6 +141,9 @@ def metropolis(temperature, old_energy, new_energy):
         The total energy of the simulation in the previous configuration.
     new_energy: float
         The total energy of the simulation in the current configuration.
+    n: float, optional
+        The random number against which the Metropolis condition is tested. The default is from a numpy uniform
+        distribution.
 
     Returns
     -------
@@ -158,7 +153,6 @@ def metropolis(temperature, old_energy, new_energy):
     beta = 1 / (1.3806e-23 * temperature)
     energy_difference = new_energy - old_energy
     metropolis_factor = np.exp(-beta * energy_difference)
-    n = np.random.rand()
     if n < metropolis_factor:
         return True
     else:

@@ -59,8 +59,8 @@ def velocity_verlet(particles, timestep_length, box_length):
     util.particle_dt, array_like:
         Information about the particles, with new positions and velocities.
     """
-    xposition_store = particles['xposition']
-    yposition_store = particles['yposition']
+    xposition_store = list(particles['xposition'])
+    yposition_store = list(particles['yposition'])
     [particles['xposition'], particles['yposition']] = update_positions([particles['xposition'],
                                                                          particles['yposition']],
                                                                         [particles['xvelocity'],

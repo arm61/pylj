@@ -2,6 +2,7 @@ MANIFEST.in
 README.md
 setup.py
 pylj/__init__.py
+pylj/_testutils.py
 pylj/examples.py
 pylj/mc.py
 pylj/md.py
@@ -13,6 +14,10 @@ pylj.egg-info/dependency_links.txt
 pylj.egg-info/not-zip-safe
 pylj.egg-info/requires.txt
 pylj.egg-info/top_level.txt
+pylj/tests/__init__.py
+pylj/tests/test_mc.py
+pylj/tests/test_md.py
+pylj/tests/test_util.py
 src/_ccomp.pyx
 src/comp.cpp
 src/comp.h
