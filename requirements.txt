@@ -1,3 +1,5 @@
 cython
 numpy
 matplotlib
+coverage
+coveralls
