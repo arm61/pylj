@@ -48,3 +48,4 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(b[1][0]*1e10, 1.5)
         assert_almost_equal(b[0][1]*1e10, 1.5)
         assert_almost_equal(b[1][1]*1e10, 1.5)
+            
