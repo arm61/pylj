@@ -18,6 +18,21 @@ class TestUtil(unittest.TestCase):
         assert_equal(a.forces.size, 1)
         assert_equal(a.energies.size, 1)
 
+    def test_system_random(self):
+        a = util.System(2, 300, 8, init_conf='random')
+        assert_equal(a.number_of_particles, 2)
+        assert_equal(a.init_temp, 300)
+        assert_almost_equal(a.box_length * 1e10, 8)
+        assert_almost_equal(a.timestep_length, 1e-14)
+        self.assertTrue(0 <= a.particles['xposition'][0] * 1e10 <= 8)
+        self.assertTrue(0 <= a.particles['yposition'][0] * 1e10 <= 8)
+        self.assertTrue(0 <= a.particles['xposition'][1] * 1e10 <= 8)
+        self.assertTrue(0 <= a.particles['yposition'][1] * 1e10 <= 8)
+        assert_almost_equal(a.cut_off * 1e10, 15)
+        assert_equal(a.distances.size, 1)
+        assert_equal(a.forces.size, 1)
+        assert_equal(a.energies.size, 1)
+
     def test_system_too_big(self):
         with self.assertRaises(AttributeError) as context:
             a = util.System(2, 300, 1000)
@@ -57,3 +72,10 @@ class TestUtil(unittest.TestCase):
         a.particles['yposition'] = [3e-10, 7e-10]
         b = util.calculate_msd(a.particles, a.initial_particles, a.box_length)
         assert_almost_equal(b, 2e-20)
+
+    def test_calculate_msd_large(self):
+        a = md.initialise(2, 300, 8, 'square')
+        a.particles['xposition'] = [7e-10, 3e-10]
+        a.particles['yposition'] = [7e-10, 7e-10]
+        b = util.calculate_msd(a.particles, a.initial_particles, a.box_length)
+        assert_almost_equal(b, 10e-20)
