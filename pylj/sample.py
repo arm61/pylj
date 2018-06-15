@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class Scattering(object):
+class Scattering(object): #pragma: no cover
     """The Scattering class will plot the particle positions, radial distribution function, mean squared deviation and
     scattering profile (as a fft of the rdf). This sampling class is ideal for observing the phase transitions between
     solid, liquid, gas.
@@ -62,7 +62,7 @@ class Scattering(object):
         self.ax[1, 1].set_xlim([0, np.amax(x)])
 
 
-class Interactions(object):
+class Interactions(object): #pragma: no cover
     """The Interactions class will plot the particle positions, total force, simulation pressure and temperature. This
     class is perfect for showing the interactions between the particles and therefore the behaviour of ideal gases and
     deviation when the conditions of an ideal gas are not met.
@@ -101,7 +101,7 @@ class Interactions(object):
         self.fig.canvas.draw()
 
 
-class JustCell(object):
+class JustCell(object): #pragma: no cover
     """The JustCell class will plot just the particles positions. This is a simplistic sampling class for quick
     visualisation.
 
@@ -134,7 +134,7 @@ class JustCell(object):
         self.fig.canvas.draw()
 
 
-class Energy(object):
+class Energy(object): #pragma: no cover
     """The RDF class will plot the particle positions and radial distribution function. This sampling class is can be
     used to show the relative RDFs for solid, liquid, gas.
 
@@ -167,7 +167,7 @@ class Energy(object):
         self.fig.canvas.draw()
 
 
-class RDF(object):
+class RDF(object): #pragma: no cover
     """The RDF class will plot the particle positions and radial distribution function. This sampling class is can be
     used to show the relative RDFs for solid, liquid, gas.
 
@@ -214,7 +214,7 @@ class RDF(object):
         self.fig.canvas.draw()
 
 
-def environment(panes):
+def environment(panes): #pragma: no cover
     """The visualisation environment consists of a series of panes (1, 2, or 4 are allowed). This function allows the
     number of panes in the visualisation to be defined.
 
@@ -242,7 +242,7 @@ def environment(panes):
     return fig, ax
         
 
-def setup_cellview(ax, system):
+def setup_cellview(ax, system): #pragma: no cover
     """Builds the particle position visualisation pane.
 
     Parameters
@@ -262,7 +262,7 @@ def setup_cellview(ax, system):
     ax.set_yticks([])
 
 
-def setup_forceview(ax):
+def setup_forceview(ax): #pragma: no cover
     """Builds the total force visualisation pane.
 
     Parameters
@@ -275,7 +275,7 @@ def setup_forceview(ax):
     ax.set_xlabel('Time/s', fontsize=16)
 
 
-def setup_energyview(ax):
+def setup_energyview(ax): #pragma: no cover
     """Builds the total force visualisation pane.
 
     Parameters
@@ -288,7 +288,7 @@ def setup_energyview(ax):
     ax.set_xlabel('Step', fontsize=16)
 
 
-def setup_rdfview(ax, system):
+def setup_rdfview(ax, system): #pragma: no cover
     """Builds the radial distribution function visualisation pane.
 
     Parameters
@@ -305,7 +305,7 @@ def setup_rdfview(ax, system):
     ax.set_xlabel('r/m', fontsize=16)
 
 
-def setup_diffview(ax):
+def setup_diffview(ax): #pragma: no cover
     """Builds the scattering profile visualisation pane.
 
     Parameters
@@ -321,7 +321,7 @@ def setup_diffview(ax):
     ax.set_xlabel('q/m$^{-1}$', fontsize=16)
 
 
-def setup_pressureview(ax):
+def setup_pressureview(ax): #pragma: no cover
     """Builds the simulation instantaneous pressure visualisation pane.
 
     Parameters
@@ -334,7 +334,7 @@ def setup_pressureview(ax):
     ax.set_xlabel('Time/s', fontsize=16)
 
 
-def setup_tempview(ax):
+def setup_tempview(ax): #pragma: no cover
     """Builds the simulation instantaneous temperature visualisation pane.
 
     Parameters
@@ -347,7 +347,7 @@ def setup_tempview(ax):
     ax.set_xlabel('Time/s', fontsize=16)
 
 
-def update_cellview(ax, system):
+def update_cellview(ax, system): #pragma: no cover
     """Updates the particle positions visualisation pane.
 
     Parameters
@@ -364,7 +364,7 @@ def update_cellview(ax, system):
     line.set_xdata(x3)
 
 
-def update_rdfview(ax, system, average_rdf, r):
+def update_rdfview(ax, system, average_rdf, r): #pragma: no cover
     """Updates the radial distribution function visualisation pane.
 
     Parameters
@@ -391,7 +391,7 @@ def update_rdfview(ax, system, average_rdf, r):
     ax.set_ylim([0, np.amax(gr) + np.amax(gr) * 0.05])
 
 
-def update_diffview(ax, system, average_diff, q):
+def update_diffview(ax, system, average_diff, q): #pragma: no cover
     """Updates the scattering profile visualisation pane.
 
     Parameters
@@ -422,7 +422,7 @@ def update_diffview(ax, system, average_diff, q):
     ax.set_xlim(np.amin(x2), np.amax(x2))
 
 
-def update_forceview(ax, system):
+def update_forceview(ax, system): #pragma: no cover
     """Updates the total force visualisation pane.
 
     Parameters
@@ -440,7 +440,7 @@ def update_forceview(ax, system):
                 np.amax(system.force_sample)+np.amax(system.force_sample) * 0.05)
 
 
-def update_energyview(ax, system):
+def update_energyview(ax, system): #pragma: no cover
     """Updates the total force visualisation pane.
 
     Parameters
@@ -463,7 +463,7 @@ def update_energyview(ax, system):
                 np.amax(system.energy_sample)+np.abs(np.amax(system.energy_sample)) * 0.05)
 
 
-def update_tempview(ax, system):
+def update_tempview(ax, system): #pragma: no cover
     """Updates the simulation instantaneous temperature visualisation pane.
 
     Parameters
@@ -481,7 +481,7 @@ def update_tempview(ax, system):
                 np.amax(system.temperature_sample)+np.amax(system.temperature_sample) * 0.05)
 
 
-def update_pressureview(ax, system):
+def update_pressureview(ax, system): #pragma: no cover
     """Updates the simulation instantaneous pressure visualisation pane.
 
     Parameters
@@ -500,7 +500,7 @@ def update_pressureview(ax, system):
                 np.amax(data) + np.amax(data) * 0.05)
 
 
-def setup_msdview(ax):
+def setup_msdview(ax): #pragma: no cover
     """Builds the simulation mean squared deviation visualisation pane.
 
     Parameters
@@ -513,7 +513,7 @@ def setup_msdview(ax):
     ax.set_xlabel('Time/s', fontsize=16)
 
 
-def update_msdview(ax, system):
+def update_msdview(ax, system): #pragma: no cover
     """Updates the simulation mean squared deviation visualisation pane.
 
     Parameters
