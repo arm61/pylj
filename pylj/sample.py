@@ -210,7 +210,7 @@ class RDF(object): #pragma: no cover
         line = self.ax[1].lines[0]
         line.set_xdata(x)
         line.set_ydata(gr)
-        self.ax[1].set_ylim([0, np.amax(gr) + 0.5])
+        self.ax[1].set_ylim([0, np.amax(gr) + np.amax(gr) * 0.05])
         self.fig.canvas.draw()
 
 

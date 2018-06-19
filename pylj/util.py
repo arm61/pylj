@@ -18,7 +18,6 @@ class System:
         Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string, optional
         The way that the particles are initially positioned. Should be one of:
-
         - 'square'
         - 'random'
     timestep_length: float (optional)

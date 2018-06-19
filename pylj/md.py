@@ -39,7 +39,7 @@ def initialise(number_of_particles, temperature, box_length, init_conf, timestep
     return system
 
 
-def velocity_verlet(particles, timestep_length, box_length):
+def velocity_verlet(particles, timestep_length, box_length, cut_off):
     """Uses the Velocity-Verlet integrator to move forward in time. The
 
     Updates the particles positions and velocities in terms of the Velocity Verlet algorithm. Also calculates the
@@ -68,8 +68,12 @@ def velocity_verlet(particles, timestep_length, box_length):
                                                                         [particles['xacceleration'],
                                                                          particles['yacceleration']], timestep_length,
                                                                         box_length)
+    xacceleration_store = list(particles['xacceleration'])
+    yacceleration_store = list(particles['yacceleration'])
+    particles, distances, forces, energies = comp.compute_forces(particles, box_length, cut_off)
     [particles['xvelocity'], particles['yvelocity']] = update_velocities([particles['xvelocity'],
                                                                           particles['yvelocity']],
+                                                                         [xacceleration_store, yacceleration_store],
                                                                          [particles['xacceleration'],
                                                                           particles['yacceleration']], timestep_length)
     particles['xprevious_position'] = xposition_store
@@ -137,7 +141,7 @@ def update_positions(positions, velocities, accelerations, timestep_length, box_
     return [positions[0], positions[1]]
 
 
-def update_velocities(velocities, accelerations, timestep_length):
+def update_velocities(velocities, accelerations_old, accelerations_new, timestep_length):
     """Update the particle velocities using the Velocity-Verlet algoritm.
 
     Parameters
@@ -155,6 +159,6 @@ def update_velocities(velocities, accelerations, timestep_length):
     (2, N) array_like:
         Updated velocities.
     """
-    velocities[0] += 0.5 * accelerations[0] * timestep_length
-    velocities[1] += 0.5 * accelerations[1] * timestep_length
+    velocities[0] += 0.5 * (accelerations_old[0] + accelerations_new[0]) * timestep_length
+    velocities[1] += 0.5 * (accelerations_old[1] + accelerations_new[1]) * timestep_length
     return [velocities[0], velocities[1]]

@@ -3,7 +3,6 @@ README.md
 setup.py
 pylj/__init__.py
 pylj/_testutils.py
-pylj/examples.py
 pylj/mc.py
 pylj/md.py
 pylj/sample.py
