@@ -5,7 +5,6 @@ pylj modules
    :maxdepth: 4
 
    comp
-   examples
    mc
    md
    sample
