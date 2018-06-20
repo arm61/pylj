@@ -1,5 +1,7 @@
 from __future__ import division
 import numpy as np
+import webbrowser
+
 
 
 class System:
@@ -160,6 +162,19 @@ def calculate_msd(particles, initial_particles, box_length):
             dy[i] *= 1 - box_length / np.abs(dy[i])
     dr = np.sqrt(dx * dx + dy * dy)
     return np.average(dr ** 2)
+
+
+def __cite__(): #pragma: no cover
+    """This function will launch the Zenodo website for the latest release of pylj."""
+    webbrowser.open('https://zenodo.org/badge/latestdoi/119863480')
+
+
+def __version__(): #pragma: no cover
+    """This will print the number of the pylj version currently in use."""
+    major = 0
+    minor = 0
+    micro = 22
+    print('pylj-{:d}.{:d}.{:d}'.format(major, minor, micro))
 
 
 def particle_dt():
