@@ -2,6 +2,20 @@
 
 ## Visit the [pylj](http://pythoninchemistry.org/pylj) webpage for more information about pylj.
 
+To build from source:
+
+```python 
+
+pip install -r requirements.txt
+
+python setup.py build
+
+python setup.py install
+
+python setup.py test
+
+```
+
 All development discussion can take place on [Slack](https://pylj.slack.com) .
 
 [![DOI](https://zenodo.org/badge/119863480.svg)](https://zenodo.org/badge/latestdoi/119863480)
