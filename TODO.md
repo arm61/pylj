@@ -3,6 +3,6 @@
 - improve citation methods
 - testing for md sample function
 - testing for sample module
-- complete example lesssons
-- create example notebooks 
 - add energy minimisation
+- more example lesssons
+- find better solution/funding for online resource
