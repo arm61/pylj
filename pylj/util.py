@@ -171,9 +171,9 @@ def __cite__(): #pragma: no cover
 
 def __version__(): #pragma: no cover
     """This will print the number of the pylj version currently in use."""
-    major = 0
+    major = 1
     minor = 0
-    micro = 22
+    micro = 0 
     print('pylj-{:d}.{:d}.{:d}'.format(major, minor, micro))
 
 
