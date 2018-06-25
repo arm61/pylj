@@ -1,0 +1,17 @@
+{
+  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/master/codemeta.jsonld",
+  "@type": "Code",
+  "author": [
+
+  ],
+  "identifier": "http://dx.doi.org/10.5281/zenodo.1247572",
+  "codeRepository": "https://github.com/arm61/pylj",
+  "datePublished": "2018-06-24",
+  "dateModified": "2018-06-24",
+  "dateCreated": "2018-06-24",
+  "description": "pylj is an open-source library to facilitate student interaction with classical simulation. It is capable of performing the simulation of a 2D argon system using either molecular dynamics or Monte Carlo.",
+  "keywords": "chemistry, physics, simulation, jupyter, molecular dynamics, monte carlo",
+  "license": "MIT",
+  "title": "pylj",
+  "version": "1.0.0"
+}
