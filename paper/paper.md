@@ -1,5 +1,5 @@
 ---
-title: pylj: A teaching tool for classical simulation
+title: 'pylj: A teaching tool for classical simulation'
 tags:
 - chemistry
 - physics
