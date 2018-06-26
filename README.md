@@ -23,3 +23,4 @@ All development discussion can take place on [gitter](https://gitter.im/pylj/Lob
 [![PyPI version](https://badge.fury.io/py/pylj.svg)](https://badge.fury.io/py/pylj)
 [![Build Status](https://travis-ci.org/arm61/pylj.svg?branch=master)](https://travis-ci.org/arm61/pylj)
 [![Coverage Status](https://coveralls.io/repos/github/arm61/pylj/badge.svg?branch=master)](https://coveralls.io/github/arm61/pylj?branch=master)
+[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/pylj/Lobby#)
