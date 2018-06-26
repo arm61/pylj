@@ -16,7 +16,7 @@ python setup.py test
 
 ```
 
-All development discussion can take place on [gitter](https://gitter.im/pylj/Lobby#).
+If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom](https://gitter.im/pylj/HELP).
 
 [![DOI](https://zenodo.org/badge/119863480.svg)](https://zenodo.org/badge/latestdoi/119863480)
 [![Documentation Status](https://readthedocs.org/projects/falass/badge/?version=latest)](https://falass.readthedocs.io/en/latest/?badge=latest)
