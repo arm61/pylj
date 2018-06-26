@@ -44,4 +44,10 @@ The latest release of the software can be installed via pip, or from source at h
 
 As computational science becomes more and more important in the training of undergraduate chemistry and physics students, there is a larger need for easy to use, open-source, sustainable tools that enable student interaction with classical simulation. pylj allows this by offering a simple library of functions from which students can build their own molecular dynamics or Monte-Carlo simulation and easy visualisation, leveraging matplotlib and the Jupyter notebook framework. In addition to use in the introduction of the simulation itself, pylj can also be used to discuss material properties showing how they may be probed using simulation. An example of this application, is the use of pylj to investigate the ideal gas law and the deviation from it at high particle densities can be found in the [examples](https://github.com/arm61/pylj/tree/master/examples) folder on the Github repository. pylj enables easy student interaction with these commonplace simulation methods in a fast and open-source way, while offering educators tools to build custom visualisation environments allowing attention to be drawn to areas of specific focus for a given application.
 
+# Acknowledgements
+
+A.R.M. is grateful to the university of Bath and Diamond
+Light Source for co-funding a studentship (Studentship Number
+STU0149). B.J.M. acknowledges support from the Royal Society (Grant No. UF130329).
+
 # References
