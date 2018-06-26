@@ -16,7 +16,7 @@ python setup.py test
 
 ```
 
-All development discussion can take place on [Slack](https://pylj.slack.com) .
+All development discussion can take place on [Slack](https://pylj.slack.com), just email [arm61](mailto:arm61@bath.ac.uk) to get an invite.
 
 [![DOI](https://zenodo.org/badge/119863480.svg)](https://zenodo.org/badge/latestdoi/119863480)
 [![Documentation Status](https://readthedocs.org/projects/falass/badge/?version=latest)](https://falass.readthedocs.io/en/latest/?badge=latest)
