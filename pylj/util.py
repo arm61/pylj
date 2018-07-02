@@ -184,59 +184,6 @@ def pbc_correction(position, cell):
     return position
 
 
-def calculate_temperature(particles):
-    """Determine the instantaneous temperature of the system.
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-
-    Returns
-    -------
-    float:
-        Calculated instantaneous simulation temperature.
-    """
-    k = 0
-    for i in range(0, particles['xposition'].size):
-        v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] *
-                    particles['yvelocity'][i])
-        boltzmann_constant = 1.3806e-23  # joules/kelvin
-        atomic_mass_unit = 1.660539e-27 # kilograms
-        mass_of_argon_amu = 39.948 # amu
-        mass_of_argon = mass_of_argon_amu * atomic_mass_unit # kilograms
-        k += mass_of_argon * v * v / (boltzmann_constant * 2 * particles['xposition'].size)
-    return k
-
-
-def calculate_msd(particles, initial_particles, box_length):
-    """Determines the mean squared displacement of the particles in the system.
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    initial_particles: util.particle_dt, array_like
-        Information about the initial state of the particles.
-    box_length: float
-        Size of the cell vector.
-
-    Returns
-    -------
-    float:
-        Mean squared deviation for the particles at the given timestep.
-    """
-    dx = particles['xposition'] - initial_particles['xposition']
-    dy = particles['yposition'] - initial_particles['yposition']
-    for i in range(0, particles['xposition'].size):
-        if np.abs(dx[i]) > 0.5 * box_length:
-            dx[i] *= 1 - box_length / np.abs(dx[i])
-        if np.abs(dy[i]) > 0.5 * box_length:
-            dy[i] *= 1 - box_length / np.abs(dy[i])
-    dr = np.sqrt(dx * dx + dy * dy)
-    return np.average(dr ** 2)
-
-
 def __cite__(): #pragma: no cover
     """This function will launch the Zenodo website for the latest release of pylj."""
     webbrowser.open('https://zenodo.org/badge/latestdoi/119863480')
