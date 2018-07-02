@@ -1,6 +1,5 @@
 import numpy as np
-from pylj import comp, util
-
+from pylj import util
 
 def initialise(number_of_particles, temperature, box_length, init_conf):
     """Initialise the particle positions (this can be either as a square or random arrangement), velocities (based on
