@@ -1,6 +1,7 @@
 from __future__ import division
 import numpy as np
 import webbrowser
+from pylj import comp
 
 
 
@@ -27,6 +28,7 @@ class System:
     """
     def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=1e-14,
                  cut_off=15):
+        from pylj import mc, md
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         if box_length <= 600:
@@ -93,7 +95,68 @@ class System:
         part_dt = particle_dt()
         self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
         self.particles['xposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)
-        self.particles['yposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)   
+        self.particles['yposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)
+
+    def compute_force(self):
+        """Maps to the comp.compute_force function and allows for a cleaner interface.
+        """
+        self.particles, self.distances, self.forces, self.energies = comp.compute_forces(self.particles,
+                                                                                         self.box_length,
+                                                                                         self.cut_off)
+
+    def compute_energy(self):
+        """Maps to the comp.compute_energy function and allows for a cleaner interface.
+        """
+        self.particles, self.distances, self.energies = comp.compute_energy(self.particles,
+                                                                            self.box_length,
+                                                                            self.cut_off)
+
+    def integrate(self, method):
+        """Maps the chosen integration method.
+
+        Parameters
+        ----------
+        method: method
+            The integration method to be used, e.g. md.velocity_verlet.
+        """
+        self.particles = method(self.particles, self.timestep_length, self.box_length, self.cut_off)
+
+    def md_sample(self):
+        """Maps to the md.sample function.
+        """
+        md.sample(self.particles, self.box_length, self.initial_particles, self)
+
+    def heat_bath(self, bath_temperature):
+        """Maps to the comp.heat_bath function.
+
+        Parameters
+        ----------
+        target_temperature: float
+            The target temperature for the simulation.
+        """
+        self.particles = comp.heat_bath(self.particles, self.temperature_sample, bath_temperature)
+
+    def mc_sample(self, energy):
+        """Maps to the mc.sample function.
+
+        Parameters
+        ----------
+        energy: float
+            Energy to add to the sample
+        """
+        mc.sample(energy, self)
+
+    def select_random_particle(self):
+        """Maps to the mc.select_random_particle function.
+        """
+        random_particle, self.position_store = mc.select_random_particle(self.particles)
+        return random_particle
+
+    def new_random_position(self, random_particle):
+        """Maps to the mc.get_new_particle function.
+        """
+        self.particles = mc.get_new_particle(self.particles, random_particle, self.box_length)
+
 
 
 def pbc_correction(position, cell):
