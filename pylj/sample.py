@@ -315,8 +315,8 @@ def setup_diffview(ax): #pragma: no cover
     """
     ax.plot([0], color='#34a5daff')
     ax.set_yticks([])
-    ax.set_xscale('log')
-    ax.set_yscale('symlog')
+    #ax.set_xscale('log')
+    #ax.set_yscale('symlog')
     ax.set_ylabel('I(q)', fontsize=16)
     ax.set_xlabel('q/m$^{-1}$', fontsize=16)
 
@@ -405,7 +405,7 @@ def update_diffview(ax, system, average_diff, q): #pragma: no cover
     q: array_like
         The scattering profile's q for each timestep, to later be averaged.
     """
-    qw = np.logspace(np.log10(2 * np.pi / system.box_length), 10.47, num=1000, base=10)
+    qw = np.logspace(np.log10(2 * np.pi / system.box_length), 10.47, num=1000, base=10)[200:]
     i = np.zeros_like(qw)
     for j in range(0, len(qw)):
         i[j] = np.sum(3.644 * (np.sin(qw[j] * system.distances))/(qw[j] * system.distances))
