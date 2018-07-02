@@ -254,6 +254,8 @@ def setup_cellview(ax, system): #pragma: no cover
     """
     xpos = system.particles['xposition']
     ypos = system.particles['yposition']
+    # These numbers are chosen to scale the size of the particles nicely to allow the particles to appear to interact
+    # appropriately
     mk = (6.00555e-8 / (system.box_length - 2.2727e-10) - 1e-10)
     ax.plot(xpos, ypos, 'o', markersize=mk, markeredgecolor='black', color='#34a5daff')
     ax.set_xlim([0, system.box_length])
@@ -405,6 +407,9 @@ def update_diffview(ax, system, average_diff, q): #pragma: no cover
     q: array_like
         The scattering profile's q for each timestep, to later be averaged.
     """
+    # the range of q is chosen to give a representive range for the interactions
+    # minimum is the reciprocal of the box length and the maximum is the reciprocal of the van der Waals
+    # diameter of the argon atom
     qw = np.logspace(np.log10(2 * np.pi / system.box_length), 10.47, num=1000, base=10)[200:]
     i = np.zeros_like(qw)
     for j in range(0, len(qw)):
@@ -492,6 +497,7 @@ def update_pressureview(ax, system): #pragma: no cover
         The whole system information.
     """
     line = ax.lines[0]
+    # Scaling the pressure to give the numbers with a nice number of significant figures
     data = system.pressure_sample * 1e6
     line.set_ydata(data)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)

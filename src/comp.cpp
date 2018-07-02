@@ -16,6 +16,13 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
     }
     int k = 0;
     int i = 0;
+    // values of A and B where determined from from A. Rahman "Correlations in the Motion of Atoms in Liquid Argon",
+    // Physical Review 136 pp. A405–A411 (1964)
+    double A = 1.363e-134; // joules / metre ^{12}
+    double B = 9.273e-78; // joules / meter ^{6}
+    double atomic_mass_unit = 1.660539e-27; // kilograms
+    double mass_of_argon_amu = 39.948;  // amu
+    double mass_of_argon = mass_of_argon_amu * atomic_mass_unit; // kilograms
     for (i = 0; i < len_particles - 1; i++)
     {
         int j = 0;
@@ -35,14 +42,14 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             distances_arr[k] = dr;
             if (dr <= cut)
             {
-                f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
+                f = (12 * A * pow(dr, -13.) - 6 * B * pow(dr, -7.));
                 force_arr[k] = f;
-                e = (1.363e-134 * pow(dr, -12.) - 9.273e-78 * pow(dr, -6.));
+                e = (A * pow(dr, -12.) - B * pow(dr, -6.));
                 energy_arr[k] = e;
-                xacc[i] += (f * dx / dr) / 66.234e-27;
-                yacc[i] += (f * dy / dr) / 66.234e-27;
-                xacc[j] -= (f * dx / dr) / 66.234e-27;
-                yacc[j] -= (f * dy / dr) / 66.234e-27;
+                xacc[i] += (f * dx / dr) / mass_of_argon;
+                yacc[i] += (f * dy / dr) / mass_of_argon;
+                xacc[j] -= (f * dx / dr) / mass_of_argon;
+                yacc[j] -= (f * dy / dr) / mass_of_argon;
             }
             else
             {
@@ -57,10 +64,13 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
 void compute_energies(int len_particles, const double *xpos, const double *ypos, double *distances_arr, double box_l,
                       double *energy_arr, double cut)
 {
-    int ii = 0;
     double dx, dy, dr, e;
     int k = 0;
     int i = 0;
+    // values of A and B where determined from from A. Rahman "Correlations in the Motion of Atoms in Liquid Argon",
+    // Physical Review 136 pp. A405–A411 (1964)
+    double A = 1.363e-134; // joules / metre ^{12}
+    double B = 9.273e-78; // joules / meter ^{6}
     for (i = 0; i < len_particles - 1; i++)
     {
         int j = 0;
@@ -80,7 +90,7 @@ void compute_energies(int len_particles, const double *xpos, const double *ypos,
             distances_arr[k] = dr;
             if (dr <= cut)
             {
-                e = (1.363e-134 * pow(dr, -12.) - 9.273e-78 * pow(dr, -6.));
+                e = (A * pow(dr, -12.) - B * pow(dr, -6.));
 	            energy_arr[k] = e;
             }
             else
@@ -95,10 +105,11 @@ void compute_energies(int len_particles, const double *xpos, const double *ypos,
 double compute_pressure(int number_of_particles, const double *xpos, const double *ypos, double box_length,
                         double temperature, double cut)
 {
-	int k = 0;
 	double pres = 0.;
 	int i, j;
 	double dx, dy, dr, f;
+	double A = 1.363e-134; // joules / metre ^{12}
+    double B = 9.273e-78; // joules / meter ^{6}
 	for (i = 0; i < number_of_particles - 1; i++)
 	{
 		for (j = i + 1; j < number_of_particles; j++)
@@ -116,13 +127,14 @@ double compute_pressure(int number_of_particles, const double *xpos, const doubl
             dr = sqrt(dx * dx + dy * dy);
             if (dr <= cut)
             {
-                f = (1.635e-133 * pow(dr, -13.) - 5.834e-77 * pow(dr, -7.));
+                f = (12 * A * pow(dr, -13.) - 6 * B * pow(dr, -7.));
                 pres += f * dr;
             }
 		}
 	}
+	double boltzmann_constant = 1.3806e-23; // joules/kelvin
 	pres = 1. / (2 * box_length * box_length) * pres +
-	       ((double)number_of_particles / (box_length * box_length) * 1.3806e-23 * temperature);
+	       ((double)number_of_particles / (box_length * box_length) * boltzmann_constant * temperature);
 	return pres;
 }
 

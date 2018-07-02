@@ -132,7 +132,11 @@ def calculate_temperature(particles):
     for i in range(0, particles['xposition'].size):
         v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] *
                     particles['yvelocity'][i])
-        k += 66.234e-27 * v * v / (1.3806e-23 * 2 * particles['xposition'].size)
+        boltzmann_constant = 1.3806e-23  # joules/kelvin
+        atomic_mass_unit = 1.660539e-27 # kilograms
+        mass_of_argon_amu = 39.948 # amu
+        mass_of_argon = mass_of_argon_amu * atomic_mass_unit # kilograms
+        k += mass_of_argon * v * v / (boltzmann_constant * 2 * particles['xposition'].size)
     return k
 
 
