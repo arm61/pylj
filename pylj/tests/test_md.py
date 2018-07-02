@@ -51,4 +51,27 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(b[1][0]*1e10, 2.5)
         assert_almost_equal(b[0][1]*1e10, 2.5)
         assert_almost_equal(b[1][1]*1e10, 2.5)
+
+    def test_calculate_temperature(self):
+        a = md.initialise(1, 300, 8, 'square')
+        a.particles['xvelocity'] = [1e-10]
+        a.particles['yvelocity'] = [1e-10]
+        a.particles['xacceleration'] = [1e4]
+        a.particles['yacceleration'] = [1e4]
+        b = md.calculate_temperature(a.particles)
+        assert_almost_equal(b * 1e23, 4.8048103702737945)
+
+    def test_calculate_msd(self):
+        a = md.initialise(2, 300, 8, 'square')
+        a.particles['xposition'] = [3e-10, 3e-10]
+        a.particles['yposition'] = [3e-10, 7e-10]
+        b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
+        assert_almost_equal(b, 2e-20)
+
+    def test_calculate_msd_large(self):
+        a = md.initialise(2, 300, 8, 'square')
+        a.particles['xposition'] = [7e-10, 3e-10]
+        a.particles['yposition'] = [7e-10, 7e-10]
+        b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
+        assert_almost_equal(b, 10e-20)
             
