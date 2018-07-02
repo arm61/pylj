@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 import webbrowser
-from pylj import comp, md, mc
+from pylj import comp
 
 
 
@@ -28,6 +28,7 @@ class System:
     """
     def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=1e-14,
                  cut_off=15):
+        from pylj import mc, md
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         if box_length <= 600:
