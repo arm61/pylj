@@ -64,7 +64,7 @@ class TestUtil(unittest.TestCase):
         a.particles['xacceleration'] = [1e4]
         a.particles['yacceleration'] = [1e4]
         b = util.calculate_temperature(a.particles)
-        assert_almost_equal(b * 1e23, 4.797479357)
+        assert_almost_equal(b * 1e23, 4.8048103702737945)
 
     def test_calculate_msd(self):
         a = md.initialise(2, 300, 8, 'square')
