@@ -16,6 +16,7 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
     }
     int k = 0;
     int i = 0;
+    double inv_dr_1, inv_dr_6;
     // values of A and B where determined from from A. Rahman "Correlations in the Motion of Atoms in Liquid Argon",
     // Physical Review 136 pp. A405–A411 (1964)
     double A = 1.363e-134; // joules / metre ^{12}
@@ -42,9 +43,11 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             distances_arr[k] = dr;
             if (dr <= cut)
             {
-                f = (12 * A * pow(dr, -13.) - 6 * B * pow(dr, -7.));
+                inv_dr_1 = 1.0 / dr;
+                inv_dr_6 = pow(inv_dr_1, 6);
+                f = (12 * A * (inv_dr_1 * inv_dr_6 * inv_dr_6) - 6 * B * (inv_dr_1 * inv_dr_6));
                 force_arr[k] = f;
-                e = (A * pow(dr, -12.) - B * pow(dr, -6.));
+                e = (A * (inv_dr_6 * inv_dr_6) - B * inv_dr_6);
                 energy_arr[k] = e;
                 xacc[i] += (f * dx / dr) / mass_of_argon;
                 yacc[i] += (f * dy / dr) / mass_of_argon;
