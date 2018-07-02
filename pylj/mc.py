@@ -1,5 +1,4 @@
 import numpy as np
-from pylj import util
 
 def initialise(number_of_particles, temperature, box_length, init_conf):
     """Initialise the particle positions (this can be either as a square or random arrangement), velocities (based on
@@ -23,6 +22,7 @@ def initialise(number_of_particles, temperature, box_length, init_conf):
     System
         System information.
     """
+    from pylj import util
     system = util.System(number_of_particles, temperature, box_length, init_conf=init_conf)
     system.particles['xvelocity'] = 0
     system.particles['yvelocity'] = 0

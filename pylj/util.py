@@ -1,7 +1,12 @@
 from __future__ import division
 import numpy as np
 import webbrowser
-from pylj import comp
+from pylj import md, mc
+try:
+    from pylj import comp as heavy
+except ImportError:
+    print("WARNING, using slow force and energy calculations")
+    from pylj import pairwise as heavy
 
 
 
@@ -28,7 +33,6 @@ class System:
     """
     def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=1e-14,
                  cut_off=15):
-        from pylj import mc, md
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         if box_length <= 600:
@@ -98,16 +102,18 @@ class System:
         self.particles['yposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)
 
     def compute_force(self):
-        """Maps to the comp.compute_force function and allows for a cleaner interface.
+        """Maps to the compute_force function in either the comp (if Cython is installed) or the pairwise module and
+        allows for a cleaner interface.
         """
-        self.particles, self.distances, self.forces, self.energies = comp.compute_forces(self.particles,
+        self.particles, self.distances, self.forces, self.energies = heavy.compute_forces(self.particles,
                                                                                          self.box_length,
                                                                                          self.cut_off)
 
     def compute_energy(self):
-        """Maps to the comp.compute_energy function and allows for a cleaner interface.
+        """Maps to the compute_energy function in either the comp (if Cython is installed) or the pairwise module
+        and allows for a cleaner interface.
         """
-        self.particles, self.distances, self.energies = comp.compute_energy(self.particles,
+        self.particles, self.distances, self.energies = heavy.compute_energy(self.particles,
                                                                             self.box_length,
                                                                             self.cut_off)
 
@@ -127,14 +133,14 @@ class System:
         md.sample(self.particles, self.box_length, self.initial_particles, self)
 
     def heat_bath(self, bath_temperature):
-        """Maps to the comp.heat_bath function.
+        """Maps to the heat_bath function in either the comp (if Cython is installed) or the pairwise modules.
 
         Parameters
         ----------
         target_temperature: float
             The target temperature for the simulation.
         """
-        self.particles = comp.heat_bath(self.particles, self.temperature_sample, bath_temperature)
+        self.particles = heavy.heat_bath(self.particles, self.temperature_sample, bath_temperature)
 
     def mc_sample(self, energy):
         """Maps to the mc.sample function.
@@ -176,59 +182,6 @@ def pbc_correction(position, cell):
     if np.abs(position) > 0.5 * cell:
         position *= 1 - cell / np.abs(position)
     return position
-
-
-def calculate_temperature(particles):
-    """Determine the instantaneous temperature of the system.
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-
-    Returns
-    -------
-    float:
-        Calculated instantaneous simulation temperature.
-    """
-    k = 0
-    for i in range(0, particles['xposition'].size):
-        v = np.sqrt(particles['xvelocity'][i] * particles['xvelocity'][i] + particles['yvelocity'][i] *
-                    particles['yvelocity'][i])
-        boltzmann_constant = 1.3806e-23  # joules/kelvin
-        atomic_mass_unit = 1.660539e-27 # kilograms
-        mass_of_argon_amu = 39.948 # amu
-        mass_of_argon = mass_of_argon_amu * atomic_mass_unit # kilograms
-        k += mass_of_argon * v * v / (boltzmann_constant * 2 * particles['xposition'].size)
-    return k
-
-
-def calculate_msd(particles, initial_particles, box_length):
-    """Determines the mean squared displacement of the particles in the system.
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    initial_particles: util.particle_dt, array_like
-        Information about the initial state of the particles.
-    box_length: float
-        Size of the cell vector.
-
-    Returns
-    -------
-    float:
-        Mean squared deviation for the particles at the given timestep.
-    """
-    dx = particles['xposition'] - initial_particles['xposition']
-    dy = particles['yposition'] - initial_particles['yposition']
-    for i in range(0, particles['xposition'].size):
-        if np.abs(dx[i]) > 0.5 * box_length:
-            dx[i] *= 1 - box_length / np.abs(dx[i])
-        if np.abs(dy[i]) > 0.5 * box_length:
-            dy[i] *= 1 - box_length / np.abs(dy[i])
-    dr = np.sqrt(dx * dx + dy * dy)
-    return np.average(dr ** 2)
 
 
 def __cite__(): #pragma: no cover
