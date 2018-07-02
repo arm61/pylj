@@ -1,5 +1,10 @@
 import numpy as np
-from pylj import comp, util
+from pylj import util
+try:
+    from pylj import comp as heavy
+except ImportError:
+    print("WARNING, using slow force and energy calculations")
+    from pylj import pairwise as heavy
 
 
 def initialise(number_of_particles, temperature, box_length, init_conf, timestep_length=1e-14):
@@ -33,7 +38,7 @@ def initialise(number_of_particles, temperature, box_length, init_conf, timestep
     v = (v - np.average(v)) * np.sqrt(2 * system.init_temp / v2sum)
     system.particles['xvelocity'] = v[:, 0]
     system.particles['yvelocity'] = v[:, 1]
-    system.particles, system.distances, system.forces, system.energies = comp.compute_forces(system.particles,
+    system.particles, system.distances, system.forces, system.energies = heavy.compute_forces(system.particles,
                                                                                              system.box_length,
                                                                                              system.cut_off)
     return system
@@ -70,7 +75,7 @@ def velocity_verlet(particles, timestep_length, box_length, cut_off):
                                                                         box_length)
     xacceleration_store = list(particles['xacceleration'])
     yacceleration_store = list(particles['yacceleration'])
-    particles, distances, forces, energies = comp.compute_forces(particles, box_length, cut_off)
+    particles, distances, forces, energies = heavy.compute_forces(particles, box_length, cut_off)
     [particles['xvelocity'], particles['yvelocity']] = update_velocities([particles['xvelocity'],
                                                                           particles['yvelocity']],
                                                                          [xacceleration_store, yacceleration_store],
@@ -103,7 +108,7 @@ def sample(particles, box_length, initial_particles, system):
     """
     temperature_new = util.calculate_temperature(particles)
     system.temperature_sample = np.append(system.temperature_sample, temperature_new)
-    pressure_new = comp.calculate_pressure(particles, box_length, temperature_new, system.cut_off)
+    pressure_new = heavy.calculate_pressure(particles, box_length, temperature_new, system.cut_off)
     msd_new = util.calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.force_sample = np.append(system.force_sample, np.sum(system.forces))
@@ -162,3 +167,4 @@ def update_velocities(velocities, accelerations_old, accelerations_new, timestep
     velocities[0] += 0.5 * (accelerations_old[0] + accelerations_new[0]) * timestep_length
     velocities[1] += 0.5 * (accelerations_old[1] + accelerations_new[1]) * timestep_length
     return [velocities[0], velocities[1]]
+

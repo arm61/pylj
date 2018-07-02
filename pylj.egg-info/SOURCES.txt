@@ -5,6 +5,7 @@ pylj/__init__.py
 pylj/_testutils.py
 pylj/mc.py
 pylj/md.py
+pylj/pairwise.py
 pylj/sample.py
 pylj/util.py
 pylj.egg-info/PKG-INFO
