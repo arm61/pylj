@@ -1,4 +1,5 @@
 import numpy as np
+from pylj import util
 
 def compute_forces(particles, box_length, cut_off):
     """Calculates the forces and therefore the accelerations on each of the particles in the simulation. This uses a
@@ -27,9 +28,9 @@ def compute_forces(particles, box_length, cut_off):
     float, array_like
         Current energies between pairs of particles in the simulation.
     """
-    particles['xaccleration'] = np.zeros(particles['xaccleration'].size)
-    particles['yaccleration'] = np.zeros(particles['yaccleration'].size)
-    pairs = int((particles['xaccleration'].size - 1) * particles['xaccleration'].size / 2)
+    particles['xacceleration'] = np.zeros(particles['xacceleration'].size)
+    particles['yacceleration'] = np.zeros(particles['yacceleration'].size)
+    pairs = int((particles['xacceleration'].size - 1) * particles['xacceleration'].size / 2)
     forces = np.zeros(pairs)
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
@@ -40,12 +41,12 @@ def compute_forces(particles, box_length, cut_off):
     mass_of_argon_amu = 39.948  # amu
     mass_of_argon = mass_of_argon_amu * atomic_mass_unit # kilograms
     for i in range(0, particles['xposition'].size-1):
-        for j in range(i, particles['xposition'].size):
+        for j in range(i+1, particles['xposition'].size):
             dx = particles['xposition'][i] - particles['xposition'][j]
             dy = particles['yposition'][i] - particles['yposition'][j]
-            dx = pbc_correction(dx, box_length)
-            dy = pbc_correction(dy, box_length)
-            dr = np.sqrt(dx * dx + dy * dy)
+            dx = util.pbc_correction(dx, box_length)
+            dy = util.pbc_correction(dy, box_length)
+            dr = separation(dx, dy)
             distances[k] = dr
             if dr <= cut_off:
                 f = lennard_jones_force(A, B, dr)
@@ -58,6 +59,23 @@ def compute_forces(particles, box_length, cut_off):
                 energies[k] = 0.
             k += 1
     return particles, distances, forces, energies
+
+
+def separation(dx, dy):
+    """Calculate the distance in 2D space.
+
+    Parameters
+    ----------
+    dx: float
+        Vector in the x dimension
+    dy: float
+        Vector in the y dimension
+
+    Returns
+    float:
+        Magnitude of the 2D vector.
+    """
+    return np.sqrt(dx * dx + dy * dy)
 
 
 def update_accelerations(particles, f, m, dx, dy, dr, i, j):
@@ -81,6 +99,11 @@ def update_accelerations(particles, f, m, dx, dy, dr, i, j):
         Particle index 1.
     j: int
         Particle index 2.
+
+    Returns
+    -------
+    util.particle_dt, array_like
+        Information about the particles with updated accelerations.
     """
     particles['xacceleration'][i] += second_law(f, m, dx, dr)
     particles['yacceleration'][i] += second_law(f, m, dy, dr)
@@ -102,6 +125,11 @@ def second_law(f, m, d1, d2):
         Distance between the particles in a single dimension.
     d2: float
         Distance between the particles across all dimensions.
+
+    Returns
+    -------
+    float:
+        Acceleration of the particle in a given dimension.
     """
     return (f * d1 / d2) / m
 
@@ -117,6 +145,11 @@ def lennard_jones_energy(A, B, dr):
         The value of the B parameter for the Lennard-Jones potential.
     dr: float
         The distance between the two particles.
+
+    Returns
+    -------
+    float:
+        The potential energy between the two particles.
     """
     return A * np.power(dr, -12) - B * np.power(dr, -6)
 
@@ -132,6 +165,11 @@ def lennard_jones_force(A, B, dr):
         The value of the B parameter for the Lennard-Jones potential.
     dr: float
         The distance between the two particles.
+
+    Returns
+    -------
+    float:
+        The force between the two particles.
     """
     return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
 
@@ -161,19 +199,19 @@ def compute_energy(particles, box_length, cut_off):
     float, array_like
         Current energies between pairs of particles in the simulation.
     """
-    pairs = int((particles['xaccleration'].size - 1) * particles['xaccleration'].size / 2)
+    pairs = int((particles['xacceleration'].size - 1) * particles['xacceleration'].size / 2)
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
     k = 0
     A = 1.363e-134  # joules / metre ^ {12}
     B = 9.273e-78  # joules / meter ^ {6}
-    for i in range(0, particles['xpositions']-1):
-        for j in range(i, particles['xpositions']):
+    for i in range(0, particles['xposition'].size-1):
+        for j in range(i+1, particles['xposition'].size):
             dx = particles['xposition'][i] - particles['xposition'][j]
             dy = particles['yposition'][i] - particles['yposition'][j]
-            dx = pbc_correction(dx, box_length)
-            dy = pbc_correction(dy, box_length)
-            dr = np.sqrt(dx * dx + dy * dy)
+            dx = util.pbc_correction(dx, box_length)
+            dy = util.pbc_correction(dy, box_length)
+            dr = separation(dx, dy)
             distances[k] = dr
             if dr <= cut_off:
                 e = lennard_jones_energy(A, B, dr)
@@ -181,7 +219,7 @@ def compute_energy(particles, box_length, cut_off):
             else:
                 energies[k] = 0.
             k += 1
-    return particles, distances, energies
+    return distances, energies
 
 
 def calculate_pressure(particles, box_length, temperature, cut_off):
@@ -209,13 +247,13 @@ def calculate_pressure(particles, box_length, temperature, cut_off):
     pres = 0.
     A = 1.363e-134  # joules / metre ^ {12}
     B = 9.273e-78  # joules / meter ^ {6}
-    for i in range(0, particles['xpositions'] - 1):
-        for j in range(i, particles['xpositions']):
+    for i in range(0, particles['xposition'].size - 1):
+        for j in range(i+1, particles['xposition'].size):
             dx = particles['xposition'][i] - particles['xposition'][j]
             dy = particles['yposition'][i] - particles['yposition'][j]
-            dx = pbc_correction(dx, box_length)
-            dy = pbc_correction(dy, box_length)
-            dr = np.sqrt(dx * dx + dy * dy)
+            dx = util.pbc_correction(dx, box_length)
+            dy = util.pbc_correction(dy, box_length)
+            dr = separation(dx, dy)
             if dr <= cut_off:
                 f = lennard_jones_force(A, B, dr)
                 pres += f * dr

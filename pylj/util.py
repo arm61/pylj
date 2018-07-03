@@ -113,9 +113,9 @@ class System:
         """Maps to the compute_energy function in either the comp (if Cython is installed) or the pairwise module
         and allows for a cleaner interface.
         """
-        self.particles, self.distances, self.energies = heavy.compute_energy(self.particles,
-                                                                            self.box_length,
-                                                                            self.cut_off)
+        self.distances, self.energies = heavy.compute_energy(self.particles,
+                                                             self.box_length,
+                                                             self.cut_off)
 
     def integrate(self, method):
         """Maps the chosen integration method.
