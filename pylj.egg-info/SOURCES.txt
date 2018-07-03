@@ -11,7 +11,6 @@ pylj/util.py
 pylj.egg-info/PKG-INFO
 pylj.egg-info/SOURCES.txt
 pylj.egg-info/dependency_links.txt
-pylj.egg-info/not-zip-safe
 pylj.egg-info/requires.txt
 pylj.egg-info/top_level.txt
 pylj/tests/__init__.py
