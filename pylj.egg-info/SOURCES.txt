@@ -17,6 +17,7 @@ pylj.egg-info/top_level.txt
 pylj/tests/__init__.py
 pylj/tests/test_mc.py
 pylj/tests/test_md.py
+pylj/tests/test_pairwise.py
 pylj/tests/test_util.py
 src/_ccomp.pyx
 src/comp.cpp

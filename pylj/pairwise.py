@@ -34,37 +34,107 @@ def compute_forces(particles, box_length, cut_off):
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
     k = 0
-    A = 1.363e-134 # joules / metre ^ {12}
-    B = 9.273e-78 # joules / meter ^ {6}
-    atomic_mass_unit = 1.660539e-27 # kilograms
-    mass_of_argon_amu = 39.948 # amu
+    A = 1.363e-134  # joules / metre ^ {12}
+    B = 9.273e-78  # joules / meter ^ {6}
+    atomic_mass_unit = 1.660539e-27  # kilograms
+    mass_of_argon_amu = 39.948  # amu
     mass_of_argon = mass_of_argon_amu * atomic_mass_unit # kilograms
     for i in range(0, particles['xposition'].size-1):
         for j in range(i, particles['xposition'].size):
             dx = particles['xposition'][i] - particles['xposition'][j]
             dy = particles['yposition'][i] - particles['yposition'][j]
-            if np.abs(dx) > 0.5 * box_length:
-                dx *= 1 - box_length / np.abs(dx)
-            if np.abs(dy) > 0.5 * box_length:
-                dy *= 1 - box_length / np.abs(dy)
+            dx = pbc_correction(dx, box_length)
+            dy = pbc_correction(dy, box_length)
             dr = np.sqrt(dx * dx + dy * dy)
             distances[k] = dr
             if dr <= cut_off:
-                inv_dr_1 = 1.0 / dr
-                inv_dr_6 = np.power(inv_dr_1, 6)
-                f = (12 * A * (inv_dr_1 * inv_dr_6 * inv_dr_6) - 6 * B * (inv_dr_1 * inv_dr_6))
+                f = lennard_jones_force(A, B, dr)
                 forces[k] = f
-                e = (A * (inv_dr_6 * inv_dr_6) - B * inv_dr_6)
+                e = lennard_jones_energy(A, B, dr)
                 energies[k] = e
-                particles['xacceleration'][i] += (f * dx / dr) / mass_of_argon
-                particles['yacceleration'][i] += (f * dy / dr) / mass_of_argon
-                particles['xacceleration'][j] -= (f * dx / dr) / mass_of_argon
-                particles['yacceleration'][j] -= (f * dy / dr) / mass_of_argon
+                particles = update_accelerations(particles, f, mass_of_argon, dx, dy, dr, i, j)
             else:
                 forces[k] = 0.
                 energies[k] = 0.
             k += 1
     return particles, distances, forces, energies
+
+
+def update_accelerations(particles, f, m, dx, dy, dr, i, j):
+    """Update the acceleration arrays of particles.
+
+    Parameters
+    ----------
+    particles: util.particle_dt, array_like
+        Information about the particles.
+    f: float
+        The force on the pair of particles.
+    m: float
+        Mass of the particles.
+    dx: float
+        Distance between the particles in the x dimension.
+    dy: float
+        Distance between the particles in the y dimension.
+    dr: float
+        Distance between the particles.
+    i: int
+        Particle index 1.
+    j: int
+        Particle index 2.
+    """
+    particles['xacceleration'][i] += second_law(f, m, dx, dr)
+    particles['yacceleration'][i] += second_law(f, m, dy, dr)
+    particles['xacceleration'][j] -= second_law(f, m, dx, dr)
+    particles['yacceleration'][j] -= second_law(f, m, dy, dr)
+    return particles
+
+
+def second_law(f, m, d1, d2):
+    """Newton's second law of motion to get the acceleration of the particle in a given dimension.
+
+    Parameters
+    ----------
+    f: float
+        The force on the pair of particles.
+    m: float
+        Mass of the particle.
+    d1: float
+        Distance between the particles in a single dimension.
+    d2: float
+        Distance between the particles across all dimensions.
+    """
+    return (f * d1 / d2) / m
+
+
+def lennard_jones_energy(A, B, dr):
+    """Calculate the energy of a pair of particles at a given distance.
+
+    Parameters
+    ----------
+    A: float
+        The value of the A parameter for the Lennard-Jones potential.
+    B: float
+        The value of the B parameter for the Lennard-Jones potential.
+    dr: float
+        The distance between the two particles.
+    """
+    return A * np.power(dr, -12) - B * np.power(dr, -6)
+
+
+def lennard_jones_force(A, B, dr):
+    """Calculate the force between a pair of particles at a given distance.
+
+    Parameters
+    ----------
+    A: float
+        The value of the A parameter for the Lennard-Jones potential.
+    B: float
+        The value of the B parameter for the Lennard-Jones potential.
+    dr: float
+        The distance between the two particles.
+    """
+    return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
+
 
 def compute_energy(particles, box_length, cut_off):
     """Calculates the total energy of the simulation. This uses a
@@ -101,21 +171,18 @@ def compute_energy(particles, box_length, cut_off):
         for j in range(i, particles['xpositions']):
             dx = particles['xposition'][i] - particles['xposition'][j]
             dy = particles['yposition'][i] - particles['yposition'][j]
-            if np.abs(dx) > 0.5 * box_length:
-                dx *= 1 - box_length / np.abs(dx)
-            if np.abs(dy) > 0.5 * box_length:
-                dy *= 1 - box_length / np.abs(dy)
+            dx = pbc_correction(dx, box_length)
+            dy = pbc_correction(dy, box_length)
             dr = np.sqrt(dx * dx + dy * dy)
             distances[k] = dr
             if dr <= cut_off:
-                inv_dr_1 = 1.0 / dr
-                inv_dr_6 = np.power(inv_dr_1, 6)
-                e = (A * (inv_dr_6 * inv_dr_6) - B * inv_dr_6)
+                e = lennard_jones_energy(A, B, dr)
                 energies[k] = e
             else:
                 energies[k] = 0.
             k += 1
     return particles, distances, energies
+
 
 def calculate_pressure(particles, box_length, temperature, cut_off):
     r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:
@@ -146,21 +213,17 @@ def calculate_pressure(particles, box_length, temperature, cut_off):
         for j in range(i, particles['xpositions']):
             dx = particles['xposition'][i] - particles['xposition'][j]
             dy = particles['yposition'][i] - particles['yposition'][j]
-            if np.abs(dx) > 0.5 * box_length:
-                dx *= 1 - box_length / np.abs(dx)
-            if np.abs(dy) > 0.5 * box_length:
-                dy *= 1 - box_length / np.abs(dy)
+            dx = pbc_correction(dx, box_length)
+            dy = pbc_correction(dy, box_length)
             dr = np.sqrt(dx * dx + dy * dy)
-            distances[k] = dr
             if dr <= cut_off:
-                inv_dr_1 = 1.0 / dr
-                inv_dr_6 = np.power(inv_dr_1, 6)
-                f = (12 * A * (inv_dr_1 * inv_dr_6 * inv_dr_6) - 6 * B * (inv_dr_1 * inv_dr_6))
+                f = lennard_jones_force(A, B, dr)
                 pres += f * dr
     boltzmann_constant = 1.3806e-23 # joules / kelvin
     pres = 1. / (2 * box_length * box_length) * pres + (particles['xposition'].size / (box_length * box_length)
                                                         * boltzmann_constant * temperature)
     return pres
+
 
 def heat_bath(particles, temperature_sample, bath_temp):
     r"""Rescales the velocities of the particles in the system to control the temperature of the simulation. Thereby
