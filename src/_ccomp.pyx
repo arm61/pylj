@@ -115,7 +115,7 @@ def compute_energy(particles, box_length, cut_off):
     compute_energies(len_particles, <const double*>xpos.data, <const double*>ypos.data,
                           <double*>distances_arr.data, box_l, <double*>energy_arr.data, cut)
 
-    return particles, distances_arr, energy_arr
+    return distances_arr, energy_arr
 
 def calculate_pressure(particles, box_length, temperature, cut_off):
     r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:

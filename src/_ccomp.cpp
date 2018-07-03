@@ -3281,22 +3281,19 @@ static PyObject *__pyx_pf_4pylj_4comp_2compute_energy(CYTHON_UNUSED PyObject *__
   /* "src/_ccomp.pyx":118
  *                           <double*>distances_arr.data, box_l, <double*>energy_arr.data, cut)
  * 
- *     return particles, distances_arr, energy_arr             # <<<<<<<<<<<<<<
+ *     return distances_arr, energy_arr             # <<<<<<<<<<<<<<
  * 
  * def calculate_pressure(particles, box_length, temperature, cut_off):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_2 = PyTuple_New(3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 118, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 118, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_INCREF(__pyx_v_particles);
-  __Pyx_GIVEREF(__pyx_v_particles);
-  PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_v_particles);
   __Pyx_INCREF(((PyObject *)__pyx_v_distances_arr));
   __Pyx_GIVEREF(((PyObject *)__pyx_v_distances_arr));
-  PyTuple_SET_ITEM(__pyx_t_2, 1, ((PyObject *)__pyx_v_distances_arr));
+  PyTuple_SET_ITEM(__pyx_t_2, 0, ((PyObject *)__pyx_v_distances_arr));
   __Pyx_INCREF(((PyObject *)__pyx_v_energy_arr));
   __Pyx_GIVEREF(((PyObject *)__pyx_v_energy_arr));
-  PyTuple_SET_ITEM(__pyx_t_2, 2, ((PyObject *)__pyx_v_energy_arr));
+  PyTuple_SET_ITEM(__pyx_t_2, 1, ((PyObject *)__pyx_v_energy_arr));
   __pyx_r = __pyx_t_2;
   __pyx_t_2 = 0;
   goto __pyx_L0;
@@ -3345,7 +3342,7 @@ static PyObject *__pyx_pf_4pylj_4comp_2compute_energy(CYTHON_UNUSED PyObject *__
 }
 
 /* "src/_ccomp.pyx":120
- *     return particles, distances_arr, energy_arr
+ *     return distances_arr, energy_arr
  * 
  * def calculate_pressure(particles, box_length, temperature, cut_off):             # <<<<<<<<<<<<<<
  *     r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:
@@ -3778,7 +3775,7 @@ static PyObject *__pyx_pf_4pylj_4comp_4calculate_pressure(CYTHON_UNUSED PyObject
   goto __pyx_L0;
 
   /* "src/_ccomp.pyx":120
- *     return particles, distances_arr, energy_arr
+ *     return distances_arr, energy_arr
  * 
  * def calculate_pressure(particles, box_length, temperature, cut_off):             # <<<<<<<<<<<<<<
  *     r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:
@@ -7047,7 +7044,7 @@ static int __Pyx_InitCachedConstants(void) {
   __pyx_codeobj__13 = (PyObject*)__Pyx_PyCode_New(3, 0, 12, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__12, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_src__ccomp_pyx, __pyx_n_s_compute_energy, 75, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__13)) __PYX_ERR(0, 75, __pyx_L1_error)
 
   /* "src/_ccomp.pyx":120
- *     return particles, distances_arr, energy_arr
+ *     return distances_arr, energy_arr
  * 
  * def calculate_pressure(particles, box_length, temperature, cut_off):             # <<<<<<<<<<<<<<
  *     r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:
@@ -7387,7 +7384,7 @@ if (!__Pyx_RefNanny) {
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "src/_ccomp.pyx":120
- *     return particles, distances_arr, energy_arr
+ *     return distances_arr, energy_arr
  * 
  * def calculate_pressure(particles, box_length, temperature, cut_off):             # <<<<<<<<<<<<<<
  *     r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:
