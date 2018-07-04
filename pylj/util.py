@@ -54,7 +54,10 @@ class System:
         else:
             raise NotImplementedError('The initial configuration type {} is not recognised. '
                                       'Available options are: square or random'.format(init_conf))
-        self.cut_off = cut_off * 1e-10
+        if box_length > 30:
+            self.cut_off = cut_off * 1e-10
+        else:
+            self.cut_off = box_length / 2 * 1e-10
         self.step = 0
         self.time = 0.
         self.distances = np.zeros(self.number_of_pairs())
@@ -67,6 +70,9 @@ class System:
         self.energy_sample = np.array([])
         self.initial_particles = np.array(self.particles)
         self.position_store = [0, 0]
+        self.old_energy = 0
+        self.new_energy = 0
+        self.random_particle = 0
 
     def number_of_pairs(self):
         """Calculates the number of pairwise interactions in the simulation.
@@ -142,7 +148,7 @@ class System:
         """
         self.particles = heavy.heat_bath(self.particles, self.temperature_sample, bath_temperature)
 
-    def mc_sample(self, energy):
+    def mc_sample(self):
         """Maps to the mc.sample function.
 
         Parameters
@@ -150,19 +156,25 @@ class System:
         energy: float
             Energy to add to the sample
         """
-        mc.sample(energy, self)
+        mc.sample(self.old_energy, self)
 
     def select_random_particle(self):
         """Maps to the mc.select_random_particle function.
         """
-        random_particle, self.position_store = mc.select_random_particle(self.particles)
-        return random_particle
+        self.random_particle, self.position_store = mc.select_random_particle(self.particles)
 
-    def new_random_position(self, random_particle):
+    def new_random_position(self):
         """Maps to the mc.get_new_particle function.
         """
-        self.particles = mc.get_new_particle(self.particles, random_particle, self.box_length)
+        self.particles = mc.get_new_particle(self.particles, self.random_particle, self.box_length)
 
+    def accept(self):
+        """Maps to the mc.accept function.
+        """
+        self.old_energy = mc.accept(self.new_energy)
+
+    def reject(self):
+        self.particles = mc.reject(self.position_store, self.particles, self.random_particle)
 
 
 def pbc_correction(position, cell):

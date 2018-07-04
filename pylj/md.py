@@ -38,9 +38,6 @@ def initialise(number_of_particles, temperature, box_length, init_conf, timestep
     v = (v - np.average(v)) * np.sqrt(2 * system.init_temp / v2sum)
     system.particles['xvelocity'] = v[:, 0]
     system.particles['yvelocity'] = v[:, 1]
-    system.particles, system.distances, system.forces, system.energies = heavy.compute_forces(system.particles,
-                                                                                             system.box_length,
-                                                                                             system.cut_off)
     return system
 
 
