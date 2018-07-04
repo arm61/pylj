@@ -174,6 +174,8 @@ class System:
         self.old_energy = mc.accept(self.new_energy)
 
     def reject(self):
+        """Maps to the mc.reject function.
+        """
         self.particles = mc.reject(self.position_store, self.particles, self.random_particle)
 
 

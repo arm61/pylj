@@ -7,5 +7,6 @@ pylj modules
    comp
    mc
    md
+   pairwise
    sample
    util
