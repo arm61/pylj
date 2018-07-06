@@ -29,6 +29,12 @@ def initialise(number_of_particles, temperature, box_length, init_conf):
     return system
 
 
+def initialize(number_particles, temperature, box_length, init_conf):
+    """Maps to the mc.initialise function to account for US english spelling.
+    """
+    a = initialise(number_particles, temperature, box_length, init_conf)
+    return a
+
 def sample(total_energy, system):
     """Sample parameters of interest in the simulation.
 

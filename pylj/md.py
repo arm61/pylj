@@ -40,6 +40,12 @@ def initialise(number_of_particles, temperature, box_length, init_conf, timestep
     system.particles['yvelocity'] = v[:, 1]
     return system
 
+def initialize(number_particles, temperature, box_length, init_conf, timestep_length=1e-14):
+    """Maps to the md.initialise function to account for US english spelling.
+    """
+    a = initialise(number_particles, temperature, box_length, init_conf, timestep_length)
+    return a
+
 
 def velocity_verlet(particles, timestep_length, box_length, cut_off):
     """Uses the Velocity-Verlet integrator to move forward in time. The
