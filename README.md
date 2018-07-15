@@ -19,6 +19,8 @@ Be aware! pylj runs within a [Jupyter notebook](http://jupyter.org/), and theref
 
 If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom](https://gitter.im/pylj/HELP).
 
+Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of how pylj can be used in undergraduate teaching exercises. 
+
 [![DOI](https://zenodo.org/badge/119863480.svg)](https://zenodo.org/badge/latestdoi/119863480)
 [![Documentation Status](https://readthedocs.org/projects/pylj/badge/?version=latest)](http://pylj.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/pylj.svg)](https://badge.fury.io/py/pylj)
