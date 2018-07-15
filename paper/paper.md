@@ -31,7 +31,7 @@ bibliography: paper.bib
 
 # Summary
 
-pylj is an educational software to introduce students to classical atomistic simulation using a Lennnard-Jones potential model.[@LENNARD-JONES] pylj is written in Python (using Cython for pairwise interactions) and uses Jupyter notebooks [@KLUYVER] and Matplotlib for visualisation (see example below).[@HUNTER] It can be easily deployed in a computer laboratory, and students interact with it without needing to use the command line, as would be the case for other molecular dynamics packages like Gromacs, LAMMPS, or DLPOLY.[@GROMACS][@LAMMPS][@DLPOLY] We provide example notebooks in the repoository, showing how to use pylj to simulated a 2D gas system using eaither molecular dynamics or Monte-Carlo methods. A variety of other applications are possible. 
+pylj is an educational software to introduce students to classical atomistic simulation using a Lennnard-Jones potential model [@LENNARD-JONES]. pylj is written in Python (using Cython for pairwise interactions) and uses Jupyter notebooks [@KLUYVER] and Matplotlib [@HUNTER] for visualisation (see example below). It can be easily deployed in a computer laboratory, and students interact with it without needing to use the command line, as would be the case for other molecular dynamics packages like Gromacs[@GROMACS], LAMMPS [@LAMMPS], or DLPOLY [@DLPOLY]. We provide example notebooks in the repository, showing how to use pylj to simulate a 2D gas system using either molecular dynamics or Monte-Carlo methods. A variety of other applications are possible. 
 
 The latest release of the software can be installed via pip, or from source at https://github.com/arm61/pylj. Full documentation can be found at https://pylj.readthedocs.io.
 
@@ -41,15 +41,15 @@ As computational science becomes more and more important in the training of unde
 
 # Usage
 
-pylj can be applied in teaching through a variety of methods including lectures or small group tutorials. However, we believe that the most common use of pylj will be in a teaching laboratory setting, with this in mind we suggest two main areas that could make use of pylj:
+pylj can be applied in teaching through a variety of methods including lectures or small group tutorials. However, we believe that the most common use of pylj will be in a teaching laboratory setting; with this in mind, we suggest two main areas that could make use of pylj:
 
 1. teaching about simulation algorithms, the mechanics of simulation, and allowing students to build a simulation themselves, 
 2. showing how simulation can be used to study physical attributes of chemical systems, consolidating learning typically introduced during lectures.
 
-Some examples of these can be found in the [examples](https://github.com/arm61/pylj/tree/master/examples) directory, in particular the [molecular dynamics](https://github.com/arm61/pylj/tree/master/examples/molecular_dynamics) and [Monte-Carlo](https://github.com/arm61/pylj/tree/master/examples/monte_carlo) examples show how pylj may be used in the teaching of molecular simulations, while the [ideal gas law](https://github.com/arm61/pylj/tree/master/examples/ideal_gas_law) notebook is exemplary of how pylj can be used to present, in an interactive fashion, the deviation from the ideal gas law that is observed folloiwng the gas-to-liquid transition. We envision that pylj is applicable to be used at all levels of undergraduate and postgraduate chemistry and physics course, particularly in computational chemistry and statistical mechanics courses
+Some examples of these can be found in the [examples](https://github.com/arm61/pylj/tree/master/examples) directory, in particular the [molecular dynamics](https://github.com/arm61/pylj/tree/master/examples/molecular_dynamics) and [Monte-Carlo](https://github.com/arm61/pylj/tree/master/examples/monte_carlo) examples show how pylj may be used in the teaching of molecular simulations, while the [ideal gas law](https://github.com/arm61/pylj/tree/master/examples/ideal_gas_law) notebook is exemplary of how pylj can be used to present, in an interactive fashion, the deviation from the ideal gas law that is observed following the gas-to-liquid transition. We envision that pylj is applicable to be used at all levels of undergraduate and postgraduate chemistry and physics course, particularly in computational chemistry and statistical mechanics courses.
 
 ![](fig1.png)
-*Figure 1. An example of the Interactions sampling class during a molecular dynamics simulation. [@FIGURE1]*
+*Figure 1. An example of the Interactions sampling class during a molecular dynamics simulation [@FIGURE1].*
 
 # Acknowledgements
 
