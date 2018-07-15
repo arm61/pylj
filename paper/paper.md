@@ -33,12 +33,12 @@ bibliography: paper.bib
 
 pylj is an educational software designed to introduce students to classical simulation using a Lennard-Jones potential model.[@LENNARD-JONES] Currently, pylj is capable of performing both molecular dynamics (NVE and NVT ensembles) and Monte-Carlo (NVT ensemble) simulations, for a two dimensional argon gas system. Written in Python (with Cythonic pairwise functions), visualisation occurs through a Jupyter notebook,[@KLUYVER] making use of the matplotlib library (an example of the Interactions visualisation environment is shown below).[@HUNTER]  This allows for easy deployment within a computational laboratory setting and immediate student interaction without an explaination of the command line, as is the case in other open-source molecular dynamics packages.[@GROMACS][@LAMMPS][@DLPOLY] Example notebooks that show how pylj can be used to simulate both molecular dynamics and Monte-Carlo are available from the GitHub repository, although a large variety of possible applications are possible.
 
-![](fig1.png)
-*Figure 1. An example of the Interactions sampling class during a molecular dynamics simulation. [@FIGURE1]*
-
 The `md` module currently allows a Velocity-Verlet [@FRENKEL200263] NVE simulation, which can be adapted to NVT by allowing the thermostating via velocity rescaling. The `mc` module allows a typical NVT Metropolis Monte-Carlo simulation[@FRENKEL200223], however there is scope for future development of μVT, Grand-Canonical simulations.
 
 The latest release of the software can be installed via pip, or from source at https://github.com/arm61/pylj. Full documentation can be found at https://pylj.readthedocs.io.
+
+![](fig1.png)
+*Figure 1. An example of the Interactions sampling class during a molecular dynamics simulation. [@FIGURE1]*
 
 # Statement of Need
 
