@@ -21,6 +21,7 @@ If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom]
 
 Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of how pylj can be used in undergraduate teaching exercises. 
 
+[![status](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d/status.svg)](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d)
 [![DOI](https://zenodo.org/badge/119863480.svg)](https://zenodo.org/badge/latestdoi/119863480)
 [![Documentation Status](https://readthedocs.org/projects/pylj/badge/?version=latest)](http://pylj.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/pylj.svg)](https://badge.fury.io/py/pylj)
