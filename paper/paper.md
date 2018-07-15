@@ -37,12 +37,12 @@ The `md` module currently allows a Velocity-Verlet [@FRENKEL200263] NVE simulati
 
 The latest release of the software can be installed via pip, or from source at https://github.com/arm61/pylj. Full documentation can be found at https://pylj.readthedocs.io.
 
-![](fig1.png)
-*Figure 1. An example of the Interactions sampling class during a molecular dynamics simulation. [@FIGURE1]*
-
 # Statement of Need
 
 As computational science becomes more and more important in the training of undergraduate chemistry and physics students, there is a larger need for easy to use, open-source, sustainable tools that enable student interaction with classical simulation. pylj allows this by offering a simple library of functions from which students can build their own molecular dynamics or Monte-Carlo simulation and easy visualisation, leveraging matplotlib and the Jupyter notebook framework. In addition to use in the introduction of the simulation itself, pylj can also be used to discuss material properties showing how they may be probed using simulation. A few examples of how pylj could be used in a teaching laboratory can be found in the [examples](https://github.com/arm61/pylj/tree/master/examples) directory. These include an introduction to each of molecular dynamics and Monte Carlo simulations algorithms as well as an example of how pylj could be used to investigate the ideal gas law and the deviation from it at high particle densities. pylj enables easy student interaction with these commonplace simulation methods in a fast and open-source way, while offering educators tools to build custom visualisation environments allowing attention to be drawn to areas of specific focus for a given application.
+
+![](fig1.png)
+*Figure 1. An example of the Interactions sampling class during a molecular dynamics simulation. [@FIGURE1]*
 
 # Acknowledgements
 
