@@ -15,6 +15,8 @@ python setup.py install
 python setup.py test
 
 ```
+Check out our publication in the [Journal of Open Source Education](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d) to find out more about pylj. 
+
 Be aware! pylj runs within a [Jupyter notebook](http://jupyter.org/), and therefore requires this to run. We advise installing [anaconda python](https://anaconda.org/) as this includes many required libraries as well as the Jupyter notebooks framework.
 
 If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom](https://gitter.im/pylj/HELP).
