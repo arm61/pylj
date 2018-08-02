@@ -17,10 +17,15 @@ packages = find_packages()
 # versioning
 MAJOR = 1
 MINOR = 0
-MICRO = 0 
-ISRELEASED = False
+MICRO = 1
+ISRELEASED = True
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
+from os import path
+import io
+this_directory = path.abspath(path.dirname(__file__))
+with io.open(path.join(this_directory, 'README.md')) as f:
+    long_description = f.read()
 
 info = {
         'name': 'pylj',
@@ -33,6 +38,8 @@ info = {
         'install_requires': ['numpy', 'matplotlib', 'cython'],
         'version': VERSION,
         'license': 'MIT',
+        'long_description': long_description,
+        'long_description_content_type': 'text/markdown',
         'classifiers': ['Development Status :: 3 - Alpha', 'Intended Audience :: Science/Research', 'Topic :: Scientific/Engineering', 'Topic :: Scientific/Engineering :: Chemistry', 'Topic :: Scientific/Engineering :: Physics', 'Programming Language :: Python :: 3']
         }
 

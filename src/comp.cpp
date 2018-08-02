@@ -16,7 +16,7 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
     }
     int k = 0;
     int i = 0;
-    double inv_dr_1, inv_dr_6;
+    double inv_dr_1, inv_dr_2, inv_dr_6;
     // values of A and B where determined from from A. Rahman "Correlations in the Motion of Atoms in Liquid Argon",
     // Physical Review 136 pp. A405–A411 (1964)
     double A = 1.363e-134; // joules / metre ^{12}
@@ -24,6 +24,7 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
     double atomic_mass_unit = 1.660539e-27; // kilograms
     double mass_of_argon_amu = 39.948;  // amu
     double mass_of_argon = mass_of_argon_amu * atomic_mass_unit; // kilograms
+    double inv_mass_of_argon = 1 / mass_of_argon;
     for (i = 0; i < len_particles - 1; i++)
     {
         int j = 0;
@@ -44,15 +45,16 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
             if (dr <= cut)
             {
                 inv_dr_1 = 1.0 / dr;
-                inv_dr_6 = pow(inv_dr_1, 6);
+                inv_dr_2 = inv_dr_1 * inv_dr_1;
+                inv_dr_6 = inv_dr_2 * inv_dr_2 * inv_dr_2;
                 f = (12 * A * (inv_dr_1 * inv_dr_6 * inv_dr_6) - 6 * B * (inv_dr_1 * inv_dr_6));
                 force_arr[k] = f;
                 e = (A * (inv_dr_6 * inv_dr_6) - B * inv_dr_6);
                 energy_arr[k] = e;
-                xacc[i] += (f * dx / dr) / mass_of_argon;
-                yacc[i] += (f * dy / dr) / mass_of_argon;
-                xacc[j] -= (f * dx / dr) / mass_of_argon;
-                yacc[j] -= (f * dy / dr) / mass_of_argon;
+                xacc[i] += (f * dx * inv_dr_1) * inv_mass_of_argon;
+                yacc[i] += (f * dy * inv_dr_1) * inv_mass_of_argon;
+                xacc[j] -= (f * dx * inv_dr_1) * inv_mass_of_argon;
+                yacc[j] -= (f * dy * inv_dr_1) * inv_mass_of_argon;
             }
             else
             {
