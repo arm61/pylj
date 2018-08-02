@@ -4,21 +4,13 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>pylj.util &#8212; pylj 0.0.6a documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/my-styles.css" type="text/css" />
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../../',
-        VERSION:     '0.0.6a',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
-      };
-    </script>
+    <script type="text/javascript" src="../../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
@@ -31,8 +23,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
-  </head>
-  <body>
+  </head><body>
   
 
     <div class="document">
@@ -41,7 +32,16 @@
           <div class="body" role="main">
             
   <h1>Source code for pylj.util</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">webbrowser</span>
+<span class="kn">from</span> <span class="nn">pylj</span> <span class="k">import</span> <span class="n">md</span><span class="p">,</span> <span class="n">mc</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">pylj</span> <span class="k">import</span> <span class="n">comp</span> <span class="k">as</span> <span class="n">heavy</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WARNING, using slow force and energy calculations&quot;</span><span class="p">)</span>
+    <span class="kn">from</span> <span class="nn">pylj</span> <span class="k">import</span> <span class="n">pairwise</span> <span class="k">as</span> <span class="n">heavy</span>
+
 
 
 <div class="viewcode-block" id="System"><a class="viewcode-back" href="../../util.html#pylj.util.System">[docs]</a><span class="k">class</span> <span class="nc">System</span><span class="p">:</span>
@@ -60,20 +60,25 @@
 <span class="sd">        Length of a single dimension of the simulation square, in Angstrom.</span>
 <span class="sd">    init_conf: string, optional</span>
 <span class="sd">        The way that the particles are initially positioned. Should be one of:</span>
-
 <span class="sd">        - &#39;square&#39;</span>
 <span class="sd">        - &#39;random&#39;</span>
 <span class="sd">    timestep_length: float (optional)</span>
 <span class="sd">        Length for each Velocity-Verlet integration step, in seconds.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">init_conf</span><span class="o">=</span><span class="s1">&#39;square&#39;</span><span class="p">,</span> <span class="n">timestep_length</span><span class="o">=</span><span class="mf">5e-3</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number_of_particles</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">box_length</span><span class="p">,</span> <span class="n">init_conf</span><span class="o">=</span><span class="s1">&#39;square&#39;</span><span class="p">,</span> <span class="n">timestep_length</span><span class="o">=</span><span class="mf">1e-14</span><span class="p">,</span>
+                 <span class="n">cut_off</span><span class="o">=</span><span class="mi">15</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">number_of_particles</span> <span class="o">=</span> <span class="n">number_of_particles</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">init_temp</span> <span class="o">=</span> <span class="n">temperature</span>
         <span class="k">if</span> <span class="n">box_length</span> <span class="o">&lt;=</span> <span class="mi">600</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span> <span class="o">=</span> <span class="n">box_length</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span> <span class="o">=</span> <span class="n">box_length</span> <span class="o">*</span> <span class="mf">1e-10</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s1">&#39;With a box length of </span><span class="si">{}</span><span class="s1"> the particles are probably too small to be seen in the &#39;</span>
                                  <span class="s1">&#39;viewer. Try something (much) less than 600.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">box_length</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">box_length</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span> <span class="o">=</span> <span class="n">box_length</span> <span class="o">*</span> <span class="mf">1e-10</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s1">&#39;With a box length of </span><span class="si">{}</span><span class="s1"> the cell is too small to really hold more than one &#39;</span>
+                                 <span class="s1">&#39;particle.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">box_length</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">timestep_length</span> <span class="o">=</span> <span class="n">timestep_length</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">init_conf</span> <span class="o">==</span> <span class="s1">&#39;square&#39;</span><span class="p">:</span>
@@ -83,15 +88,25 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s1">&#39;The initial configuration type </span><span class="si">{}</span><span class="s1"> is not recognised. &#39;</span>
                                       <span class="s1">&#39;Available options are: square or random&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">init_conf</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">box_length</span> <span class="o">&gt;</span> <span class="mi">30</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cut_off</span> <span class="o">=</span> <span class="n">cut_off</span> <span class="o">*</span> <span class="mf">1e-10</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cut_off</span> <span class="o">=</span> <span class="n">box_length</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="mf">1e-10</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="mf">0.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_pairs</span><span class="p">())</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">forces</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_pairs</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energies</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_pairs</span><span class="p">())</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">temperature_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pressure_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">force_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">msd_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">energy_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">initial_particles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position_store</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_energy</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">new_energy</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_particle</span> <span class="o">=</span> <span class="mi">0</span>
 
 <div class="viewcode-block" id="System.number_of_pairs"><a class="viewcode-back" href="../../util.html#pylj.util.System.number_of_pairs">[docs]</a>    <span class="k">def</span> <span class="nf">number_of_pairs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Calculates the number of pairwise interactions in the simulation.</span>
@@ -124,7 +139,79 @@
         <span class="n">part_dt</span> <span class="o">=</span> <span class="n">particle_dt</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_particles</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">part_dt</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xposition&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_particles</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yposition&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_particles</span><span class="p">)</span>   </div></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yposition&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_particles</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.compute_force"><a class="viewcode-back" href="../../util.html#pylj.util.System.compute_force">[docs]</a>    <span class="k">def</span> <span class="nf">compute_force</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the compute_force function in either the comp (if Cython is installed) or the pairwise module and</span>
+<span class="sd">        allows for a cleaner interface.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">forces</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">energies</span> <span class="o">=</span> <span class="n">heavy</span><span class="o">.</span><span class="n">compute_forces</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span>
+                                                                                         <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span>
+                                                                                         <span class="bp">self</span><span class="o">.</span><span class="n">cut_off</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.compute_energy"><a class="viewcode-back" href="../../util.html#pylj.util.System.compute_energy">[docs]</a>    <span class="k">def</span> <span class="nf">compute_energy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the compute_energy function in either the comp (if Cython is installed) or the pairwise module</span>
+<span class="sd">        and allows for a cleaner interface.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">energies</span> <span class="o">=</span> <span class="n">heavy</span><span class="o">.</span><span class="n">compute_energy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span>
+                                                             <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span>
+                                                             <span class="bp">self</span><span class="o">.</span><span class="n">cut_off</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.integrate"><a class="viewcode-back" href="../../util.html#pylj.util.System.integrate">[docs]</a>    <span class="k">def</span> <span class="nf">integrate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps the chosen integration method.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        method: method</span>
+<span class="sd">            The integration method to be used, e.g. md.velocity_verlet.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="n">method</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestep_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cut_off</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.md_sample"><a class="viewcode-back" href="../../util.html#pylj.util.System.md_sample">[docs]</a>    <span class="k">def</span> <span class="nf">md_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the md.sample function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">md</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_particles</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.heat_bath"><a class="viewcode-back" href="../../util.html#pylj.util.System.heat_bath">[docs]</a>    <span class="k">def</span> <span class="nf">heat_bath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bath_temperature</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the heat_bath function in either the comp (if Cython is installed) or the pairwise modules.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        target_temperature: float</span>
+<span class="sd">            The target temperature for the simulation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="n">heavy</span><span class="o">.</span><span class="n">heat_bath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature_sample</span><span class="p">,</span> <span class="n">bath_temperature</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.mc_sample"><a class="viewcode-back" href="../../util.html#pylj.util.System.mc_sample">[docs]</a>    <span class="k">def</span> <span class="nf">mc_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the :doc:`mc.sample` function.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        energy: float</span>
+<span class="sd">            Energy to add to the sample</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mc</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">old_energy</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.select_random_particle"><a class="viewcode-back" href="../../util.html#pylj.util.System.select_random_particle">[docs]</a>    <span class="k">def</span> <span class="nf">select_random_particle</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the mc.select_random_particle function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_particle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_store</span> <span class="o">=</span> <span class="n">mc</span><span class="o">.</span><span class="n">select_random_particle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.new_random_position"><a class="viewcode-back" href="../../util.html#pylj.util.System.new_random_position">[docs]</a>    <span class="k">def</span> <span class="nf">new_random_position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the mc.get_new_particle function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="n">mc</span><span class="o">.</span><span class="n">get_new_particle</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_particle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">box_length</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.accept"><a class="viewcode-back" href="../../util.html#pylj.util.System.accept">[docs]</a>    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the mc.accept function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">old_energy</span> <span class="o">=</span> <span class="n">mc</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">new_energy</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="System.reject"><a class="viewcode-back" href="../../util.html#pylj.util.System.reject">[docs]</a>    <span class="k">def</span> <span class="nf">reject</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Maps to the mc.reject function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">particles</span> <span class="o">=</span> <span class="n">mc</span><span class="o">.</span><span class="n">reject</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position_store</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">particles</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_particle</span><span class="p">)</span></div></div>
+
 
 <div class="viewcode-block" id="pbc_correction"><a class="viewcode-back" href="../../util.html#pylj.util.pbc_correction">[docs]</a><span class="k">def</span> <span class="nf">pbc_correction</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Correct for the periodic boundary condition.</span>
@@ -144,52 +231,19 @@
         <span class="n">position</span> <span class="o">*=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">cell</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">position</span></div>
 
-<div class="viewcode-block" id="calculate_temperature"><a class="viewcode-back" href="../../util.html#pylj.util.calculate_temperature">[docs]</a><span class="k">def</span> <span class="nf">calculate_temperature</span><span class="p">(</span><span class="n">particles</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Determine the instantaneous temperature of the system.</span>
 
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    particles: util.particle_dt, array_like</span>
-<span class="sd">        Information about the particles.</span>
+<span class="k">def</span> <span class="nf">__cite__</span><span class="p">():</span> <span class="c1">#pragma: no cover</span>
+    <span class="sd">&quot;&quot;&quot;This function will launch the Zenodo website for the latest release of pylj.&quot;&quot;&quot;</span>
+    <span class="n">webbrowser</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;https://zenodo.org/badge/latestdoi/119863480&#39;</span><span class="p">)</span>
 
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    float:</span>
-<span class="sd">        Calculated instantaneous simulation temperature.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xposition&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
-        <span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xvelocity&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xvelocity&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yvelocity&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span>
-                    <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yvelocity&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">])</span>
-        <span class="n">k</span> <span class="o">+=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">v</span> <span class="o">*</span> <span class="n">v</span>
-    <span class="k">return</span> <span class="n">k</span> <span class="o">/</span> <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xposition&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span></div>
 
-<div class="viewcode-block" id="calculate_msd"><a class="viewcode-back" href="../../util.html#pylj.util.calculate_msd">[docs]</a><span class="k">def</span> <span class="nf">calculate_msd</span><span class="p">(</span><span class="n">particles</span><span class="p">,</span> <span class="n">initial_particles</span><span class="p">,</span> <span class="n">box_length</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Determines the mean squared displacement of the particles in the system.</span>
+<span class="k">def</span> <span class="nf">__version__</span><span class="p">():</span> <span class="c1">#pragma: no cover</span>
+    <span class="sd">&quot;&quot;&quot;This will print the number of the pylj version currently in use.&quot;&quot;&quot;</span>
+    <span class="n">major</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">minor</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">micro</span> <span class="o">=</span> <span class="mi">0</span> 
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;pylj-</span><span class="si">{:d}</span><span class="s1">.</span><span class="si">{:d}</span><span class="s1">.</span><span class="si">{:d}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">major</span><span class="p">,</span> <span class="n">minor</span><span class="p">,</span> <span class="n">micro</span><span class="p">))</span>
 
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    particles: util.particle_dt, array_like</span>
-<span class="sd">        Information about the particles.</span>
-<span class="sd">    initial_particles: util.particle_dt, array_like</span>
-<span class="sd">        Information about the initial state of the particles.</span>
-<span class="sd">    box_length: float</span>
-<span class="sd">        Size of the cell vector.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    float:</span>
-<span class="sd">        Mean squared deviation for the particles at the given timestep.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">dx</span> <span class="o">=</span> <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xposition&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">initial_particles</span><span class="p">[</span><span class="s1">&#39;xposition&#39;</span><span class="p">]</span>
-    <span class="n">dy</span> <span class="o">=</span> <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;yposition&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">initial_particles</span><span class="p">[</span><span class="s1">&#39;yposition&#39;</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">particles</span><span class="p">[</span><span class="s1">&#39;xposition&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dx</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">box_length</span><span class="p">):</span>
-            <span class="n">dx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">box_length</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dx</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dy</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">box_length</span><span class="p">):</span>
-            <span class="n">dy</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">box_length</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dy</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-    <span class="n">dr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dx</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">dy</span> <span class="o">*</span> <span class="n">dy</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">dr</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="particle_dt"><a class="viewcode-back" href="../../util.html#pylj.util.particle_dt">[docs]</a><span class="k">def</span> <span class="nf">particle_dt</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;Builds the data type for the particles, this consists of:</span>
@@ -203,8 +257,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="s1">&#39;xposition&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;yposition&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;xvelocity&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
                      <span class="p">(</span><span class="s1">&#39;yvelocity&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;xacceleration&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;yacceleration&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
-                     <span class="p">(</span><span class="s1">&#39;xprevious_position&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;yprevious_position&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;xforce&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
-                     <span class="p">(</span><span class="s1">&#39;yforce&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;energy&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)])</span></div>
+                     <span class="p">(</span><span class="s1">&#39;xprevious_position&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;yprevious_position&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;energy&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)])</span></div>
 </pre></div>
 
           </div>
@@ -243,12 +296,14 @@
 </div>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -259,7 +314,7 @@
       &copy;2018, Andrew R. McCluskey.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.4</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
       
     </div>

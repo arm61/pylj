@@ -5,7 +5,8 @@ pylj modules
    :maxdepth: 4
 
    comp
-   examples
+   mc
    md
+   pairwise
    sample
    util
