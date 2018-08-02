@@ -22,8 +22,9 @@ ISRELEASED = True
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 from os import path
+import io
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+with io.open(path.join(this_directory, 'README.md')) as f:
     long_description = f.read()
 
 info = {
