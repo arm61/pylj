@@ -23,8 +23,10 @@ class TestMd(unittest.TestCase):
         a.particles['yvelocity'] = 1e4
         a.particles['xacceleration'] = 1e4
         a.particles['yacceleration'] = 1e4
-        b = md.update_positions([a.particles['xposition'],
+        b, c = md.update_positions([a.particles['xposition'],
                                   a.particles['yposition']],
+                                [a.particles['xprevious_position'],
+                                 a.particles['yprevious_position']],
                                  [a.particles['xvelocity'],
                                   a.particles['yvelocity']],
                                  [a.particles['xacceleration'],
@@ -74,4 +76,3 @@ class TestMd(unittest.TestCase):
         a.particles['yposition'] = [7e-10, 7e-10]
         b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
         assert_almost_equal(b, 10e-20)
-            
