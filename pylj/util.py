@@ -9,12 +9,13 @@ except ImportError:
     from pylj import pairwise as heavy
 
 
-
 class System:
     """Simulation system.
 
-    This class is designed to store all of the information about the job that is being run. This includes the particles
-    object, as will as sampling objects such as the temperature, pressure, etc. arrays.
+    This class is designed to store all of the information about the job that
+    is being run. This includes the particles
+    object, as will as sampling objects such as the temperature, pressure, etc.
+    arrays.
 
     Parameters
     ----------
@@ -31,19 +32,23 @@ class System:
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     """
-    def __init__(self, number_of_particles, temperature, box_length, init_conf='square', timestep_length=1e-14,
+    def __init__(self, number_of_particles, temperature, box_length,
+                 init_conf='square', timestep_length=1e-14,
                  cut_off=15):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
-            raise AttributeError('With a box length of {} the particles are probably too small to be seen in the '
-                                 'viewer. Try something (much) less than 600.'.format(box_length))
+            raise AttributeError('With a box length of {} the particles are '
+                                 'probably too small to be seen in the '
+                                 'viewer. Try something (much) less than '
+                                 '600.'.format(box_length))
         if box_length >= 4:
             self.box_length = box_length * 1e-10
         else:
-            raise AttributeError('With a box length of {} the cell is too small to really hold more than one '
+            raise AttributeError('With a box length of {} the cell is too '
+                                 'small to really hold more than one '
                                  'particle.'.format(box_length))
         self.timestep_length = timestep_length
         self.particles = None
@@ -52,8 +57,9 @@ class System:
         elif init_conf == 'random':
             self.random()
         else:
-            raise NotImplementedError('The initial configuration type {} is not recognised. '
-                                      'Available options are: square or random'.format(init_conf))
+            raise NotImplementedError('The initial configuration type {} is '
+                                      'not recognised. Available options are: '
+                                      'square or random'.format(init_conf))
         if box_length > 30:
             self.cut_off = cut_off * 1e-10
         else:
@@ -82,7 +88,8 @@ class System:
         int:
             Number of pairwise interactions in the system.
         """
-        return int((self.number_of_particles - 1) * self.number_of_particles / 2)
+        return int((self.number_of_particles - 1) *
+                   self.number_of_particles / 2)
 
     def square(self):
         """Sets the initial positions of the particles on a square lattice.
@@ -104,20 +111,28 @@ class System:
         """
         part_dt = particle_dt()
         self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
-        self.particles['xposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)
-        self.particles['yposition'] = np.random.uniform(0, self.box_length, self.number_of_particles)
+        num_part = self.number_of_particles
+        self.particles['xposition'] = np.random.uniform(0, self.box_length,
+                                                        num_part)
+        self.particles['yposition'] = np.random.uniform(0, self.box_length,
+                                                        num_part)
 
     def compute_force(self):
-        """Maps to the compute_force function in either the comp (if Cython is installed) or the pairwise module and
-        allows for a cleaner interface.
+        """Maps to the compute_force function in either the comp (if Cython is
+        installed) or the pairwise module and allows for a cleaner interface.
         """
-        self.particles, self.distances, self.forces, self.energies = heavy.compute_forces(self.particles,
-                                                                                         self.box_length,
-                                                                                         self.cut_off)
+        part, dist, forces, energies = heavy.compute_forces(self.particles,
+                                                            self.box_length,
+                                                            self.cut_off)
+        self.particles = part
+        self.distances = dist
+        self.forces = forces
+        self.energies = energies
 
     def compute_energy(self):
-        """Maps to the compute_energy function in either the comp (if Cython is installed) or the pairwise module
-        and allows for a cleaner interface.
+        """Maps to the compute_energy function in either the comp (if Cython
+        is installed) or the pairwise module and allows for a cleaner
+        interface.
         """
         self.distances, self.energies = heavy.compute_energy(self.particles,
                                                              self.box_length,
@@ -131,22 +146,27 @@ class System:
         method: method
             The integration method to be used, e.g. md.velocity_verlet.
         """
-        self.particles = method(self.particles, self.timestep_length, self.box_length, self.cut_off)
+        self.particles = method(self.particles, self.timestep_length,
+                                self.box_length, self.cut_off)
 
     def md_sample(self):
         """Maps to the md.sample function.
         """
-        self = md.sample(self.particles, self.box_length, self.initial_particles, self)
+        self = md.sample(self.particles, self.box_length,
+                         self.initial_particles, self)
 
     def heat_bath(self, bath_temperature):
-        """Maps to the heat_bath function in either the comp (if Cython is installed) or the pairwise modules.
+        """Maps to the heat_bath function in either the comp (if Cython is
+        installed) or the pairwise modules.
 
         Parameters
         ----------
         target_temperature: float
             The target temperature for the simulation.
         """
-        self.particles = heavy.heat_bath(self.particles, self.temperature_sample, bath_temperature)
+        self.particles = heavy.heat_bath(self.particles,
+                                         self.temperature_sample,
+                                         bath_temperature)
 
     def mc_sample(self):
         """Maps to the mc.sample function.
@@ -161,12 +181,15 @@ class System:
     def select_random_particle(self):
         """Maps to the mc.select_random_particle function.
         """
-        self.random_particle, self.position_store = mc.select_random_particle(self.particles)
+        self.random_particle, self.position_store = mc.select_random_particle(
+            self.particles)
 
     def new_random_position(self):
         """Maps to the mc.get_new_particle function.
         """
-        self.particles = mc.get_new_particle(self.particles, self.random_particle, self.box_length)
+        self.particles = mc.get_new_particle(self.particles,
+                                             self.random_particle,
+                                             self.box_length)
 
     def accept(self):
         """Maps to the mc.accept function.
@@ -176,7 +199,8 @@ class System:
     def reject(self):
         """Maps to the mc.reject function.
         """
-        self.particles = mc.reject(self.position_store, self.particles, self.random_particle)
+        self.particles = mc.reject(self.position_store, self.particles,
+                                   self.random_particle)
 
 
 def pbc_correction(position, cell):
@@ -198,12 +222,13 @@ def pbc_correction(position, cell):
     return position
 
 
-def __cite__(): #pragma: no cover
-    """This function will launch the Zenodo website for the latest release of pylj."""
+def __cite__():  # pragma: no cover
+    """This function will launch the Zenodo website for the latest release of
+    pylj."""
     webbrowser.open('https://zenodo.org/badge/latestdoi/119863480')
 
 
-def __version__(): #pragma: no cover
+def __version__():  # pragma: no cover
     """This will print the number of the pylj version currently in use."""
     major = 1
     minor = 0
@@ -221,7 +246,11 @@ def particle_dt():
     - xforce and yforce
     - energy
     """
-    return np.dtype([('xposition', np.float64), ('yposition', np.float64), ('xvelocity', np.float64),
-                     ('yvelocity', np.float64), ('xacceleration', np.float64), ('yacceleration', np.float64),
-                     ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('energy', np.float64),
-                     ('xpbccount', int), ('ypbccount', int)])
+    return np.dtype([('xposition', np.float64), ('yposition', np.float64),
+                     ('xvelocity', np.float64), ('yvelocity', np.float64),
+                     ('xacceleration', np.float64),
+                     ('yacceleration', np.float64),
+                     ('xprevious_position', np.float64),
+                     ('yprevious_position', np.float64),
+                     ('energy', np.float64), ('xpbccount', int),
+                     ('ypbccount', int)])

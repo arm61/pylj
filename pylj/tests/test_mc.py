@@ -2,6 +2,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 from pylj import mc
 import unittest
 
+
 class TestMc(unittest.TestCase):
     def test_initialise_square(self):
         a = mc.initialise(2, 300, 8, 'square')
