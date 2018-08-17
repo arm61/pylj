@@ -69,13 +69,15 @@ def velocity_verlet(particles, timestep_length, box_length, cut_off):
     """
     xposition_store = list(particles['xposition'])
     yposition_store = list(particles['yposition'])
-    [particles['xposition'], particles['yposition']] = update_positions([particles['xposition'],
-                                                                         particles['yposition']],
-                                                                        [particles['xvelocity'],
-                                                                         particles['yvelocity']],
-                                                                        [particles['xacceleration'],
-                                                                         particles['yacceleration']], timestep_length,
-                                                                        box_length)
+    [particles['xposition'], particles['yposition']], [particles['xprevious_position'], particles['yprevious_position']] = update_positions([particles['xposition'],
+                     particles['yposition']],
+                    [particles['xprevious_position'],
+                     particles['yprevious_position']],
+                    [particles['xvelocity'],
+                     particles['yvelocity']],
+                    [particles['xacceleration'],
+                     particles['yacceleration']], timestep_length,
+                    box_length)
     xacceleration_store = list(particles['xacceleration'])
     yacceleration_store = list(particles['yacceleration'])
     particles, distances, forces, energies = heavy.compute_forces(particles, box_length, cut_off)
@@ -137,24 +139,38 @@ def calculate_msd(particles, initial_particles, box_length):
     float:
         Mean squared deviation for the particles at the given timestep.
     """
-    dx = particles['xposition'] - initial_particles['xposition']
-    dy = particles['yposition'] - initial_particles['yposition']
+    xpos = np.array(particles['xposition'])
+    ypos = np.array(particles['yposition'])
+    dxinst = xpos - particles['xprevious_position']
+    dyinst = ypos - particles['yprevious_position']
     for i in range(0, particles['xposition'].size):
-        if np.abs(dx[i]) > 0.5 * box_length:
-            dx[i] *= 1 - box_length / np.abs(dx[i])
-        if np.abs(dy[i]) > 0.5 * box_length:
-            dy[i] *= 1 - box_length / np.abs(dy[i])
+        if np.abs(dxinst[i]) > 0.5 * box_length:
+            if xpos[i] <= 0.5 * box_length:
+                particles['xpbccount'][i] += 1
+            if xpos[i] > 0.5 * box_length:
+                particles['xpbccount'][i] -= 1
+        xpos[i] += box_length * particles['xpbccount'][i]
+        if np.abs(dyinst[i]) > 0.5 * box_length:
+            if ypos[i] <= 0.5 * box_length:
+                particles['ypbccount'][i] += 1
+            if ypos[i] > 0.5 * box_length:
+                particles['ypbccount'][i] -= 1
+        ypos[i] += box_length * particles['ypbccount'][i]
+    dx = xpos - initial_particles['xposition']
+    dy = ypos - initial_particles['yposition']
     dr = np.sqrt(dx * dx + dy * dy)
     return np.average(dr ** 2)
 
 
-def update_positions(positions, velocities, accelerations, timestep_length, box_length):
+def update_positions(positions, old_positions, velocities, accelerations, timestep_length, box_length):
     """Update the particle positions using the Velocity-Verlet integrator.
 
     Parameters
     ----------
     positions: (2, N) array_like
         Where N is the number of particles, and the first row are the x positions and the second row the y positions.
+    old_positions: (2, N) array_like
+        Where N is the number of particles, and the first row are the previous x positions and the second row are the y positions.
     velocities: (2, N) array_like
         Where N is the number of particles, and the first row are the x velocities and the second row the y velocities.
     accelerations: (2, N) array_like
@@ -170,11 +186,13 @@ def update_positions(positions, velocities, accelerations, timestep_length, box_
     (2, N) array_like:
         Updated positions.
     """
+    old_positions[0] = np.array(positions[0])
+    old_positions[1] = np.array(positions[1])
     positions[0] += velocities[0] * timestep_length + 0.5 * accelerations[0] * timestep_length * timestep_length
     positions[1] += velocities[1] * timestep_length + 0.5 * accelerations[1] * timestep_length * timestep_length
     positions[0] = positions[0] % box_length
     positions[1] = positions[1] % box_length
-    return [positions[0], positions[1]]
+    return [positions[0], positions[1]], [old_positions[0], old_positions[1]]
 
 
 def update_velocities(velocities, accelerations_old, accelerations_new, timestep_length):
@@ -223,4 +241,3 @@ def calculate_temperature(particles):
         mass_of_argon = mass_of_argon_amu * atomic_mass_unit # kilograms
         k += mass_of_argon * v * v / (boltzmann_constant * 2 * particles['xposition'].size)
     return k
-

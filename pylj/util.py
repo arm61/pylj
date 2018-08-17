@@ -83,7 +83,7 @@ class System:
             Number of pairwise interactions in the system.
         """
         return int((self.number_of_particles - 1) * self.number_of_particles / 2)
-        
+
     def square(self):
         """Sets the initial positions of the particles on a square lattice.
         """
@@ -98,7 +98,7 @@ class System:
                     self.particles[n]['xposition'] = (i + 0.5) * d
                     self.particles[n]['yposition'] = (j + 0.5) * d
                     n += 1
-    
+
     def random(self):
         """Sets the initial positions of the particles in a random arrangement.
         """
@@ -136,7 +136,7 @@ class System:
     def md_sample(self):
         """Maps to the md.sample function.
         """
-        md.sample(self.particles, self.box_length, self.initial_particles, self)
+        self = md.sample(self.particles, self.box_length, self.initial_particles, self)
 
     def heat_bath(self, bath_temperature):
         """Maps to the heat_bath function in either the comp (if Cython is installed) or the pairwise modules.
@@ -223,4 +223,5 @@ def particle_dt():
     """
     return np.dtype([('xposition', np.float64), ('yposition', np.float64), ('xvelocity', np.float64),
                      ('yvelocity', np.float64), ('xacceleration', np.float64), ('yacceleration', np.float64),
-                     ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('energy', np.float64)])
+                     ('xprevious_position', np.float64), ('yprevious_position', np.float64), ('energy', np.float64),
+                     ('xpbccount', int), ('ypbccount', int)])
