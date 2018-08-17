@@ -1,6 +1,7 @@
 from numpy.testing import assert_almost_equal, assert_equal
-from pylj import util, md
+from pylj import util
 import unittest
+
 
 class TestUtil(unittest.TestCase):
     def test_system_square(self):
@@ -35,21 +36,24 @@ class TestUtil(unittest.TestCase):
 
     def test_system_too_big(self):
         with self.assertRaises(AttributeError) as context:
-            a = util.System(2, 300, 1000)
-        self.assertTrue('With a box length of 1000 the particles are probably too small to be seen in the viewer. Try '
-                        'something (much) less than 600.' in str(context.exception))
+            util.System(2, 300, 1000)
+        self.assertTrue('With a box length of 1000 the particles are probably '
+                        'too small to be seen in the viewer. Try something '
+                        '(much) less than 600.' in str(context.exception))
 
     def test_system_too_small(self):
         with self.assertRaises(AttributeError) as context:
-            a = util.System(2, 300, 2)
-        self.assertTrue('With a box length of 2 the cell is too small to really hold more than one '
-                        'particle.' in str(context.exception))
+            util.System(2, 300, 2)
+        self.assertTrue('With a box length of 2 the cell is too small to '
+                        'really hold more than one particle.' in str(
+                                context.exception))
 
     def test_system_init_conf(self):
         with self.assertRaises(NotImplementedError) as context:
-            a = util.System(2, 300, 100, init_conf='horseradish')
-        self.assertTrue('The initial configuration type horseradish is not recognised. '
-                        'Available options are: square or random' in str(context.exception))
+            util.System(2, 300, 100, init_conf='horseradish')
+        self.assertTrue('The initial configuration type horseradish is not '
+                        'recognised. Available options are: square or '
+                        'random' in str(context.exception))
 
     def test_pbc_correction(self):
         a = util.pbc_correction(1, 10)
