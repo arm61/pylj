@@ -23,6 +23,8 @@ If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom]
 
 Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of how pylj can be used in undergraduate teaching exercises.
 
+## Badges
+
 <table>
   <tr>
     <td>JOSE DOI</td>
