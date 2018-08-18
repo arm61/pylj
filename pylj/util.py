@@ -226,13 +226,14 @@ def __cite__():  # pragma: no cover
     """This function will launch the Zenodo website for the latest release of
     pylj."""
     webbrowser.open('https://zenodo.org/badge/latestdoi/119863480')
+    webbrowser.open('http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d')
 
 
 def __version__():  # pragma: no cover
     """This will print the number of the pylj version currently in use."""
     major = 1
     minor = 0
-    micro = 1
+    micro = 2
     print('pylj-{:d}.{:d}.{:d}'.format(major, minor, micro))
 
 
