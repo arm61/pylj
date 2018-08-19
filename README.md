@@ -1,4 +1,4 @@
-<center><a href="http://pythoninchemistry.org/pylj"><img src="https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true" width= "60%"/></a></center>
+<a href="http://pythoninchemistry.org/pylj"><img src="https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true" width= "60%"/></a>
 
 ## Visit the [pylj](http://pythoninchemistry.org/pylj) webpage for more information about pylj.
 
