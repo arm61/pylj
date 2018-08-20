@@ -1,76 +1,52 @@
 environment:
 
-  # SDK v7.0 MSVC Express 2008's SetEnv.cmd script will fail if the
-  # /E:ON and /V:ON options are not enabled in the batch script interpreter
-  # See: http://stackoverflow.com/a/13751649/163740
-  CMD_IN_ENV: "cmd /E:ON /V:ON /C obvci_appveyor_python_build_env.cmd"
-
-  # Workaround for https://github.com/conda/conda-build/issues/636
-  PYTHONIOENCODING: "UTF-8"
-
   matrix:
-    # Note: Because we have to separate the py2 and py3 components due to compiler version, we have a race condition for non-python packages.
-    # Not sure how to resolve this, but maybe we should be tracking the VS version in the build string anyway?
-    - TARGET_ARCH: x64
-      CONDA_NPY: 114
-      PYTHON_VERSION: 3.7
-      CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
 
-    - TARGET_ARCH: x86
-      CONDA_NPY: 114
-      PYTHON_VERSION: 3.7
-      CONDA_INSTALL_LOCN: C:\\Miniconda36-x64
+    # For Python versions available on Appveyor, see
+    # http://www.appveyor.com/docs/installed-software#python
+    # The list here is complete (excluding Python 2.6, which
+    # isn't covered by this document) at the time of writing.
 
-    - TARGET_ARCH: x64
-      CONDA_NPY: 113
-      PYTHON_VERSION: 2.7
-      CONDA_INSTALL_LOCN: C:\\Miniconda-x64
-
-# We always use a 64-bit machine, but can build x86 distributions
-# with the TARGET_ARCH variable (which is used by CMD_IN_ENV).
-platform:
-    - x64
-
-init:
-    - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%"
-    - "ECHO \"%APPVEYOR_SCHEDULED_BUILD%\""
-    # cancel build if newer one is submitted; complicated
-    # details for getting this to work are credited to JuliaLang
-    # developers
-    - ps: if ($env:APPVEYOR_PULL_REQUEST_NUMBER -and $env:APPVEYOR_BUILD_NUMBER -ne ((Invoke-RestMethod `
-        https://ci.appveyor.com/api/projects/$env:APPVEYOR_ACCOUNT_NAME/$env:APPVEYOR_PROJECT_SLUG/history?recordsNumber=50).builds | `
-        Where-Object pullRequestId -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)[0].buildNumber) { `
-          raise "There are newer queued builds for this pull request, skipping build."
-        }
+    - PYTHON: "C:\\Python27"
+    - PYTHON: "C:\\Python33"
+    - PYTHON: "C:\\Python34"
+    - PYTHON: "C:\\Python35"
+    - PYTHON: "C:\\Python27-x64"
+    - PYTHON: "C:\\Python33-x64"
+      DISTUTILS_USE_SDK: "1"
+    - PYTHON: "C:\\Python34-x64"
+      DISTUTILS_USE_SDK: "1"
+    - PYTHON: "C:\\Python35-x64"
+    - PYTHON: "C:\\Python36-x64"
 
 install:
-    # Set the CONDA_NPY, although it has no impact on the actual build. We need this because of a test within conda-build.
-    - cmd: set CONDA_NPY=19
+  # We need wheel installed to build wheels
+  - "%PYTHON%\\python.exe -m pip install wheel"
 
-    # Remove cygwin (and therefore the git that comes with it).
-    - cmd: rmdir C:\cygwin /s /q
-
-    # Add path, activate `conda` and update conda.
-    - cmd: call %CONDA_INSTALL_LOCN%\Scripts\activate.bat
-    - cmd: set PYTHONUNBUFFERED=1
-
-    # Add our channels.
-    - cmd: conda.exe config --set show_channel_urls true
-    - cmd: conda.exe update --yes --quiet conda
-
-    # create conda environment
-    - cmd: call conda.exe create --yes -n test python=%PYTHON_VERSION%
-    - cmd: call %CONDA_INSTALL_LOCN%\Scripts\activate.bat test
-    - cmd: call conda.exe info --envs
-
-    # Configure the VM.
-    - cmd: call conda.exe install --yes --quiet numpy cython
-    - pip install matplotlib
-
-build_script:
-    # Build the compiled extension
-    - python setup.py build
-    - python setup.py install
+build: off
 
 test_script:
-    - python setup.py test
+  # Put your test command here.
+  # If you don't need to build C extensions on 64-bit Python 3.3 or 3.4,
+  # you can remove "build.cmd" from the front of the command, as it's
+  # only needed to support those cases.
+  # Note that you must use the environment variable %PYTHON% to refer to
+  # the interpreter you're using - Appveyor does not do anything special
+  # to put the Python version you want to use on PATH.
+  - "build.cmd %PYTHON%\\python.exe setup.py test"
+
+after_test:
+  # This step builds your wheels.
+  # Again, you only need build.cmd if you're building C extensions for
+  # 64-bit Python 3.3/3.4. And you need to use %PYTHON% to get the correct
+  # interpreter
+  - "build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
+
+artifacts:
+  # bdist_wheel puts your built wheel in the dist directory
+  - path: dist\*
+
+#on_success:
+#  You can use this step to upload your artifacts to a public website.
+#  See Appveyor's documentation for more details. Or you can simply
+#  access your wheels from the Appveyor "artifacts" tab for your build.
