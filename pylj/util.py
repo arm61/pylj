@@ -244,7 +244,7 @@ def particle_dt():
     - xposition and yposition
     - xvelocity and yvelocity
     - xacceleration and yacceleration
-    - xprevious_position and ypresvious_position
+    - xprevious_position and yprevious_position
     - xforce and yforce
     - energy
     """
