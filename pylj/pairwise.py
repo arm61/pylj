@@ -3,7 +3,8 @@ import numpy as np
 from pylj import util
 
 
-def compute_forces(particles, box_length, cut_off):
+def compute_forces(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+                   mass=39.948):
     """Calculates the forces and therefore the accelerations on each of the
     particles in the simulation. This uses a 12-6 Lennard-Jones potential
     model for Argon with values:
@@ -40,11 +41,11 @@ def compute_forces(particles, box_length, cut_off):
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
     k = 0
-    A = 1.363e-134  # joules / metre ^ {12}
-    B = 9.273e-78  # joules / meter ^ {6}
+    A = a  # joules / metre ^ {12}
+    B = b  # joules / meter ^ {6}
     atomic_mass_unit = 1.660539e-27  # kilograms
-    mass_of_argon_amu = 39.948  # amu
-    mass_of_argon = mass_of_argon_amu * atomic_mass_unit  # kilograms
+    mass_amu = mass  # amu
+    mass_kg = mass_amu * atomic_mass_unit  # kilograms
     for i in range(0, particles['xposition'].size-1):
         for j in range(i+1, particles['xposition'].size):
             dx = particles['xposition'][i] - particles['xposition'][j]
@@ -58,7 +59,7 @@ def compute_forces(particles, box_length, cut_off):
                 forces[k] = f
                 e = lennard_jones_energy(A, B, dr)
                 energies[k] = e
-                particles = update_accelerations(particles, f, mass_of_argon,
+                particles = update_accelerations(particles, f, mass_kg,
                                                  dx, dy, dr, i, j)
             else:
                 forces[k] = 0.

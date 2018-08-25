@@ -1,5 +1,7 @@
 <a href="http://pythoninchemistry.org/pylj"><img src="https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true" width= "60%"/></a>
 
+## This is the branch associated with the development of pylj v2.0. Things on this branch are uncomplete, untested, and probably just won't work. Please change to the [master branch](https://github.com/arm61/pylj/tree/master) for something more stable.
+
 ## Visit the [pylj](http://pythoninchemistry.org/pylj) webpage for more information about pylj.
 
 To build from source:
