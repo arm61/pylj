@@ -3,8 +3,11 @@
 #include <stdio.h>
 #include <iostream>
 
-void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc,
-		double *yacc, double *distances_arr, double box_l, double *force_arr, double *energy_arr, double cut)
+void compute_accelerations(int len_particles, const double *xpos,
+                           const double *ypos, double *xacc, double *yacc,
+                           double *distances_arr, double box_l,
+                           double *force_arr, double *energy_arr, double cut,
+                           double ac, double bc, double massc)
 {
     int ii = 0;
     double dx, dy, dr, f, e;
@@ -17,14 +20,15 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
     int k = 0;
     int i = 0;
     double inv_dr_1, inv_dr_2, inv_dr_6;
-    // values of A and B where determined from from A. Rahman "Correlations in the Motion of Atoms in Liquid Argon",
-    // Physical Review 136 pp. A405–A411 (1964)
-    double A = 1.363e-134; // joules / metre ^{12}
-    double B = 9.273e-78; // joules / meter ^{6}
+    // values of A and B where determined from from A. Rahman "Correlations
+    // in the Motion of Atoms in Liquid Argon", Physical Review 136 pp.
+    // A405–A411 (1964)
+    double A = ac; // joules / metre ^{12}
+    double B = bc; // joules / meter ^{6}
     double atomic_mass_unit = 1.660539e-27; // kilograms
-    double mass_of_argon_amu = 39.948;  // amu
-    double mass_of_argon = mass_of_argon_amu * atomic_mass_unit; // kilograms
-    double inv_mass_of_argon = 1 / mass_of_argon;
+    double mass_amu = massc;  // amu
+    double mass_kg = mass_amu * atomic_mass_unit; // kilograms
+    double inv_mass_kg = 1 / mass_kg;
     for (i = 0; i < len_particles - 1; i++)
     {
         int j = 0;
@@ -47,14 +51,15 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
                 inv_dr_1 = 1.0 / dr;
                 inv_dr_2 = inv_dr_1 * inv_dr_1;
                 inv_dr_6 = inv_dr_2 * inv_dr_2 * inv_dr_2;
-                f = (12 * A * (inv_dr_1 * inv_dr_6 * inv_dr_6) - 6 * B * (inv_dr_1 * inv_dr_6));
+                f = (12 * A * (inv_dr_1 * inv_dr_6 * inv_dr_6) - 6 * B *
+                    (inv_dr_1 * inv_dr_6));
                 force_arr[k] = f;
                 e = (A * (inv_dr_6 * inv_dr_6) - B * inv_dr_6);
                 energy_arr[k] = e;
-                xacc[i] += (f * dx * inv_dr_1) * inv_mass_of_argon;
-                yacc[i] += (f * dy * inv_dr_1) * inv_mass_of_argon;
-                xacc[j] -= (f * dx * inv_dr_1) * inv_mass_of_argon;
-                yacc[j] -= (f * dy * inv_dr_1) * inv_mass_of_argon;
+                xacc[i] += (f * dx * inv_dr_1) * inv_mass_kg;
+                yacc[i] += (f * dy * inv_dr_1) * inv_mass_kg;
+                xacc[j] -= (f * dx * inv_dr_1) * inv_mass_kg;
+                yacc[j] -= (f * dy * inv_dr_1) * inv_mass_kg;
             }
             else
             {
@@ -66,16 +71,18 @@ void compute_accelerations(int len_particles, const double *xpos, const double *
     }
 }
 
-void compute_energies(int len_particles, const double *xpos, const double *ypos, double *distances_arr, double box_l,
-                      double *energy_arr, double cut)
+void compute_energies(int len_particles, const double *xpos,
+                      const double *ypos, double *distances_arr, double box_l,
+                      double *energy_arr, double cut, double ac, double bc)
 {
     double dx, dy, dr, e;
     int k = 0;
     int i = 0;
-    // values of A and B where determined from from A. Rahman "Correlations in the Motion of Atoms in Liquid Argon",
-    // Physical Review 136 pp. A405–A411 (1964)
-    double A = 1.363e-134; // joules / metre ^{12}
-    double B = 9.273e-78; // joules / meter ^{6}
+    // values of A and B where determined from from A. Rahman "Correlations
+    // in the Motion of Atoms in Liquid Argon", Physical Review 136 pp.
+    // A405–A411 (1964)
+    double A = ac; // joules / metre ^{12}
+    double B = bc; // joules / meter ^{6}
     for (i = 0; i < len_particles - 1; i++)
     {
         int j = 0;
@@ -107,14 +114,15 @@ void compute_energies(int len_particles, const double *xpos, const double *ypos,
     }
 }
 
-double compute_pressure(int number_of_particles, const double *xpos, const double *ypos, double box_length,
-                        double temperature, double cut)
+double compute_pressure(int number_of_particles, const double *xpos,
+                        const double *ypos, double box_length,
+                        double temperature, double cut, double ac, double bc)
 {
 	double pres = 0.;
 	int i, j;
 	double dx, dy, dr, f;
-	double A = 1.363e-134; // joules / metre ^{12}
-    double B = 9.273e-78; // joules / meter ^{6}
+	double A = ac; // joules / metre ^{12}
+    double B = bc; // joules / meter ^{6}
 	for (i = 0; i < number_of_particles - 1; i++)
 	{
 		for (j = i + 1; j < number_of_particles; j++)
@@ -139,11 +147,13 @@ double compute_pressure(int number_of_particles, const double *xpos, const doubl
 	}
 	double boltzmann_constant = 1.3806e-23; // joules/kelvin
 	pres = 1. / (2 * box_length * box_length) * pres +
-	       ((double)number_of_particles / (box_length * box_length) * boltzmann_constant * temperature);
+	       ((double)number_of_particles / (box_length * box_length) *
+           boltzmann_constant * temperature);
 	return pres;
 }
 
-void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double temperature)
+void scale_velocities(int len_particles, double *xvel, double *yvel,
+                      double average_temp, double temperature)
 {
     int i = 0;
     for (i = 0; i < len_particles; i++)

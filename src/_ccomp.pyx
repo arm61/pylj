@@ -4,21 +4,31 @@ import numpy as np
 cimport numpy as np
 
 cdef extern from "comp.h":
-    void compute_accelerations(int len_particles, const double *xpos, const double *ypos, double *xacc, double *yacc,
-                               double *distances_arr, double box_l, double *force_arr, double *energy_arr, double cut)
-    void compute_energies(int len_particles, const double *xpos, const double *ypos, double *distances_arr, double box_l,
-                        double *energy_arr, double cut)
-    double compute_pressure(int number_of_particles, const double *xvel, const double *yvel, double box_length,
-                            double temperature, double cut)
-    void scale_velocities(int len_particles, double *xvel, double *yvel, double average_temp, double tempature)
+    void compute_accelerations(int len_particles, const double *xpos,
+                               const double *ypos, double *xacc, double *yacc,
+                               double *distances_arr, double box_l,
+                               double *force_arr, double *energy_arr,
+                               double cut, double ac, double bc, double massc)
+    void compute_energies(int len_particles, const double *xpos,
+                          const double *ypos, double *distances_arr,
+                          double box_l, double *energy_arr, double cut,
+                          double ac, double bc)
+    double compute_pressure(int number_of_particles, const double *xvel,
+                            const double *yvel, double box_length,
+                            double temperature, double cut, double ac,
+                            double bc)
+    void scale_velocities(int len_particles, double *xvel, double *yvel,
+                          double average_temp, double tempature)
 
 
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
-def compute_forces(particles, box_length, cut_off):
-    """Calculates the forces and therefore the accelerations on each of the particles in the simulation. This uses a
-    12-6 Lennard-Jones potential model for Argon with values:
+def compute_forces(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+                   mass=39.948):
+    """Calculates the forces and therefore the accelerations on each of the
+    particles in the simulation. This uses a 12-6 Lennard-Jones potential
+    model for Argon with values:
 
     - A = 1.363e-134 J m :math:`^{12}`
     - B = 9.273e-78 J m :math:`^6`
@@ -30,7 +40,15 @@ def compute_forces(particles, box_length, cut_off):
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
     cut_off: float
-        The distance greater than which the forces between particles is taken as zero.
+        The distance greater than which the forces between particles is taken
+        as zero.
+    a: float (optional)
+        The A component of the 12-6 potential model (units of
+        Jm:math:`^{-12}`).
+    b: float (optional)
+        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+    mass: float (optional)
+        The mass of the particle being simulated (units of atomic mass units).
 
     Returns
     -------
@@ -54,6 +72,9 @@ def compute_forces(particles, box_length, cut_off):
     cdef np.ndarray[DTYPE_t, ndim=1] force_arr = np.zeros(pairs)
     cdef np.ndarray[DTYPE_t, ndim=1] energy_arr = np.zeros(pairs)
     cdef double cut = cut_off
+    cdef double ac = a
+    cdef double bc = b
+    cdef double massc = mass
 
     for i in range(0, len_particles):
         xpos[i] = particles['xposition'][i]
@@ -61,9 +82,11 @@ def compute_forces(particles, box_length, cut_off):
         xacc[i] = 0
         yacc[i] = 0
 
-    compute_accelerations(len_particles, <const double*>xpos.data, <const double*>ypos.data, <double*>xacc.data,
-                          <double*>yacc.data, <double*>distances_arr.data, box_l, <double*>force_arr.data,
-                          <double*>energy_arr.data, cut)
+    compute_accelerations(len_particles, <const double*>xpos.data,
+                          <const double*>ypos.data, <double*>xacc.data,
+                          <double*>yacc.data, <double*>distances_arr.data,
+                          box_l, <double*>force_arr.data,
+                          <double*>energy_arr.data, cut, ac, bc, massc)
 
     for i in range(0, len_particles):
         particles['xacceleration'][i] = xacc[i]
@@ -72,7 +95,7 @@ def compute_forces(particles, box_length, cut_off):
 
     return particles, distances_arr, force_arr, energy_arr
 
-def compute_energy(particles, box_length, cut_off):
+def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
     """Calculates the total energy of the simulation. This uses a
     12-6 Lennard-Jones potential model for Argon with values:
 
@@ -86,7 +109,13 @@ def compute_energy(particles, box_length, cut_off):
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
     cut_off: float
-        The distance greater than which the energies between particles is taken as zero.
+        The distance greater than which the energies between particles is
+        taken as zero.
+    a: float (optional)
+        The A component of the 12-6 potential model (units of
+        Jm:math:`^{-12}`).
+    b: float (optional)
+        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
 
     Returns
     -------
@@ -105,6 +134,8 @@ def compute_energy(particles, box_length, cut_off):
     cdef np.ndarray[DTYPE_t, ndim=1] distances_arr = np.zeros(pairs)
     cdef np.ndarray[DTYPE_t, ndim=1] energy_arr = np.zeros(pairs)
     cdef double cut = cut_off
+    cdef double ac = a
+    cdef double bc = b
 
 
     for i in range(0, len_particles):
@@ -112,16 +143,21 @@ def compute_energy(particles, box_length, cut_off):
         ypos[i] = particles['yposition'][i]
 
 
-    compute_energies(len_particles, <const double*>xpos.data, <const double*>ypos.data,
-                          <double*>distances_arr.data, box_l, <double*>energy_arr.data, cut)
+    compute_energies(len_particles, <const double*>xpos.data,
+                     <const double*>ypos.data, <double*>distances_arr.data,
+                     box_l, <double*>energy_arr.data, cut, ac, bc)
 
     return distances_arr, energy_arr
 
-def calculate_pressure(particles, box_length, temperature, cut_off):
-    r"""Calculates the instantaneous pressure of the simulation cell, found with the following relationship:
+def calculate_pressure(particles, box_length, temperature, cut_off,
+                       a=1.363e-134, b=9.273e-78):
+    r"""Calculates the instantaneous pressure of the simulation cell, found
+    with the following relationship:
 
     .. math::
-        p = \langle \rho k_b T \rangle + \bigg\langle \frac{1}{3V}\sum_{i}\sum_{j<i} \mathbf{r}_{ij}\mathbf{f}_{ij} \bigg\rangle
+        p = \langle \rho k_b T \rangle + \bigg\langle
+        \frac{1}{3V}\sum_{i}\sum_{j<i} \mathbf{r}_{ij}\mathbf{f}_{ij}
+        \bigg\rangle
 
     Parameters
     ----------
@@ -132,7 +168,14 @@ def calculate_pressure(particles, box_length, temperature, cut_off):
     temperature: float
         Instantaneous temperature of the simulation.
     cut_off: float
-        The distance greater than which the forces between particles is taken as zero.
+        The distance greater than which the forces between particles is taken
+        as zero.
+    a: float (optional)
+        The A component of the 12-6 potential model (units of
+        Jm:math:`^{-12}`).
+    b: float (optional)
+        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+
 
     Returns
     -------
@@ -146,23 +189,28 @@ def calculate_pressure(particles, box_length, temperature, cut_off):
     cdef double pressure = 0.
     cdef double temp = temperature
     cdef double cut = cut_off
+    cdef double ac = a
+    cdef double bc = b
 
 
     for i in range(0, number_of_particles):
         xpos[i] = particles['xposition'][i]
         ypos[i] = particles['yposition'][i]
 
-    pressure = compute_pressure(number_of_particles, <const double*>xpos.data, <const double*>ypos.data, box_l,
-                                temperature, cut)
+    pressure = compute_pressure(number_of_particles, <const double*>xpos.data,
+                                <const double*>ypos.data, box_l, temperature,
+                                cut, ac, bc)
 
     return pressure
 
 def heat_bath(particles, temperature_sample, bath_temp):
-    r"""Rescales the velocities of the particles in the system to control the temperature of the simulation. Thereby
-    allowing for an NVT ensemble. The velocities are rescaled according the following relationship,
+    r"""Rescales the velocities of the particles in the system to control the
+    temperature of the simulation. Thereby allowing for an NVT ensemble. The
+    velocities are rescaled according the following relationship,
 
     .. math::
-        v_{\text{new}} = v_{\text{old}} \times \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
+        v_{\text{new}} = v_{\text{old}} \times
+        \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
 
     Parameters
     ----------
@@ -188,7 +236,8 @@ def heat_bath(particles, temperature_sample, bath_temp):
         xvel[i] = particles['xvelocity'][i]
         yvel[i] = particles['yvelocity'][i]
 
-    scale_velocities(len_particles, <double*>xvel.data, <double*>yvel.data, average_temp, temperature)
+    scale_velocities(len_particles, <double*>xvel.data, <double*>yvel.data,
+                     average_temp, temperature)
 
     for i in range(0, len_particles):
         particles['xvelocity'][i] = xvel[i]

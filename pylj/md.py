@@ -126,7 +126,8 @@ def sample(particles, box_length, initial_particles, system):
     system.temperature_sample = np.append(system.temperature_sample,
                                           temperature_new)
     pressure_new = heavy.calculate_pressure(particles, box_length,
-                                            temperature_new, system.cut_off)
+                                            temperature_new, system.cut_off,
+                                            system.a, system.b)
     msd_new = calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.force_sample = np.append(system.force_sample,

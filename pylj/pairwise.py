@@ -5,9 +5,9 @@ from pylj import util
 
 def compute_forces(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
                    mass=39.948):
-    """Calculates the forces and therefore the accelerations on each of the
+    r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation. This uses a 12-6 Lennard-Jones potential
-    model for Argon with values:
+    model for Argon the values are:
 
     - A = 1.363e-134 J m :math:`^{12}`
     - B = 9.273e-78 J m :math:`^6`
@@ -21,6 +21,13 @@ def compute_forces(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
     cut_off: float
         The distance greater than which the forces between particles is taken
         as zero.
+    a: float (optional)
+        The A component of the 12-6 potential model (units of
+        Jm:math:`^{-12}`).
+    b: float (optional)
+        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+    mass: float (optional)
+        The mass of the particle being simulated (units of atomic mass units).
 
     Returns
     -------
@@ -182,8 +189,8 @@ def lennard_jones_force(A, B, dr):
     return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
 
 
-def compute_energy(particles, box_length, cut_off):
-    """Calculates the total energy of the simulation. This uses a
+def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
+    r"""Calculates the total energy of the simulation. This uses a
     12-6 Lennard-Jones potential model for Argon with values:
 
     - A = 1.363e-134 J m :math:`^{12}`
@@ -198,6 +205,11 @@ def compute_energy(particles, box_length, cut_off):
     cut_off: float
         The distance greater than which the energies between particles is
         taken as zero.
+    a: float (optional)
+        The A component of the 12-6 potential model (units of
+        Jm:math:`^{-12}`).
+    b: float (optional)
+        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
 
     Returns
     -------
@@ -213,8 +225,8 @@ def compute_energy(particles, box_length, cut_off):
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
     k = 0
-    A = 1.363e-134  # joules / metre ^ {12}
-    B = 9.273e-78  # joules / meter ^ {6}
+    A = a  # joules / metre ^ {12}
+    B = b  # joules / meter ^ {6}
     for i in range(0, particles['xposition'].size-1):
         for j in range(i+1, particles['xposition'].size):
             dx = particles['xposition'][i] - particles['xposition'][j]
@@ -232,7 +244,8 @@ def compute_energy(particles, box_length, cut_off):
     return distances, energies
 
 
-def calculate_pressure(particles, box_length, temperature, cut_off):
+def calculate_pressure(particles, box_length, temperature, cut_off,
+                       a=1.363e-134, b=9.273e-78):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
 
@@ -251,6 +264,11 @@ def calculate_pressure(particles, box_length, temperature, cut_off):
     cut_off: float
         The distance greater than which the forces between particles is taken
         as zero.
+    a: float (optional)
+        The A component of the 12-6 potential model (units of
+        Jm:math:`^{-12}`).
+    b: float (optional)
+        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
 
     Returns
     -------

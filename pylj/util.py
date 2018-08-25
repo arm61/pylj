@@ -34,9 +34,12 @@ class System:
     """
     def __init__(self, number_of_particles, temperature, box_length,
                  init_conf='square', timestep_length=1e-14,
-                 cut_off=15):
+                 cut_off=15, a=1.363e-134, b=9.273e-78, mass=39.948):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
+        self.a = a
+        self.b = b
+        self.mass = mass
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
@@ -121,9 +124,13 @@ class System:
         """Maps to the compute_force function in either the comp (if Cython is
         installed) or the pairwise module and allows for a cleaner interface.
         """
+        a = self.a
+        b = self.b
+        mass = self.mass
         part, dist, forces, energies = heavy.compute_forces(self.particles,
                                                             self.box_length,
-                                                            self.cut_off)
+                                                            self.cut_off, a=a,
+                                                            b=b, mass=mass)
         self.particles = part
         self.distances = dist
         self.forces = forces
@@ -134,9 +141,12 @@ class System:
         is installed) or the pairwise module and allows for a cleaner
         interface.
         """
+        a = self.a
+        b = self.b
         self.distances, self.energies = heavy.compute_energy(self.particles,
                                                              self.box_length,
-                                                             self.cut_off)
+                                                             self.cut_off, a=a,
+                                                             b=b)
 
     def integrate(self, method):
         """Maps the chosen integration method.
