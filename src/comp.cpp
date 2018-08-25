@@ -19,7 +19,7 @@ void compute_accelerations(int len_particles, const double *xpos,
     }
     int k = 0;
     int i = 0;
-    double inv_dr_1, inv_dr_2, inv_dr_6;
+    double inv_dr_1;
     // values of A and B where determined from from A. Rahman "Correlations
     // in the Motion of Atoms in Liquid Argon", Physical Review 136 pp.
     // A405–A411 (1964)
@@ -45,16 +45,13 @@ void compute_accelerations(int len_particles, const double *xpos,
                 dy *= 1 - box_l / fabs(dy);
             }
             dr = sqrt(dx * dx + dy * dy);
+            inv_dr_1 = 1 / dr;
             distances_arr[k] = dr;
             if (dr <= cut)
             {
-                inv_dr_1 = 1.0 / dr;
-                inv_dr_2 = inv_dr_1 * inv_dr_1;
-                inv_dr_6 = inv_dr_2 * inv_dr_2 * inv_dr_2;
-                f = (12 * A * (inv_dr_1 * inv_dr_6 * inv_dr_6) - 6 * B *
-                    (inv_dr_1 * inv_dr_6));
+                f = lennard_jones_force(A, B, inv_dr_1);
                 force_arr[k] = f;
-                e = (A * (inv_dr_6 * inv_dr_6) - B * inv_dr_6);
+                e = lennard_jones_energy(A, B, inv_dr_1);
                 energy_arr[k] = e;
                 xacc[i] += (f * dx * inv_dr_1) * inv_mass_kg;
                 yacc[i] += (f * dy * inv_dr_1) * inv_mass_kg;
@@ -75,7 +72,7 @@ void compute_energies(int len_particles, const double *xpos,
                       const double *ypos, double *distances_arr, double box_l,
                       double *energy_arr, double cut, double ac, double bc)
 {
-    double dx, dy, dr, e;
+    double dx, dy, dr, e, inv_dr_1;
     int k = 0;
     int i = 0;
     // values of A and B where determined from from A. Rahman "Correlations
@@ -99,10 +96,11 @@ void compute_energies(int len_particles, const double *xpos,
                 dy *= 1 - box_l / fabs(dy);
             }
             dr = sqrt(dx * dx + dy * dy);
+            inv_dr_1 = 1. / dr;
             distances_arr[k] = dr;
             if (dr <= cut)
             {
-                e = (A * pow(dr, -12.) - B * pow(dr, -6.));
+                e = lennard_jones_energy(A, B, inv_dr_1);
 	            energy_arr[k] = e;
             }
             else
@@ -120,7 +118,7 @@ double compute_pressure(int number_of_particles, const double *xpos,
 {
 	double pres = 0.;
 	int i, j;
-	double dx, dy, dr, f;
+	double dx, dy, dr, f, inv_dr_1;
 	double A = ac; // joules / metre ^{12}
     double B = bc; // joules / meter ^{6}
 	for (i = 0; i < number_of_particles - 1; i++)
@@ -138,9 +136,10 @@ double compute_pressure(int number_of_particles, const double *xpos,
                 dy *= 1 - box_length / fabs(dy);
             }
             dr = sqrt(dx * dx + dy * dy);
+            inv_dr_1 = 1. / dr;
             if (dr <= cut)
             {
-                f = (12 * A * pow(dr, -13.) - 6 * B * pow(dr, -7.));
+                f = lennard_jones_force(A, B, inv_dr_1);
                 pres += f * dr;
             }
 		}
@@ -161,4 +160,21 @@ void scale_velocities(int len_particles, double *xvel, double *yvel,
         xvel[i] = xvel[i] * sqrt(temperature / average_temp);
         yvel[i] = yvel[i] * sqrt(temperature / average_temp);
     }
+}
+
+double lennard_jones_force(double A, double B, double inv_dr_1)
+{
+    double inv_dr_2 = inv_dr_1 * inv_dr_1;
+    double inv_dr_6 = inv_dr_2 * inv_dr_2 * inv_dr_2;
+    double f = (12 * A * (inv_dr_1 * inv_dr_6 * inv_dr_6) - 6 * B *
+               (inv_dr_1 * inv_dr_6));
+    return f;
+}
+
+double lennard_jones_energy(double A, double B, double inv_dr_1)
+{
+    double inv_dr_2 = inv_dr_1 * inv_dr_1;
+    double inv_dr_6 = inv_dr_2 * inv_dr_2 * inv_dr_2;
+    double e = (A * (inv_dr_6 * inv_dr_6) - B * inv_dr_6);
+    return e;
 }

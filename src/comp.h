@@ -14,3 +14,7 @@ double compute_pressure(int number_of_particles, const double *xpos,
 
 void scale_velocities(int len_particles, double *xvel, double *yvel,
                       double average_temp, double tempature);
+
+double lennard_jones_force(double A, double B, double dr);
+
+double lennard_jones_energy(double A, double B, double dr);
