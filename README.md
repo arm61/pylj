@@ -72,7 +72,7 @@ Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of
     <td>Build Status</td>
     <td>
       <a href="https://travis-ci.org/arm61/pylj">
-      <img src="https://travis-ci.org/arm61/pylj.svg?branch=master" alt="Build Status" />
+      <img src="https://travis-ci.org/arm61/pylj.svg?branch=2.0" alt="Build Status" />
       </a>
     </td>
   </tr>
@@ -87,7 +87,7 @@ Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of
   <tr>
     <td>Coverage Status</td>
     <td>
-      <a href="https://coveralls.io/github/arm61/pylj?branch=master">
+      <a href="https://coveralls.io/github/arm61/pylj?branch=2.0">
       <img src="https://coveralls.io/repos/github/arm61/pylj/badge.svg?branch=master" alt="Coverage Status" />
       </a>
     </td>
