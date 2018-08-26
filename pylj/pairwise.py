@@ -8,8 +8,9 @@ except ImportError:
     from pylj import pairwise as heavy
 
 
-def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
-                  mass=39.948, forcefield=ff.lennard_jones):
+def compute_force(particles, box_length, cut_off,
+                  constants=[1.363e-134, 9.273e-78],
+                  forcefield=ff.lennard_jones, mass=39.948):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation. This uses a 12-6 Lennard-Jones potential
     model for Argon the values are:
@@ -26,11 +27,11 @@ def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
     cut_off: float
         The distance greater than which the forces between particles is taken
         as zero.
-    a: float (optional)
-        The A component of the 12-6 potential model (units of
-        Jm:math:`^{-12}`).
-    b: float (optional)
-        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+    constants: float, array_like (optional)
+        The constants associated with the particular forcefield used, e.g. for
+        the function forcefields.lennard_jones, theses are [A, B]
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).
 
@@ -52,15 +53,13 @@ def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
     forces = np.zeros(pairs)
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
-    A = a  # joules / metre ^ {12}
-    B = b  # joules / meter ^ {6}
     atomic_mass_unit = 1.660539e-27  # kilograms
     mass_amu = mass  # amu
     mass_kg = mass_amu * atomic_mass_unit  # kilograms
     distances, dx, dy = heavy.dist(particles['xposition'],
                                    particles['yposition'], box_length)
-    forces = forcefield(distances, A, B, force=True)
-    energies = forcefield(distances, A, B)
+    forces = forcefield(distances, constants, force=True)
+    energies = forcefield(distances, constants)
     forces[np.where(distances > cut_off)] = 0.
     energies[np.where(distances > cut_off)] = 0.
     particles = update_accelerations(particles, forces, mass_kg, dx, dy,
@@ -192,7 +191,8 @@ def lennard_jones_force(A, B, dr):
     return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
 
 
-def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+def compute_energy(particles, box_length, cut_off,
+                   constants=[1.363e-134, 9.273e-78],
                    forcefield=ff.lennard_jones):
     r"""Calculates the total energy of the simulation. This uses a
     12-6 Lennard-Jones potential model for Argon with values:
@@ -209,11 +209,13 @@ def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
     cut_off: float
         The distance greater than which the energies between particles is
         taken as zero.
-    a: float (optional)
-        The A component of the 12-6 potential model (units of
-        Jm:math:`^{-12}`).
-    b: float (optional)
-        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+    constants: float, array_like (optional)
+        The constants associated with the particular forcefield used, e.g. for
+        the function forcefields.lennard_jones, theses are [A, B]
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
+    mass: float (optional)
+        The mass of the particle being simulated (units of atomic mass units).
 
     Returns
     -------
@@ -228,17 +230,16 @@ def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
                 particles['xacceleration'].size / 2)
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
-    A = a  # joules / metre ^ {12}
-    B = b  # joules / meter ^ {6}
     distances, dx, dy = heavy.dist(particles['xposition'],
                                    particles['yposition'], box_length)
-    energies = forcefield(distances, A, B)
+    energies = forcefield(distances, constants)
     energies[np.where(distances > cut_off)] = 0.
     return distances, energies
 
 
 def calculate_pressure(particles, box_length, temperature, cut_off,
-                       a=1.363e-134, b=9.273e-78, forcefield=ff.lennard_jones):
+                       constants=[1.363e-134, 9.273e-78],
+                       forcefield=ff.lennard_jones):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
 
@@ -257,22 +258,22 @@ def calculate_pressure(particles, box_length, temperature, cut_off,
     cut_off: float
         The distance greater than which the forces between particles is taken
         as zero.
-    a: float (optional)
-        The A component of the 12-6 potential model (units of
-        Jm:math:`^{-12}`).
-    b: float (optional)
-        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+    constants: float, array_like (optional)
+        The constants associated with the particular forcefield used, e.g. for
+        the function forcefields.lennard_jones, theses are [A, B]
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
+    mass: float (optional)
+        The mass of the particle being simulated (units of atomic mass units).
 
     Returns
     -------
     float:
         Instantaneous pressure of the simulation.
     """
-    A = 1.363e-134  # joules / metre ^ {12}
-    B = 9.273e-78  # joules / meter ^ {6}
     distances, dx, dy = heavy.dist(particles['xposition'],
                                    particles['yposition'], box_length)
-    forces = forcefield(distances, A, B, force=True)
+    forces = forcefield(distances, constants, force=True)
     forces[np.where(distances > cut_off)] = 0.
     pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
