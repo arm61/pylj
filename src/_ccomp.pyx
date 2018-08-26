@@ -65,6 +65,8 @@ def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
     float, array_like
         Current energies between pairs of particles in the simulation.
     """
+    print("This function is deprecated, please use pairwise.compute_force, if "
+          "you have the compiled dist function, it is just as fast. ")
     cdef int len_particles = particles['xposition'].size
     pairs = int((len_particles - 1) * len_particles / 2)
     cdef double box_l = box_length
@@ -130,6 +132,8 @@ def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
     float, array_like
         Current energies between pairs of particles in the simulation.
     """
+    print("This function is deprecated, please use pairwise.compute_energy, "
+          "if you have the compiled dist function, it is just as fast. ")
     cdef int len_particles = particles['xposition'].size
     pairs = int((len_particles - 1) * len_particles / 2)
     cdef double box_l = box_length
@@ -186,6 +190,9 @@ def calculate_pressure(particles, box_length, temperature, cut_off,
     float:
         Instantaneous pressure of the simulation.
     """
+    print("This function is deprecated, please use "
+          "pairwise.calculate_pressure, if you have the compiled dist "
+          "function, it is just as fast. ")
     cdef int number_of_particles = particles['xposition'].size
     cdef np.ndarray[DTYPE_t, ndim=1] xpos = np.zeros(number_of_particles)
     cdef np.ndarray[DTYPE_t, ndim=1] ypos = np.zeros(number_of_particles)
