@@ -2,7 +2,6 @@ from __future__ import division
 import numpy as np
 import webbrowser
 from pylj import md, mc
-from pylj import pairwise as heavy
 
 
 class System:
@@ -123,10 +122,10 @@ class System:
         a = self.a
         b = self.b
         mass = self.mass
-        part, dist, forces, energies = heavy.compute_force(self.particles,
-                                                           self.box_length,
-                                                           self.cut_off, a=a,
-                                                           b=b, mass=mass)
+        part, dist, forces, energies = md.compute_force(self.particles,
+                                                        self.box_length,
+                                                        self.cut_off, a=a, b=b,
+                                                        mass=mass)
         self.particles = part
         self.distances = dist
         self.forces = forces
@@ -139,10 +138,10 @@ class System:
         """
         a = self.a
         b = self.b
-        self.distances, self.energies = heavy.compute_energy(self.particles,
-                                                             self.box_length,
-                                                             self.cut_off, a=a,
-                                                             b=b)
+        self.distances, self.energies = md.compute_energy(self.particles,
+                                                          self.box_length,
+                                                          self.cut_off, a=a,
+                                                          b=b)
 
     def integrate(self, method):
         """Maps the chosen integration method.
@@ -170,9 +169,8 @@ class System:
         target_temperature: float
             The target temperature for the simulation.
         """
-        self.particles = heavy.heat_bath(self.particles,
-                                         self.temperature_sample,
-                                         bath_temperature)
+        self.particles = md.heat_bath(self.particles, self.temperature_sample,
+                                      bath_temperature)
 
     def mc_sample(self):
         """Maps to the mc.sample function.

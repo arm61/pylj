@@ -1,5 +1,6 @@
 import numpy as np
 from pylj import pairwise as heavy
+from pylj import forcefields as ff
 
 
 def initialise(number_of_particles, temperature, box_length, init_conf,
@@ -269,3 +270,24 @@ def calculate_temperature(particles):
         k += mass_of_argon * v * v / (boltzmann_constant * 2 *
                                       particles['xposition'].size)
     return k
+
+
+def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+                  mass=39.948, forcefield=ff.lennard_jones):
+    part, dist, forces, energies = heavy.compute_force(particles, box_length,
+                                                       cut_off, a=a, b=b,
+                                                       mass=mass)
+    return part, dist, forces, energies
+
+
+def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+                   forcefield=ff.lennard_jones):
+    dist, energies = heavy.compute_energy(particles, box_length, cut_off, a=a,
+                                          b=b)
+    return dist, energies
+
+
+def heat_bath(particles, temperature_sample, bath_temperature):
+    particles = heavy.heat_bath(particles, temperature_sample,
+                                bath_temperature)
+    return particles
