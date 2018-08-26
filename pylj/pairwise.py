@@ -1,10 +1,16 @@
 from __future__ import division
 import numpy as np
 from pylj import util
+from pylj import forcefields as ff
+try:
+    from pylj import comp as heavy
+except ImportError:
+    print("WARNING, using slow force and energy calculations")
+    from pylj import pairwise as heavy
 
 
-def compute_forces(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
-                   mass=39.948):
+def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+                  mass=39.948, forcefield=ff.lennard_jones):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation. This uses a 12-6 Lennard-Jones potential
     model for Argon the values are:
@@ -47,31 +53,19 @@ def compute_forces(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
     forces = np.zeros(pairs)
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
-    k = 0
     A = a  # joules / metre ^ {12}
     B = b  # joules / meter ^ {6}
     atomic_mass_unit = 1.660539e-27  # kilograms
     mass_amu = mass  # amu
     mass_kg = mass_amu * atomic_mass_unit  # kilograms
-    for i in range(0, particles['xposition'].size-1):
-        for j in range(i+1, particles['xposition'].size):
-            dx = particles['xposition'][i] - particles['xposition'][j]
-            dy = particles['yposition'][i] - particles['yposition'][j]
-            dx = util.pbc_correction(dx, box_length)
-            dy = util.pbc_correction(dy, box_length)
-            dr = separation(dx, dy)
-            distances[k] = dr
-            if dr <= cut_off:
-                f = lennard_jones_force(A, B, dr)
-                forces[k] = f
-                e = lennard_jones_energy(A, B, dr)
-                energies[k] = e
-                particles = update_accelerations(particles, f, mass_kg,
-                                                 dx, dy, dr, i, j)
-            else:
-                forces[k] = 0.
-                energies[k] = 0.
-            k += 1
+    distances, dx, dy = heavy.dist(particles['xposition'],
+                                   particles['yposition'], box_length)
+    forces = forcefield(distances, A, B, force=True)
+    energies = forcefield(distances, A, B)
+    forces[np.where(distances > cut_off)] = 0.
+    energies[np.where(distances > cut_off)] = 0.
+    particles = update_accelerations(particles, forces, mass_kg, dx, dy,
+                                     distances)
     return particles, distances, forces, energies
 
 
@@ -92,7 +86,7 @@ def separation(dx, dy):
     return np.sqrt(dx * dx + dy * dy)
 
 
-def update_accelerations(particles, f, m, dx, dy, dr, i, j):
+def update_accelerations(particles, f, m, dx, dy, dr):
     """Update the acceleration arrays of particles.
 
     Parameters
@@ -109,20 +103,20 @@ def update_accelerations(particles, f, m, dx, dy, dr, i, j):
         Distance between the particles in the y dimension.
     dr: float
         Distance between the particles.
-    i: int
-        Particle index 1.
-    j: int
-        Particle index 2.
 
     Returns
     -------
     util.particle_dt, array_like
         Information about the particles with updated accelerations.
     """
-    particles['xacceleration'][i] += second_law(f, m, dx, dr)
-    particles['yacceleration'][i] += second_law(f, m, dy, dr)
-    particles['xacceleration'][j] -= second_law(f, m, dx, dr)
-    particles['yacceleration'][j] -= second_law(f, m, dy, dr)
+    k = 0
+    for i in range(0, particles.size-1):
+        for j in range(i + 1, particles.size):
+            particles['xacceleration'][i] += second_law(f[k], m, dx[k], dr[k])
+            particles['yacceleration'][i] += second_law(f[k], m, dy[k], dr[k])
+            particles['xacceleration'][j] -= second_law(f[k], m, dx[k], dr[k])
+            particles['yacceleration'][j] -= second_law(f[k], m, dy[k], dr[k])
+            k += 1
     return particles
 
 
@@ -150,7 +144,10 @@ def second_law(f, m, d1, d2):
 
 
 def lennard_jones_energy(A, B, dr):
-    """Calculate the energy of a pair of particles at a given distance.
+    """pairwise.lennard_jones_energy has been deprecated, please use
+    forcefields.lennard_jones instead
+
+    Calculate the energy of a pair of particles at a given distance.
 
     Parameters
     ----------
@@ -166,11 +163,16 @@ def lennard_jones_energy(A, B, dr):
     float:
         The potential energy between the two particles.
     """
+    print("pairwise.lennard_jones_energy has been deprecated, please use "
+          "forcefields.lennard_jones instead")
     return A * np.power(dr, -12) - B * np.power(dr, -6)
 
 
 def lennard_jones_force(A, B, dr):
-    """Calculate the force between a pair of particles at a given distance.
+    """pairwise.lennard_jones_energy has been deprecated, please use
+    forcefields.lennard_jones with force=True instead
+
+    Calculate the force between a pair of particles at a given distance.
 
     Parameters
     ----------
@@ -186,10 +188,13 @@ def lennard_jones_force(A, B, dr):
     float:
         The force between the two particles.
     """
+    print("pairwise.lennard_jones_energy has been deprecated, please use "
+          "forcefields.lennard_jones with force=True instead")
     return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
 
 
-def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
+def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+                   forcefield=ff.lennard_jones):
     r"""Calculates the total energy of the simulation. This uses a
     12-6 Lennard-Jones potential model for Argon with values:
 
@@ -224,28 +229,17 @@ def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
                 particles['xacceleration'].size / 2)
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
-    k = 0
     A = a  # joules / metre ^ {12}
     B = b  # joules / meter ^ {6}
-    for i in range(0, particles['xposition'].size-1):
-        for j in range(i+1, particles['xposition'].size):
-            dx = particles['xposition'][i] - particles['xposition'][j]
-            dy = particles['yposition'][i] - particles['yposition'][j]
-            dx = util.pbc_correction(dx, box_length)
-            dy = util.pbc_correction(dy, box_length)
-            dr = separation(dx, dy)
-            distances[k] = dr
-            if dr <= cut_off:
-                e = lennard_jones_energy(A, B, dr)
-                energies[k] = e
-            else:
-                energies[k] = 0.
-            k += 1
+    distances, dx, dy = heavy.dist(particles['xposition'],
+                                   particles['yposition'], box_length)
+    energies = forcefield(distances, A, B)
+    energies[np.where(distances > cut_off)] = 0.
     return distances, energies
 
 
 def calculate_pressure(particles, box_length, temperature, cut_off,
-                       a=1.363e-134, b=9.273e-78):
+                       a=1.363e-134, b=9.273e-78, forcefield=ff.lennard_jones):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
 
@@ -275,19 +269,13 @@ def calculate_pressure(particles, box_length, temperature, cut_off,
     float:
         Instantaneous pressure of the simulation.
     """
-    pres = 0.
     A = 1.363e-134  # joules / metre ^ {12}
     B = 9.273e-78  # joules / meter ^ {6}
-    for i in range(0, particles['xposition'].size - 1):
-        for j in range(i+1, particles['xposition'].size):
-            dx = particles['xposition'][i] - particles['xposition'][j]
-            dy = particles['yposition'][i] - particles['yposition'][j]
-            dx = util.pbc_correction(dx, box_length)
-            dy = util.pbc_correction(dy, box_length)
-            dr = separation(dx, dy)
-            if dr <= cut_off:
-                f = lennard_jones_force(A, B, dr)
-                pres += f * dr
+    distances, dx, dy = heavy.dist(particles['xposition'],
+                                   particles['yposition'], box_length)
+    forces = forcefield(distances, A, B, force=True)
+    forces[np.where(distances > cut_off)] = 0.
+    pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
     pres = 1. / (2 * box_length * box_length) * pres + (
         particles['xposition'].size / (box_length * box_length) *
@@ -324,3 +312,44 @@ def heat_bath(particles, temperature_sample, bath_temp):
     particles['yvelocity'] = particles['yvelocity'] * np.sqrt(bath_temp /
                                                               average_temp)
     return particles
+
+
+def dist(xposition, yposition, box_length):
+    """Returns the distance array for the set of particles.
+
+    Parameters
+    ----------
+    xpos: float, array_like (N)
+        Array of length N, where N is the number of particles, providing the
+        x-dimension positions of the particles.
+    ypos: float, array_like (N)
+        Array of length N, where N is the number of particles, providing the
+        y-dimension positions of the particles.
+    box_length: float
+        The box length of the simulation cell.
+
+    Returns
+    -------
+    drr float, array_like ((N - 1) * N / 2))
+        The pairs of distances between the particles.
+    dxr float, array_like ((N - 1) * N / 2))
+        The pairs of distances between the particles, in only the x-dimension.
+    dyr float, array_like ((N - 1) * N / 2))
+        The pairs of distances between the particles, in only the y-dimension.
+    """
+    drr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
+    dxr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
+    dyr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
+    k = 0
+    for i in range(0, xposition.size - 1):
+        for j in range(i+1, xposition.size):
+            dx = xposition[i] - xposition[j]
+            dy = yposition[i] - yposition[j]
+            dx = util.pbc_correction(dx, box_length)
+            dy = util.pbc_correction(dy, box_length)
+            dr = separation(dx, dy)
+            drr[k] = dr
+            dxr[k] = dx
+            dyr[k] = dy
+            k += 1
+    return drr, dxr, dyr

@@ -1,9 +1,5 @@
 import numpy as np
-try:
-    from pylj import comp as heavy
-except ImportError:
-    print("WARNING, using slow force and energy calculations")
-    from pylj import pairwise as heavy
+from pylj import pairwise as heavy
 
 
 def initialise(number_of_particles, temperature, box_length, init_conf,
@@ -88,9 +84,9 @@ def velocity_verlet(particles, timestep_length, box_length, cut_off):
     [particles['xprevious_position'], particles['yprevious_position']] = pos
     xacceleration_store = list(particles['xacceleration'])
     yacceleration_store = list(particles['yacceleration'])
-    particles, distances, forces, energies = heavy.compute_forces(particles,
-                                                                  box_length,
-                                                                  cut_off)
+    particles, distances, forces, energies = heavy.compute_force(particles,
+                                                                 box_length,
+                                                                 cut_off)
     [particles['xvelocity'], particles['yvelocity']] = update_velocities(
         [particles['xvelocity'], particles['yvelocity']],
         [xacceleration_store, yacceleration_store],

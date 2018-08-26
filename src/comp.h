@@ -18,3 +18,7 @@ void scale_velocities(int len_particles, double *xvel, double *yvel,
 double lennard_jones_force(double A, double B, double dr);
 
 double lennard_jones_energy(double A, double B, double dr);
+
+void get_distances(int len_particles, double *xpositions, double *ypositions,
+                   double box_l, double *distances, double *xdistances,
+                   double *ydistances);

@@ -178,3 +178,34 @@ double lennard_jones_energy(double A, double B, double inv_dr_1)
     double e = (A * (inv_dr_6 * inv_dr_6) - B * inv_dr_6);
     return e;
 }
+
+void get_distances(int len_particles, double *xpositions, double *ypositions,
+                   double box_l, double *distances, double *xdistances,
+                   double *ydistances)
+{
+    double dx, dy, dr;
+    int k = 0;
+    int i = 0;
+    for (i = 0; i < len_particles - 1; i++)
+    {
+        int j = 0;
+        for (j = i + 1; j < len_particles; j++)
+        {
+            dx = xpositions[i] - xpositions[j];
+            dy = ypositions[i] - ypositions[j];
+            if (fabs(dx) > 0.5 * box_l)
+            {
+                dx *= 1 - box_l / fabs(dx);
+            }
+            if (fabs(dy) > 0.5 * box_l)
+            {
+                dy *= 1 - box_l / fabs(dy);
+            }
+            dr = sqrt(dx * dx + dy * dy);
+            distances[k] = dr;
+            xdistances[k] = dx;
+            ydistances[k] = dy;
+            k += 1;
+        }
+    }
+}

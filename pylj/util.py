@@ -2,11 +2,7 @@ from __future__ import division
 import numpy as np
 import webbrowser
 from pylj import md, mc
-try:
-    from pylj import comp as heavy
-except ImportError:
-    print("WARNING, using slow force and energy calculations")
-    from pylj import pairwise as heavy
+from pylj import pairwise as heavy
 
 
 class System:
@@ -127,10 +123,10 @@ class System:
         a = self.a
         b = self.b
         mass = self.mass
-        part, dist, forces, energies = heavy.compute_forces(self.particles,
-                                                            self.box_length,
-                                                            self.cut_off, a=a,
-                                                            b=b, mass=mass)
+        part, dist, forces, energies = heavy.compute_force(self.particles,
+                                                           self.box_length,
+                                                           self.cut_off, a=a,
+                                                           b=b, mass=mass)
         self.particles = part
         self.distances = dist
         self.forces = forces
@@ -243,8 +239,8 @@ def __cite__():  # pragma: no cover
 def __version__():  # pragma: no cover
     """This will print the number of the pylj version currently in use."""
     major = 1
-    minor = 0
-    micro = 2
+    minor = 1
+    micro = 0
     print('pylj-{:d}.{:d}.{:d}'.format(major, minor, micro))
 
 

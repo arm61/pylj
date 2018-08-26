@@ -8,8 +8,10 @@ class TestPairwise(unittest.TestCase):
     def test_update_accelerations(self):
         part_dt = util.particle_dt()
         particles = np.zeros(2, dtype=part_dt)
-        particles = pairwise.update_accelerations(particles, 1, 1, 1, 1,
-                                                  np.sqrt(2), 0, 1)
+        ones = np.array([1])
+        dist = np.array([np.sqrt(2)])
+        particles = pairwise.update_accelerations(particles, ones, 1, ones,
+                                                  ones, dist)
         assert_almost_equal(particles['xacceleration'][0], 0.707106781)
         assert_almost_equal(particles['yacceleration'][0], 0.707106781)
         assert_almost_equal(particles['xacceleration'][1], -0.707106781)
@@ -18,14 +20,6 @@ class TestPairwise(unittest.TestCase):
     def test_second_law(self):
         a = pairwise.second_law(1, 1, 1, np.sqrt(2))
         assert_almost_equal(a, 0.707106781)
-
-    def test_lennard_jones_energy(self):
-        a = pairwise.lennard_jones_energy(1, 1, 2.)
-        assert_almost_equal(a, -0.015380859)
-
-    def test_lennard_jones_force(self):
-        a = pairwise.lennard_jones_force(1, 1, 2.)
-        assert_almost_equal(a, -0.045410156)
 
     def test_separation(self):
         a = pairwise.separation(1, 1)
@@ -36,7 +30,7 @@ class TestPairwise(unittest.TestCase):
         particles = np.zeros(2, dtype=part_dt)
         particles['xposition'][0] = 1e-10
         particles['xposition'][1] = 5e-10
-        particles, distances, forces, energies = pairwise.compute_forces(
+        particles, distances, forces, energies = pairwise.compute_force(
                 particles, 30, 15)
         assert_almost_equal(distances, [4e-10])
         assert_almost_equal(energies, [-1.4515047e-21])

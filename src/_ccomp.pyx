@@ -20,11 +20,15 @@ cdef extern from "comp.h":
     void scale_velocities(int len_particles, double *xvel, double *yvel,
                           double average_temp, double tempature)
 
+    void get_distances(int len_particles, double *xpositions, double *ypositions,
+                     double box_l, double *distances, double *xdistances,
+                     double *ydistances)
+
 
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
-def compute_forces(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
                    mass=39.948):
     """Calculates the forces and therefore the accelerations on each of the
     particles in the simulation. This uses a 12-6 Lennard-Jones potential
@@ -244,3 +248,44 @@ def heat_bath(particles, temperature_sample, bath_temp):
         particles['yvelocity'][i] = yvel[i]
 
     return particles
+
+def dist(xpos, ypos, box_length):
+    """Returns the distance array for the set of particles.
+
+    Parameters
+    ----------
+    xpos: float, array_like (N)
+        Array of length N, where N is the number of particles, providing the
+        x-dimension positions of the particles.
+    ypos: float, array_like (N)
+        Array of length N, where N is the number of particles, providing the
+        y-dimension positions of the particles.
+    box_length: float
+        The box length of the simulation cell.
+
+    Returns
+    -------
+    distances float, array_like ((N - 1) * N / 2))
+        The pairs of distances between the particles.
+    xdistances float, array_like ((N - 1) * N / 2))
+        The pairs of distances between the particles, in only the x-dimension.
+    ydistances float, array_like ((N - 1) * N / 2))
+        The pairs of distances between the particles, in only the y-dimension.
+    """
+    cdef int len_particles = int(xpos.size)
+    cdef np.ndarray[DTYPE_t, ndim=1] xpositions = np.zeros(len_particles)
+    cdef np.ndarray[DTYPE_t, ndim=1] ypositions = np.zeros(len_particles)
+    cdef double box_l = box_length
+    cdef np.ndarray[DTYPE_t, ndim=1] distances = np.zeros(int((len_particles - 1) * len_particles / 2))
+    cdef np.ndarray[DTYPE_t, ndim=1] xdistances = np.zeros(int((len_particles - 1) * len_particles / 2))
+    cdef np.ndarray[DTYPE_t, ndim=1] ydistances = np.zeros(int((len_particles - 1) * len_particles / 2))
+
+
+    for i in range(0, len_particles):
+        xpositions[i] = xpos[i]
+        ypositions[i] = ypos[i]
+
+    get_distances(len_particles, <double*>xpositions.data, <double*>ypositions.data,
+                  box_l, <double*>distances.data, <double*>xdistances.data, <double*>ydistances.data)
+
+    return distances, xdistances, ydistances
