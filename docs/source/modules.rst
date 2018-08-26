@@ -5,6 +5,7 @@ pylj modules
    :maxdepth: 4
 
    comp
+   forcefields
    mc
    md
    pairwise
