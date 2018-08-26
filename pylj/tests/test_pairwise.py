@@ -5,6 +5,14 @@ import numpy as np
 
 
 class TestPairwise(unittest.TestCase):
+    def test_lennard_jones_energy(self):
+        a = pairwise.lennard_jones_energy(1, 1., 2)
+        assert_almost_equal(a, -0.015380859)
+
+    def test_lennard_jones_force(self):
+        a = pairwise.lennard_jones_force(1, 1, 2.)
+        assert_almost_equal(a, -0.045410156)
+
     def test_update_accelerations(self):
         part_dt = util.particle_dt()
         particles = np.zeros(2, dtype=part_dt)
