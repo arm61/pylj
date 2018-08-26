@@ -6,8 +6,8 @@ def lennard_jones(dr, constants, force=False):
 
     Parameters
     ----------
-    dr: float
-        The distances between the pairs of particles.
+    dr: float, array_like
+        The distances between the all pairs of particles.
     constants: float, array_like
         An array of lenght two consisting of the A and B parameters for the
         12-6 Lennard-Jones function.
