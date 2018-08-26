@@ -214,8 +214,6 @@ def compute_energy(particles, box_length, cut_off,
         the function forcefields.lennard_jones, theses are [A, B]
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
-    mass: float (optional)
-        The mass of the particle being simulated (units of atomic mass units).
 
     Returns
     -------
@@ -263,8 +261,6 @@ def calculate_pressure(particles, box_length, temperature, cut_off,
         the function forcefields.lennard_jones, theses are [A, B]
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
-    mass: float (optional)
-        The mass of the particle being simulated (units of atomic mass units).
 
     Returns
     -------
