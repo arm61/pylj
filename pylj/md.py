@@ -124,7 +124,7 @@ def sample(particles, box_length, initial_particles, system):
                                           temperature_new)
     pressure_new = heavy.calculate_pressure(particles, box_length,
                                             temperature_new, system.cut_off,
-                                            system.a, system.b)
+                                            system.constants)
     msd_new = calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.force_sample = np.append(system.force_sample,
@@ -272,18 +272,23 @@ def calculate_temperature(particles):
     return k
 
 
-def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
-                  mass=39.948, forcefield=ff.lennard_jones):
+def compute_force(particles, box_length, cut_off,
+                  constants=[1.363e-134, 9.273e-78], mass=39.948,
+                  forcefield=ff.lennard_jones):
     part, dist, forces, energies = heavy.compute_force(particles, box_length,
-                                                       cut_off, a=a, b=b,
-                                                       mass=mass)
+                                                       cut_off,
+                                                       constants=constants,
+                                                       mass=mass,
+                                                       forcefield=forcefield)
     return part, dist, forces, energies
 
 
-def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
+def compute_energy(particles, box_length, cut_off,
+                   constants=[1.363e-134, 9.273e-78],
                    forcefield=ff.lennard_jones):
-    dist, energies = heavy.compute_energy(particles, box_length, cut_off, a=a,
-                                          b=b)
+    dist, energies = heavy.compute_energy(particles, box_length, cut_off,
+                                          constants=constants,
+                                          forcefield=forcefield)
     return dist, energies
 
 

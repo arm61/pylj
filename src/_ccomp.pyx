@@ -28,8 +28,8 @@ cdef extern from "comp.h":
 DTYPE = np.float64
 ctypedef np.float64_t DTYPE_t
 
-def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
-                   mass=39.948):
+def compute_force(particles, box_length, cut_off,
+                  constants=[1.363e-134, 9.273e-78], mass=39.948):
     """Calculates the forces and therefore the accelerations on each of the
     particles in the simulation. This uses a 12-6 Lennard-Jones potential
     model for Argon with values:
@@ -46,11 +46,9 @@ def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
     cut_off: float
         The distance greater than which the forces between particles is taken
         as zero.
-    a: float (optional)
-        The A component of the 12-6 potential model (units of
-        Jm:math:`^{-12}`).
-    b: float (optional)
-        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+    constants: float, array_like (optional)
+        The constants associated with the particular forcefield used, e.g. for
+        the function forcefields.lennard_jones, theses are [A, B].
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).
 
@@ -78,8 +76,8 @@ def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
     cdef np.ndarray[DTYPE_t, ndim=1] force_arr = np.zeros(pairs)
     cdef np.ndarray[DTYPE_t, ndim=1] energy_arr = np.zeros(pairs)
     cdef double cut = cut_off
-    cdef double ac = a
-    cdef double bc = b
+    cdef double ac = constants[0]
+    cdef double bc = constants[1]
     cdef double massc = mass
 
     for i in range(0, len_particles):
@@ -101,7 +99,8 @@ def compute_force(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78,
 
     return particles, distances_arr, force_arr, energy_arr
 
-def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
+def compute_energy(particles, box_length, cut_off,
+                   constants=[1.363e-134, 9.273e-78]):
     """Calculates the total energy of the simulation. This uses a
     12-6 Lennard-Jones potential model for Argon with values:
 
@@ -117,11 +116,9 @@ def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
     cut_off: float
         The distance greater than which the energies between particles is
         taken as zero.
-    a: float (optional)
-        The A component of the 12-6 potential model (units of
-        Jm:math:`^{-12}`).
-    b: float (optional)
-        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+    constants: float, array_like (optional)
+        The constants associated with the particular forcefield used, e.g. for
+        the function forcefields.lennard_jones, theses are [A, B].
 
     Returns
     -------
@@ -142,8 +139,8 @@ def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
     cdef np.ndarray[DTYPE_t, ndim=1] distances_arr = np.zeros(pairs)
     cdef np.ndarray[DTYPE_t, ndim=1] energy_arr = np.zeros(pairs)
     cdef double cut = cut_off
-    cdef double ac = a
-    cdef double bc = b
+    cdef double ac = constants[0]
+    cdef double bc = constants[1]
 
 
     for i in range(0, len_particles):
@@ -158,7 +155,7 @@ def compute_energy(particles, box_length, cut_off, a=1.363e-134, b=9.273e-78):
     return distances_arr, energy_arr
 
 def calculate_pressure(particles, box_length, temperature, cut_off,
-                       a=1.363e-134, b=9.273e-78):
+                       constants=[1.363e-134, 9.273e-78]):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
 
@@ -178,11 +175,9 @@ def calculate_pressure(particles, box_length, temperature, cut_off,
     cut_off: float
         The distance greater than which the forces between particles is taken
         as zero.
-    a: float (optional)
-        The A component of the 12-6 potential model (units of
-        Jm:math:`^{-12}`).
-    b: float (optional)
-        The B component of the 12-6 potential model (units of Jm:math:`^{-6}`).
+    constants: float, array_like (optional)
+        The constants associated with the particular forcefield used, e.g. for
+        the function forcefields.lennard_jones, theses are [A, B].
 
 
     Returns
@@ -200,8 +195,8 @@ def calculate_pressure(particles, box_length, temperature, cut_off,
     cdef double pressure = 0.
     cdef double temp = temperature
     cdef double cut = cut_off
-    cdef double ac = a
-    cdef double bc = b
+    cdef double ac = constants[0]
+    cdef double bc = constants[1]
 
 
     for i in range(0, number_of_particles):
