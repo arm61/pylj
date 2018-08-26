@@ -6,11 +6,11 @@ import numpy as np
 
 class TestPairwise(unittest.TestCase):
     def test_lennard_jones_energy(self):
-        a = pairwise.lennard_jones_energy(1, 1., 2)
+        a = pairwise.lennard_jones_energy(1., 1., 2.)
         assert_almost_equal(a, -0.015380859)
 
     def test_lennard_jones_force(self):
-        a = pairwise.lennard_jones_force(1, 1, 2.)
+        a = pairwise.lennard_jones_force(1., 1., 2.)
         assert_almost_equal(a, -0.045410156)
 
     def test_update_accelerations(self):
@@ -65,7 +65,7 @@ class TestPairwise(unittest.TestCase):
         assert_almost_equal(pressure*1e24, 7.07368869)
 
     def test_pbc_correction(self):
-        a = util.pbc_correction(1, 10)
+        a = pairwise.pbc_correction(1, 10)
         assert_almost_equal(a, 1)
-        b = util.pbc_correction(11, 10)
+        b = pairwise.pbc_correction(11, 10)
         assert_almost_equal(b, 1)
