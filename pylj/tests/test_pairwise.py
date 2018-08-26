@@ -63,3 +63,9 @@ class TestPairwise(unittest.TestCase):
         particles['xposition'][1] = 5e-10
         pressure = pairwise.calculate_pressure(particles, 30, 300, 15)
         assert_almost_equal(pressure*1e24, 7.07368869)
+
+    def test_pbc_correction(self):
+        a = util.pbc_correction(1, 10)
+        assert_almost_equal(a, 1)
+        b = util.pbc_correction(11, 10)
+        assert_almost_equal(b, 1)

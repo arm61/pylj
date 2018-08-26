@@ -1,6 +1,5 @@
 from __future__ import division
 import numpy as np
-from pylj import util
 from pylj import forcefields as ff
 try:
     from pylj import comp as heavy
@@ -345,11 +344,30 @@ def dist(xposition, yposition, box_length):
         for j in range(i+1, xposition.size):
             dx = xposition[i] - xposition[j]
             dy = yposition[i] - yposition[j]
-            dx = util.pbc_correction(dx, box_length)
-            dy = util.pbc_correction(dy, box_length)
+            dx = pbc_correction(dx, box_length)
+            dy = pbc_correction(dy, box_length)
             dr = separation(dx, dy)
             drr[k] = dr
             dxr[k] = dx
             dyr[k] = dy
             k += 1
     return drr, dxr, dyr
+
+
+def pbc_correction(position, cell):
+    """Correct for the periodic boundary condition.
+
+    Parameters
+    ----------
+    position: float
+        Particle position.
+    cell: float
+        Cell vector.
+
+    Returns
+    -------
+    float:
+        Corrected particle position."""
+    if np.abs(position) > 0.5 * cell:
+        position *= 1 - cell / np.abs(position)
+    return position

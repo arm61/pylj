@@ -207,25 +207,6 @@ class System:
                                    self.random_particle)
 
 
-def pbc_correction(position, cell):
-    """Correct for the periodic boundary condition.
-
-    Parameters
-    ----------
-    position: float
-        Particle position.
-    cell: float
-        Cell vector.
-
-    Returns
-    -------
-    float:
-        Corrected particle position."""
-    if np.abs(position) > 0.5 * cell:
-        position *= 1 - cell / np.abs(position)
-    return position
-
-
 def __cite__():  # pragma: no cover
     """This function will launch the Zenodo website for the latest release of
     pylj."""
