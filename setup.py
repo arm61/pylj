@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 # System imports
 from setuptools import setup, Extension, find_packages
-import os
-import subprocess
+from os import path
+import io
 
 
 try:
@@ -16,13 +16,12 @@ packages = find_packages()
 
 # versioning
 MAJOR = 1
-MINOR = 0
-MICRO = 2
+MINOR = 1
+MICRO = 0
 ISRELEASED = True
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
-from os import path
-import io
+
 this_directory = path.abspath(path.dirname(__file__))
 with io.open(path.join(this_directory, 'README.md')) as f:
     long_description = f.read()
@@ -40,12 +39,19 @@ info = {
         'license': 'MIT',
         'long_description': long_description,
         'long_description_content_type': 'text/markdown',
-        'classifiers': ['Development Status :: 3 - Alpha', 'Intended Audience :: Science/Research', 'Topic :: Scientific/Engineering', 'Topic :: Scientific/Engineering :: Chemistry', 'Topic :: Scientific/Engineering :: Physics', 'Programming Language :: Python :: 3']
+        'classifiers': ['Development Status :: 3 - Alpha',
+                        'Intended Audience :: Science/Research',
+                        'Topic :: Scientific/Engineering',
+                        'Topic :: Scientific/Engineering :: Chemistry',
+                        'Topic :: Scientific/Engineering :: Physics',
+                        'Programming Language :: Python :: 3']
         }
 
 ####################################################################
 # this is where setup starts
 ####################################################################
+
+
 def setup_package():
 
     if USE_CYTHON:
@@ -72,15 +78,13 @@ def setup_package():
                                   sources=['src/_ccomp.pyx',
                                            'src/comp.cpp'],
                                   include_dirs=[numpy_include],
-				                  language='c++',
+                                  language='c++',
                                   extra_compile_args=[],
                                   extra_link_args=['-lpthread']
                                   # libraries=
                                   # extra_compile_args = "...".split(),
                                   )
             ext_modules.append(_cslowstuff)
-
-
 
             info['cmdclass'] = {'build_ext': build_ext}
             info['ext_modules'] = ext_modules
@@ -93,9 +97,9 @@ def setup_package():
         # compilation
         print("")
         print("*****WARNING*****")
-        print("Please install a C++ compiler. If installing in windows you"
-              " should then install from Visual Studio command prompt (this makes"
-              " C compiler available")
+        print("Please install a C++ compiler. If installing in windows you "
+              "should then install from Visual Studio command prompt (this "
+              "makes C compiler available")
         print("*****************")
         print("")
         info.pop('cmdclass')

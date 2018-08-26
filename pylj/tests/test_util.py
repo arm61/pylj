@@ -54,9 +54,3 @@ class TestUtil(unittest.TestCase):
         self.assertTrue('The initial configuration type horseradish is not '
                         'recognised. Available options are: square or '
                         'random' in str(context.exception))
-
-    def test_pbc_correction(self):
-        a = util.pbc_correction(1, 10)
-        assert_almost_equal(a, 1)
-        b = util.pbc_correction(11, 10)
-        assert_almost_equal(b, 1)

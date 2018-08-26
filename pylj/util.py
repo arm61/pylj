@@ -2,11 +2,6 @@ from __future__ import division
 import numpy as np
 import webbrowser
 from pylj import md, mc
-try:
-    from pylj import comp as heavy
-except ImportError:
-    print("WARNING, using slow force and energy calculations")
-    from pylj import pairwise as heavy
 
 
 class System:
@@ -34,9 +29,11 @@ class System:
     """
     def __init__(self, number_of_particles, temperature, box_length,
                  init_conf='square', timestep_length=1e-14,
-                 cut_off=15):
+                 cut_off=15, constants=[1.363e-134, 9.273e-78], mass=39.948):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
+        self.constants = constants
+        self.mass = mass
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
@@ -121,9 +118,13 @@ class System:
         """Maps to the compute_force function in either the comp (if Cython is
         installed) or the pairwise module and allows for a cleaner interface.
         """
-        part, dist, forces, energies = heavy.compute_forces(self.particles,
-                                                            self.box_length,
-                                                            self.cut_off)
+        constants = self.constants
+        mass = self.mass
+        part, dist, forces, energies = md.compute_force(self.particles,
+                                                        self.box_length,
+                                                        self.cut_off,
+                                                        constants = constants,
+                                                        mass=mass)
         self.particles = part
         self.distances = dist
         self.forces = forces
@@ -134,9 +135,11 @@ class System:
         is installed) or the pairwise module and allows for a cleaner
         interface.
         """
-        self.distances, self.energies = heavy.compute_energy(self.particles,
-                                                             self.box_length,
-                                                             self.cut_off)
+        constants = self.constants
+        self.distances, self.energies = md.compute_energy(self.particles,
+                                                          self.box_length,
+                                                          self.cut_off,
+                                                          constants=constants)
 
     def integrate(self, method):
         """Maps the chosen integration method.
@@ -164,9 +167,8 @@ class System:
         target_temperature: float
             The target temperature for the simulation.
         """
-        self.particles = heavy.heat_bath(self.particles,
-                                         self.temperature_sample,
-                                         bath_temperature)
+        self.particles = md.heat_bath(self.particles, self.temperature_sample,
+                                      bath_temperature)
 
     def mc_sample(self):
         """Maps to the mc.sample function.
@@ -203,25 +205,6 @@ class System:
                                    self.random_particle)
 
 
-def pbc_correction(position, cell):
-    """Correct for the periodic boundary condition.
-
-    Parameters
-    ----------
-    position: float
-        Particle position.
-    cell: float
-        Cell vector.
-
-    Returns
-    -------
-    float:
-        Corrected particle position."""
-    if np.abs(position) > 0.5 * cell:
-        position *= 1 - cell / np.abs(position)
-    return position
-
-
 def __cite__():  # pragma: no cover
     """This function will launch the Zenodo website for the latest release of
     pylj."""
@@ -233,8 +216,8 @@ def __cite__():  # pragma: no cover
 def __version__():  # pragma: no cover
     """This will print the number of the pylj version currently in use."""
     major = 1
-    minor = 0
-    micro = 2
+    minor = 1
+    micro = 0
     print('pylj-{:d}.{:d}.{:d}'.format(major, minor, micro))
 
 

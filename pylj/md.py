@@ -1,9 +1,6 @@
 import numpy as np
-try:
-    from pylj import comp as heavy
-except ImportError:
-    print("WARNING, using slow force and energy calculations")
-    from pylj import pairwise as heavy
+from pylj import pairwise as heavy
+from pylj import forcefields as ff
 
 
 def initialise(number_of_particles, temperature, box_length, init_conf,
@@ -88,9 +85,9 @@ def velocity_verlet(particles, timestep_length, box_length, cut_off):
     [particles['xprevious_position'], particles['yprevious_position']] = pos
     xacceleration_store = list(particles['xacceleration'])
     yacceleration_store = list(particles['yacceleration'])
-    particles, distances, forces, energies = heavy.compute_forces(particles,
-                                                                  box_length,
-                                                                  cut_off)
+    particles, distances, forces, energies = heavy.compute_force(particles,
+                                                                 box_length,
+                                                                 cut_off)
     [particles['xvelocity'], particles['yvelocity']] = update_velocities(
         [particles['xvelocity'], particles['yvelocity']],
         [xacceleration_store, yacceleration_store],
@@ -126,7 +123,8 @@ def sample(particles, box_length, initial_particles, system):
     system.temperature_sample = np.append(system.temperature_sample,
                                           temperature_new)
     pressure_new = heavy.calculate_pressure(particles, box_length,
-                                            temperature_new, system.cut_off)
+                                            temperature_new, system.cut_off,
+                                            system.constants)
     msd_new = calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.force_sample = np.append(system.force_sample,
@@ -272,3 +270,29 @@ def calculate_temperature(particles):
         k += mass_of_argon * v * v / (boltzmann_constant * 2 *
                                       particles['xposition'].size)
     return k
+
+
+def compute_force(particles, box_length, cut_off,
+                  constants=[1.363e-134, 9.273e-78], mass=39.948,
+                  forcefield=ff.lennard_jones):
+    part, dist, forces, energies = heavy.compute_force(particles, box_length,
+                                                       cut_off,
+                                                       constants=constants,
+                                                       mass=mass,
+                                                       forcefield=forcefield)
+    return part, dist, forces, energies
+
+
+def compute_energy(particles, box_length, cut_off,
+                   constants=[1.363e-134, 9.273e-78],
+                   forcefield=ff.lennard_jones):
+    dist, energies = heavy.compute_energy(particles, box_length, cut_off,
+                                          constants=constants,
+                                          forcefield=forcefield)
+    return dist, energies
+
+
+def heat_bath(particles, temperature_sample, bath_temperature):
+    particles = heavy.heat_bath(particles, temperature_sample,
+                                bath_temperature)
+    return particles
