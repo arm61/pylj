@@ -275,6 +275,37 @@ def calculate_temperature(particles):
 def compute_force(particles, box_length, cut_off,
                   constants=[1.363e-134, 9.273e-78], mass=39.948,
                   forcefield=ff.lennard_jones):
+    r"""Calculates the forces and therefore the accelerations on each of the
+    particles in the simulation.
+
+    Parameters
+    ----------
+    particles: util.particle_dt, array_like
+        Information about the particles.
+    box_length: float
+        Length of a single dimension of the simulation square, in Angstrom.
+    cut_off: float
+        The distance greater than which the forces between particles is taken
+        as zero.
+    constants: float, array_like (optional)
+        The constants associated with the particular forcefield used, e.g. for
+        the function forcefields.lennard_jones, theses are [A, B]
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
+    mass: float (optional)
+        The mass of the particle being simulated (units of atomic mass units).
+
+    Returns
+    -------
+    util.particle_dt, array_like
+        Information about particles, with updated accelerations and forces.
+    float, array_like
+        Current distances between pairs of particles in the simulation.
+    float, array_like
+        Current forces between pairs of particles in the simulation.
+    float, array_like
+        Current energies between pairs of particles in the simulation.
+    """
     part, dist, forces, energies = heavy.compute_force(particles, box_length,
                                                        cut_off,
                                                        constants=constants,
@@ -286,6 +317,32 @@ def compute_force(particles, box_length, cut_off,
 def compute_energy(particles, box_length, cut_off,
                    constants=[1.363e-134, 9.273e-78],
                    forcefield=ff.lennard_jones):
+    r"""Calculates the total energy of the simulation.
+
+    Parameters
+    ----------
+    particles: util.particle_dt, array_like
+        Information about the particles.
+    box_length: float
+        Length of a single dimension of the simulation square, in Angstrom.
+    cut_off: float
+        The distance greater than which the energies between particles is
+        taken as zero.
+    constants: float, array_like (optional)
+        The constants associated with the particular forcefield used, e.g. for
+        the function forcefields.lennard_jones, theses are [A, B]
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
+
+    Returns
+    -------
+    util.particle_dt, array_like
+        Information about particles, with updated accelerations and forces.
+    float, array_like
+        Current distances between pairs of particles in the simulation.
+    float, array_like
+        Current energies between pairs of particles in the simulation.
+    """
     dist, energies = heavy.compute_energy(particles, box_length, cut_off,
                                           constants=constants,
                                           forcefield=forcefield)
@@ -293,6 +350,28 @@ def compute_energy(particles, box_length, cut_off,
 
 
 def heat_bath(particles, temperature_sample, bath_temperature):
+    r"""Rescales the velocities of the particles in the system to control the
+    temperature of the simulation. Thereby allowing for an NVT ensemble. The
+    velocities are rescaled according the following relationship,
+
+    .. math::
+        v_{\text{new}} = v_{\text{old}} \times
+        \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
+
+    Parameters
+    ----------
+    particles: util.particle_dt, array_like
+        Information about the particles.
+    temperature_sample: float, array_like
+        The temperature at each timestep in the simulation.
+    bath_temp: float
+        The desired temperature of the simulation.
+
+    Returns
+    -------
+    util.particle_dt, array_like
+        Information about the particles with new, rescaled velocities.
+    """
     particles = heavy.heat_bath(particles, temperature_sample,
                                 bath_temperature)
     return particles

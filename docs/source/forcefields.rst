@@ -1,5 +1,5 @@
 pylj\.forcefields
-========
+=================
 
 The forcefields packaged with pylj.
 
@@ -7,4 +7,3 @@ The forcefields packaged with pylj.
     :members:
     :undoc-members:
     :show-inheritance:
-    

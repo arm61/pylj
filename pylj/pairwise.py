@@ -12,11 +12,7 @@ def compute_force(particles, box_length, cut_off,
                   constants=[1.363e-134, 9.273e-78],
                   forcefield=ff.lennard_jones, mass=39.948):
     r"""Calculates the forces and therefore the accelerations on each of the
-    particles in the simulation. This uses a 12-6 Lennard-Jones potential
-    model for Argon the values are:
-
-    - A = 1.363e-134 J m :math:`^{12}`
-    - B = 9.273e-78 J m :math:`^6`
+    particles in the simulation.
 
     Parameters
     ----------
@@ -194,11 +190,7 @@ def lennard_jones_force(A, B, dr):
 def compute_energy(particles, box_length, cut_off,
                    constants=[1.363e-134, 9.273e-78],
                    forcefield=ff.lennard_jones):
-    r"""Calculates the total energy of the simulation. This uses a
-    12-6 Lennard-Jones potential model for Argon with values:
-
-    - A = 1.363e-134 J m :math:`^{12}`
-    - B = 9.273e-78 J m :math:`^6`
+    r"""Calculates the total energy of the simulation.
 
     Parameters
     ----------
