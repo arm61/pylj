@@ -2,6 +2,7 @@ from __future__ import division
 import numpy as np
 import webbrowser
 from pylj import md, mc
+from pylj import forcefields as ff
 
 
 class System:
@@ -26,13 +27,24 @@ class System:
         - 'random'
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
+    cut_off: float (optional)
+        The distance apart that the particles must be to consider there
+        interaction to be negliable.
+    constants: float, array_like (optional)
+        The values of the constants for the forcefield used.
+    mass: float (optional)
+        The mass of the particles being simulated.
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
     """
     def __init__(self, number_of_particles, temperature, box_length,
                  init_conf='square', timestep_length=1e-14,
-                 cut_off=15, constants=[1.363e-134, 9.273e-78], mass=39.948):
+                 cut_off=15, constants=[1.363e-134, 9.273e-78], mass=39.948,
+                 forcefield=ff.lennard_jones):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         self.constants = constants
+        self.forcefield = forcefield
         self.mass = mass
         if box_length <= 600:
             self.box_length = box_length * 1e-10
@@ -119,12 +131,14 @@ class System:
         installed) or the pairwise module and allows for a cleaner interface.
         """
         constants = self.constants
+        forcefield = self.forcefield
         mass = self.mass
         part, dist, forces, energies = md.compute_force(self.particles,
                                                         self.box_length,
                                                         self.cut_off,
-                                                        constants = constants,
-                                                        mass=mass)
+                                                        constants=constants,
+                                                        mass=mass,
+                                                        forcefield=forcefield)
         self.particles = part
         self.distances = dist
         self.forces = forces
@@ -217,7 +231,7 @@ def __version__():  # pragma: no cover
     """This will print the number of the pylj version currently in use."""
     major = 1
     minor = 1
-    micro = 0
+    micro = 1
     print('pylj-{:d}.{:d}.{:d}'.format(major, minor, micro))
 
 

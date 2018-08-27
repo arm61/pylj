@@ -19,6 +19,7 @@ pylj documentation
    :caption: Help:
 
    using-pylj
+   byof
    visualisation
 
 .. include:: ../README.rst
