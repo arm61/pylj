@@ -2,14 +2,21 @@ import numpy as np
 
 
 def lennard_jones(dr, constants, force=False):
-    """Calculate the energy of a pair of particles at a given distance.
+    """Calculate the energy or force for a pair of particles using the
+    Lennard-Jones (A/B variant) forcefield.
+
+    .. math::
+        E = \frac{A}{dr^12} - \frac{B}{dr^6}
+
+    .. math::
+        f = \frac{12A}{dr^13} - \frac{6B}{dr^7}
 
     Parameters
     ----------
     dr: float, array_like
         The distances between the all pairs of particles.
     constants: float, array_like
-        An array of lenght two consisting of the A and B parameters for the
+        An array of length two consisting of the A and B parameters for the
         12-6 Lennard-Jones function.
     force: bool (optional)
         If true, the negative first derivative will be found.
