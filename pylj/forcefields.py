@@ -6,10 +6,10 @@ def lennard_jones(dr, constants, force=False):
     Lennard-Jones (A/B variant) forcefield.
 
     .. math::
-        E = \frac{A}{dr^12} - \frac{B}{dr^6}
+        E = \frac{A}{dr^{12}} - \frac{B}{dr^6}
 
     .. math::
-        f = \frac{12A}{dr^13} - \frac{6B}{dr^7}
+        f = \frac{12A}{dr^{13}} - \frac{6B}{dr^7}
 
     Parameters
     ----------
