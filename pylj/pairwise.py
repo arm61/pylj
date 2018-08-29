@@ -55,7 +55,7 @@ def compute_force(particles, box_length, cut_off,
     distances, dx, dy = heavy.dist(particles['xposition'],
                                    particles['yposition'], box_length)
     forces = forcefield(distances, constants, force=True)
-    energies = forcefield(distances, constants)
+    energies = forcefield(distances, constants, force=False)
     forces[np.where(distances > cut_off)] = 0.
     energies[np.where(distances > cut_off)] = 0.
     particles = update_accelerations(particles, forces, mass_kg, dx, dy,
@@ -222,7 +222,7 @@ def compute_energy(particles, box_length, cut_off,
     energies = np.zeros(pairs)
     distances, dx, dy = heavy.dist(particles['xposition'],
                                    particles['yposition'], box_length)
-    energies = forcefield(distances, constants)
+    energies = forcefield(distances, constants, force=False)
     energies[np.where(distances > cut_off)] = 0.
     return distances, energies
 
