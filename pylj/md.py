@@ -34,7 +34,7 @@ def initialise(number_of_particles, temperature, box_length, init_conf,
                          init_conf=init_conf, timestep_length=timestep_length)
     v = np.random.rand(system.particles.size, 2) - 0.5
     v2sum = np.average(np.square(v))
-    v = (v - np.average(v)) * np.sqrt(2 * system.init_temp / v2sum)
+    v = v * np.sqrt(2 * system.init_temp / v2sum)
     system.particles['xvelocity'] = v[:, 0]
     system.particles['yvelocity'] = v[:, 1]
     return system
