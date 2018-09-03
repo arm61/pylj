@@ -36,6 +36,7 @@ def initialise(number_of_particles, temperature, box_length, init_conf,
     v = np.sum(v, axis=2) - 6.
     mass_kg = mass * 1.6605e-27
     v = v * np.sqrt(1.3806e-23 * system.init_temp / mass_kg)
+    v = v - np.average(v)
     system.particles['xvelocity'] = v[:, 0]
     system.particles['yvelocity'] = v[:, 1]
     return system
