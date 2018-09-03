@@ -4,7 +4,7 @@ from pylj import forcefields as ff
 
 
 def initialise(number_of_particles, temperature, box_length, init_conf,
-               timestep_length=1e-14):
+               timestep_length=1e-14, mass=39.948):
     """Initialise the particle positions (this can be either as a square or
     random arrangement), velocities (based on the temperature defined, and
     calculate the initial forces/accelerations.
@@ -32,9 +32,10 @@ def initialise(number_of_particles, temperature, box_length, init_conf,
     from pylj import util
     system = util.System(number_of_particles, temperature, box_length,
                          init_conf=init_conf, timestep_length=timestep_length)
-    v = np.random.rand(system.particles.size, 2) - 0.5
-    v2sum = np.average(np.square(v))
-    v = v * np.sqrt(2 * system.init_temp / v2sum)
+    v = np.random.rand(system.particles.size, 2, 12)
+    v = np.sum(v, axis=2) - 6.
+    mass_kg = mass * 1.6605e-27
+    v = v * np.sqrt(1.3806e-23 * system.init_temp / mass_kg)
     system.particles['xvelocity'] = v[:, 0]
     system.particles['yvelocity'] = v[:, 1]
     return system
@@ -245,7 +246,7 @@ def update_velocities(velocities, accelerations_old, accelerations_new,
     return [velocities[0], velocities[1]]
 
 
-def calculate_temperature(particles):
+def calculate_temperature(particles, mass=39.948):
     """Determine the instantaneous temperature of the system.
 
     Parameters
@@ -258,18 +259,14 @@ def calculate_temperature(particles):
     float:
         Calculated instantaneous simulation temperature.
     """
-    k = 0
-    for i in range(0, particles['xposition'].size):
-        v = np.sqrt((
-            particles['xvelocity'][i] * particles['xvelocity'][i]) + (
-                particles['yvelocity'][i] * particles['yvelocity'][i]))
-        boltzmann_constant = 1.3806e-23  # joules/kelvin
-        atomic_mass_unit = 1.660539e-27  # kilograms
-        mass_of_argon_amu = 39.948  # amu
-        mass_of_argon = mass_of_argon_amu * atomic_mass_unit  # kilograms
-        k += mass_of_argon * v * v / (boltzmann_constant * 2 *
-                                      particles['xposition'].size)
-    return k
+    boltzmann_constant = 1.3806e-23  # joules/kelvin
+    atomic_mass_unit = 1.660539e-27  # kilograms
+    mass_kg = mass * atomic_mass_unit  # kilograms
+    v = np.sqrt((particles['xvelocity'] * particles['xvelocity']) +
+                (particles['yvelocity'] * particles['yvelocity']))
+    k = 0.5 * np.sum(mass_kg * v * v)
+    t = k / (particles.size * boltzmann_constant)
+    return t
 
 
 def compute_force(particles, box_length, cut_off,
