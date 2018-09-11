@@ -14,8 +14,8 @@ class TestMd(unittest.TestCase):
 
     def test_velocity_verlet(self):
         a = md.initialise(2, 300, 8, 'square')
-        a.particles = md.velocity_verlet(a.particles, 1, a.box_length,
-                                         a.cut_off)
+        a.particles, a.distances, a.forces, a.energies = md.velocity_verlet(
+                a.particles, 1, a.box_length, a.cut_off)
         assert_almost_equal(a.particles['xprevious_position']*1e10, [2, 2])
         assert_almost_equal(a.particles['yprevious_position']*1e10, [2, 6])
 

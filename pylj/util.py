@@ -163,8 +163,9 @@ class System:
         method: method
             The integration method to be used, e.g. md.velocity_verlet.
         """
-        self.particles = method(self.particles, self.timestep_length,
-                                self.box_length, self.cut_off)
+        self.particles, self.distances, self.forces, self.energies = method(
+                self.particles, self.timestep_length, self.box_length,
+                self.cut_off)
 
     def md_sample(self):
         """Maps to the md.sample function.

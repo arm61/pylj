@@ -64,6 +64,60 @@ class Scattering(object):  # pragma: no cover
         self.ax[1, 1].set_xlim([0, np.amax(x)])
 
 
+class Phase(object):  # pragma: no cover
+    """The Phase class will plot the particle positions, radial
+    distribution function, mean squared deviation and total energy of the
+    simulation. This sampling class is ideal for observing the phase
+    transitions between solid, liquid, gas.
+
+    Parameters
+    ----------
+    system: System
+        The whole system information.
+    """
+    def __init__(self, system):
+        fig, ax = environment(4)
+        self.average_rdf = []
+        self.r = []
+        self.average_diff = []
+        self.q = []
+        self.initial_pos = [system.particles['xposition'],
+                            system.particles['yposition']]
+
+        setup_cellview(ax[0, 0], system)
+        setup_rdfview(ax[1, 1], system)
+        setup_energyview(ax[0, 1])
+        setup_msdview(ax[1, 0])
+
+        plt.tight_layout()
+        self.ax = ax
+        self.fig = fig
+
+    def update(self, system):
+        """This updates the visualisation environment. Often this can be slower
+        than the cythonised force calculation so used is wisely.
+
+        Parameters
+        ----------
+        system: System
+            The whole system information.
+        """
+        update_cellview(self.ax[0, 0], system)
+        update_rdfview(self.ax[1, 1], system, self.average_rdf, self.r)
+        update_energyview(self.ax[0, 1], system)
+        update_msdview(self.ax[1, 0], system)
+        self.fig.canvas.draw()
+
+    def average(self):
+        gr = np.average(self.average_rdf, axis=0)
+        x = np.average(self.r, axis=0)
+        line = self.ax[1, 1].lines[0]
+        line.set_xdata(x)
+        line.set_ydata(gr)
+        self.ax[1, 1].set_ylim([0, np.amax(gr) + 0.01 * np.max(gr)])
+        self.fig.canvas.draw()
+
+
 class Interactions(object):  # pragma: no cover
     """The Interactions class will plot the particle positions, total force,
     simulation pressure and temperature. This class is perfect for showing the
@@ -138,9 +192,8 @@ class JustCell(object):  # pragma: no cover
 
 
 class Energy(object):  # pragma: no cover
-    """The RDF class will plot the particle positions and radial distribution
-    function. This sampling class is can be used to show the relative RDFs for
-    solid, liquid, gas.
+    """The energy class will plot the particle positions and potential energy
+    of the system.
 
     Parameters
     ----------
@@ -296,7 +349,7 @@ def setup_energyview(ax):  # pragma: no cover
         The axes position that the pane should be placed in.
     """
     ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Potential Energy/J', fontsize=16)
+    ax.set_ylabel('Energy/J', fontsize=16)
     ax.set_xlabel('Step', fontsize=16)
 
 
@@ -403,7 +456,7 @@ def update_rdfview(ax, system, average_rdf, r):  # pragma: no cover
     line = ax.lines[0]
     line.set_xdata(x)
     line.set_ydata(gr)
-    ax.set_ylim([0, np.amax(gr) + np.amax(gr) * 0.05])
+    ax.set_ylim([0, np.amax(gr) + np.amax(gr) * 0.01])
 
 
 def update_diffview(ax, system, average_diff, q):  # pragma: no cover
@@ -474,7 +527,8 @@ def update_energyview(ax, system):  # pragma: no cover
         The whole system information.
     """
     line = ax.lines[0]
-    line.set_ydata(system.energy_sample)
+    line.set_ydata(system.energy_sample + 1.3806e-23 *
+                   system.temperature_sample)
     if system.force_sample != []:
         line.set_xdata(np.arange(0, system.step) * system.timestep_length)
         ax.set_xlim(0, system.step * system.timestep_length)
@@ -482,10 +536,15 @@ def update_energyview(ax, system):  # pragma: no cover
     else:
         line.set_xdata(np.arange(0, system.step+1))
         ax.set_xlim(0, system.step)
-    ax.set_ylim(np.amin(system.energy_sample)-np.abs(np.amax(
-            system.energy_sample)) * 0.05,
-                np.amax(system.energy_sample)+np.abs(np.amax(
-                        system.energy_sample)) * 0.05)
+    ax.set_ylim(np.amin(
+            system.energy_sample + 1.3806e-23 * system.temperature_sample) -
+                np.abs(np.amax(system.energy_sample +
+                               1.3806e-23 *
+                               system.temperature_sample)) * 0.05,
+                np.amax(system.energy_sample + 1.3806e-23 *
+                        system.temperature_sample) +
+                np.abs(np.amax(system.energy_sample + 1.3806e-23 *
+                               system.temperature_sample)) * 0.05)
 
 
 def update_tempview(ax, system):  # pragma: no cover
