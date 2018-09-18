@@ -39,12 +39,19 @@ info = {
         'license': 'MIT',
         'long_description': long_description,
         'long_description_content_type': 'text/markdown',
-        'classifiers': ['Development Status :: 3 - Alpha',
+        'classifiers': ['Development Status :: 5 - Production/Stable',
+                        'Framework :: Jupyter',
                         'Intended Audience :: Science/Research',
+                        'License :: OSI Approved :: MIT License',
+                        'Natural Language :: English',
+                        'Operating System :: OS Independent',
+                        'Programming Language :: Python :: 2.7',
+                        'Programming Language :: Python :: 3.5',
+                        'Programming Language :: Python :: 3.6',
+                        'Programming Language :: Python :: 3.7',
                         'Topic :: Scientific/Engineering',
                         'Topic :: Scientific/Engineering :: Chemistry',
-                        'Topic :: Scientific/Engineering :: Physics',
-                        'Programming Language :: Python :: 3']
+                        'Topic :: Scientific/Engineering :: Physics']
         }
 
 ####################################################################
