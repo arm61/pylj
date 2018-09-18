@@ -12,5 +12,3 @@ install:
 script:
   - coverage run --source=pylj setup.py test
   - coveralls
-  - pip install cibuildwheel==0.9.4
-  - cibuildwheel --output-dir wheelhouse
