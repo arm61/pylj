@@ -50,7 +50,7 @@ after_success:
   - echo "password=$PYPIPASSWORD"                      >> ~/.pypirc
   - >
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      pip install twine;
+      pip install --user twine;
       python setup.py sdist bdist_wheel;
       twine upload --skip-existing dist/*;
     else
