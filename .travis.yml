@@ -45,4 +45,5 @@ deploy:
     distributions: sdist
     condition: $TRAVIS_OS_NAME = linux
     python: '3.6'
+    branch: master
     repo: arm61/pylj
