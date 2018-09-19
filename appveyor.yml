@@ -47,7 +47,7 @@ deploy_script:
   - "cat %USERPROFILE%\\.pypirc"
   - "%PYTHON%\\python.exe -m pip install twine"
   - "%PYTHON%\\python.exe setup.py bdist_wheel"
-  - if ($env:APPVEYOR_REPO_BRANCH -eq "master") {%PYTHON%\\Scripts\\twine upload --skip-existing dist/*.whl}
+  - ps: If ($env:APPVEYOR_REPO_BRANCH -eq "master") {%PYTHON%\\Scripts\\twine upload --skip-existing dist/*.whl}
 
 artifacts:
   # bdist_wheel puts your built wheel in the dist directory
