@@ -42,8 +42,8 @@ after_test:
   # 64-bit Python 3.3/3.4. And you need to use %PYTHON% to get the correct
   # interpreter
   - "echo [pypi] > %USERPROFILE%\\.pypirc"
-  - "echo username: user >> %USERPROFILE%\\.pypirc"
-  - "echo password: %password% >> %USERPROFILE%\\.pypirc"
+  - "echo username=arm61 >> %USERPROFILE%\\.pypirc"
+  - "echo password=%PYPI_PASSWORD% >> %USERPROFILE%\\.pypirc"
   - "cat %USERPROFILE%\\.pypirc"
   - "%PYTHON%\\python.exe -m pip install twine"
   - "%PYTHON%\\python.exe setup.py bdist_wheel"
