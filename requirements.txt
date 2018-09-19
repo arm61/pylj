@@ -1,5 +1,5 @@
 cython
 numpy
-matplotlib
+matplotlib==2.2.3
 coverage
 coveralls
