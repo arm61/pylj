@@ -1,6 +1,5 @@
 language: python
-edge:
-  branch: v1.8.45
+sudo: false
 matrix:
   include:
     - os: linux
