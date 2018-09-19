@@ -37,15 +37,17 @@ test_script:
   - "%PYTHON%\\python.exe setup.py test"
 
 deploy:
-  provider: pypi
-  user: arm61
-  password:
-    secure: H3MJUkqxOMJ4lUgLc6m3dOokuv2xCzlVewcH4fUj7e/F8i/7bmk0kiFqorXfsgP42rjW9QyHqABfIjJN50ait2iaUIx3MQA8LW4DP+jTsNh/f4FyvslF3gRZwK6HOV1LQ3GxNVMU4xb5SgzPkVj9ZI4AbxPRKqhMKD3dxbuZD8d34lV9JZQNHGW7Ib81pIeo6aJlzQX1ei1QtTApuCe0TKKList8+mtEoASxKSDsehiPR0fFGVIUClIBGjy3lF8vXpYEAXAPfucBPUWsuqapgc9rB5awbkK5VCKCqdTVRactY57KgFlYU5m5twj5QQ17wEFN3Cio5ToL3WvgyOb8ZtXo6vDZUv8bnF9XbwK3ZmmGZOFYTuE8PgAvmDH6oYUfdm23KszvYwj1jQndu6MYnZeXYestv6iti8qZ8nPjJ79aytS4zr78tMCRP3CMHiGS1St8/0v2NPCbmKuSIbLtpV+sbXLEAxfsdT6kLR7RzWTUgzunA8B5lOr3BmPQxCLEF8dfkh4+h11Pj2KqUSIEzE03W2DBQLfuF8Huk0OLwg/CPPB53GVRi+t7sKB76UUX0OmYfOq/Zyqpr83+TtfCH4EG4Pkk4Ibifg6n0GT2fT8RWuEy3/2NeXA3a7mA9x4L0gjn9libpxbdx5nrpBJ430wDxQ0UNfNnzNkitxCHdvA=
-  on:
-    distributions: bdist_wheel
-    branch: master
-    repo: arm61/pylj
-
+  # This step builds your wheels.
+  # Again, you only need build.cmd if you're building C extensions for
+  # 64-bit Python 3.3/3.4. And you need to use %PYTHON% to get the correct
+  # interpreter
+  - "echo [pypi] > %USERPROFILE%\\.pypirc"
+  - "echo username=arm61 >> %USERPROFILE%\\.pypirc"
+  - "echo password=%PYPI_PASSWORD% >> %USERPROFILE%\\.pypirc"
+  - "cat %USERPROFILE%\\.pypirc"
+  - "%PYTHON%\\python.exe -m pip install twine"
+  - "%PYTHON%\\python.exe setup.py bdist_wheel"
+  - if ($env:APPVEYOR_REPO_BRANCH -eq "master") {%PYTHON%\\Scripts\\twine upload --skip-existing dist/*.whl}
 
 artifacts:
   # bdist_wheel puts your built wheel in the dist directory
