@@ -46,7 +46,6 @@ after_success:
   - echo "[pypi]"                                      >> ~/.pypirc
   - echo "repository=https://pypi.python.org/pypi" >> ~/.pypirc
   - echo "username=arm61"                            >> ~/.pypirc
-  - echo "password=$PYPIPASSWORD"                      >> ~/.pypirc
   - cat ~/.pypirc
   - >
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
