@@ -1,41 +1,19 @@
 language: python
-matrix:
-  include:
-  - os: linux
-    env: PY=2.7
-  - os: osx
-    language: generic
-    env: PY=2.7
-  - os: linux
-    env: PY=3.5
-  - os: osx
-    language: generic
-    env: PY=3.5
-  - os: linux
-    env: PY=3.5-dev
-  - os: osx
-    language: generic
-    env: PY=3.5-dev
-  - os: linux
-    env: PY=3.6
-  - os: osx
-    language: generic
-    env: PY=3.6
-  - os: linux
-    env: PY=3.6-dev
-  - os: osx
-    language: generic
-    env: PY=3.6-dev
-  - os: linux
-    env: PY=3.7-dev
-  - os: osx
-    language: generic
-    env: PY=3.7-dev
+os:
+  -linix
+  -osx
+python:
+  - 2.7
+  - 3.5
+  - 3.5-dev
+  - 3.6
+  - 3.6-dev
+  - 3.7-dev
 install:
-- pip install -r requirements.txt
+  - pip install -r requirements.txt
 script:
-- coverage run --source=pylj setup.py test
-- coveralls
+  - coverage run --source=pylj setup.py test
+  - coveralls
 deploy:
   provider: pypi
   user: arm61
