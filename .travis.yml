@@ -7,7 +7,7 @@ matrix:
     language: generic
     env: PY=2.7
   - os: linux
-    env: PY=2.5
+    env: PY=3.5
   - os: osx
     language: generic
     env: PY=3.5
