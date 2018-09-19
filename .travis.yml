@@ -2,14 +2,38 @@ language: python
 os:
   - linux
   - osx
-env:
-  matrix:
-    - PYVER=2.7
-    - PYVER=3.5
-    - PYVER=3.5-dev
-    - PYVER=3.6
-    - PYVER=3.6-dev
-    - PYVER=3.7-dev
+matrix:
+  include:
+    - os: linux
+      env: PY=2.7
+    - os: osx
+      language: generic
+      env: PY=2.7
+    - os: linux
+      env: PY=2.5
+    - os: osx
+      language: generic
+      env: PY=3.5
+    - os: linux
+      env: PY=3.5-dev
+    - os: osx
+      language: generic
+      env: PY=3.5-dev
+    - os: linux
+      env: PY=3.6
+    - os: osx
+      language: generic
+      env: PY=3.6
+    - os: linux
+      env: PY=3.6-dev
+    - os: osx
+      language: generic
+      env: PY=3.6-dev
+    - os: linux
+      env: PY=3.7-dev
+    - os: osx
+      language: generic
+      env: PY=3.7-dev
 install:
   - pip install -r requirements.txt
 script:
