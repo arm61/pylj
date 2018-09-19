@@ -48,6 +48,7 @@ after_success:
   - echo "repository=https://pypi.python.org/pypi" >> ~/.pypirc
   - echo "username=arm61"                            >> ~/.pypirc
   - echo "password=$PYPIPASSWORD"                      >> ~/.pypirc
+  - cat ~/.pypirc
   - >
     if [ "$TRAVIS_OS_NAME" == "osx" ]; then
       python setup.py sdist bdist_wheel upload;
