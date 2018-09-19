@@ -47,7 +47,7 @@ after_test:
   - "cat %USERPROFILE%\\.pypirc"
   - "%PYTHON%\\python.exe -m pip install twine"
   - "%PYTHON%\\python.exe setup.py bdist_wheel"
-  - If ($env:APPVEYOR_REPO_BRANCH -eq "master") { Invoke-Expression "%PYTHON%\\Scripts\\twine upload --skip-existing dist/*.whl" 2>$null } Else { write-output "Not on a tag on master, won't deploy to pypi"}
+  - If ($env:APPVEYOR_REPO_BRANCH -Match "master") { Invoke-Expression "%PYTHON%\\Scripts\\twine upload --skip-existing dist/*.whl" 2>$null } Else { write-output "Not on a tag on master, won't deploy to pypi"}
 
 artifacts:
   # bdist_wheel puts your built wheel in the dist directory
