@@ -1,5 +1,5 @@
 environment:
-  password:
+  PYPI_PASSWORD:
     secure: 65W0nlxk4YHmU5dqtk5DXg==
   matrix:
 
@@ -20,7 +20,7 @@ environment:
 install:
   # We need wheel installed to build wheels
   - "SET PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
-  - "%PYTHON%\\python.exe -m pip install wheel"
+  - "%PYTHON%\\python.exe -m pip install wheel twine"
   - "%PYTHON%\\python.exe -m pip install -r requirements.txt"
   - "set PATH=%PATH%;C:\"%PYTHON%\\Scripts"
 
@@ -44,7 +44,8 @@ after_test:
   - "echo [pypi] > %USERPROFILE%\\.pypirc"
   - "echo username: user >> %USERPROFILE%\\.pypirc"
   - "echo password: %password% >> %USERPROFILE%\\.pypirc"
-  - "%PYTHON%\\python.exe setup.py bdist_wheel upload"
+  - "%PYTHON%\\python.exe setup.py bdist_wheel"
+  - "twine upload --skip-existing dist/*.whl"
 
 artifacts:
   # bdist_wheel puts your built wheel in the dist directory
