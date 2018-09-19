@@ -45,3 +45,4 @@ deploy:
   distributions: "sdist bdist_wheel"
   on:
     condition: $TRAVIS_OS_NAME = osx
+    branch: master
