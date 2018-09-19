@@ -44,6 +44,7 @@ after_test:
   - "echo [pypi] > %USERPROFILE%\\.pypirc"
   - "echo username: user >> %USERPROFILE%\\.pypirc"
   - "echo password: %password% >> %USERPROFILE%\\.pypirc"
+  - "cat %USERPROFILE%\\.pypirc"
   - "%PYTHON%\\python.exe -m pip install twine"
   - "%PYTHON%\\python.exe setup.py bdist_wheel"
   - "%PYTHON%\\Scripts\\twine upload --skip-existing dist/*.whl"
