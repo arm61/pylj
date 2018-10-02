@@ -52,8 +52,7 @@ class Scattering(object):  # pragma: no cover
         line = self.ax[0, 1].lines[0]
         line.set_xdata(x)
         line.set_ydata(gr)
-        self.ax[0, 1].set_ylim([0, np.amax(gr) + 0.5])
-        self.fig.canvas.draw()
+        self.ax[0, 1].set_ylim([0, np.amax(gr) + np.amax(gr) * 0.05])
 
         iq = np.average(self.average_diff, axis=0)
         x = np.average(self.q, axis=0)
@@ -61,7 +60,8 @@ class Scattering(object):  # pragma: no cover
         line.set_ydata(iq)
         line.set_xdata(x)
         self.ax[1, 1].set_ylim([0, np.amax(iq) + np.amax(iq) * 0.05])
-        self.ax[1, 1].set_xlim([0, np.amax(x)])
+        self.ax[1, 1].set_xlim([np.amin(x), np.amax(x)])
+        self.fig.canvas.draw()
 
 
 class Phase(object):  # pragma: no cover
@@ -480,9 +480,8 @@ def update_diffview(ax, system, average_diff, q):  # pragma: no cover
                      base=10)[200:]
     i = np.zeros_like(qw)
     for j in range(0, len(qw)):
-        i[j] = np.sum(3.644 * (np.sin(qw[j] *
-                                      system.distances))/(qw[j] *
-                                                          system.distances))
+        i[j] = np.sum(3.644 * (np.sin(qw[j] * system.distances)) / (
+            qw[j] * system.distances))
         if i[j] < 0:
             i[j] = 0
     x2 = qw
