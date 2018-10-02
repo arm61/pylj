@@ -476,8 +476,7 @@ def update_diffview(ax, system, average_diff, q):  # pragma: no cover
     # the range of q is chosen to give a representive range for the
     # interactions minimum is the reciprocal of the box length and the maximum
     # is the reciprocal of the van der Waals diameter of the argon atom
-    qw = np.logspace(np.log10(2 * np.pi / system.box_length), 10.47, num=1000,
-                     base=10)[200:]
+    qw = np.linspace(2 * np.pi / system.box_length, 10e10, 1000)[20:]
     i = np.zeros_like(qw)
     for j in range(0, len(qw)):
         i[j] = np.sum(3.644 * (np.sin(qw[j] * system.distances)) / (
