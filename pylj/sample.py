@@ -191,6 +191,55 @@ class JustCell(object):  # pragma: no cover
         self.fig.canvas.draw()
 
 
+class CellPlus(object):  # pragma: no cover
+    """The CellPlus class will plot the particles positions in addition to one
+    user defined one-dimensional dataset. This is designed to allow user
+    interaction with the plotting data.
+
+    Parameters
+    ----------
+    system: System
+        The whole system information.
+    xlabel: string
+        The label for the x-axis of the custom plot.
+    ylabel: string
+        The label for the y-axis of the custom plot.
+    """
+    def __init__(self, system, xlabel, ylabel):
+        fig, ax = environment(2)
+
+        setup_cellview(ax[0], system)
+        ax[1].plot([0], color='#34a5daff')
+        ax[1].set_ylabel(ylabel, fontsize=16)
+        ax[1].set_xlabel(xlabel, fontsize=16)
+
+        plt.tight_layout()
+
+        self.ax = ax
+        self.fig = fig
+
+    def update(self, system, xdata, ydata):
+        """This updates the visualisation environment. Often this can be slower
+        than the cythonised force calculation so use this wisely.
+
+        Parameters
+        ----------
+        system: System
+            The whole system information.
+        xdata: float, array-like
+            x-data that should be plotted in the custom plot.
+        ydata: float, array-like
+            y-data that should be plotted in the custom plot.
+        """
+        update_cellview(self.ax[0], system)
+        line1 = self.ax[1].lines[0]
+        line1.set_xdata(xdata)
+        line1.set_ydata(ydata)
+        self.ax[1].set_ylim([np.amin(ydata), np.amax(ydata)])
+        self.ax[1].set_xlim(np.amin(xdata), np.amax(xdata))
+        self.fig.canvas.draw()
+
+
 class Energy(object):  # pragma: no cover
     """The energy class will plot the particle positions and potential energy
     of the system.
