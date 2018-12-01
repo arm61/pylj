@@ -17,7 +17,7 @@ packages = find_packages()
 # versioning
 MAJOR = 1
 MINOR = 1
-MICRO = 10
+MICRO = 11
 ISRELEASED = True
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
@@ -33,8 +33,8 @@ info = {
         'author_email': 'arm61@bath.ac.uk',
         'packages': packages,
         'include_package_data': True,
-        'setup_requires': ['numpy', 'matplotlib', 'cython'],
-        'install_requires': ['numpy', 'matplotlib', 'cython'],
+        'setup_requires': ['jupyter', 'numpy', 'matplotlib', 'cython'],
+        'install_requires': ['jupyter', 'numpy', 'matplotlib', 'cython'],
         'version': VERSION,
         'license': 'MIT',
         'long_description': long_description,

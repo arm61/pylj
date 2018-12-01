@@ -1,3 +1,4 @@
+jupyter
 cython
 numpy
 matplotlib==2.2.3
