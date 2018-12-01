@@ -1,21 +1,20 @@
 language: python
 python:
-  - '2.7'
-  - '3.5'
-  - '3.5-dev'
-  - '3.6'
-  - '3.6-dev'
-  - '3.7-dev'
+- '2.7'
+- '3.5'
+- 3.5-dev
+- '3.6'
+- 3.6-dev
+- 3.7-dev
 install:
-  - pip install -r requirements.txt
+- pip install -r requirements.txt
 script:
-  - coverage run --source=pylj setup.py test
-  - coveralls
+- coverage run --source=pylj setup.py test
+- coveralls
 deploy:
   provider: pypi
   user: arm61
-  password:
-    secure: GR854z6f1+6GPESZHPmeLZS3uESPTSuuFMGDGTjtVo7yG8sk+6eyRj1pgTz477YCuzBpUM05zy7GHgve71umOYLkBcqXYXtzM8chbvsMnC+nVNzNa5XP32Owlr8B9qCcLvRzhGCQORz3yP6cm8uxUnrF0FsqNwdvWc60MiF9sB+YNFIEehSRF8VazdMlr+SM8TCnUJES67nThJ3II0y6NgPc+Tz/dwAel5eNXWbWCvFTcJAAXWcCo0U1y6XOUDw+sY5rCjbiwjwtRBZheNfp/HdHN3HyFJIoTZ4dn50CJaAaxT+8mKe35osTJyqWOTjXEedr1feHe+Ly3nfiqSXvi3SbWP/czjHH88TQ6ECfNlTUjg0uUinprYJpjaEiyoLI+cbCaeIFe9GjnqIT8ZWc7dJ1+8/N7xteJEdFmFHQ+yJwUwQ+BvOPNUPE9SbiKMLC/Tv7r8xk4z8MljPwQWFYTL9/ThaZTAkJVXBqpWRmzJYdGVOcZAwS84OOrku0Q289+Xi/NyDOqOGasfYVBhKk4hIrglh1+aYSZlumh7n+mpVnjcKHcwZp9opI75u0Udmga1uf7T8V/yjHyD8pe+30+qCN7V9sqpD2X5+HieTt4zdieWykrbQbdkiqrRdgjxpp8WYH8LpGglHyrDHW+9c2EwhSnG/DzL3dN3a30OhnBQ=
+  password: Af8kac5jIPz9ZCPd7A9LAusKaDKbgNWllyYaIfohBssszE00QkV+Nq1MKURezD7GERo6krXiWO3+Q6z8S/QGDhLLdqaPOFZZXZ3U4KYAapqR/iO/VzqvElcTjuv4oZSc/F7JVxQamJpR35CH2uHmVQ4NcUsdcymoZV5s8PX9hrjEd1Gdc8rzK1kugty4SrOICMltWQUE8TGAyz/dC1I2Udd2kPSDin/VSGvcc6wxib/fYl5x5VdmIyKY7/ejC6/c3fEL+OJy5rKn7l60ErgxfxrFLHJCzV0695TS0+2lzdt6nqWhASnVhH2nnD2Gu+b+Z8hjdGeh44USeGX8Gazqq9/0uP/9Dzs/tgxXy8o9tXdwb/ACGRGR5AkplEWV5hLa0vZ0O15MrKJ35k8ig53KkyD7iWyZIVVnyRN+Dpg5GS1rRI80/SYNs1/X7XyU8mriManb7bkBIeW+SNL7D2KKnlAPEede6XVu6vlP43N4dBh4rhxoZ+hBcT7RkCJvBF/6pM3i6Kv/xhe+msd6S1V8NIQMxtReqjTo/loCVGApwbwIkYupt7XhNsFlrgxxZllmj6LxlXuKJZ74+sjvk2tmeCyeBYE8LwAVR5PZZMiLgqk6EO0CGWgMv/r7DrSvUDmtI0AzW/9DaSh8CW1I0XCOym76v8Thl9X+2eER8tzm2vQ=
   on:
     distributions: sdist
     python: '3.6'
