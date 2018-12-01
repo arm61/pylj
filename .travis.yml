@@ -18,10 +18,6 @@ deploy:
     secure: aALH0Xs9y2JaZhSZC0URhrVoB/edr0eu0q1HjlTxQresS7RcaF32JccJYEcMILnCLSQCBW6XoL5j7PJFQt+x96fW9G128i0Zu0eGGpdVEj32buJUcLX+ty5TEZ7L17jJlhki6CVLtZrlOv94orHVg/VolEJZ0mNPhrTTV34rarY1jTj1hc8Hxk4YExhi7FpqtGHBpWH1CTWzV0CKwEaTyvh16BIDcm/pvkW457zxOVNtCc6mRHWzs2ZnokrGJERPouns5yMHOY4V8mZDIDcxaesWlGrLOB6Rn+Sl+PhYzBUml+WrJvpSnwo5snErGXAwEWfBAmUE6T1LItsSeFrkxEXfMx3MfMzGZlcCAWMBQJDDU3+4/ViDRnq/doFLdji2QV0d7cw2jXxBP2rgIw8rMt+Yn4ez56aDakCtMKzmPjHkC+wZ0UHUdm15Sy+/I4zDQlrcIk7zDbYAAKfwln4chiC/E+WdEszpEMe0RrdYbCV9rySOQFs2xpAnCjQT0WMzh1TTeqBXXctaWYB6C9pE2o6n7/ndXXGxbdvfL9ZyIAObLMt8K63HUgmHEH9KpxEtCSQSI/3pzBTWg3y7xotYVKR0UkKNaUm5oGtAi9GJlWiZR2vDRPFwxeXGjhbFALI375SONSLJhZHBUOsKnk7x7k4WN4vhXXNSYuA9nKFWRGs=
   on:
     distributions: sdist
-    python:
-      - '2.7'
-      - '3.5'
-      - '3.6'
-      - '3.7'
+    python: '3.6'
     branch: master
     repo: arm61/pylj
