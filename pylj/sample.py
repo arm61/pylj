@@ -574,24 +574,18 @@ def update_energyview(ax, system):  # pragma: no cover
         The whole system information.
     """
     line = ax.lines[0]
-    line.set_ydata(system.energy_sample + 1.3806e-23 *
-                   system.temperature_sample)
     if system.force_sample != []:
+        y = system.energy_sample + 1.3806e-23 * system.temperature_sample
         line.set_xdata(np.arange(0, system.step) * system.timestep_length)
         ax.set_xlim(0, system.step * system.timestep_length)
         ax.set_xlabel('Time/s', fontsize=16)
     else:
+        y = system.energy_sample
         line.set_xdata(np.arange(0, system.step+1))
         ax.set_xlim(0, system.step)
-    ax.set_ylim(np.amin(
-            system.energy_sample + 1.3806e-23 * system.temperature_sample) -
-                np.abs(np.amax(system.energy_sample +
-                               1.3806e-23 *
-                               system.temperature_sample)) * 0.05,
-                np.amax(system.energy_sample + 1.3806e-23 *
-                        system.temperature_sample) +
-                np.abs(np.amax(system.energy_sample + 1.3806e-23 *
-                               system.temperature_sample)) * 0.05)
+    line.set_ydata(y)
+    ax.set_ylim(np.amin(y) - np.abs(np.amax(y)) * 0.05, np.amax(
+        y) + np.abs(np.amax(y)) * 0.05)
 
 
 def update_tempview(ax, system):  # pragma: no cover
