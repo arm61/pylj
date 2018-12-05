@@ -1,0 +1,5 @@
+build/
+dist/
+examples/
+pylj.egg-info/
+
