@@ -33,7 +33,8 @@ class TestPairwise(unittest.TestCase):
         particles['xposition'][0] = 1e-10
         particles['xposition'][1] = 5e-10
         particles, distances, forces, energies = pairwise.compute_force(
-                particles, 30, 15, constants=[1.363e-134, 9.273e-78], forcefield=ff.lennard_jones, mass=39.948)
+                particles, 30, 15, constants=[1.363e-134, 9.273e-78],
+                forcefield=ff.lennard_jones, mass=39.948)
         assert_almost_equal(distances, [4e-10])
         assert_almost_equal(energies, [-1.4515047e-21])
         assert_almost_equal(forces, [-9.5864009e-12])
@@ -46,17 +47,21 @@ class TestPairwise(unittest.TestCase):
         particles = np.zeros(2, dtype=part_dt)
         particles['xposition'][0] = 1e-10
         particles['xposition'][1] = 5e-10
-        distances, energies = pairwise.compute_energy(particles, 30, 15, constants=[1.363e-134, 9.273e-78], forcefield=ff.lennard_jones)
-        assert_almost_equal(distances, [4e-10])
-        assert_almost_equal(energies, [-1.4515047e-21])
+        d, e = pairwise.compute_energy(particles, 30, 15,
+                                       constants=[1.363e-134, 9.273e-78],
+                                       forcefield=ff.lennard_jones)
+        assert_almost_equal(d, [4e-10])
+        assert_almost_equal(e, [-1.4515047e-21])
 
     def test_calculate_pressure(self):
         part_dt = util.particle_dt()
         particles = np.zeros(2, dtype=part_dt)
         particles['xposition'][0] = 1e-10
         particles['xposition'][1] = 5e-10
-        pressure = pairwise.calculate_pressure(particles, 30, 300, 15, constants=[1.363e-134, 9.273e-78], forcefield=ff.lennard_jones)
-        assert_almost_equal(pressure*1e24, 7.07368869)
+        p = pairwise.calculate_pressure(particles, 30, 300, 15,
+                                        constants=[1.363e-134, 9.273e-78],
+                                        orcefield=ff.lennard_jones)
+        assert_almost_equal(p*1e24, 7.07368869)
 
     def test_pbc_correction(self):
         a = pairwise.pbc_correction(1, 10)
