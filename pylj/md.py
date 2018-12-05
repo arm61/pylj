@@ -24,11 +24,12 @@ def initialise(number_of_particles, temperature, box_length, init_conf,
         - 'random'
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
-    mass: float (optional - default - 39.948)
-        Mass of particles
-    constants: float, array_like (default - [1.363e-134, 9.273e-78])
-        An array of constants for the energy/force calculation
-    forcefield: (optional - default Lennard Jones potential)
+    mass: float (optional)
+        The mass of the particles being simulated.
+    constants: float, array_like (optional)
+        The values of the constants for the forcefield used.
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
 
     Returns
     -------
