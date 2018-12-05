@@ -43,23 +43,25 @@ def buckingham(dr, constants, force=False):
 
     .. math::
         f = ABe^{(-Bdr)} - \frac{6C}{dr^7}
-    
+
     Paramters
     ---------
     dr: float, array_like
         The distances between all the pairs of particles.
     constants: float, array_like
-        An array of lenght three consisting of the A, B and C parameters for the
-        Buckingham function.
+        An array of lenght three consisting of the A, B and C parameters for
+        the Buckingham function.
     force: bool (optional)
         If true, the negative first derivative will be found.
 
     Returns
     -------
     float:
-        the potential energy or force between the particles. 
+        the potential energy or force between the particles.
     """
     if force:
-        return constants[0] * constants[1] * np.exp(-constants[1] * dr) - 6 * constants[2] / np.power(dr, 7)
+        return constants[0] * constants[1] * np.exp(-constants[1] * dr) - \
+               (6 * constants[2] / np.power(dr, 7))
     else:
-        return constants[0] * np.exp(-constants[1] * dr) - constants[2] / np.power(dr, 6)
+        return constants[0] * np.exp(-constants[1] * dr) \
+              - (constants[2] / np.power(dr, 6))

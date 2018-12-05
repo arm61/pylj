@@ -12,11 +12,10 @@ class TestForcefields(unittest.TestCase):
         a = forcefields.lennard_jones(2., [1., 1.], force=True)
         assert_almost_equal(a, -0.045410156)
 
-
     def test_buckingham_energy(self):
         a = forcefields.buckingham(2., [1., 1., 1.])
         assert_almost_equal(a, 0.119710)
 
-    def test_buckingham_energy(self):
+    def test_buckingham_force(self):
         a = forcefields.buckingham(2., [1., 1., 1.], force=True)
         assert_almost_equal(a, 0.08846028324)
