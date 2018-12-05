@@ -2,7 +2,6 @@ from __future__ import division
 import numpy as np
 import webbrowser
 from pylj import md, mc
-from pylj import forcefields as ff
 
 
 class System:
@@ -35,9 +34,9 @@ class System:
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
     """
-    def __init__(self, number_of_particles, temperature, box_length, constants, forcefield, mass,
-                 init_conf='square', timestep_length=1e-14,
-                 cut_off=15):
+    def __init__(self, number_of_particles, temperature, box_length,
+                 constants, forcefield, mass, init_conf='square',
+                 timestep_length=1e-14, cut_off=15):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         self.constants = constants
@@ -156,13 +155,9 @@ class System:
         method: method
             The integration method to be used, e.g. md.velocity_verlet.
         """
-        self.particles, self.distances, self.forces, self.energies = method(self.particles, 
-                                                                            self.timestep_length, 
-                                                                            self.box_length,
-                                                                            self.cut_off,
-                                                                            self.constants,
-                                                                            self.forcefield,
-                                                                            self.mass)
+        self.particles, self.distances, self.forces, self.energies = method(
+            self.particles, self.timestep_length, self.box_length,
+            self.cut_off, self.constants, self.forcefield, self.mass)
 
     def md_sample(self):
         """Maps to the md.sample function.

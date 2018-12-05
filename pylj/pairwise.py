@@ -1,6 +1,5 @@
 from __future__ import division
 import numpy as np
-from pylj import forcefields as ff
 try:
     from pylj import comp as heavy
 except ImportError:
@@ -163,7 +162,8 @@ def compute_energy(particles, box_length, cut_off, constants, forcefield):
     return distances, energies
 
 
-def calculate_pressure(particles, box_length, temperature, cut_off, constants, forcefield):
+def calculate_pressure(particles, box_length, temperature,
+                       cut_off, constants, forcefield):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
     .. math::
@@ -190,12 +190,15 @@ def calculate_pressure(particles, box_length, temperature, cut_off, constants, f
     float:
         Instantaneous pressure of the simulation.
     """
-    distances, dx, dy = heavy.dist(particles['xposition'], particles['yposition'], box_length)
+    distances, dx, dy = heavy.dist(particles['xposition'],
+                                   particles['yposition'], box_length)
     forces = forcefield(distances, constants, force=True)
     forces[np.where(distances > cut_off)] = 0.
     pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
-    pres = 1. / (2 * box_length * box_length) * pres + (particles['xposition'].size / (box_length * box_length) * boltzmann_constant * temperature)
+    pres = 1. / (2 * box_length * box_length) * pres + (
+        particles['xposition'].size / (box_length * box_length) *
+        boltzmann_constant * temperature)
     return pres
 
 
@@ -220,8 +223,10 @@ def heat_bath(particles, temperature_sample, bath_temp):
         Information about the particles with new, rescaled velocities.
     """
     average_temp = np.average(temperature_sample)
-    particles['xvelocity'] = particles['xvelocity'] * np.sqrt(bath_temp / average_temp)
-    particles['yvelocity'] = particles['yvelocity'] * np.sqrt(bath_temp / average_temp)
+    particles['xvelocity'] = particles['xvelocity'] * np.sqrt(bath_temp /
+                                                              average_temp)
+    particles['yvelocity'] = particles['yvelocity'] * np.sqrt(bath_temp /
+                                                              average_temp)
     return particles
 
 
