@@ -5,7 +5,7 @@ from pylj import forcefields as ff
 
 def initialise(number_of_particles, temperature, box_length, init_conf,
                timestep_length=1e-14, mass=39.948,
-               forcefield=ff.lennard_jones):
+               constants=[1.363e-134, 9.273e-78], forcefield=ff.lennard_jones):
     """Initialise the particle positions (this can be either as a square or
     random arrangement), velocities (based on the temperature defined, and
     calculate the initial forces/accelerations.
@@ -24,6 +24,12 @@ def initialise(number_of_particles, temperature, box_length, init_conf,
         - 'random'
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
+    mass: float (optional)
+        The mass of the particles being simulated.
+    constants: float, array_like (optional)
+        The values of the constants for the forcefield used.
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
 
     Returns
     -------
@@ -32,8 +38,9 @@ def initialise(number_of_particles, temperature, box_length, init_conf,
     """
     from pylj import util
     system = util.System(number_of_particles, temperature, box_length,
-                         init_conf=init_conf, timestep_length=timestep_length,
-                         forcefield=forcefield)
+                         constants, forcefield, mass,
+                         init_conf=init_conf,
+                         timestep_length=timestep_length)
     v = np.random.rand(system.particles.size, 2, 12)
     v = np.sum(v, axis=2) - 6.
     mass_kg = mass * 1.6605e-27
@@ -53,13 +60,12 @@ def initialize(number_particles, temperature, box_length, init_conf,
     return a
 
 
-def velocity_verlet(particles, timestep_length, box_length, cut_off):
+def velocity_verlet(particles, timestep_length, box_length,
+                    cut_off, constants, forcefield, mass):
     """Uses the Velocity-Verlet integrator to move forward in time. The
-
     Updates the particles positions and velocities in terms of the Velocity
     Verlet algorithm. Also calculates the instanteous temperature, pressure,
     and force and appends these to the appropriate system array.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -68,7 +74,6 @@ def velocity_verlet(particles, timestep_length, box_length, cut_off):
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
-
     Returns
     -------
     util.particle_dt, array_like:
@@ -89,9 +94,8 @@ def velocity_verlet(particles, timestep_length, box_length, cut_off):
     [particles['xprevious_position'], particles['yprevious_position']] = pos
     xacceleration_store = list(particles['xacceleration'])
     yacceleration_store = list(particles['yacceleration'])
-    particles, distances, forces, energies = heavy.compute_force(particles,
-                                                                 box_length,
-                                                                 cut_off)
+    particles, distances, forces, energies = heavy.compute_force(
+        particles, box_length, cut_off, constants, forcefield, mass)
     [particles['xvelocity'], particles['yvelocity']] = update_velocities(
         [particles['xvelocity'], particles['yvelocity']],
         [xacceleration_store, yacceleration_store],
@@ -104,7 +108,6 @@ def velocity_verlet(particles, timestep_length, box_length, cut_off):
 
 def sample(particles, box_length, initial_particles, system):
     """Sample parameters of interest in the simulation.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -115,7 +118,6 @@ def sample(particles, box_length, initial_particles, system):
         Information about the initial particle conformation.
     system: System
         Details about the whole system
-
     Returns
     -------
     System:
@@ -123,25 +125,23 @@ def sample(particles, box_length, initial_particles, system):
         msd, and force appended to the appropriate
         arrays.
     """
-    temperature_new = calculate_temperature(particles)
+    temperature_new = calculate_temperature(particles, system.mass)
     system.temperature_sample = np.append(system.temperature_sample,
                                           temperature_new)
-    pressure_new = heavy.calculate_pressure(particles, box_length,
-                                            temperature_new, system.cut_off,
-                                            system.constants)
+    pressure_new = heavy.calculate_pressure(
+        particles, box_length, temperature_new, system.cut_off,
+        system.constants, system.forcefield)
     msd_new = calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
-    system.force_sample = np.append(system.force_sample,
-                                    np.sum(system.forces))
-    system.energy_sample = np.append(system.energy_sample,
-                                     np.sum(system.energies))
+    system.force_sample = np.append(system.force_sample, np.sum(system.forces))
+    system.energy_sample = np.append(
+        system.energy_sample, np.sum(system.energies))
     system.msd_sample = np.append(system.msd_sample, msd_new)
     return system
 
 
 def calculate_msd(particles, initial_particles, box_length):
     """Determines the mean squared displacement of the particles in the system.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -150,7 +150,6 @@ def calculate_msd(particles, initial_particles, box_length):
         Information about the initial state of the particles.
     box_length: float
         Size of the cell vector.
-
     Returns
     -------
     float:
@@ -179,10 +178,9 @@ def calculate_msd(particles, initial_particles, box_length):
     return np.average(dr ** 2)
 
 
-def update_positions(positions, old_positions, velocities, accelerations,
-                     timestep_length, box_length):
+def update_positions(positions, old_positions, velocities,
+                     accelerations, timestep_length, box_length):
     """Update the particle positions using the Velocity-Verlet integrator.
-
     Parameters
     ----------
     positions: (2, N) array_like
@@ -202,7 +200,6 @@ def update_positions(positions, old_positions, velocities, accelerations,
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
-
     Returns
     -------
     (2, N) array_like:
@@ -224,7 +221,6 @@ def update_positions(positions, old_positions, velocities, accelerations,
 def update_velocities(velocities, accelerations_old, accelerations_new,
                       timestep_length):
     """Update the particle velocities using the Velocity-Verlet algoritm.
-
     Parameters
     ----------
     velocities: (2, N) array_like
@@ -236,27 +232,24 @@ def update_velocities(velocities, accelerations_old, accelerations_new,
         accelerations.
     timestep_length: float
         Length for each Velocity-Verlet integration step, in seconds.
-
     Returns
     -------
     (2, N) array_like:
         Updated velocities.
     """
-    velocities[0] += 0.5 * (
-        accelerations_old[0] + accelerations_new[0]) * timestep_length
-    velocities[1] += 0.5 * (
-        accelerations_old[1] + accelerations_new[1]) * timestep_length
+    velocities[0] += 0.5 * (accelerations_old[0] +
+                            accelerations_new[0]) * timestep_length
+    velocities[1] += 0.5 * (accelerations_old[1] +
+                            accelerations_new[1]) * timestep_length
     return [velocities[0], velocities[1]]
 
 
-def calculate_temperature(particles, mass=39.948):
+def calculate_temperature(particles, mass):
     """Determine the instantaneous temperature of the system.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
-
     Returns
     -------
     float:
@@ -272,12 +265,9 @@ def calculate_temperature(particles, mass=39.948):
     return t
 
 
-def compute_force(particles, box_length, cut_off,
-                  constants=[1.363e-134, 9.273e-78], mass=39.948,
-                  forcefield=ff.lennard_jones):
+def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -294,7 +284,6 @@ def compute_force(particles, box_length, cut_off,
         The particular forcefield to be used to find the energy and forces.
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).
-
     Returns
     -------
     util.particle_dt, array_like
@@ -306,19 +295,17 @@ def compute_force(particles, box_length, cut_off,
     float, array_like
         Current energies between pairs of particles in the simulation.
     """
-    part, dist, forces, energies = heavy.compute_force(particles, box_length,
+    part, dist, forces, energies = heavy.compute_force(particles,
+                                                       box_length,
                                                        cut_off,
-                                                       constants=constants,
-                                                       mass=mass,
-                                                       forcefield=forcefield)
+                                                       constants,
+                                                       forcefield,
+                                                       mass=mass)
     return part, dist, forces, energies
 
 
-def compute_energy(particles, box_length, cut_off,
-                   constants=[1.363e-134, 9.273e-78],
-                   forcefield=ff.lennard_jones):
+def compute_energy(particles, box_length, cut_off, constants, forcefield):
     r"""Calculates the total energy of the simulation.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -333,7 +320,6 @@ def compute_energy(particles, box_length, cut_off,
         the function forcefields.lennard_jones, theses are [A, B]
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
-
     Returns
     -------
     util.particle_dt, array_like
@@ -343,9 +329,11 @@ def compute_energy(particles, box_length, cut_off,
     float, array_like
         Current energies between pairs of particles in the simulation.
     """
-    dist, energies = heavy.compute_energy(particles, box_length, cut_off,
-                                          constants=constants,
-                                          forcefield=forcefield)
+    dist, energies = heavy.compute_energy(particles,
+                                          box_length,
+                                          cut_off,
+                                          constants,
+                                          forcefield)
     return dist, energies
 
 
@@ -353,11 +341,9 @@ def heat_bath(particles, temperature_sample, bath_temperature):
     r"""Rescales the velocities of the particles in the system to control the
     temperature of the simulation. Thereby allowing for an NVT ensemble. The
     velocities are rescaled according the following relationship,
-
     .. math::
         v_{\text{new}} = v_{\text{old}} \times
         \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -366,7 +352,6 @@ def heat_bath(particles, temperature_sample, bath_temperature):
         The temperature at each timestep in the simulation.
     bath_temp: float
         The desired temperature of the simulation.
-
     Returns
     -------
     util.particle_dt, array_like

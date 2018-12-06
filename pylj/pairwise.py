@@ -1,6 +1,5 @@
 from __future__ import division
 import numpy as np
-from pylj import forcefields as ff
 try:
     from pylj import comp as heavy
 except ImportError:
@@ -8,12 +7,9 @@ except ImportError:
     from pylj import pairwise as heavy
 
 
-def compute_force(particles, box_length, cut_off,
-                  constants=[1.363e-134, 9.273e-78],
-                  forcefield=ff.lennard_jones, mass=39.948):
+def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -30,7 +26,6 @@ def compute_force(particles, box_length, cut_off,
         The particular forcefield to be used to find the energy and forces.
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).
-
     Returns
     -------
     util.particle_dt, array_like
@@ -65,14 +60,12 @@ def compute_force(particles, box_length, cut_off,
 
 def separation(dx, dy):
     """Calculate the distance in 2D space.
-
     Parameters
     ----------
     dx: float
         Vector in the x dimension
     dy: float
         Vector in the y dimension
-
     Returns
     float:
         Magnitude of the 2D vector.
@@ -82,7 +75,6 @@ def separation(dx, dy):
 
 def update_accelerations(particles, f, m, dx, dy, dr):
     """Update the acceleration arrays of particles.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -97,7 +89,6 @@ def update_accelerations(particles, f, m, dx, dy, dr):
         Distance between the particles in the y dimension.
     dr: float
         Distance between the particles.
-
     Returns
     -------
     util.particle_dt, array_like
@@ -117,7 +108,6 @@ def update_accelerations(particles, f, m, dx, dy, dr):
 def second_law(f, m, d1, d2):
     """Newton's second law of motion to get the acceleration of the particle
     in a given dimension.
-
     Parameters
     ----------
     f: float
@@ -128,14 +118,12 @@ def second_law(f, m, d1, d2):
         Distance between the particles in a single dimension.
     d2: float
         Distance between the particles across all dimensions.
-
     Returns
     -------
     float:
         Acceleration of the particle in a given dimension.
     """
     return (f * d1 / d2) / m
-
 
 def lennard_jones_energy(A, B, dr):
     """pairwise.lennard_jones_energy has been deprecated, please use
@@ -187,11 +175,8 @@ def lennard_jones_force(A, B, dr):
     return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
 
 
-def compute_energy(particles, box_length, cut_off,
-                   constants=[1.363e-134, 9.273e-78],
-                   forcefield=ff.lennard_jones):
+def compute_energy(particles, box_length, cut_off, constants, forcefield):
     r"""Calculates the total energy of the simulation.
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -206,7 +191,6 @@ def compute_energy(particles, box_length, cut_off,
         the function forcefields.lennard_jones, theses are [A, B]
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
-
     Returns
     -------
     util.particle_dt, array_like
@@ -227,16 +211,13 @@ def compute_energy(particles, box_length, cut_off,
     return distances, energies
 
 
-def calculate_pressure(particles, box_length, temperature, cut_off,
-                       constants=[1.363e-134, 9.273e-78],
-                       forcefield=ff.lennard_jones):
+def calculate_pressure(particles, box_length, temperature,
+                       cut_off, constants, forcefield):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
-
     .. math::
         p = \langle \rho k_b T \rangle + \bigg\langle \frac{1}{3V}\sum_{i}
         \sum_{j<i} \mathbf{r}_{ij}\mathbf{f}_{ij} \bigg\rangle
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -253,7 +234,6 @@ def calculate_pressure(particles, box_length, temperature, cut_off,
         the function forcefields.lennard_jones, theses are [A, B]
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
-
     Returns
     -------
     float:
@@ -275,11 +255,9 @@ def heat_bath(particles, temperature_sample, bath_temp):
     r"""Rescales the velocities of the particles in the system to control the
     temperature of the simulation. Thereby allowing for an NVT ensemble. The
     velocities are rescaled according the following relationship,
-
     .. math::
         v_{\text{new}} = v_{\text{old}} \times
         \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
-
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -288,7 +266,6 @@ def heat_bath(particles, temperature_sample, bath_temp):
         The temperature at each timestep in the simulation.
     bath_temp: float
         The desired temperature of the simulation.
-
     Returns
     -------
     util.particle_dt, array_like
@@ -304,7 +281,6 @@ def heat_bath(particles, temperature_sample, bath_temp):
 
 def dist(xposition, yposition, box_length):
     """Returns the distance array for the set of particles.
-
     Parameters
     ----------
     xpos: float, array_like (N)
@@ -315,7 +291,6 @@ def dist(xposition, yposition, box_length):
         y-dimension positions of the particles.
     box_length: float
         The box length of the simulation cell.
-
     Returns
     -------
     drr float, array_like ((N - 1) * N / 2))
@@ -345,14 +320,12 @@ def dist(xposition, yposition, box_length):
 
 def pbc_correction(position, cell):
     """Correct for the periodic boundary condition.
-
     Parameters
     ----------
     position: float
         Particle position.
     cell: float
         Cell vector.
-
     Returns
     -------
     float:

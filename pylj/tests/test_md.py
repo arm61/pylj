@@ -15,7 +15,8 @@ class TestMd(unittest.TestCase):
     def test_velocity_verlet(self):
         a = md.initialise(2, 300, 8, 'square')
         a.particles, a.distances, a.forces, a.energies = md.velocity_verlet(
-                a.particles, 1, a.box_length, a.cut_off)
+                a.particles, 1, a.box_length, a.cut_off, a.constants, a.
+                forcefield, a.mass)
         assert_almost_equal(a.particles['xprevious_position']*1e10, [2, 2])
         assert_almost_equal(a.particles['yprevious_position']*1e10, [2, 6])
 
@@ -64,7 +65,7 @@ class TestMd(unittest.TestCase):
         a.particles['yvelocity'] = [1e-10]
         a.particles['xacceleration'] = [1e4]
         a.particles['yacceleration'] = [1e4]
-        b = md.calculate_temperature(a.particles)
+        b = md.calculate_temperature(a.particles, mass=39.948)
         assert_almost_equal(b * 1e23, 4.8048103702737945)
 
     def test_calculate_msd(self):

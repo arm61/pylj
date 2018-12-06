@@ -1,7 +1,10 @@
 import numpy as np
+from pylj import forcefields as ff
 
 
-def initialise(number_of_particles, temperature, box_length, init_conf):
+def initialise(number_of_particles, temperature, box_length, init_conf,
+               mass=39.948, constants=[1.363e-134, 9.273e-78],
+               forcefield=ff.lennard_jones):
     """Initialise the particle positions (this can be either as a square or
     random arrangement), velocities (based on the temperature defined, and #
     calculate the initial forces/accelerations.
@@ -18,6 +21,12 @@ def initialise(number_of_particles, temperature, box_length, init_conf):
         The way that the particles are initially positioned. Should be one of:
         - 'square'
         - 'random'
+    mass: float (optional)
+        The mass of the particles being simulated.
+    constants: float, array_like (optional)
+        The values of the constants for the forcefield used.
+    forcefield: function (optional)
+        The particular forcefield to be used to find the energy and forces.
 
     Returns
     -------
@@ -26,6 +35,7 @@ def initialise(number_of_particles, temperature, box_length, init_conf):
     """
     from pylj import util
     system = util.System(number_of_particles, temperature, box_length,
+                         constants, forcefield, mass,
                          init_conf=init_conf)
     system.particles['xvelocity'] = 0
     system.particles['yvelocity'] = 0

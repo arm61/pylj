@@ -2,17 +2,14 @@ from __future__ import division
 import numpy as np
 import webbrowser
 from pylj import md, mc
-from pylj import forcefields as ff
 
 
 class System:
     """Simulation system.
-
     This class is designed to store all of the information about the job that
     is being run. This includes the particles
     object, as will as sampling objects such as the temperature, pressure, etc.
     arrays.
-
     Parameters
     ----------
     number_of_particles: int
@@ -38,9 +35,8 @@ class System:
         The particular forcefield to be used to find the energy and forces.
     """
     def __init__(self, number_of_particles, temperature, box_length,
-                 init_conf='square', timestep_length=1e-14,
-                 cut_off=15, constants=[1.363e-134, 9.273e-78], mass=39.948,
-                 forcefield=ff.lennard_jones):
+                 constants, forcefield, mass, init_conf='square',
+                 timestep_length=1e-14, cut_off=15):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         self.constants = constants
@@ -91,7 +87,6 @@ class System:
 
     def number_of_pairs(self):
         """Calculates the number of pairwise interactions in the simulation.
-
         Returns
         -------
         int:
@@ -130,15 +125,13 @@ class System:
         """Maps to the compute_force function in either the comp (if Cython is
         installed) or the pairwise module and allows for a cleaner interface.
         """
-        constants = self.constants
-        forcefield = self.forcefield
-        mass = self.mass
         part, dist, forces, energies = md.compute_force(self.particles,
                                                         self.box_length,
                                                         self.cut_off,
-                                                        constants=constants,
-                                                        mass=mass,
-                                                        forcefield=forcefield)
+                                                        self.constants,
+                                                        self.forcefield,
+                                                        self.mass
+                                                        )
         self.particles = part
         self.distances = dist
         self.forces = forces
@@ -149,23 +142,22 @@ class System:
         is installed) or the pairwise module and allows for a cleaner
         interface.
         """
-        constants = self.constants
         self.distances, self.energies = md.compute_energy(self.particles,
                                                           self.box_length,
                                                           self.cut_off,
-                                                          constants=constants)
+                                                          self.constants,
+                                                          self.forcefield)
 
     def integrate(self, method):
         """Maps the chosen integration method.
-
         Parameters
         ----------
         method: method
             The integration method to be used, e.g. md.velocity_verlet.
         """
         self.particles, self.distances, self.forces, self.energies = method(
-                self.particles, self.timestep_length, self.box_length,
-                self.cut_off)
+            self.particles, self.timestep_length, self.box_length,
+            self.cut_off, self.constants, self.forcefield, self.mass)
 
     def md_sample(self):
         """Maps to the md.sample function.
@@ -176,7 +168,6 @@ class System:
     def heat_bath(self, bath_temperature):
         """Maps to the heat_bath function in either the comp (if Cython is
         installed) or the pairwise modules.
-
         Parameters
         ----------
         target_temperature: float
@@ -187,7 +178,6 @@ class System:
 
     def mc_sample(self):
         """Maps to the mc.sample function.
-
         Parameters
         ----------
         energy: float
@@ -237,7 +227,6 @@ def __version__():  # pragma: no cover
 
 def particle_dt():
     """Builds the data type for the particles, this consists of:
-
     - xposition and yposition
     - xvelocity and yvelocity
     - xacceleration and yacceleration
