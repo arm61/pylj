@@ -18,5 +18,23 @@ authors:
     orcid: 0000-0003-3804-0975
 title: pylj
 version: 1.2.0
-doi: 10.21105/jose.00019
+doi: 10.5281/zenodo.1998914
 date-released: 2018-12-10
+references:
+  - type: article
+    journal: "Journal of Open Source Education"
+    doi: 10.21105/jose.00019
+    authors:
+      - family-names: McCluskey
+        given-names: Andrew R.
+        orcid: 0000-0003-3381-5911
+      - family-names: Morgan
+        given-names: Benjamin J.
+        orcid: 0000-0002-3056-8233
+      - family-names: Edler
+        given-names: Karen J.
+        orcid: 0000-0001-5822-0127
+      - family-names: Parker
+        given-names: Stephen C.
+        orcid: 0000-0003-3804-0975
+    title: "pylj: A teaching tool for classical atomistic simulation"
