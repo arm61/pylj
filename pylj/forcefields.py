@@ -1,6 +1,7 @@
 import numpy as np
 from numba import jit
 
+
 @jit
 def lennard_jones(dr, constants, force=False):
     r"""Calculate the energy or force for a pair of particles using the
@@ -28,11 +29,11 @@ def lennard_jones(dr, constants, force=False):
         The potential energy or force between the particles.
     """
     if force:
-        return 12 * constants[0] * np.power(dr, -13) - (6 * constants[1] *
-                                                        np.power(dr, -7))
+        return 12 * constants[0] * np.power(dr, -13) - (
+            6 * constants[1] * np.power(dr, -7)
+        )
     else:
-        return constants[0] * np.power(dr, -12) - (constants[1] *
-                                                   np.power(dr, -6))
+        return constants[0] * np.power(dr, -12) - (constants[1] * np.power(dr, -6))
 
 
 @jit
@@ -62,8 +63,10 @@ def buckingham(dr, constants, force=False):
         the potential energy or force between the particles.
     """
     if force:
-        return constants[0] * constants[1] * np.exp(-constants[1] * dr) - \
-               6 * constants[2] / np.power(dr, 7)
+        return constants[0] * constants[1] * np.exp(-constants[1] * dr) - 6 * constants[
+            2
+        ] / np.power(dr, 7)
     else:
-        return constants[0] * np.exp(-constants[1] * dr) \
-              - constants[2] / np.power(dr, 6)
+        return constants[0] * np.exp(-constants[1] * dr) - constants[2] / np.power(
+            dr, 6
+        )

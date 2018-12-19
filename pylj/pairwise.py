@@ -1,5 +1,6 @@
 from __future__ import division
 import numpy as np
+
 try:
     from pylj import comp as heavy
 except ImportError:
@@ -39,24 +40,25 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     float, array_like
         Current energies between pairs of particles in the simulation.
     """
-    particles['xacceleration'] = np.zeros(particles['xacceleration'].size)
-    particles['yacceleration'] = np.zeros(particles['yacceleration'].size)
-    pairs = int((particles['xacceleration'].size - 1) *
-                particles['xacceleration'].size / 2)
+    particles["xacceleration"] = np.zeros(particles["xacceleration"].size)
+    particles["yacceleration"] = np.zeros(particles["yacceleration"].size)
+    pairs = int(
+        (particles["xacceleration"].size - 1) * particles["xacceleration"].size / 2
+    )
     forces = np.zeros(pairs)
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
     atomic_mass_unit = 1.660539e-27  # kilograms
     mass_amu = mass  # amu
     mass_kg = mass_amu * atomic_mass_unit  # kilograms
-    distances, dx, dy = heavy.dist(particles['xposition'],
-                                   particles['yposition'], box_length)
+    distances, dx, dy = heavy.dist(
+        particles["xposition"], particles["yposition"], box_length
+    )
     forces = forcefield(distances, constants, force=True)
     energies = forcefield(distances, constants, force=False)
-    forces[np.where(distances > cut_off)] = 0.
-    energies[np.where(distances > cut_off)] = 0.
-    particles = update_accelerations(particles, forces, mass_kg, dx, dy,
-                                     distances)
+    forces[np.where(distances > cut_off)] = 0.0
+    energies[np.where(distances > cut_off)] = 0.0
+    particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
     return particles, distances, forces, energies
 
 
@@ -97,12 +99,12 @@ def update_accelerations(particles, f, m, dx, dy, dr):
         Information about the particles with updated accelerations.
     """
     k = 0
-    for i in range(0, particles.size-1):
+    for i in range(0, particles.size - 1):
         for j in range(i + 1, particles.size):
-            particles['xacceleration'][i] += second_law(f[k], m, dx[k], dr[k])
-            particles['yacceleration'][i] += second_law(f[k], m, dy[k], dr[k])
-            particles['xacceleration'][j] -= second_law(f[k], m, dx[k], dr[k])
-            particles['yacceleration'][j] -= second_law(f[k], m, dy[k], dr[k])
+            particles["xacceleration"][i] += second_law(f[k], m, dx[k], dr[k])
+            particles["yacceleration"][i] += second_law(f[k], m, dy[k], dr[k])
+            particles["xacceleration"][j] -= second_law(f[k], m, dx[k], dr[k])
+            particles["yacceleration"][j] -= second_law(f[k], m, dy[k], dr[k])
             k += 1
     return particles
 
@@ -127,6 +129,7 @@ def second_law(f, m, d1, d2):
     """
     return (f * d1 / d2) / m
 
+
 def lennard_jones_energy(A, B, dr):
     """pairwise.lennard_jones_energy has been deprecated, please use
     forcefields.lennard_jones instead
@@ -147,8 +150,10 @@ def lennard_jones_energy(A, B, dr):
     float:
         The potential energy between the two particles.
     """
-    print("pairwise.lennard_jones_energy has been deprecated, please use "
-          "forcefields.lennard_jones instead")
+    print(
+        "pairwise.lennard_jones_energy has been deprecated, please use "
+        "forcefields.lennard_jones instead"
+    )
     return A * np.power(dr, -12) - B * np.power(dr, -6)
 
 
@@ -172,8 +177,10 @@ def lennard_jones_force(A, B, dr):
     float:
         The force between the two particles.
     """
-    print("pairwise.lennard_jones_energy has been deprecated, please use "
-          "forcefields.lennard_jones with force=True instead")
+    print(
+        "pairwise.lennard_jones_energy has been deprecated, please use "
+        "forcefields.lennard_jones with force=True instead"
+    )
     return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
 
 
@@ -202,19 +209,22 @@ def compute_energy(particles, box_length, cut_off, constants, forcefield):
     float, array_like
         Current energies between pairs of particles in the simulation.
     """
-    pairs = int((particles['xacceleration'].size - 1) *
-                particles['xacceleration'].size / 2)
+    pairs = int(
+        (particles["xacceleration"].size - 1) * particles["xacceleration"].size / 2
+    )
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
-    distances, dx, dy = heavy.dist(particles['xposition'],
-                                   particles['yposition'], box_length)
+    distances, dx, dy = heavy.dist(
+        particles["xposition"], particles["yposition"], box_length
+    )
     energies = forcefield(distances, constants, force=False)
-    energies[np.where(distances > cut_off)] = 0.
+    energies[np.where(distances > cut_off)] = 0.0
     return distances, energies
 
 
-def calculate_pressure(particles, box_length, temperature,
-                       cut_off, constants, forcefield):
+def calculate_pressure(
+    particles, box_length, temperature, cut_off, constants, forcefield
+):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
     .. math::
@@ -241,15 +251,19 @@ def calculate_pressure(particles, box_length, temperature,
     float:
         Instantaneous pressure of the simulation.
     """
-    distances, dx, dy = heavy.dist(particles['xposition'],
-                                   particles['yposition'], box_length)
+    distances, dx, dy = heavy.dist(
+        particles["xposition"], particles["yposition"], box_length
+    )
     forces = forcefield(distances, constants, force=True)
-    forces[np.where(distances > cut_off)] = 0.
+    forces[np.where(distances > cut_off)] = 0.0
     pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
-    pres = 1. / (2 * box_length * box_length) * pres + (
-        particles['xposition'].size / (box_length * box_length) *
-        boltzmann_constant * temperature)
+    pres = 1.0 / (2 * box_length * box_length) * pres + (
+        particles["xposition"].size
+        / (box_length * box_length)
+        * boltzmann_constant
+        * temperature
+    )
     return pres
 
 
@@ -274,10 +288,8 @@ def heat_bath(particles, temperature_sample, bath_temp):
         Information about the particles with new, rescaled velocities.
     """
     average_temp = np.average(temperature_sample)
-    particles['xvelocity'] = particles['xvelocity'] * np.sqrt(bath_temp /
-                                                              average_temp)
-    particles['yvelocity'] = particles['yvelocity'] * np.sqrt(bath_temp /
-                                                              average_temp)
+    particles["xvelocity"] = particles["xvelocity"] * np.sqrt(bath_temp / average_temp)
+    particles["yvelocity"] = particles["yvelocity"] * np.sqrt(bath_temp / average_temp)
     return particles
 
 
@@ -308,7 +320,7 @@ def dist(xposition, yposition, box_length):
     dyr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
     k = 0
     for i in range(0, xposition.size - 1):
-        for j in range(i+1, xposition.size):
+        for j in range(i + 1, xposition.size):
             dx = xposition[i] - xposition[j]
             dy = yposition[i] - yposition[j]
             dx = pbc_correction(dx, box_length)
@@ -319,6 +331,7 @@ def dist(xposition, yposition, box_length):
             dyr[k] = dy
             k += 1
     return drr, dxr, dyr
+
 
 @jit
 def pbc_correction(position, cell):

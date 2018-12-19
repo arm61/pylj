@@ -13,14 +13,17 @@ class Scattering(object):  # pragma: no cover
     system: System
         The whole system information.
     """
+
     def __init__(self, system):
         fig, ax = environment(4)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
         self.q = []
-        self.initial_pos = [system.particles['xposition'],
-                            system.particles['yposition']]
+        self.initial_pos = [
+            system.particles["xposition"],
+            system.particles["yposition"],
+        ]
 
         setup_cellview(ax[0, 0], system)
         setup_rdfview(ax[0, 1], system)
@@ -75,14 +78,17 @@ class Phase(object):  # pragma: no cover
     system: System
         The whole system information.
     """
+
     def __init__(self, system):
         fig, ax = environment(4)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
         self.q = []
-        self.initial_pos = [system.particles['xposition'],
-                            system.particles['yposition']]
+        self.initial_pos = [
+            system.particles["xposition"],
+            system.particles["yposition"],
+        ]
 
         setup_cellview(ax[0, 0], system)
         setup_rdfview(ax[1, 1], system)
@@ -129,6 +135,7 @@ class Interactions(object):  # pragma: no cover
     system: System
         The whole system information.
     """
+
     def __init__(self, system):
         fig, ax = environment(4)
 
@@ -167,6 +174,7 @@ class JustCell(object):  # pragma: no cover
     system: System
         The whole system information.
     """
+
     def __init__(self, system):
         fig, ax = environment(1)
 
@@ -205,11 +213,12 @@ class CellPlus(object):  # pragma: no cover
     ylabel: string
         The label for the y-axis of the custom plot.
     """
+
     def __init__(self, system, xlabel, ylabel):
         fig, ax = environment(2)
 
         setup_cellview(ax[0], system)
-        ax[1].plot([0], color='#34a5daff')
+        ax[1].plot([0], color="#34a5daff")
         ax[1].set_ylabel(ylabel, fontsize=16)
         ax[1].set_xlabel(xlabel, fontsize=16)
 
@@ -249,6 +258,7 @@ class Energy(object):  # pragma: no cover
     system: System
         The whole system information.
     """
+
     def __init__(self, system):
         fig, ax = environment(2)
 
@@ -283,14 +293,17 @@ class RDF(object):  # pragma: no cover
     system: System
         The whole system information.
     """
+
     def __init__(self, system):
         fig, ax = environment(2)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
         self.q = []
-        self.initial_pos = [system.particles['xposition'],
-                            system.particles['yposition']]
+        self.initial_pos = [
+            system.particles["xposition"],
+            system.particles["yposition"],
+        ]
 
         setup_cellview(ax[0], system)
         setup_rdfview(ax[1], system)
@@ -348,8 +361,7 @@ def environment(panes):  # pragma: no cover
     elif panes == 4:
         fig, ax = plt.subplots(2, 2, figsize=(8, 8))
     else:
-        AttributeError('The only options for the number of panes are 1, 2, or '
-                       '4')
+        AttributeError("The only options for the number of panes are 1, 2, or " "4")
     return fig, ax
 
 
@@ -363,13 +375,12 @@ def setup_cellview(ax, system):  # pragma: no cover
     system: System
         The whole system information.
     """
-    xpos = system.particles['xposition']
-    ypos = system.particles['yposition']
+    xpos = system.particles["xposition"]
+    ypos = system.particles["yposition"]
     # These numbers are chosen to scale the size of the particles nicely to
     # allow the particles to appear to interact appropriately
-    mk = (6.00555e-8 / (system.box_length - 2.2727e-10) - 1e-10)
-    ax.plot(xpos, ypos, 'o', markersize=mk, markeredgecolor='black',
-            color='#34a5daff')
+    mk = 6.00555e-8 / (system.box_length - 2.2727e-10) - 1e-10
+    ax.plot(xpos, ypos, "o", markersize=mk, markeredgecolor="black", color="#34a5daff")
     ax.set_xlim([0, system.box_length])
     ax.set_ylim([0, system.box_length])
     ax.set_xticks([])
@@ -384,9 +395,9 @@ def setup_forceview(ax):  # pragma: no cover
     ax: Axes object
         The axes position that the pane should be placed in.
     """
-    ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Force/N', fontsize=16)
-    ax.set_xlabel('Time/s', fontsize=16)
+    ax.plot([0], color="#34a5daff")
+    ax.set_ylabel("Force/N", fontsize=16)
+    ax.set_xlabel("Time/s", fontsize=16)
 
 
 def setup_energyview(ax):  # pragma: no cover
@@ -397,9 +408,9 @@ def setup_energyview(ax):  # pragma: no cover
     ax: Axes object
         The axes position that the pane should be placed in.
     """
-    ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Energy/J', fontsize=16)
-    ax.set_xlabel('Step', fontsize=16)
+    ax.plot([0], color="#34a5daff")
+    ax.set_ylabel("Energy/J", fontsize=16)
+    ax.set_xlabel("Step", fontsize=16)
 
 
 def setup_rdfview(ax, system):  # pragma: no cover
@@ -412,11 +423,11 @@ def setup_rdfview(ax, system):  # pragma: no cover
     system: System
         The whole system information.
     """
-    ax.plot([0], color='#34a5daff')
+    ax.plot([0], color="#34a5daff")
     ax.set_xlim([0, system.box_length / 2])
     ax.set_yticks([])
-    ax.set_ylabel('RDF', fontsize=16)
-    ax.set_xlabel('r/m', fontsize=16)
+    ax.set_ylabel("RDF", fontsize=16)
+    ax.set_xlabel("r/m", fontsize=16)
 
 
 def setup_diffview(ax):  # pragma: no cover
@@ -427,10 +438,10 @@ def setup_diffview(ax):  # pragma: no cover
     ax: Axes object
         The axes position that the pane should be placed in.
     """
-    ax.plot([0], color='#34a5daff')
+    ax.plot([0], color="#34a5daff")
     ax.set_yticks([])
-    ax.set_ylabel('I(q)', fontsize=16)
-    ax.set_xlabel('q/m$^{-1}$', fontsize=16)
+    ax.set_ylabel("I(q)", fontsize=16)
+    ax.set_xlabel("q/m$^{-1}$", fontsize=16)
 
 
 def setup_pressureview(ax):  # pragma: no cover
@@ -441,9 +452,9 @@ def setup_pressureview(ax):  # pragma: no cover
     ax: Axes object
         The axes position that the pane should be placed in.
     """
-    ax.plot([0], color='#34a5daff')
-    ax.set_ylabel(r'Pressure/$\times10^6$Pa m$^{-1}$', fontsize=16)
-    ax.set_xlabel('Time/s', fontsize=16)
+    ax.plot([0], color="#34a5daff")
+    ax.set_ylabel(r"Pressure/$\times10^6$Pa m$^{-1}$", fontsize=16)
+    ax.set_xlabel("Time/s", fontsize=16)
 
 
 def setup_tempview(ax):  # pragma: no cover
@@ -454,9 +465,9 @@ def setup_tempview(ax):  # pragma: no cover
     ax: Axes object
         The axes position that the pane should be placed in.
     """
-    ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('Temperature/K', fontsize=16)
-    ax.set_xlabel('Time/s', fontsize=16)
+    ax.plot([0], color="#34a5daff")
+    ax.set_ylabel("Temperature/K", fontsize=16)
+    ax.set_xlabel("Time/s", fontsize=16)
 
 
 def update_cellview(ax, system):  # pragma: no cover
@@ -469,8 +480,8 @@ def update_cellview(ax, system):  # pragma: no cover
     system: System
         The whole system information.
     """
-    x3 = system.particles['xposition']
-    y3 = system.particles['yposition']
+    x3 = system.particles["xposition"]
+    y3 = system.particles["yposition"]
     line = ax.lines[0]
     line.set_ydata(y3)
     line.set_xdata(x3)
@@ -493,11 +504,15 @@ def update_rdfview(ax, system, average_rdf, r):  # pragma: no cover
         averaged.
     """
     hist, bin_edges = np.histogram(
-            system.distances,
-            bins=np.linspace(0, system.box_length / 2 + 0.5e-10, 100))
-    gr = hist / (system.number_of_particles * (system.number_of_particles /
-                                               system.box_length ** 2) *
-                 np.pi * (bin_edges[:-1] + 0.5e-10 / 2.) * 0.5)
+        system.distances, bins=np.linspace(0, system.box_length / 2 + 0.5e-10, 100)
+    )
+    gr = hist / (
+        system.number_of_particles
+        * (system.number_of_particles / system.box_length ** 2)
+        * np.pi
+        * (bin_edges[:-1] + 0.5e-10 / 2.0)
+        * 0.5
+    )
     average_rdf.append(gr)
     x = bin_edges[:-1] + 0.5e-10 / 2
     r.append(x)
@@ -528,8 +543,9 @@ def update_diffview(ax, system, average_diff, q):  # pragma: no cover
     qw = np.linspace(2 * np.pi / system.box_length, 10e10, 1000)[20:]
     i = np.zeros_like(qw)
     for j in range(0, len(qw)):
-        i[j] = np.sum(3.644 * (np.sin(qw[j] * system.distances)) / (
-            qw[j] * system.distances))
+        i[j] = np.sum(
+            3.644 * (np.sin(qw[j] * system.distances)) / (qw[j] * system.distances)
+        )
         if i[j] < 0:
             i[j] = 0
     x2 = qw
@@ -557,10 +573,10 @@ def update_forceview(ax, system):  # pragma: no cover
     line.set_ydata(system.force_sample)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length)
-    ax.set_ylim(np.amin(system.force_sample)-np.amax(system.force_sample) *
-                0.05,
-                np.amax(system.force_sample)+np.amax(system.force_sample) *
-                0.05)
+    ax.set_ylim(
+        np.amin(system.force_sample) - np.amax(system.force_sample) * 0.05,
+        np.amax(system.force_sample) + np.amax(system.force_sample) * 0.05,
+    )
 
 
 def update_energyview(ax, system):  # pragma: no cover
@@ -578,14 +594,15 @@ def update_energyview(ax, system):  # pragma: no cover
         y = system.energy_sample + 1.3806e-23 * system.temperature_sample
         line.set_xdata(np.arange(0, system.step) * system.timestep_length)
         ax.set_xlim(0, system.step * system.timestep_length)
-        ax.set_xlabel('Time/s', fontsize=16)
+        ax.set_xlabel("Time/s", fontsize=16)
     else:
         y = system.energy_sample
-        line.set_xdata(np.arange(0, system.step+1))
+        line.set_xdata(np.arange(0, system.step + 1))
         ax.set_xlim(0, system.step)
     line.set_ydata(y)
-    ax.set_ylim(np.amin(y) - np.abs(np.amax(y)) * 0.05, np.amax(
-        y) + np.abs(np.amax(y)) * 0.05)
+    ax.set_ylim(
+        np.amin(y) - np.abs(np.amax(y)) * 0.05, np.amax(y) + np.abs(np.amax(y)) * 0.05
+    )
 
 
 def update_tempview(ax, system):  # pragma: no cover
@@ -602,10 +619,10 @@ def update_tempview(ax, system):  # pragma: no cover
     line.set_ydata(system.temperature_sample)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length)
-    ax.set_ylim(np.amin(system.temperature_sample)-np.amax(
-            system.temperature_sample) * 0.05,
-                np.amax(system.temperature_sample)+np.amax(
-                        system.temperature_sample) * 0.05)
+    ax.set_ylim(
+        np.amin(system.temperature_sample) - np.amax(system.temperature_sample) * 0.05,
+        np.amax(system.temperature_sample) + np.amax(system.temperature_sample) * 0.05,
+    )
 
 
 def update_pressureview(ax, system):  # pragma: no cover
@@ -625,8 +642,9 @@ def update_pressureview(ax, system):  # pragma: no cover
     line.set_ydata(data)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length)
-    ax.set_ylim(np.amin(data) - np.amax(data) * 0.05,
-                np.amax(data) + np.amax(data) * 0.05)
+    ax.set_ylim(
+        np.amin(data) - np.amax(data) * 0.05, np.amax(data) + np.amax(data) * 0.05
+    )
 
 
 def setup_msdview(ax):  # pragma: no cover
@@ -637,9 +655,9 @@ def setup_msdview(ax):  # pragma: no cover
     ax: Axes object
         The axes position that the pane should be placed in.
     """
-    ax.plot([0], color='#34a5daff')
-    ax.set_ylabel('MSD/m$^2$', fontsize=16)
-    ax.set_xlabel('Time/s', fontsize=16)
+    ax.plot([0], color="#34a5daff")
+    ax.set_ylabel("MSD/m$^2$", fontsize=16)
+    ax.set_xlabel("Time/s", fontsize=16)
 
 
 def update_msdview(ax, system):  # pragma: no cover
@@ -657,5 +675,4 @@ def update_msdview(ax, system):  # pragma: no cover
     line.set_ydata(system.msd_sample)
     line.set_xdata(np.arange(0, system.step) * system.timestep_length)
     ax.set_xlim(0, system.step * system.timestep_length)
-    ax.set_ylim(0, np.amax(system.msd_sample)+np.amax(system.msd_sample) *
-                0.05)
+    ax.set_ylim(0, np.amax(system.msd_sample) + np.amax(system.msd_sample) * 0.05)
