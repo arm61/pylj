@@ -2,9 +2,15 @@ import numpy as np
 from pylj import forcefields as ff
 
 
-def initialise(number_of_particles, temperature, box_length, init_conf,
-               mass=39.948, constants=[1.363e-134, 9.273e-78],
-               forcefield=ff.lennard_jones):
+def initialise(
+    number_of_particles,
+    temperature,
+    box_length,
+    init_conf,
+    mass=39.948,
+    constants=[1.363e-134, 9.273e-78],
+    forcefield=ff.lennard_jones,
+):
     """Initialise the particle positions (this can be either as a square or
     random arrangement), velocities (based on the temperature defined, and #
     calculate the initial forces/accelerations.
@@ -34,11 +40,18 @@ def initialise(number_of_particles, temperature, box_length, init_conf,
         System information.
     """
     from pylj import util
-    system = util.System(number_of_particles, temperature, box_length,
-                         constants, forcefield, mass,
-                         init_conf=init_conf)
-    system.particles['xvelocity'] = 0
-    system.particles['yvelocity'] = 0
+
+    system = util.System(
+        number_of_particles,
+        temperature,
+        box_length,
+        constants,
+        forcefield,
+        mass,
+        init_conf=init_conf,
+    )
+    system.particles["xvelocity"] = 0
+    system.particles["yvelocity"] = 0
     return system
 
 
@@ -87,8 +100,10 @@ def select_random_particle(particles):
         The current position of the chosen particle.
     """
     random_particle = np.random.randint(0, particles.size)
-    position_store = [particles['xposition'][random_particle],
-                      particles['yposition'][random_particle]]
+    position_store = [
+        particles["xposition"][random_particle],
+        particles["yposition"][random_particle],
+    ]
     return random_particle, position_store
 
 
@@ -110,8 +125,8 @@ def get_new_particle(particles, random_particle, box_length):
         Information about the particles, updated to account for the change of
         selected particle position.
     """
-    particles['xposition'][random_particle] = np.random.uniform(0, box_length)
-    particles['yposition'][random_particle] = np.random.uniform(0, box_length)
+    particles["xposition"][random_particle] = np.random.uniform(0, box_length)
+    particles["yposition"][random_particle] = np.random.uniform(0, box_length)
     return particles
 
 
@@ -149,8 +164,8 @@ def reject(position_store, particles, random_particle):
         Information about the particles, with the particle returned to the
         original position
     """
-    particles['xposition'][random_particle] = position_store[0]
-    particles['yposition'][random_particle] = position_store[1]
+    particles["xposition"][random_particle] = position_store[0]
+    particles["yposition"][random_particle] = position_store[1]
     return particles
 
 
