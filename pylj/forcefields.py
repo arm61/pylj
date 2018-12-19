@@ -1,6 +1,7 @@
 import numpy as np
+from numba import jit
 
-
+@jit
 def lennard_jones(dr, constants, force=False):
     r"""Calculate the energy or force for a pair of particles using the
     Lennard-Jones (A/B variant) forcefield.
@@ -34,6 +35,7 @@ def lennard_jones(dr, constants, force=False):
                                                    np.power(dr, -6))
 
 
+@jit
 def buckingham(dr, constants, force=False):
     r""" Calculate the energy or force for a pair of particles using the
     Buckingham forcefield.

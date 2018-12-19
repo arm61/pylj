@@ -5,8 +5,10 @@ try:
 except ImportError:
     print("WARNING, using slow force and energy calculations")
     from pylj import pairwise as heavy
+    from numba import jit
 
 
+@jit
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
@@ -279,6 +281,7 @@ def heat_bath(particles, temperature_sample, bath_temp):
     return particles
 
 
+@jit
 def dist(xposition, yposition, box_length):
     """Returns the distance array for the set of particles.
     Parameters
@@ -317,7 +320,7 @@ def dist(xposition, yposition, box_length):
             k += 1
     return drr, dxr, dyr
 
-
+@jit
 def pbc_correction(position, cell):
     """Correct for the periodic boundary condition.
     Parameters

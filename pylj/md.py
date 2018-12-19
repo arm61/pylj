@@ -1,6 +1,7 @@
 import numpy as np
 from pylj import pairwise as heavy
 from pylj import forcefields as ff
+from numba import jit
 
 
 def initialise(number_of_particles, temperature, box_length, init_conf,
@@ -60,6 +61,7 @@ def initialize(number_particles, temperature, box_length, init_conf,
     return a
 
 
+@jit
 def velocity_verlet(particles, timestep_length, box_length,
                     cut_off, constants, forcefield, mass):
     """Uses the Velocity-Verlet integrator to move forward in time. The
