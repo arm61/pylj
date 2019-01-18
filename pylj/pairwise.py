@@ -4,7 +4,6 @@ from numba import jit
 try:
     from pylj import comp as heavy
 except ImportError:
-    print("WARNING, using slow force and energy calculations")
     from pylj import pairwise as heavy
 
 
