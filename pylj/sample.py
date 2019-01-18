@@ -14,8 +14,8 @@ class Scattering(object):  # pragma: no cover
         The whole system information.
     """
 
-    def __init__(self, system):
-        fig, ax = environment(4)
+    def __init__(self, system, size='medium'):
+        fig, ax = environment(4, size)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
@@ -79,8 +79,8 @@ class Phase(object):  # pragma: no cover
         The whole system information.
     """
 
-    def __init__(self, system):
-        fig, ax = environment(4)
+    def __init__(self, system, size='medium'):
+        fig, ax = environment(4, size)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
@@ -136,8 +136,8 @@ class Interactions(object):  # pragma: no cover
         The whole system information.
     """
 
-    def __init__(self, system):
-        fig, ax = environment(4)
+    def __init__(self, system, size='medium'):
+        fig, ax = environment(4, size)
 
         setup_cellview(ax[0, 0], system)
         setup_forceview(ax[1, 1])
@@ -175,8 +175,8 @@ class JustCell(object):  # pragma: no cover
         The whole system information.
     """
 
-    def __init__(self, system):
-        fig, ax = environment(1)
+    def __init__(self, system, size='medium'):
+        fig, ax = environment(1, size)
 
         setup_cellview(ax, system)
 
@@ -214,8 +214,8 @@ class CellPlus(object):  # pragma: no cover
         The label for the y-axis of the custom plot.
     """
 
-    def __init__(self, system, xlabel, ylabel):
-        fig, ax = environment(2)
+    def __init__(self, system, xlabel, ylabel, size='medium'):
+        fig, ax = environment(2, size)
 
         setup_cellview(ax[0], system)
         ax[1].plot([0], color="#34a5daff")
@@ -259,8 +259,8 @@ class Energy(object):  # pragma: no cover
         The whole system information.
     """
 
-    def __init__(self, system):
-        fig, ax = environment(2)
+    def __init__(self, system, size='medium'):
+        fig, ax = environment(2, size)
 
         setup_cellview(ax[0], system)
         setup_energyview(ax[1])
@@ -294,8 +294,8 @@ class RDF(object):  # pragma: no cover
         The whole system information.
     """
 
-    def __init__(self, system):
-        fig, ax = environment(2)
+    def __init__(self, system, size='medium'):
+        fig, ax = environment(2, size)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
@@ -335,7 +335,7 @@ class RDF(object):  # pragma: no cover
         self.fig.canvas.draw()
 
 
-def environment(panes):  # pragma: no cover
+def environment(panes, size='medium'):  # pragma: no cover
     """The visualisation environment consists of a series of panes (1, 2, or 4
     are allowed). This function allows the number of panes in the
     visualisation to be defined.
@@ -354,12 +354,17 @@ def environment(panes):  # pragma: no cover
         object, for panes=2 it is a 1-D array and
         for panes=4 it is a 2-D array.
     """
+    scale = 1
+    if size == 'small':
+        scale = 2
+    elif size == 'large':
+        scale = 0.5
     if panes == 1:
-        fig, ax = plt.subplots(figsize=(4, 4))
+        fig, ax = plt.subplots(figsize=(4/scale, 4/scale))
     elif panes == 2:
-        fig, ax = plt.subplots(1, 2, figsize=(8, 4))
+        fig, ax = plt.subplots(1, 2, figsize=(8/scale, 4/scale))
     elif panes == 4:
-        fig, ax = plt.subplots(2, 2, figsize=(8, 8))
+        fig, ax = plt.subplots(2, 2, figsize=(8/scale, 8/scale))
     else:
         AttributeError("The only options for the number of panes are 1, 2, or " "4")
     return fig, ax
