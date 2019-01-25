@@ -12,6 +12,11 @@ class Scattering(object):  # pragma: no cover
     ----------
     system: System
         The whole system information.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
     """
 
     def __init__(self, system, size='medium'):
@@ -77,6 +82,11 @@ class Phase(object):  # pragma: no cover
     ----------
     system: System
         The whole system information.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
     """
 
     def __init__(self, system, size='medium'):
@@ -134,6 +144,11 @@ class Interactions(object):  # pragma: no cover
     ----------
     system: System
         The whole system information.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
     """
 
     def __init__(self, system, size='medium'):
@@ -173,6 +188,13 @@ class JustCell(object):  # pragma: no cover
     ----------
     system: System
         The whole system information.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
+    scale: float (optional)
+        The amount by which to scale down the size of the particles
     """
 
     def __init__(self, system, size='medium', scale=1):
@@ -212,6 +234,11 @@ class CellPlus(object):  # pragma: no cover
         The label for the x-axis of the custom plot.
     ylabel: string
         The label for the y-axis of the custom plot.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
     """
 
     def __init__(self, system, xlabel, ylabel, size='medium'):
@@ -257,6 +284,11 @@ class Energy(object):  # pragma: no cover
     ----------
     system: System
         The whole system information.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
     """
 
     def __init__(self, system, size='medium'):
@@ -292,6 +324,11 @@ class RDF(object):  # pragma: no cover
     ----------
     system: System
         The whole system information.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
     """
 
     def __init__(self, system, size='medium'):
@@ -344,6 +381,11 @@ def environment(panes, size='medium'):  # pragma: no cover
     ----------
     panes: int
         Number of visualisation panes.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
 
     Returns
     -------
@@ -379,6 +421,8 @@ def setup_cellview(ax, system, scale=1):  # pragma: no cover
         The axes position that the pane should be placed in.
     system: System
         The whole system information.
+    scale: float (optional)
+        The amount by which the particle size should be scaled down.
     """
     xpos = system.particles["xposition"]
     ypos = system.particles["yposition"]
