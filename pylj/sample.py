@@ -175,10 +175,10 @@ class JustCell(object):  # pragma: no cover
         The whole system information.
     """
 
-    def __init__(self, system, size='medium'):
+    def __init__(self, system, size='medium', scale=1):
         fig, ax = environment(1, size)
 
-        setup_cellview(ax, system)
+        setup_cellview(ax, system, scale)
 
         plt.tight_layout()
 
@@ -370,7 +370,7 @@ def environment(panes, size='medium'):  # pragma: no cover
     return fig, ax
 
 
-def setup_cellview(ax, system):  # pragma: no cover
+def setup_cellview(ax, system, scale=1):  # pragma: no cover
     """Builds the particle position visualisation pane.
 
     Parameters
@@ -384,7 +384,7 @@ def setup_cellview(ax, system):  # pragma: no cover
     ypos = system.particles["yposition"]
     # These numbers are chosen to scale the size of the particles nicely to
     # allow the particles to appear to interact appropriately
-    mk = 6.00555e-8 / (system.box_length - 2.2727e-10) - 1e-10
+    mk = 6.00555e-8 / (system.box_length - 2.2727e-10) - 1e-10 / scale
     ax.plot(xpos, ypos, "o", markersize=mk, markeredgecolor="black", color="#34a5daff")
     ax.set_xlim([0, system.box_length])
     ax.set_ylim([0, system.box_length])
