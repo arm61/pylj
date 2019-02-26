@@ -1,0 +1,40 @@
+{
+	"title": "pylj",
+	"creators": [{
+			"name": "McCluskey, Andrew R.",
+			"affiliation": "Department of Chemistry, University of Bath, Claverton Down, Bath, BA2 7AY, UK.; Diamond Light Source, Harwell Campus,. Didcot, OX11 0DE, UK.",
+			"orcid": "0000-0003-3381-5911"
+		},
+		{
+			"name": "Symington, Adam R.",
+			"affiliation": "Department of Chemistry, University of Bath, Claverton Down, Bath, BA2 7AY, UK.",
+			"orcid": "0000-0001-6059-497X"
+		},
+    {
+			"name": "Morgan, Benjamin J.",
+			"affiliation": "Department of Chemistry, University of Bath, Claverton Down, Bath, BA2 7AY, UK.",
+			"orcid": "0000-0002-3056-8233"
+		},
+		{
+			"name": "Edler, Karen J.",
+			"affiliation": "Department of Chemistry, University of Bath, Claverton Down, Bath, BA2 7AY, UK.",
+			"orcid": "0000-0001-5822-0127"
+		},
+		{
+			"name": "Parker, Stephen C.",
+			"affiliation": "Department of Chemistry, University of Bath, Claverton Down, Bath, BA2 7AY, UK.",
+			"orcid": "0000-0003-3804-0975"
+		}
+	],
+	"description": "An open source teaching tool for classical atomistic simulation",
+	"access_right": "open",
+	"license": "MIT",
+	"grants": [{
+		"funder": "University of Bath & Diamond Light Source",
+		"code": "STU0149"
+	},
+  {
+    "funder": "The Royal Society",
+    "code": "UF130329"
+  }]
+}
