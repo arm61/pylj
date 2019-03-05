@@ -314,6 +314,44 @@ class Energy(object):  # pragma: no cover
         update_energyview(self.ax[1], system)
         self.fig.canvas.draw()
 
+class MaxBolt(object):  # pragma: no cover
+    """The MaxBolt class will plot the particle positions and a histogram
+    of the particle velocities.
+
+    Parameters
+    ----------
+    system: System
+        The whole system information.
+    size: string
+        The size of the visualisation:
+            - 'small'
+            - 'medium' (default)
+            - 'large'
+    """
+
+    def __init__(self, system, size='medium'):
+        fig, ax = environment(2, size)
+        self.velocities = np.array([])
+        setup_cellview(ax[0], system)
+        setup_maxbolthist(ax[1])
+
+        plt.tight_layout()
+        self.ax = ax
+        self.fig = fig
+
+    def update(self, system):
+        """This updates the visualisation environment. Often this can be slower
+        than the cythonised force calculation so used is wisely.
+
+        Parameters
+        ----------
+        system: System
+            The whole system information.
+        """
+        update_cellview(self.ax[0], system)
+        self.velocities = update_maxbolthist(self.ax[1], system, self.velocities)
+        self.fig.canvas.draw()
+
 
 class RDF(object):  # pragma: no cover
     """The RDF class will plot the particle positions and radial distribution
@@ -518,6 +556,19 @@ def setup_tempview(ax):  # pragma: no cover
     ax.set_ylabel("Temperature/K", fontsize=16)
     ax.set_xlabel("Time/s", fontsize=16)
 
+def setup_maxbolthist(ax):  # pragma: no cover
+    """Builds the simulation velocity histogram
+    visualisation pane.
+
+    Parameters
+    ----------
+    ax: Axes object
+        The axes position that the pane should be placed in.
+    """
+
+    ax.step([0], [0], color="#34a5daff")
+    ax.set_ylabel("PDF", fontsize=16)
+    ax.set_xlabel("Velocity/ms$^{-1}$", fontsize=16)
 
 def update_cellview(ax, system):  # pragma: no cover
     """Updates the particle positions visualisation pane.
@@ -672,6 +723,28 @@ def update_tempview(ax, system):  # pragma: no cover
         np.amin(system.temperature_sample) - np.amax(system.temperature_sample) * 0.05,
         np.amax(system.temperature_sample) + np.amax(system.temperature_sample) * 0.05,
     )
+
+def update_maxbolthist(ax, system, velocities):  # pragma: no cover
+    """Updates the simulation velocity histogram visualisation pane.
+
+    Parameters
+    ----------
+    ax: Axes object
+        The axes position that the pane should be placed in.
+    system: System
+        The whole system information.
+    """
+    velocities = np.append(velocities, np.sqrt(np.square(system.particles['xvelocity']) + np.square(system.particles['yvelocity'])))
+    line = ax.lines[0]
+    hist, bin_edges = np.histogram(velocities, bins=25, density=True)
+    line.set_ydata(hist)
+    line.set_xdata(bin_edges[:-1])
+    ax.set_xlim(0, bin_edges[-2])
+    ax.set_ylim(
+        0,
+        np.amax(hist) + np.amax(hist) * 0.05,
+    )
+    return velocities
 
 
 def update_pressureview(ax, system):  # pragma: no cover
