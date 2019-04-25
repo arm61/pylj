@@ -29,11 +29,48 @@ def lennard_jones(dr, constants, force=False):
         The potential energy or force between the particles.
     """
     if force:
-        return 12 * constants[0] * np.power(dr, -13) - (
-            6 * constants[1] * np.power(dr, -7)
-        )
+        return 12 * constants[0] * np.power(dr, -13) -
+        (6 * constants[1] * np.power(dr, -7))
+
     else:
-        return constants[0] * np.power(dr, -12) - (constants[1] * np.power(dr, -6))
+        return constants[0] * np.power(dr, -12) -
+        (constants[1] * np.power(dr, -6))
+
+
+@jit
+def lennard_jones_sigma_epsilon(dr, constants, force=False):
+    r"""Calculate the energy or force for a pair of particles using the
+    Lennard-Jones (sigma/epsilon variant) forcefield.
+
+    .. math::
+        E = \frac{4e*a^{12}}{dr^{12}} - \frac{4e*a^{6}}{dr^6}
+
+    .. math::
+        f = \frac{48e*a^{12}}{dr^{13}} - \frac{24e*a^{6}}{dr^7}
+
+    Parameters
+    ----------
+    dr: float, array_like
+        The distances between the all pairs of particles.
+    constants: float, array_like
+        An array of length two consisting of the sigma (a) and epsilon (e) 
+        parameters for the 12-6 Lennard-Jones function.
+    force: bool (optional)
+        If true, the negative first derivative will be found.
+
+    Returns
+    -------
+    float:
+        The potential energy or force between the particles.
+    """
+    if force:
+        return 48 * constants[1] * np.power(constants[0], 12) *
+        np.power(dr, -13) - (24 * constants[1] * np.power(constants[0], 6) *
+                             np.power(dr, -7)
+                             )
+    else:
+        return 4 * constants[1] * np.power(dr, -12) -
+        (4 * constants[1] * np.power(constants[0], 6) * np.power(dr, -6))
 
 
 @jit
@@ -63,10 +100,8 @@ def buckingham(dr, constants, force=False):
         the potential energy or force between the particles.
     """
     if force:
-        return constants[0] * constants[1] * np.exp(-constants[1] * dr) - 6 * constants[
-            2
-        ] / np.power(dr, 7)
+        return constants[0] * constants[1] * np.exp(-constants[1] * dr) -
+        6 * constants[2] / np.power(dr, 7)
     else:
-        return constants[0] * np.exp(-constants[1] * dr) - constants[2] / np.power(
-            dr, 6
-        )
+        return constants[0] * np.exp(-constants[1] * dr) -
+        constants[2] / np.power(dr, 6)
