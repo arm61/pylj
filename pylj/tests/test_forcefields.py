@@ -12,6 +12,15 @@ class TestForcefields(unittest.TestCase):
         a = forcefields.lennard_jones(2.0, [1.0, 1.0], force=True)
         assert_almost_equal(a, -0.045410156)
 
+    def test_lennard_jones_sigma_epsilon_energy(self):
+        a = forcefields.lennard_jones_sigma_epsilon(2.0, [1.0, 0.25])
+        assert_almost_equal(a, -0.015380859)
+
+    def test_lennard_jones_sigma_epsilon_force(self):
+        a = forcefields.lennard_jones_sigma_epsilon(
+            2.0, [1.0, 0.25], force=True)
+        assert_almost_equal(a, -0.045410156)
+
     def test_buckingham_energy(self):
         a = forcefields.buckingham(2.0, [1.0, 1.0, 1.0])
         assert_almost_equal(a, 0.1197103832)
@@ -19,3 +28,7 @@ class TestForcefields(unittest.TestCase):
     def test_buckingham_force(self):
         a = forcefields.buckingham(2.0, [1.0, 1.0, 1.0], force=True)
         assert_almost_equal(a, 0.08846028324)
+
+
+if __name__ == '__main__':
+    unittest.main()
