@@ -83,12 +83,12 @@ def buckingham(dr, constants, force=False):
     .. math::
         f = ABe^{(-Bdr)} - \frac{6C}{dr^7}
 
-    Paramters
-    ---------
+    Parameters
+    ----------
     dr: float, array_like
         The distances between all the pairs of particles.
     constants: float, array_like
-        An array of lenght three consisting of the A, B and C parameters for
+        An array of length three consisting of the A, B and C parameters for
         the Buckingham function.
     force: bool (optional)
         If true, the negative first derivative will be found.
@@ -104,3 +104,56 @@ def buckingham(dr, constants, force=False):
     else:
         return constants[0] * np.exp(
             -constants[1] * dr) - constants[2] / np.power(dr, 6)
+
+
+def square_well(dr, constants, force=False):
+    r'''Calculate the energy or force for a pair of particles using a 
+    square well model.
+
+    .. math::
+        E = {
+        if dr < sigma:
+            E = inf
+        elif sigma =< dr < lambda * sigma:
+            E = -epsilon
+        elif r >= lambda * sigma:
+            E = 0
+        }
+    .. math::
+        f = {
+        if dr < sigma:
+            f = undefined
+        elif sigma =< dr < lambda * sigma:
+            f = 0
+        elif r >= lambda * sigma:
+            f = 0
+        }        
+    Parameters
+    ----------
+    dr: float, array_like
+        The distances between all the pairs of particles.
+    constants: float, array_like
+        An array of length three consisting of the epsilon, sigma, and lambda
+        parameters for the square well model.
+    force: bool (optional)
+        If true, the negative first derivative will be found.
+
+    Returns
+    -------
+    float:
+        The potential energy or force between the particles.
+    '''
+    if force:
+        if dr < constants[1]:
+            return None
+        elif constants[1] <= dr and dr <= constants[2] * constants[1]:
+            return 0
+        elif dr >= constants[2] * constants[1]:
+            return 0
+    else:
+        if dr < constants[1]:
+            return float('inf')
+        elif constants[1] <= dr and dr <= constants[2] * constants[1]:
+            return -constants[0]
+        elif dr >= constants[2] * constants[1]:
+            return 0

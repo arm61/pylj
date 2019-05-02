@@ -1,4 +1,4 @@
-from numpy.testing import assert_almost_equal
+from numpy.testing import assert_almost_equal, assert_equal
 from pylj import forcefields
 import unittest
 
@@ -29,6 +29,22 @@ class TestForcefields(unittest.TestCase):
         a = forcefields.buckingham(2.0, [1.0, 1.0, 1.0], force=True)
         assert_almost_equal(a, 0.08846028324)
 
+    def test_square_well_energy(self):
+        a = forcefields.square_well(2.0, [1.0, 1.5, 2.0])
+        assert_equal(a, -1.0)
+        b = forcefields.square_well(0.5, [1.0, 2.0, 1.25])
+        assert_equal(b, float('inf'))
+        c = forcefields.square_well(3.0, [0.5, 1.5, 1.25])
+        assert_equal(c, 0)
+
+    def test_square_well_force(self):
+        a = forcefields.square_well(2.0, [1.0, 1.5, 2.0], force=True)
+        assert_equal(a, 0)
+        b = forcefields.square_well(0.5, [1.0, 2.0, 1.25], force=True)
+        assert_equal(b, None)
+        c = forcefields.square_well(3.0, [0.5, 1.5, 1.25], force=True)
+        assert_equal(c, 0)
+
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(exit=False)
