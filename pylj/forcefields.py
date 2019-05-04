@@ -25,7 +25,7 @@ def lennard_jones(dr, constants, force=False):
 
     Returns
     -------
-    float:
+    float: array_like
         The potential energy or force between the particles.
     """
     if force:
@@ -53,14 +53,14 @@ def lennard_jones_sigma_epsilon(dr, constants, force=False):
     dr: float, array_like
         The distances between the all pairs of particles.
     constants: float, array_like
-        An array of length two consisting of the sigma (a) and epsilon (e) 
+        An array of length two consisting of the sigma (a) and epsilon (e)
         parameters for the 12-6 Lennard-Jones function
     force: bool (optional)
         If true, the negative first derivative will be found.
 
     Returns
     -------
-    float:
+    float: array_like
         The potential energy or force between the particles.
     """
     if force:
@@ -95,8 +95,8 @@ def buckingham(dr, constants, force=False):
 
     Returns
     -------
-    float:
-        the potential energy or force between the particles.
+    float: array_like
+        The potential energy or force between the particles.
     """
     if force:
         return constants[0] * constants[1] * np.exp(
@@ -107,27 +107,25 @@ def buckingham(dr, constants, force=False):
 
 
 def square_well(dr, constants, force=False):
-    r'''Calculate the energy or force for a pair of particles using a 
+    r'''Calculate the energy or force for a pair of particles using a
     square well model.
 
     .. math::
         E = {
         if dr < sigma:
             E = inf
-        elif sigma =< dr < lambda * sigma:
+        elif sigma <= dr < lambda * sigma:
             E = -epsilon
         elif r >= lambda * sigma:
             E = 0
         }
     .. math::
         f = {
-        if dr < sigma:
-            f = undefined
-        elif sigma =< dr < lambda * sigma:
+        if sigma <= dr < lambda * sigma:
+            f = inf
+        else:
             f = 0
-        elif r >= lambda * sigma:
-            f = 0
-        }        
+        }
     Parameters
     ----------
     dr: float, array_like
@@ -140,20 +138,28 @@ def square_well(dr, constants, force=False):
 
     Returns
     -------
-    float:
-        The potential energy or force between the particles.
+    float: array_like
+        The potential energy between the particles.
     '''
+    if not isinstance(dr, np.ndarray):
+        if isinstance(dr, list):
+            dr = np.array(dr, dtype='float')
+        elif isinstance(dr, float):
+            dr = np.array([dr], dtype='float')
+
     if force:
-        if dr < constants[1]:
-            return None
-        elif constants[1] <= dr and dr <= constants[2] * constants[1]:
-            return 0
-        elif dr >= constants[2] * constants[1]:
+        if all(constants[1] <= dr) and all(dr <= constants[2] * constants[1]):
+            raise ValueError(
+                "Force is infinite at sigma <= dr < lambda * sigma")
+        else:
             return 0
     else:
-        if dr < constants[1]:
-            return float('inf')
-        elif constants[1] <= dr and dr <= constants[2] * constants[1]:
-            return -constants[0]
-        elif dr >= constants[2] * constants[1]:
-            return 0
+        E = []
+        for r in dr:
+            if r < constants[1]:
+                E.append(float('inf'))
+            elif constants[1] <= r and r <= constants[2] * constants[1]:
+                E.append(-constants[0])
+            elif r >= constants[2] * constants[1]:
+                E.append(0)
+        return np.array(E, dtype='float')
