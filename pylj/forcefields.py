@@ -148,11 +148,8 @@ def square_well(dr, constants, force=False):
             dr = np.array([dr], dtype='float')
 
     if force:
-        if all(constants[1] <= dr) and all(dr <= constants[2] * constants[1]):
-            raise ValueError(
-                "Force is infinite at sigma <= dr < lambda * sigma")
-        else:
-            return 0
+        raise ValueError("Force is infinite at sigma <= dr < lambda * sigma")
+
     else:
         E = []
         for r in dr:
@@ -162,4 +159,8 @@ def square_well(dr, constants, force=False):
                 E.append(-constants[0])
             elif r >= constants[2] * constants[1]:
                 E.append(0)
-        return np.array(E, dtype='float')
+
+        if len(E) == 1:
+            return float(E[0])
+        else:
+            return np.array(E, dtype='float')

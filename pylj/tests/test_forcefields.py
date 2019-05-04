@@ -31,11 +31,11 @@ class TestForcefields(unittest.TestCase):
 
     def test_square_well_energy(self):
         a = forcefields.square_well(2.0, [1.0, 1.5, 2.0])
-        assert_equal(a, [-1.0])
+        assert_equal(a, -1.0)
         b = forcefields.square_well(0.5, [1.0, 2.0, 1.25])
-        assert_equal(b, [float('inf')])
+        assert_equal(b, float('inf'))
         c = forcefields.square_well(3.0, [0.5, 1.5, 1.25])
-        assert_equal(c, [0])
+        assert_equal(c, 0)
         d = forcefields.square_well([2.0, 0.5], [1.0, 1.5, 2.0])
         assert_equal(d, [-1.0, float('inf')])
         e = forcefields.square_well([3.0, 3.0, 0.25], [1.0, 1.5, 1.25])
@@ -48,11 +48,6 @@ class TestForcefields(unittest.TestCase):
         with self.assertRaises(ValueError):
             forcefields.square_well(
                 [2.0], [1.0, 1.5, 2.0], force=True)
-
-        b = forcefields.square_well(0.5, [1.0, 2.0, 1.25], force=True)
-        assert_equal(b, 0)
-        c = forcefields.square_well([3.0], [0.5, 1.5, 1.25], force=True)
-        assert_equal(c, 0)
 
 
 if __name__ == '__main__':
