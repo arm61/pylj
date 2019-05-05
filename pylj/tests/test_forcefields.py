@@ -40,6 +40,9 @@ class TestForcefields(unittest.TestCase):
         assert_equal(d, [-1.0, float('inf')])
         e = forcefields.square_well([3.0, 3.0, 0.25], [1.0, 1.5, 1.25])
         assert_equal(e, [0, 0, float('inf')])
+        f = forcefields.square_well(
+            [3.0, 3.0, 0.25], [1.0, 1.5, 1.25], max_val=5000)
+        assert_equal(f, [0, 0, 5000])
 
     def test_square_well_force(self):
         with self.assertRaises(ValueError):

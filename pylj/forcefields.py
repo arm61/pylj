@@ -106,14 +106,14 @@ def buckingham(dr, constants, force=False):
             -constants[1] * dr) - constants[2] / np.power(dr, 6)
 
 
-def square_well(dr, constants, force=False):
+def square_well(dr, constants, max_val=np.inf, force=False):
     r'''Calculate the energy or force for a pair of particles using a
     square well model.
 
     .. math::
         E = {
         if dr < sigma:
-            E = inf
+            E = max_val
         elif sigma <= dr < lambda * sigma:
             E = -epsilon
         elif r >= lambda * sigma:
@@ -133,6 +133,8 @@ def square_well(dr, constants, force=False):
     constants: float, array_like
         An array of length three consisting of the epsilon, sigma, and lambda
         parameters for the square well model.
+    max_val: int (optional)
+        Upper bound for values in square well - replaces usual infinite values
     force: bool (optional)
         If true, the negative first derivative will be found.
 
@@ -151,14 +153,14 @@ def square_well(dr, constants, force=False):
         raise ValueError("Force is infinite at sigma <= dr < lambda * sigma")
 
     else:
-        E = []
-        for r in dr:
-            if r < constants[1]:
-                E.append(float('inf'))
-            elif constants[1] <= r and r <= constants[2] * constants[1]:
-                E.append(-constants[0])
-            elif r >= constants[2] * constants[1]:
-                E.append(0)
+        E = np.zeros_like(dr)
+        E[np.where(dr < constants[0])] = max_val
+        E[np.where(dr >= constants[2] * constants[1])] = 0
+
+        # apply mask for sigma <= dr < lambda * sigma
+        a = constants[1] <= dr
+        b = dr < constants[2] * constants[1]
+        E[np.where(a & b)] = -constants[0]
 
         if len(E) == 1:
             return float(E[0])
