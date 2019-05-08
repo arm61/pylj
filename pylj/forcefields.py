@@ -28,6 +28,7 @@ def lennard_jones(dr, constants, force=False):
     float: array_like
         The potential energy or force between the particles.
     """
+
     if force:
         return 12 * constants[0] * np.power(dr, -13) - (
             6 * constants[1] * np.power(dr, -7))
@@ -63,6 +64,7 @@ def lennard_jones_sigma_epsilon(dr, constants, force=False):
     float: array_like
         The potential energy or force between the particles.
     """
+
     if force:
         return 48 * constants[1] * np.power(constants[0], 12) * np.power(
             dr, -13) - (24 * constants[1] * np.power(
@@ -98,6 +100,7 @@ def buckingham(dr, constants, force=False):
     float: array_like
         The potential energy or force between the particles.
     """
+
     if force:
         return constants[0] * constants[1] * np.exp(
             -constants[1] * dr) - 6 * constants[2] / np.power(dr, 7)
