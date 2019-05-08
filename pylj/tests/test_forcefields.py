@@ -55,8 +55,6 @@ class TestForcefields(unittest.TestCase):
     def test_buckingham_energy(self):
         a = forcefields.buckingham(2.0, [1.0, 1.0, 1.0])
         assert_almost_equal(a, 0.1197103832)
-        b = forcefields.buckingham([2.0], [1.0, 1.0, 1.0])
-        assert_almost_equal(b, 0.119710383)
 
     def test_buckingham_force(self):
         a = forcefields.buckingham(2.0, [1.0, 1.0, 1.0], force=True)
