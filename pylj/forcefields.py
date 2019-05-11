@@ -100,6 +100,11 @@ def buckingham(dr, constants, force=False):
     float: array_like
         The potential energy or force between the particles.
     """
+    if not isinstance(dr, np.ndarray):
+        if isinstance(dr, list):
+            dr = np.array(dr, dtype='float')
+        elif isinstance(dr, float):
+            dr = np.array([dr], dtype='float')
 
     if force:
         return constants[0] * constants[1] * np.exp(
