@@ -100,18 +100,13 @@ def buckingham(dr, constants, force=False):
     float: array_like
         The potential energy or force between the particles.
     """
-    if not isinstance(dr, np.ndarray):
-        if isinstance(dr, list):
-            dr = np.array(dr, dtype='float')
-        elif isinstance(dr, float):
-            dr = np.array([dr], dtype='float')
-
     if force:
         return constants[0] * constants[1] * np.exp(
-            -constants[1] * dr) - 6 * constants[2] / np.power(dr, 7)
+            - np.multiply(constants[1], dr)) - 6 * constants[2] / np.power(
+            dr, 7)
     else:
         return constants[0] * np.exp(
-            -constants[1] * dr) - constants[2] / np.power(dr, 6)
+            - np.multiply(constants[1], dr)) - constants[2] / np.power(dr, 6)
 
 
 def square_well(dr, constants, max_val=np.inf, force=False):
