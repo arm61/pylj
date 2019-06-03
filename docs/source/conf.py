@@ -60,7 +60,7 @@ author = 'Andrew R. McCluskey'
 # built documents.
 #
 # The short X.Y version.
-version = '1.3.2'
+version = '1.3.3'
 # The full version, including alpha/beta/rc tags.
 release = version
 
