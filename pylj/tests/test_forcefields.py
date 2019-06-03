@@ -55,10 +55,21 @@ class TestForcefields(unittest.TestCase):
     def test_buckingham_energy(self):
         a = forcefields.buckingham(2.0, [1.0, 1.0, 1.0])
         assert_almost_equal(a, 0.1197103832)
+        b = forcefields.buckingham([2.0], [1.0, 1.0, 1.0])
+        assert_almost_equal(b, 0.1197103832)
+        c = forcefields.buckingham([2.0, 4.0], [1.0, 1.0, 1.0])
+        assert_almost_equal(c, [0.1197103832, 0.0180715])
+        d = forcefields.buckingham([2.0, 4.0, 5.0], [0.01, 0.01, 0.01])
+        assert_almost_equal(d, [0.0096457, 0.0096055, 0.0095117])
 
     def test_buckingham_force(self):
         a = forcefields.buckingham(2.0, [1.0, 1.0, 1.0], force=True)
         assert_almost_equal(a, 0.08846028324)
+        b = forcefields.buckingham([2.0], [1.0, 1.0, 1.0], force=True)
+        assert_almost_equal(b, 0.08846028324)
+        c = forcefields.buckingham(
+            [2.0, 1.0, 4.0], [1.5, 0.1, 2.0], force=True)
+        assert_almost_equal(c, [0.0290596, -11.8642744, 0.0998156])
 
     def test_square_well_energy(self):
         a = forcefields.square_well(2.0, [1.0, 1.5, 2.0])
