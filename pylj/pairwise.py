@@ -1,10 +1,7 @@
 from __future__ import division
 import numpy as np
 from numba import jit
-try:
-    from pylj import comp as heavy
-except ImportError:
-    from pylj import pairwise as heavy
+from pylj import pairwise as heavy
 
 
 @jit

@@ -246,7 +246,7 @@ def __version__():  # pragma: no cover
     """This will print the number of the pylj version currently in use."""
     major = 1
     minor = 3
-    micro = 5
+    micro = 6
     print("pylj-{:d}.{:d}.{:d}".format(major, minor, micro))
 
 
