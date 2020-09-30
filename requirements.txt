@@ -1,7 +1,7 @@
 jupyter
 cython
 numpy>=1.16
-matplotlib==2.2.3
+matplotlib
 numba
 coverage
 coveralls
