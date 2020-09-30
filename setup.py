@@ -8,8 +8,8 @@ packages = find_packages()
 
 # versioning
 MAJOR = 1
-MINOR = 3
-MICRO = 6
+MINOR = 4
+MICRO = 0
 ISRELEASED = True
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
