@@ -1,0 +1,6 @@
+.ipynb*
+.cache
+.config
+.ipython
+.jupyter
+.local
