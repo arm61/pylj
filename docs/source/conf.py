@@ -19,8 +19,6 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('/home/arm61/Dropbox/work/teaching/pylj/'))
-sys.path.insert(0, os.path.abspath('/home/arm61/Dropbox/work/teaching/pylj/src/'))
 
 
 # -- General configuration ------------------------------------------------
@@ -60,7 +58,7 @@ author = 'Andrew R. McCluskey'
 # built documents.
 #
 # The short X.Y version.
-version = '1.4.0'
+version = '1.4.1'
 # The full version, including alpha/beta/rc tags.
 release = version
 
