@@ -5,3 +5,4 @@ matplotlib
 numba
 coverage
 coveralls
+ipympl
