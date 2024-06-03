@@ -1,8 +1,8 @@
 import numpy as np
-from numba import jit
+from numba import njit
 
 
-@jit
+@njit
 def lennard_jones(dr, constants, force=False):
     r"""Calculate the energy or force for a pair of particles using the
     Lennard-Jones (A/B variant) forcefield.
@@ -38,7 +38,7 @@ def lennard_jones(dr, constants, force=False):
             constants[1] * np.power(dr, -6))
 
 
-@jit
+@njit
 def lennard_jones_sigma_epsilon(dr, constants, force=False):
     r"""Calculate the energy or force for a pair of particles using the
     Lennard-Jones (sigma/epsilon variant) forcefield.
@@ -74,7 +74,7 @@ def lennard_jones_sigma_epsilon(dr, constants, force=False):
             4 * constants[1] * np.power(constants[0], 6) * np.power(dr, -6))
 
 
-@jit
+@njit
 def buckingham(dr, constants, force=False):
     r""" Calculate the energy or force for a pair of particles using the
     Buckingham forcefield.

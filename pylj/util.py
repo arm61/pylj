@@ -2,7 +2,7 @@ from __future__ import division
 import numpy as np
 import webbrowser
 from pylj import md, mc
-from numba import jit
+from numba import njit
 
 
 class System:
@@ -165,7 +165,7 @@ class System:
             self.forcefield,
         )
 
-    @jit
+    @njit
     def integrate(self, method):
         """Maps the chosen integration method.
         Parameters
