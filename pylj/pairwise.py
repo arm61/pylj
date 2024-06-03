@@ -1,10 +1,10 @@
 from __future__ import division
 import numpy as np
-from numba import jit
+from numba import njit
 from pylj import pairwise as heavy
 
 
-@jit
+@njit
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
@@ -288,7 +288,7 @@ def heat_bath(particles, temperature_sample, bath_temp):
     return particles
 
 
-@jit
+@njit
 def dist(xposition, yposition, box_length):
     """Returns the distance array for the set of particles.
     Parameters
@@ -328,7 +328,7 @@ def dist(xposition, yposition, box_length):
     return drr, dxr, dyr
 
 
-@jit
+@njit
 def pbc_correction(position, cell):
     """Correct for the periodic boundary condition.
     Parameters

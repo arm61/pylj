@@ -1,7 +1,7 @@
 import numpy as np
 from pylj import pairwise as heavy
 from pylj import forcefields as ff
-from numba import jit
+from numba import njit
 
 
 def initialise(
@@ -77,7 +77,7 @@ def initialize(
     return a
 
 
-@jit
+@njit
 def velocity_verlet(
     particles, timestep_length, box_length, cut_off, constants, forcefield, mass
 ):
