@@ -1,10 +1,9 @@
 from __future__ import division
 import numpy as np
-from numba import njit
+from numba import njit, jit
 from pylj import pairwise as heavy
 
-
-@njit
+#@njit
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.

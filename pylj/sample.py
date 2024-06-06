@@ -313,7 +313,7 @@ class Energy(object):  # pragma: no cover
         update_cellview(self.ax[0], system)
         update_energyview(self.ax[1], system)
         self.fig.canvas.draw()
-
+        
 class MaxBolt(object):  # pragma: no cover
     """The MaxBolt class will plot the particle positions and a histogram
     of the particle velocities.

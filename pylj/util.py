@@ -165,7 +165,7 @@ class System:
             self.forcefield,
         )
 
-    @njit
+    #@njit
     def integrate(self, method):
         """Maps the chosen integration method.
         Parameters

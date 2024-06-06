@@ -77,7 +77,7 @@ def initialize(
     return a
 
 
-@njit
+#@njit
 def velocity_verlet(
     particles, timestep_length, box_length, cut_off, constants, forcefield, mass
 ):
