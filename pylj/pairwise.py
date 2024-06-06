@@ -56,7 +56,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
     return particles, distances, forces, energies
 
-
+@njit
 def separation(dx, dy):
     """Calculate the distance in 2D space.
     Parameters
