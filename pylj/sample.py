@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from IPython.display import display
 
 
 class Scattering(object):  # pragma: no cover
@@ -20,7 +21,7 @@ class Scattering(object):  # pragma: no cover
     """
 
     def __init__(self, system, size='medium'):
-        fig, ax = environment(4, size)
+        fig, ax, hfig = environment(4, size)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
@@ -38,6 +39,8 @@ class Scattering(object):  # pragma: no cover
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
+        self.hfig = hfig      
+        self.update(system)
 
     def update(self, system):
         """This updates the visualisation environment. Often this can be slower
@@ -52,7 +55,8 @@ class Scattering(object):  # pragma: no cover
         update_rdfview(self.ax[0, 1], system, self.average_rdf, self.r)
         update_diffview(self.ax[1, 1], system, self.average_diff, self.q)
         update_msdview(self.ax[1, 0], system)
-        self.fig.canvas.draw()
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
     def average(self):
         gr = np.average(self.average_rdf, axis=0)
@@ -69,7 +73,8 @@ class Scattering(object):  # pragma: no cover
         line.set_xdata(x)
         self.ax[1, 1].set_ylim([0, np.amax(iq) + np.amax(iq) * 0.05])
         self.ax[1, 1].set_xlim([np.amin(x), np.amax(x)])
-        self.fig.canvas.draw()
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
 
 class Phase(object):  # pragma: no cover
@@ -90,7 +95,7 @@ class Phase(object):  # pragma: no cover
     """
 
     def __init__(self, system, size='medium'):
-        fig, ax = environment(4, size)
+        fig, ax, hfig = environment(4, size)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
@@ -108,6 +113,8 @@ class Phase(object):  # pragma: no cover
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
+        self.hfig = hfig        
+        self.update(system)
 
     def update(self, system):
         """This updates the visualisation environment. Often this can be slower
@@ -122,7 +129,8 @@ class Phase(object):  # pragma: no cover
         update_rdfview(self.ax[1, 1], system, self.average_rdf, self.r)
         update_energyview(self.ax[0, 1], system)
         update_msdview(self.ax[1, 0], system)
-        self.fig.canvas.draw()
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
     def average(self):
         gr = np.average(self.average_rdf, axis=0)
@@ -131,8 +139,8 @@ class Phase(object):  # pragma: no cover
         line.set_xdata(x)
         line.set_ydata(gr)
         self.ax[1, 1].set_ylim([0, np.amax(gr) + 0.01 * np.max(gr)])
-        self.fig.canvas.draw()
-
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
 class Interactions(object):  # pragma: no cover
     """The Interactions class will plot the particle positions, total force,
@@ -152,7 +160,7 @@ class Interactions(object):  # pragma: no cover
     """
 
     def __init__(self, system, size='medium'):
-        fig, ax = environment(4, size)
+        fig, ax, hfig = environment(4, size)
 
         setup_cellview(ax[0, 0], system)
         setup_forceview(ax[1, 1])
@@ -162,6 +170,8 @@ class Interactions(object):  # pragma: no cover
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
+        self.hfig = hfig
+        self.update(system)
 
     def update(self, system):
         """This updates the visualisation environment. Often this can be slower
@@ -177,7 +187,8 @@ class Interactions(object):  # pragma: no cover
         update_tempview(self.ax[0, 1], system)
         update_pressureview(self.ax[1, 0], system)
 
-        self.fig.canvas.draw()
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
 
 class JustCell(object):  # pragma: no cover
@@ -198,7 +209,7 @@ class JustCell(object):  # pragma: no cover
     """
 
     def __init__(self, system, size='medium', scale=1):
-        fig, ax = environment(1, size)
+        fig, ax, hfig = environment(1, size)
 
         setup_cellview(ax, system, scale)
 
@@ -206,6 +217,9 @@ class JustCell(object):  # pragma: no cover
 
         self.ax = ax
         self.fig = fig
+        self.hfig = hfig
+        
+        self.update(system)
 
     def update(self, system):
         """This updates the visualisation environment. Often this can be slower
@@ -218,7 +232,8 @@ class JustCell(object):  # pragma: no cover
         """
         update_cellview(self.ax, system)
 
-        self.fig.canvas.draw()
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
 
 class CellPlus(object):  # pragma: no cover
@@ -242,7 +257,7 @@ class CellPlus(object):  # pragma: no cover
     """
 
     def __init__(self, system, xlabel, ylabel, size='medium'):
-        fig, ax = environment(2, size)
+        fig, ax, hfig = environment(2, size)
 
         setup_cellview(ax[0], system)
         ax[1].plot([0], color="#34a5daff")
@@ -253,6 +268,8 @@ class CellPlus(object):  # pragma: no cover
 
         self.ax = ax
         self.fig = fig
+        self.hfig = hfig        
+        self.update(system)
 
     def update(self, system, xdata, ydata):
         """This updates the visualisation environment. Often this can be slower
@@ -273,7 +290,9 @@ class CellPlus(object):  # pragma: no cover
         line1.set_ydata(ydata)
         self.ax[1].set_ylim([np.amin(ydata), np.amax(ydata)])
         self.ax[1].set_xlim(np.amin(xdata), np.amax(xdata))
-        self.fig.canvas.draw()
+
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
 
 class Energy(object):  # pragma: no cover
@@ -292,7 +311,7 @@ class Energy(object):  # pragma: no cover
     """
 
     def __init__(self, system, size='medium'):
-        fig, ax = environment(2, size)
+        fig, ax, hfig = environment(2, size)
 
         setup_cellview(ax[0], system)
         setup_energyview(ax[1])
@@ -300,6 +319,7 @@ class Energy(object):  # pragma: no cover
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
+        self.hfig = hfig
 
     def update(self, system):
         """This updates the visualisation environment. Often this can be slower
@@ -312,7 +332,9 @@ class Energy(object):  # pragma: no cover
         """
         update_cellview(self.ax[0], system)
         update_energyview(self.ax[1], system)
-        self.fig.canvas.draw()
+
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
 class MaxBolt(object):  # pragma: no cover
     """The MaxBolt class will plot the particle positions and a histogram
@@ -330,14 +352,17 @@ class MaxBolt(object):  # pragma: no cover
     """
 
     def __init__(self, system, size='medium'):
-        fig, ax = environment(2, size)
+        fig, ax, hfig = environment(2, size)
         self.velocities = np.array([])
         setup_cellview(ax[0], system)
         setup_maxbolthist(ax[1])
 
         plt.tight_layout()
+        
         self.ax = ax
         self.fig = fig
+        self.hfig = hfig    
+        self.update(system)
 
     def update(self, system):
         """This updates the visualisation environment. Often this can be slower
@@ -350,7 +375,9 @@ class MaxBolt(object):  # pragma: no cover
         """
         update_cellview(self.ax[0], system)
         self.velocities = update_maxbolthist(self.ax[1], system, self.velocities)
-        self.fig.canvas.draw()
+
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
 
 class RDF(object):  # pragma: no cover
@@ -370,7 +397,7 @@ class RDF(object):  # pragma: no cover
     """
 
     def __init__(self, system, size='medium'):
-        fig, ax = environment(2, size)
+        fig, ax, hfig = environment(2, size)
         self.average_rdf = []
         self.r = []
         self.average_diff = []
@@ -386,6 +413,8 @@ class RDF(object):  # pragma: no cover
         plt.tight_layout()
         self.ax = ax
         self.fig = fig
+        self.hfig = hfig    
+        self.update(system)
 
     def update(self, system):
         """This updates the visualisation environment. Often this can be
@@ -398,7 +427,8 @@ class RDF(object):  # pragma: no cover
         """
         update_cellview(self.ax[0], system)
         update_rdfview(self.ax[1], system, self.average_rdf, self.r)
-        self.fig.canvas.draw()
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
     def average(self):
         gr = np.average(self.average_rdf, axis=0)
@@ -407,7 +437,8 @@ class RDF(object):  # pragma: no cover
         line.set_xdata(x)
         line.set_ydata(gr)
         self.ax[1].set_ylim([0, np.amax(gr) + np.amax(gr) * 0.05])
-        self.fig.canvas.draw()
+        self.hfig.update(self.fig)
+        plt.close(self.fig)
 
 
 def environment(panes, size='medium'):  # pragma: no cover
@@ -447,7 +478,8 @@ def environment(panes, size='medium'):  # pragma: no cover
         fig, ax = plt.subplots(2, 2, figsize=(8/scale, 8/scale))
     else:
         AttributeError("The only options for the number of panes are 1, 2, or " "4")
-    return fig, ax
+    hfig = display(fig, display_id = True)
+    return fig, ax, hfig
 
 
 def setup_cellview(ax, system, scale=1):  # pragma: no cover

@@ -1,10 +1,9 @@
 from __future__ import division
 import numpy as np
-from numba import njit
+from numba import njit, jit
 from pylj import pairwise as heavy
 
-
-@njit
+#Jit tag here had to be removed
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
@@ -56,7 +55,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
     return particles, distances, forces, energies
 
-
+@njit
 def separation(dx, dy):
     """Calculate the distance in 2D space.
     Parameters

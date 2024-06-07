@@ -165,7 +165,7 @@ class System:
             self.forcefield,
         )
 
-    @njit
+    #Jit tag here had to be removed
     def integrate(self, method):
         """Maps the chosen integration method.
         Parameters
