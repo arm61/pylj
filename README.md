@@ -85,8 +85,8 @@ Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of
   <tr>
     <td>Coverage Status</td>
     <td>
-      <a href="https://coveralls.io/github/arm61/pylj?branch=master">
-      <img src="https://coveralls.io/repos/github/arm61/pylj/badge.svg?branch=master" alt="Coverage Status" />
+      <a href="https://codeclimate.com/github/maximillian-dolan/pylj/maintainability">
+      <img src="https://api.codeclimate.com/v1/badges/096b85783ccdf86b4086/maintainability" alt="Coverage Status" />
       </a>
     </td>
   </tr>
