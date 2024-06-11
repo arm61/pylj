@@ -69,10 +69,8 @@ Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of
   <tr>
     <td>Build Status</td>
     <td>
-      <a href="https://travis-ci.org/arm61/pylj">
-      <img src="https://travis-ci.org/arm61/pylj.svg?branch=master" alt="Build Status" />
-      </a>
-    </td>
+      <a href="https://github.com/maximillian-dolan/pylj/actions">
+      <img src="https://github.com/maximillian-dolan/pylj/actions/workflows/ci.yml/badge.svg" alt="Build Status" />
   </tr>
   <tr>
     <td></td>
