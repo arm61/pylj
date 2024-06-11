@@ -73,14 +73,6 @@ Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of
       <img src="https://github.com/maximillian-dolan/pylj/actions/workflows/ci.yml/badge.svg" alt="Build Status" />
   </tr>
   <tr>
-    <td></td>
-    <td>
-      <a href="https://ci.appveyor.com/project/arm61/pylj">
-      <img src="https://ci.appveyor.com/api/projects/status/ihtobykv8wdo6sh6?svg=true" alt="Build Status" />
-      </a>
-    </td>
-  </tr>
-  <tr>
     <td>Coverage Status</td>
     <td>
       <a href="https://codeclimate.com/github/maximillian-dolan/pylj/test_coverage">
