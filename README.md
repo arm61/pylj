@@ -69,14 +69,15 @@ Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of
   <tr>
     <td>Build Status</td>
     <td>
-      <a href="https://github.com/maximillian-dolan/pylj/actions">
-      <img src="https://github.com/maximillian-dolan/pylj/actions/workflows/ci.yml/badge.svg" alt="Build Status" />
+      <a href="https://github.com/arm61/pylj/actions">
+        <img src="https://github.com/arm61/pylj/actions/workflows/ci.yml/badge.svg" alt="Build Status" />
+      </a>
   </tr>
   <tr>
     <td>Coverage Status</td>
     <td>
-      <a href="https://codeclimate.com/github/maximillian-dolan/pylj/test_coverage">
-      <img src="https://api.codeclimate.com/v1/badges/096b85783ccdf86b4086/test_coverage" alt="Coverage Status" />
+      <a href="https://codeclimate.com/github/arm61/pylj/test_coverage">
+        <img src="https://api.codeclimate.com/v1/badges/770882d2010bb099b241/test_coverage" />
       </a>
     </td>
   </tr>
