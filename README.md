@@ -69,24 +69,14 @@ Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of
   <tr>
     <td>Build Status</td>
     <td>
-      <a href="https://travis-ci.org/arm61/pylj">
-      <img src="https://travis-ci.org/arm61/pylj.svg?branch=master" alt="Build Status" />
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td></td>
-    <td>
-      <a href="https://ci.appveyor.com/project/arm61/pylj">
-      <img src="https://ci.appveyor.com/api/projects/status/ihtobykv8wdo6sh6?svg=true" alt="Build Status" />
-      </a>
-    </td>
+      <a href="https://github.com/maximillian-dolan/pylj/actions">
+      <img src="https://github.com/maximillian-dolan/pylj/actions/workflows/ci.yml/badge.svg" alt="Build Status" />
   </tr>
   <tr>
     <td>Coverage Status</td>
     <td>
-      <a href="https://coveralls.io/github/arm61/pylj?branch=master">
-      <img src="https://coveralls.io/repos/github/arm61/pylj/badge.svg?branch=master" alt="Coverage Status" />
+      <a href="https://codeclimate.com/github/maximillian-dolan/pylj/test_coverage">
+      <img src="https://api.codeclimate.com/v1/badges/096b85783ccdf86b4086/test_coverage" alt="Coverage Status" />
       </a>
     </td>
   </tr>
