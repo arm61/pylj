@@ -35,7 +35,7 @@ class TestForcefields(unittest.TestCase):
         assert_almost_equal(b, [-0.015380859, 0])
         c = forcefields.lennard_jones_sigma_epsilon(
             [2.0, 1.0, 1.5], [0.5, 0.75])
-        assert_almost_equal(c, [0, 2.953125, 0.0190068])
+        assert_almost_equal(c, [-0.0007322, -0.0461425, -0.0041095])
         d = forcefields.lennard_jones_sigma_epsilon(
             [400.0, 500.0, 600.0], [5e-10, 9e-9])
         assert_almost_equal(d, [0, 0, 0])
