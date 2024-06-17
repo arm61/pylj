@@ -48,8 +48,8 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     distances, dx, dy = heavy.dist(
         particles["xposition"], particles["yposition"], box_length
     )
-    forces = forcefield(distances, constants, force=True)
-    energies = forcefield(distances, constants, force=False)
+    forces = forcefield(distances, constants).force
+    energies = forcefield(distances, constants).energy
     forces[np.where(distances > cut_off)] = 0.0
     energies[np.where(distances > cut_off)] = 0.0
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
@@ -211,7 +211,7 @@ def compute_energy(particles, box_length, cut_off, constants, forcefield):
     distances, dx, dy = heavy.dist(
         particles["xposition"], particles["yposition"], box_length
     )
-    energies = forcefield(distances, constants, force=False)
+    energies = forcefield(distances, constants).energy
     energies[np.where(distances > cut_off)] = 0.0
     return distances, energies
 
@@ -248,7 +248,7 @@ def calculate_pressure(
     distances, dx, dy = heavy.dist(
         particles["xposition"], particles["yposition"], box_length
     )
-    forces = forcefield(distances, constants, force=True)
+    forces = forcefield(distances, constants).force
     forces[np.where(distances > cut_off)] = 0.0
     pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
