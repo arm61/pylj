@@ -70,7 +70,7 @@ def lennard_jones_sigma_epsilon(dr, constants, force=False):
             dr, -13) - (24 * constants[1] * np.power(
                 constants[0], 6) * np.power(dr, -7))
     else:
-        return 4 * constants[1] * np.power(dr, -12) - (
+        return 4 * constants[1] * np.power(constants[0], 12) * np.power(dr, -12) - (
             4 * constants[1] * np.power(constants[0], 6) * np.power(dr, -6))
 
 
