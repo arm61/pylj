@@ -1,5 +1,4 @@
 import numpy as np
-from numba import njit
 
 
 class lennard_jones(object):
