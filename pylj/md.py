@@ -1,7 +1,6 @@
 import numpy as np
 from pylj import pairwise as heavy
 from pylj import forcefields as ff
-from numba import njit
 
 
 def initialise(
