@@ -2,7 +2,6 @@ jupyter
 cython
 numpy>=1.16
 matplotlib
-numba
 coverage
 coveralls
 ipympl
