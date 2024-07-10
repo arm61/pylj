@@ -3,7 +3,7 @@ import numpy as np
 from pylj import pairwise as heavy
 
 #Jit tag here had to be removed
-def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
+def compute_force(particles, box_length, cut_off, constants, forcefield, mass, type_identifiers):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
     Parameters
@@ -39,7 +39,6 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
         (particles["xacceleration"].size - 1) * particles["xacceleration"].size / 2
     )
     forces = np.zeros(pairs)
-    distances = np.zeros(pairs)
     energies = np.zeros(pairs)
     atomic_mass_unit = 1.660539e-27  # kilograms
     mass_amu = mass  # amu
@@ -47,9 +46,16 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     distances, dx, dy = heavy.dist(
         particles["xposition"], particles["yposition"], box_length
     )
-    ff = forcefield(constants)
-    forces = ff.force(distances)
-    energies = ff.energy(distances)
+    for type, constants in enumerate(constants):
+        identifier = type_identifiers[type]
+        ff = forcefield(constants)
+        type_distances = distances * create_dist_identifiers(identifier)
+        type_forces = ff.force(type_distances)
+        type_energies = ff.energy(distances)
+        type_forces = np.nan_to_num(type_forces)
+        type_energies = np.nan_to_num(type_energies)
+        forces+=type_forces
+        energies+=type_energies
     forces[np.where(distances > cut_off)] = 0.0
     energies[np.where(distances > cut_off)] = 0.0
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
@@ -95,11 +101,12 @@ def update_accelerations(particles, f, m, dx, dy, dr):
     k = 0
     for i in range(0, particles.size - 1):
         for j in range(i + 1, particles.size):
-            particles["xacceleration"][i] += second_law(f[k], m, dx[k], dr[k])
-            particles["yacceleration"][i] += second_law(f[k], m, dy[k], dr[k])
-            particles["xacceleration"][j] -= second_law(f[k], m, dx[k], dr[k])
-            particles["yacceleration"][j] -= second_law(f[k], m, dy[k], dr[k])
+            particles["xacceleration"][i] += second_law(f[k], m, dx[k], dr[k]) if f[k]!=0 else 0
+            particles["yacceleration"][i] += second_law(f[k], m, dy[k], dr[k]) if f[k]!=0 else 0
+            particles["xacceleration"][j] -= second_law(f[k], m, dx[k], dr[k]) if f[k]!=0 else 0
+            particles["yacceleration"][j] -= second_law(f[k], m, dy[k], dr[k]) if f[k]!=0 else 0
             k += 1
+
     return particles
 
 
@@ -171,7 +178,7 @@ def lennard_jones_force(A, B, dr):
     float:
         The force between the two particles.
     """
-    print(
+    xacceleration(
         "pairwise.lennard_jones_energy has been deprecated, please use "
         "forcefields.lennard_jones with force=True instead"
     )
@@ -218,7 +225,7 @@ def compute_energy(particles, box_length, cut_off, constants, forcefield):
 
 
 def calculate_pressure(
-    particles, box_length, temperature, cut_off, constants, forcefield
+    particles, box_length, temperature, cut_off, constants, forcefield, type_identifiers
 ):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
@@ -248,9 +255,19 @@ def calculate_pressure(
     """
     distances, dx, dy = heavy.dist(
         particles["xposition"], particles["yposition"], box_length
-    )
-    ff = forcefield(constants)
-    forces = ff.force(distances)
+    ) 
+    forces = np.zeros(len(distances))
+    energies = np.zeros(len(distances))
+    for type, constants in enumerate(constants):
+        identifier = type_identifiers[type]
+        ff = forcefield(constants)
+        type_distances = distances * create_dist_identifiers(identifier)
+        type_forces = ff.force(type_distances)
+        type_energies = ff.energy(distances)
+        type_forces = np.nan_to_num(type_forces)
+        type_energies = np.nan_to_num(type_energies)
+        forces+=type_forces
+        energies+=type_energies
     forces[np.where(distances > cut_off)] = 0.0
     pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
@@ -345,3 +362,28 @@ def pbc_correction(position, cell):
     if np.abs(position) > 0.5 * cell:
         position *= 1 - cell / np.abs(position)
     return position
+
+def create_dist_identifiers(type_identifier):
+    '''
+    Creates correct distance identifier matrix for particular type
+    of particle
+    Parameters
+    -------
+    type identifiers:
+        the identifier array listing 1 for particles of that type
+        or 0 for particles of a different type
+    Returns
+    -------
+    distances: float, array_like 
+        the distance identifier for interactions between each particle 
+        of that type, or 0 for interactions involving particles of a
+        different type
+
+    '''
+    distance_type_identifier = np.array([])
+    for index in range(len(type_identifier)):
+        if type_identifier[index]:
+            distance_type_identifier = np.append(distance_type_identifier,type_identifier[index+1:])
+        else:
+            distance_type_identifier = np.append(distance_type_identifier,np.zeros(len(type_identifier[index+1:])))
+    return distance_type_identifier

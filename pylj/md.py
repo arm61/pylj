@@ -10,8 +10,9 @@ def initialise(
     init_conf,
     timestep_length=1e-14,
     mass=39.948,
-    constants=[1.363e-134, 9.273e-78],
+    constants=[[1.363e-134, 9.273e-78]],
     forcefield=ff.lennard_jones,
+    mixing = False
 ):
     """Initialise the particle positions (this can be either as a square or
     random arrangement), velocities (based on the temperature defined, and
@@ -54,6 +55,7 @@ def initialise(
         mass,
         init_conf=init_conf,
         timestep_length=timestep_length,
+        mixing = mixing
     )
     v = np.random.rand(system.particles.size, 2, 12)
     v = np.sum(v, axis=2) - 6.0
@@ -78,7 +80,7 @@ def initialize(
 
 #Jit tag here had to be removed
 def velocity_verlet(
-    particles, timestep_length, box_length, cut_off, constants, forcefield, mass
+    particles, timestep_length, box_length, cut_off, constants, forcefield, mass, type_identifiers
 ):
     """Uses the Velocity-Verlet integrator to move forward in time. The
     Updates the particles positions and velocities in terms of the Velocity
@@ -112,7 +114,7 @@ def velocity_verlet(
     xacceleration_store = list(particles["xacceleration"])
     yacceleration_store = list(particles["yacceleration"])
     particles, distances, forces, energies = heavy.compute_force(
-        particles, box_length, cut_off, constants, forcefield, mass
+        particles, box_length, cut_off, constants, forcefield, mass, type_identifiers
     )
     [particles["xvelocity"], particles["yvelocity"]] = update_velocities(
         [particles["xvelocity"], particles["yvelocity"]],
@@ -153,6 +155,7 @@ def sample(particles, box_length, initial_particles, system):
         system.cut_off,
         system.constants,
         system.forcefield,
+        system.type_identifiers
     )
     msd_new = calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)

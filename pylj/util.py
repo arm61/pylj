@@ -46,10 +46,23 @@ class System:
         init_conf="square",
         timestep_length=1e-14,
         cut_off=15,
+        mixing = False
     ):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
-        self.constants = constants
+        self.constants = constants #if mixing else constants[0]
+
+        # Creates arrays to identify which particle is in which type
+        number_of_types = len(constants)
+        type_identifiers = np.zeros((number_of_types,number_of_particles))
+        i = 0
+        while i < number_of_particles:
+            for k in range(number_of_types):
+                if i < number_of_particles:
+                    type_identifiers[k][i] = 1
+                    i+=1
+        self.type_identifiers = type_identifiers
+
         self.forcefield = forcefield
         self.mass = mass
         if box_length <= 600:
@@ -180,6 +193,7 @@ class System:
             self.constants,
             self.forcefield,
             self.mass,
+            self.type_identifiers
         )
 
     def md_sample(self):

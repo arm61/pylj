@@ -494,12 +494,13 @@ def setup_cellview(ax, system, scale=1):  # pragma: no cover
     scale: float (optional)
         The amount by which the particle size should be scaled down.
     """
-    xpos = system.particles["xposition"]
-    ypos = system.particles["yposition"]
     # These numbers are chosen to scale the size of the particles nicely to
     # allow the particles to appear to interact appropriately
     mk = 6.00555e-8 / (system.box_length - 2.2727e-10) - 1e-10 / scale
-    ax.plot(xpos, ypos, "o", markersize=mk, markeredgecolor="black", color="#34a5daff")
+    for type in system.type_identifiers:
+        xpos = system.particles["xposition"] * type
+        ypos = system.particles["yposition"] * type   
+        ax.plot(xpos, ypos, "o", markersize=mk, markeredgecolor="black")
     ax.set_xlim([0, system.box_length])
     ax.set_ylim([0, system.box_length])
     ax.set_xticks([])
@@ -612,11 +613,12 @@ def update_cellview(ax, system):  # pragma: no cover
     system: System
         The whole system information.
     """
-    x3 = system.particles["xposition"]
-    y3 = system.particles["yposition"]
-    line = ax.lines[0]
-    line.set_ydata(y3)
-    line.set_xdata(x3)
+    for index, type in enumerate(system.type_identifiers):
+        x3 = system.particles["xposition"] * type
+        y3 = system.particles["yposition"] * type
+        line = ax.lines[index]
+        line.set_ydata(y3)
+        line.set_xdata(x3)
 
 
 def update_rdfview(ax, system, average_rdf, r):  # pragma: no cover
