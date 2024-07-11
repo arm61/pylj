@@ -43,13 +43,22 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass, t
     atomic_mass_unit = 1.660539e-27  # kilograms
     mass_amu = mass  # amu
     mass_kg = mass_amu * atomic_mass_unit  # kilograms
-    distances, dx, dy = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length
+    distances, dx, dy, pair_types = heavy.dist(
+        particles["xposition"], particles["yposition"], box_length, particles['types']
     )
-    for type, constants in enumerate(constants):
-        identifier = type_identifiers[type]
-        ff = forcefield(constants)
-        type_distances = distances * create_dist_identifiers(identifier)
+    unique_pairs = list(set(pair_types))
+    for pair in unique_pairs:
+        type_distances = distances.copy()
+        for i in range(len(distances)):
+            if pair != pair_types[i]:
+                type_distances[i] = 0
+        if pair.split(',')[0] == pair.split(',')[1]:
+            constants_type = constants[int(pair.split(',')[0])]
+        else:
+            constants_1 = np.array(constants[int(pair.split(',')[0])])
+            constants_2 = np.array(constants[int(pair.split(',')[1])])
+            constants_type = np.sqrt(constants_1*constants_2)
+        ff = forcefield(constants_type)
         type_forces = ff.force(type_distances)
         type_energies = ff.energy(distances)
         type_forces = np.nan_to_num(type_forces)
@@ -215,11 +224,25 @@ def compute_energy(particles, box_length, cut_off, constants, forcefield):
     )
     distances = np.zeros(pairs)
     energies = np.zeros(pairs)
-    distances, dx, dy = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length
+    distances, dx, dy, pair_types = heavy.dist(
+        particles["xposition"], particles["yposition"], box_length, particles['types']
     )
-    ff = forcefield(constants)
-    energies = ff.energy(distances)
+    unique_pairs = list(set(pair_types))
+    for pair in unique_pairs:
+        type_distances = distances.copy()
+        for i in range(len(distances)):
+            if pair != pair_types[i]:
+                type_distances[i] = 0
+        if pair.split(',')[0] == pair.split(',')[1]:
+            constants_type = constants[int(pair.split(',')[0])]
+        else:
+            constants_1 = np.array(constants[int(pair.split(',')[0])])
+            constants_2 = np.array(constants[int(pair.split(',')[1])])
+            constants_type = np.sqrt(constants_1*constants_2)
+        ff = forcefield(constants_type)
+        type_energies = ff.energy(distances)
+        type_energies = np.nan_to_num(type_energies)
+        energies+=type_energies
     energies[np.where(distances > cut_off)] = 0.0
     return distances, energies
 
@@ -253,8 +276,8 @@ def calculate_pressure(
     float:
         Instantaneous pressure of the simulation.
     """
-    distances, dx, dy = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length
+    distances, dx, dy, pair_types = heavy.dist(
+        particles["xposition"], particles["yposition"], box_length, particles['types']
     ) 
     forces = np.zeros(len(distances))
     energies = np.zeros(len(distances))
@@ -307,7 +330,7 @@ def heat_bath(particles, temperature_sample, bath_temp):
 
 
 #Jit tag here had to be removed
-def dist(xposition, yposition, box_length):
+def dist(xposition, yposition, box_length, types):
     """Returns the distance array for the set of particles.
     Parameters
     ----------
@@ -331,6 +354,7 @@ def dist(xposition, yposition, box_length):
     drr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
     dxr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
     dyr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
+    pair_types = []
     k = 0
     for i in range(0, xposition.size - 1):
         for j in range(i + 1, xposition.size):
@@ -342,8 +366,9 @@ def dist(xposition, yposition, box_length):
             drr[k] = dr
             dxr[k] = dx
             dyr[k] = dy
+            pair_types.append(types[i] + ',' + types[j])
             k += 1
-    return drr, dxr, dyr
+    return drr, dxr, dyr, pair_types
 
 
 #Jit tag here had to be removed

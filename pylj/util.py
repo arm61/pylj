@@ -63,6 +63,22 @@ class System:
                     i+=1
         self.type_identifiers = type_identifiers
 
+        long_const = []
+        types = []
+        particle_list = []
+        for i in range(number_of_particles):
+            constants_type = constants[i%len(constants)]
+            particle_type = f'{i%len(constants)}'
+            
+            long_const.append(constants_type)
+            types.append(particle_type)
+            particle = Particle(constants_type, i, mass, particle_type)
+            particle.add(particle_list)
+
+        self.particle_list = particle_list
+        self.long_const = long_const
+        self.types = types
+
         self.forcefield = forcefield
         self.mass = mass
         if box_length <= 600:
@@ -128,6 +144,7 @@ class System:
         """
         part_dt = particle_dt()
         self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
+        self.particles['types'] = self.types
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
         n = 0
@@ -143,6 +160,7 @@ class System:
         """
         part_dt = particle_dt()
         self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
+        self.particles['types'] = self.types
         num_part = self.number_of_particles
         self.particles["xposition"] = np.random.uniform(0, self.box_length, num_part)
         self.particles["yposition"] = np.random.uniform(0, self.box_length, num_part)
@@ -248,6 +266,21 @@ class System:
             self.position_store, self.particles, self.random_particle
         )
 
+class Particle:
+    def __init__(self,
+               constants,
+               index,
+               mass,
+               particle_type
+               ):
+        self.constants = constants
+        self.index = index
+        self.mass = mass
+        self.type = particle_type
+
+    def add(self, particles):
+        particles.append(self)
+        return particles
 
 def __cite__():  # pragma: no cover
     """This function will launch the website for the JOSE publication on
@@ -285,5 +318,6 @@ def particle_dt():
             ("energy", np.float64),
             ("xpbccount", int),
             ("ypbccount", int),
+            ("types", list)
         ]
     )
