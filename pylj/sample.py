@@ -639,11 +639,10 @@ def update_rdfview(ax, system, average_rdf, r):  # pragma: no cover
         system.distances, bins=np.linspace(0, system.box_length / 2 + 0.5e-10, 100)
     )
     gr = hist / (
-        system.number_of_particles
+        len(system.distances)/(system.number_of_particles - 1)
         * (system.number_of_particles / system.box_length ** 2)
-        * np.pi
-        * (bin_edges[:-1] + 0.5e-10 / 2.0)
-        * 0.5
+        * 2 * np.pi
+        * (bin_edges[:-1] + 0.5e-10 / 2.0) * (bin_edges[1]-bin_edges[0])
     )
     average_rdf.append(gr)
     x = bin_edges[:-1] + 0.5e-10 / 2
