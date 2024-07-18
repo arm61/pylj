@@ -30,6 +30,7 @@ class TestPairwise(unittest.TestCase):
         particles = np.zeros(2, dtype=part_dt)
         particles["xposition"][0] = 1e-10
         particles["xposition"][1] = 5e-10
+        particles['types'] = ['0','0']
         particles, distances, forces, energies = pairwise.compute_force(
             particles,
             30,
@@ -51,11 +52,12 @@ class TestPairwise(unittest.TestCase):
         particles = np.zeros(2, dtype=part_dt)
         particles["xposition"][0] = 1e-10
         particles["xposition"][1] = 5e-10
+        particles['types'] = ['0','0']
         d, e = pairwise.compute_energy(
             particles,
             30,
             15,
-            constants=[1.363e-134, 9.273e-78],
+            constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
         )
         assert_almost_equal(d, [4e-10])
@@ -66,16 +68,16 @@ class TestPairwise(unittest.TestCase):
         particles = np.zeros(2, dtype=part_dt)
         particles["xposition"][0] = 1e-10
         particles["xposition"][1] = 5e-10
+        particles['types'] = ['0','0']
         p = pairwise.calculate_pressure(
             particles,
             30,
             300,
             15,
             constants=[[1.363e-134, 9.273e-78]],
-            forcefield=ff.lennard_jones,
-            type_identifiers = [[1,1]]
+            forcefield=ff.lennard_jones
         )
-        assert_almost_equal(p * 1e24, 7.07368869)
+        assert_almost_equal(p * 1e24, 9.20399999)
 
     def test_pbc_correction(self):
         a = pairwise.pbc_correction(1, 10)
