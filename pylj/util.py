@@ -45,42 +45,19 @@ class System:
         mass,
         init_conf="square",
         timestep_length=1e-14,
-        cut_off=15,
-        mixing = False
+        cut_off=15
     ):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
-        self.constants = constants #if mixing else constants[0]
-
-        # Creates arrays to identify which particle is in which type
-        number_of_types = len(constants)
-        type_identifiers = np.zeros((number_of_types,number_of_particles))
-        i = 0
-        while i < number_of_particles:
-            for k in range(number_of_types):
-                if i < number_of_particles:
-                    type_identifiers[k][i] = 1
-                    i+=1
-        self.type_identifiers = type_identifiers
-
-        long_const = []
-        types = []
-        particle_list = []
-        for i in range(number_of_particles):
-            constants_type = constants[i%len(constants)]
-            particle_type = f'{i%len(constants)}'
-            
-            long_const.append(constants_type)
-            types.append(particle_type)
-            particle = Particle(constants_type, i, mass, particle_type)
-            particle.add(particle_list)
-
-        self.particle_list = particle_list
-        self.long_const = long_const
-        self.types = types
-
-        self.forcefield = forcefield
+        self.constants = constants
         self.mass = mass
+        self.type_identifiers = None
+        self.particle_list = None
+        self.long_const = None
+        self.types = None
+        self.setup_type_identifiers()
+        self.setup_types()
+        self.forcefield = forcefield
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
@@ -165,6 +142,39 @@ class System:
         self.particles["xposition"] = np.random.uniform(0, self.box_length, num_part)
         self.particles["yposition"] = np.random.uniform(0, self.box_length, num_part)
 
+    def setup_types(self):
+        """Sets the long constants and types arrays of the particles
+        """
+        long_const = []
+        types = []
+        particle_list = []
+        for i in range(self.number_of_particles):
+            # Get set of constants and index
+            constants_type = self.constants[i%len(self.constants)]
+            particle_type = f'{i%len(self.constants)}'
+            # Append to lists
+            long_const.append(constants_type)
+            types.append(particle_type)
+            particle = Particle(constants_type, i, self.mass, particle_type)
+            particle.add(particle_list)
+        self.particle_list = particle_list
+        self.long_const = long_const
+        self.types = types
+
+    def setup_type_identifiers(self):
+        """Sets type-identifers arrays - legacy method now only used for plotting
+        """
+        # Creates arrays to identify which particle is in which type
+        number_of_types = len(self.constants)
+        type_identifiers = np.zeros((number_of_types,self.number_of_particles))
+        i = 0
+        while i < self.number_of_particles:
+            for k in range(number_of_types):
+                if i < self.number_of_particles:
+                    type_identifiers[k][i] = 1
+                    i+=1
+        self.type_identifiers = type_identifiers
+
     def compute_force(self):
         """Maps to the compute_force function in either the comp (if Cython is
         installed) or the pairwise module and allows for a cleaner interface.
@@ -210,8 +220,7 @@ class System:
             self.cut_off,
             self.constants,
             self.forcefield,
-            self.mass,
-            self.type_identifiers
+            self.mass
         )
 
     def md_sample(self):
@@ -304,6 +313,7 @@ def particle_dt():
     - xprevious_position and yprevious_position
     - xforce and yforce
     - energy
+    - types
     """
     return np.dtype(
         [

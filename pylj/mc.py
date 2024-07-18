@@ -10,6 +10,7 @@ def initialise(
     mass=39.948,
     constants=[[1.363e-134, 9.273e-78]],
     forcefield=ff.lennard_jones,
+    mixing = False
 ):
     """Initialise the particle positions (this can be either as a square or
     random arrangement), velocities (based on the temperature defined, and #
@@ -48,8 +49,7 @@ def initialise(
         constants,
         forcefield,
         mass,
-        init_conf=init_conf,
-        mixing = False
+        init_conf=init_conf
     )
     system.particles["xvelocity"] = 0
     system.particles["yvelocity"] = 0

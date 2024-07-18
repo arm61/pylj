@@ -37,8 +37,7 @@ class TestPairwise(unittest.TestCase):
             15,
             constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
-            mass=39.948,
-            type_identifiers = [[1,1]]
+            mass=39.948
         )
         assert_almost_equal(distances, [4e-10])
         assert_almost_equal(energies, [-1.4515047e-21])

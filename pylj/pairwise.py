@@ -3,7 +3,7 @@ import numpy as np
 from pylj import pairwise as heavy
 
 #Jit tag here had to be removed
-def compute_force(particles, box_length, cut_off, constants, forcefield, mass, type_identifiers):
+def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
     Parameters
@@ -248,7 +248,7 @@ def compute_energy(particles, box_length, cut_off, constants, forcefield):
 
 
 def calculate_pressure(
-    particles, box_length, temperature, cut_off, constants, forcefield, type_identifiers
+    particles, box_length, temperature, cut_off, constants, forcefield
 ):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
@@ -281,15 +281,21 @@ def calculate_pressure(
     ) 
     forces = np.zeros(len(distances))
     energies = np.zeros(len(distances))
-    for type, constants in enumerate(constants):
-        identifier = type_identifiers[type]
-        ff = forcefield(constants)
-        type_distances = distances * create_dist_identifiers(identifier)
-        type_forces = ff.force(type_distances)
+    unique_pairs = list(set(pair_types))
+    for pair in unique_pairs:
+        type_distances = distances.copy()
+        for i in range(len(distances)):
+            if pair != pair_types[i]:
+                type_distances[i] = 0
+        if pair.split(',')[0] == pair.split(',')[1]:
+            constants_type = constants[int(pair.split(',')[0])]
+        else:
+            constants_1 = np.array(constants[int(pair.split(',')[0])])
+            constants_2 = np.array(constants[int(pair.split(',')[1])])
+            constants_type = np.sqrt(constants_1*constants_2)
+        ff = forcefield(constants_type)
         type_energies = ff.energy(distances)
-        type_forces = np.nan_to_num(type_forces)
         type_energies = np.nan_to_num(type_energies)
-        forces+=type_forces
         energies+=type_energies
     forces[np.where(distances > cut_off)] = 0.0
     pres = np.sum(forces * distances)
@@ -342,14 +348,20 @@ def dist(xposition, yposition, box_length, types):
         y-dimension positions of the particles.
     box_length: float
         The box length of the simulation cell.
+    types: str, array_like (N)
+        Array of length N, where N is the number of particles, providing the
+        type of each particle.
     Returns
     -------
-    drr float, array_like ((N - 1) * N / 2))
+    drr: float, array_like ((N - 1) * N / 2))
         The pairs of distances between the particles.
-    dxr float, array_like ((N - 1) * N / 2))
+    dxr: float, array_like ((N - 1) * N / 2))
         The pairs of distances between the particles, in only the x-dimension.
-    dyr float, array_like ((N - 1) * N / 2))
+    dyr: float, array_like ((N - 1) * N / 2))
         The pairs of distances between the particles, in only the y-dimension.
+    pair_types: str, array_like ((N - 1) * N / 2))
+        The types of the two particles in each interaction, saved as 
+        'type1,type2' for each
     """
     drr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
     dxr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
