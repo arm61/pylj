@@ -76,7 +76,7 @@ class TestPairwise(unittest.TestCase):
             constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones
         )
-        assert_almost_equal(p * 1e24, 9.20399999)
+        assert_almost_equal(p * 1e24, 7.07368867)
 
     def test_pbc_correction(self):
         a = pairwise.pbc_correction(1, 10)

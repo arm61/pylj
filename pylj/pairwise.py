@@ -52,13 +52,13 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
         for i in range(len(distances)):
             if pair != pair_types[i]:
                 type_distances[i] = 0
-        if pair.split(',')[0] == pair.split(',')[1]:
-            constants_type = constants[int(pair.split(',')[0])]
-        else:
-            constants_1 = np.array(constants[int(pair.split(',')[0])])
+        type_1 = pair.split(',')[0]
+        type_2 = pair.split(',')[1]
+        constants_1 = np.array(constants[int(pair.split(',')[0])])
+        ff = forcefield(constants_1)
+        if type_1 != type_2:
             constants_2 = np.array(constants[int(pair.split(',')[1])])
-            constants_type = np.sqrt(constants_1*constants_2)
-        ff = forcefield(constants_type)
+            ff.mixing(constants_2)
         type_forces = ff.force(type_distances)
         type_energies = ff.energy(distances)
         type_forces = np.nan_to_num(type_forces)
@@ -233,14 +233,16 @@ def compute_energy(particles, box_length, cut_off, constants, forcefield):
         for i in range(len(distances)):
             if pair != pair_types[i]:
                 type_distances[i] = 0
-        if pair.split(',')[0] == pair.split(',')[1]:
-            constants_type = constants[int(pair.split(',')[0])]
-        else:
-            constants_1 = np.array(constants[int(pair.split(',')[0])])
+        type_1 = pair.split(',')[0]
+        type_2 = pair.split(',')[1]
+        constants_1 = np.array(constants[int(pair.split(',')[0])])
+        ff = forcefield(constants_1)
+        if type_1 != type_2:
             constants_2 = np.array(constants[int(pair.split(',')[1])])
-            constants_type = np.sqrt(constants_1*constants_2)
-        ff = forcefield(constants_type)
+            ff.mixing(constants_2)
+        type_forces = ff.force(type_distances)
         type_energies = ff.energy(distances)
+        type_forces = np.nan_to_num(type_forces)
         type_energies = np.nan_to_num(type_energies)
         energies+=type_energies
     energies[np.where(distances > cut_off)] = 0.0
@@ -287,15 +289,18 @@ def calculate_pressure(
         for i in range(len(distances)):
             if pair != pair_types[i]:
                 type_distances[i] = 0
-        if pair.split(',')[0] == pair.split(',')[1]:
-            constants_type = constants[int(pair.split(',')[0])]
-        else:
-            constants_1 = np.array(constants[int(pair.split(',')[0])])
+        type_1 = pair.split(',')[0]
+        type_2 = pair.split(',')[1]
+        constants_1 = np.array(constants[int(pair.split(',')[0])])
+        ff = forcefield(constants_1)
+        if type_1 != type_2:
             constants_2 = np.array(constants[int(pair.split(',')[1])])
-            constants_type = np.sqrt(constants_1*constants_2)
-        ff = forcefield(constants_type)
+            ff.mixing(constants_2)
+        type_forces = ff.force(type_distances)
         type_energies = ff.energy(distances)
+        type_forces = np.nan_to_num(type_forces)
         type_energies = np.nan_to_num(type_energies)
+        forces+=type_forces
         energies+=type_energies
     forces[np.where(distances > cut_off)] = 0.0
     pres = np.sum(forces * distances)

@@ -1,20 +1,35 @@
 import numpy as np
 
-
-class lennard_jones(object):
+class lennard_jones_base(object):
     r"""Calculate the energy or force for a pair of particles using the
-    Lennard-Jones (A/B variant) forcefield.
+    Lennard-Jones forcefield. Either the a_b or sigma_epsilon constants
+    must be specified
 
     Parameters
     ----------
-    constants: float, array_like
+    a_b: float, array_like
         An array of length two consisting of the A and B parameters for the
         12-6 Lennard-Jones function
-
+    sigma_epsilon: float, array_like
+        An array of length two consisting of the sigma and epsilon parameters for the
+        12-6 Lennard-Jones function
     """
-    def __init__(self, constants):
-        self.a = constants[0]
-        self.b = constants[1]
+    def __init__(self, constants, a_b = False, sigma_epsilon = False):
+
+        if sigma_epsilon:
+            self.sigma = constants[0]
+            self.epsilon = constants[1]
+            self.a = 4 * self.epsilon * (self.sigma**12)
+            self.b = 4 * self.epsilon * (self.sigma**6)
+            self.type = 'sigma_epsilon'
+        
+        elif a_b:
+            self.a = constants[0]
+            self.b = constants[1]
+            self.sigma = (self.a / self.b)**(1/6)
+            self.epsilon = (self.b**2)/(4*self.a)
+            self.type = 'a_b'
+
 
     def energy(self, dr ):
         r"""Calculate the energy for a pair of particles using the
@@ -53,65 +68,49 @@ class lennard_jones(object):
         """
         self.force = 12 * self.a * np.power(dr, -13) - (6 * self.b * np.power(dr, -7))
         return self.force
+    
+    def mixing(self, constants_2):
+        
+        if self.type == 'a_b':
+            a2 = constants_2[0]
+            b2 = constants_2[1]
+            sigma2 = (a2 / b2)**(1/6)
+            epsilon2 = (b2**2)/(4*a2)
 
+        elif self.type == 'sigma_epsilon':
+            sigma2 = constants_2[0]
+            epsilon2 = constants_2[1]
+        
+        self.sigma = (self.sigma+sigma2)/2
+        self.epsilon = np.sqrt(self.epsilon**2 + epsilon2**2)
+        self.a = 4 * self.epsilon * (self.sigma**12)
+        self.b = 4 * self.epsilon * (self.sigma**6)
 
-
-class lennard_jones_sigma_epsilon(object):
+class lennard_jones(lennard_jones_base):
     r"""Calculate the energy or force for a pair of particles using the
-    Lennard-Jones (sigma/epsilon variant) forcefield.
+    Lennard-Jones (A/B variant) forcefield. Maps to lennard_jones_base class
+
+    Parameters
+    ----------
+    constants: float, array_like
+        An array of length two consisting of the A and B
+        parameters for the 12-6 Lennard-Jones function
+    """   
+    def __init__(self, constants):
+        super().__init__(constants, a_b = True)
+
+class lennard_jones_sigma_epsilon(lennard_jones_base):
+    r"""Calculate the energy or force for a pair of particles using the
+    Lennard-Jones (sigma/epsilon variant) forcefield. Maps to lennard_jones_base class
 
     Parameters
     ----------
     constants: float, array_like
         An array of length two consisting of the sigma (a) and epsilon (e)
         parameters for the 12-6 Lennard-Jones function
-
     """
     def __init__(self, constants):
-        self.sigma = constants[0]
-        self.epsilon = constants[1]
-    
-    def energy(self, dr):
-        r"""Calculate the energy for a pair of particles using the
-        Lennard-Jones (sigma/epsilon variant) forcefield.
-
-        .. math::
-            E = \frac{4e*a^{12}}{dr^{12}} - \frac{4e*a^{6}}{dr^6}
-
-        Attributes:
-        ----------
-        dr (float): The distance between particles.
- 
-        Returns
-        -------
-        float: array_like
-        The potential energy between the particles.
-        """
-        self.energy = 4 * self.epsilon * np.power(self.sigma, 12) * np.power(dr, -12) - (
-                        4 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -6)) 
-        return self.energy 
-    
-    def force(self, dr):
-        r"""Calculate the force for a pair of particles using the
-        Lennard-Jones (sigma/epsilon variant) forcefield.
-
-        .. math::
-            f = \frac{48e*a^{12}}{dr^{13}} - \frac{24e*a^{6}}{dr^7}
-
-        Attributes:
-        ----------
-        dr (float): The distance between particles.
- 
-        Returns
-        -------
-        float: array_like
-        The force between the particles.
-        """
-        self.force = 48 * self.epsilon * np.power(self.sigma, 12) * np.power(
-            dr, -13) - (24 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -7))
-        return self.force
-
-
+        super().__init__(constants, sigma_epsilon = True)
 
 class buckingham(object):
     r""" Calculate the energy or force for a pair of particles using the
