@@ -218,6 +218,8 @@ def calculate_pressure(
         the function forcefields.lennard_jones, theses are [A, B]
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
+    mass: float (optional)
+        The mass of the particle being simulated (units of atomic mass units).
     Returns
     -------
     float:
@@ -226,7 +228,6 @@ def calculate_pressure(
     particles, distances, forces, energies = heavy.compute_force(
         particles, box_length, cut_off, constants, forcefield, mass
         )
-
     pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
     pres = 1.0 / (2 * box_length * box_length) * pres + (

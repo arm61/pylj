@@ -4,6 +4,16 @@ import unittest
 
 
 class TestForcefields(unittest.TestCase):
+    def test_lennard_jones_base(self):
+        a = forcefields.lennard_jones_base([1,2], a_b = True)
+        assert_almost_equal([a.sigma, a.epsilon],[0.8908987, 1])
+        a.mixing([3,4])
+        assert_almost_equal([a.a, a.b],[2.5171807, 4.0964869])
+        b = forcefields.lennard_jones_base([1,2], sigma_epsilon = True)
+        assert_almost_equal([b.a, b.b], [8, 8])
+        b.mixing([3,4])
+        assert_almost_equal([b.sigma, b.epsilon],[2, 4.472135955])
+
     def test_lennard_jones_energy(self):
         a = forcefields.lennard_jones([1.0, 1.0])
         assert_almost_equal(a.energy(2.0), -0.015380859)
@@ -83,7 +93,6 @@ class TestForcefields(unittest.TestCase):
         b = forcefields.square_well([1.0, 1.5, 2.0])
         with self.assertRaises(ValueError):
             b.force()
-
 
 if __name__ == '__main__':
     unittest.main(exit=False)
