@@ -152,7 +152,8 @@ def sample(particles, box_length, initial_particles, system):
         temperature_new,
         system.cut_off,
         system.constants,
-        system.forcefield
+        system.forcefield,
+        system.mass
     )
     msd_new = calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
@@ -327,37 +328,6 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
         particles, box_length, cut_off, constants, forcefield, mass=mass
     )
     return part, dist, forces, energies
-
-
-def compute_energy(particles, box_length, cut_off, constants, forcefield):
-    r"""Calculates the total energy of the simulation.
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
-    cut_off: float
-        The distance greater than which the energies between particles is
-        taken as zero.
-    constants: float, array_like (optional)
-        The constants associated with the particular forcefield used, e.g. for
-        the function forcefields.lennard_jones, theses are [A, B]
-    forcefield: function (optional)
-        The particular forcefield to be used to find the energy and forces.
-    Returns
-    -------
-    util.particle_dt, array_like
-        Information about particles, with updated accelerations and forces.
-    float, array_like
-        Current distances between pairs of particles in the simulation.
-    float, array_like
-        Current energies between pairs of particles in the simulation.
-    """
-    dist, energies = heavy.compute_energy(
-        particles, box_length, cut_off, constants, forcefield
-    )
-    return dist, energies
 
 
 def heat_bath(particles, temperature_sample, bath_temperature):

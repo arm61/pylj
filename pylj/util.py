@@ -193,17 +193,9 @@ class System:
         self.energies = energies
 
     def compute_energy(self):
-        """Maps to the compute_energy function in either the comp (if Cython
-        is installed) or the pairwise module and allows for a cleaner
-        interface.
+        """Maps to the compute_force function, as this also calculates energy
         """
-        self.distances, self.energies = md.compute_energy(
-            self.particles,
-            self.box_length,
-            self.cut_off,
-            self.constants,
-            self.forcefield,
-        )
+        self.compute_force()
 
     #Jit tag here had to be removed
     def integrate(self, method):

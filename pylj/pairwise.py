@@ -194,63 +194,8 @@ def lennard_jones_force(A, B, dr):
     return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
 
 
-def compute_energy(particles, box_length, cut_off, constants, forcefield):
-    r"""Calculates the total energy of the simulation.
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
-    cut_off: float
-        The distance greater than which the energies between particles is
-        taken as zero.
-    constants: float, array_like (optional)
-        The constants associated with the particular forcefield used, e.g. for
-        the function forcefields.lennard_jones, theses are [A, B]
-    forcefield: function (optional)
-        The particular forcefield to be used to find the energy and forces.
-    Returns
-    -------
-    util.particle_dt, array_like
-        Information about particles, with updated accelerations and forces.
-    float, array_like
-        Current distances between pairs of particles in the simulation.
-    float, array_like
-        Current energies between pairs of particles in the simulation.
-    """
-    pairs = int(
-        (particles["xacceleration"].size - 1) * particles["xacceleration"].size / 2
-    )
-    distances = np.zeros(pairs)
-    energies = np.zeros(pairs)
-    distances, dx, dy, pair_types = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length, particles['types']
-    )
-    unique_pairs = list(set(pair_types))
-    for pair in unique_pairs:
-        type_distances = distances.copy()
-        for i in range(len(distances)):
-            if pair != pair_types[i]:
-                type_distances[i] = 0
-        type_1 = pair.split(',')[0]
-        type_2 = pair.split(',')[1]
-        constants_1 = np.array(constants[int(pair.split(',')[0])])
-        ff = forcefield(constants_1)
-        if type_1 != type_2:
-            constants_2 = np.array(constants[int(pair.split(',')[1])])
-            ff.mixing(constants_2)
-        type_forces = ff.force(type_distances)
-        type_energies = ff.energy(distances)
-        type_forces = np.nan_to_num(type_forces)
-        type_energies = np.nan_to_num(type_energies)
-        energies+=type_energies
-    energies[np.where(distances > cut_off)] = 0.0
-    return distances, energies
-
-
 def calculate_pressure(
-    particles, box_length, temperature, cut_off, constants, forcefield
+    particles, box_length, temperature, cut_off, constants, forcefield, mass
 ):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
@@ -278,31 +223,10 @@ def calculate_pressure(
     float:
         Instantaneous pressure of the simulation.
     """
-    distances, dx, dy, pair_types = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length, particles['types']
-    ) 
-    forces = np.zeros(len(distances))
-    energies = np.zeros(len(distances))
-    unique_pairs = list(set(pair_types))
-    for pair in unique_pairs:
-        type_distances = distances.copy()
-        for i in range(len(distances)):
-            if pair != pair_types[i]:
-                type_distances[i] = 0
-        type_1 = pair.split(',')[0]
-        type_2 = pair.split(',')[1]
-        constants_1 = np.array(constants[int(pair.split(',')[0])])
-        ff = forcefield(constants_1)
-        if type_1 != type_2:
-            constants_2 = np.array(constants[int(pair.split(',')[1])])
-            ff.mixing(constants_2)
-        type_forces = ff.force(type_distances)
-        type_energies = ff.energy(distances)
-        type_forces = np.nan_to_num(type_forces)
-        type_energies = np.nan_to_num(type_energies)
-        forces+=type_forces
-        energies+=type_energies
-    forces[np.where(distances > cut_off)] = 0.0
+    particles, distances, forces, energies = heavy.compute_force(
+        particles, box_length, cut_off, constants, forcefield, mass
+        )
+
     pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
     pres = 1.0 / (2 * box_length * box_length) * pres + (
