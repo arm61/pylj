@@ -7,12 +7,13 @@ class lennard_jones_base(object):
 
     Parameters
     ----------
-    a_b: float, array_like
-        An array of length two consisting of the A and B parameters for the
+    constants: float, array_like
+        An array of length two consisting of the two parameters for the
         12-6 Lennard-Jones function
-    sigma_epsilon: float, array_like
-        An array of length two consisting of the sigma and epsilon parameters for the
-        12-6 Lennard-Jones function
+    a_b: bool
+        Controls whether parameters are a/b, default is false
+    sigma_epsilon: bool
+        Controls whether parameters are sigma/epsilon, default is false
     """
     def __init__(self, constants, a_b = False, sigma_epsilon = False):
 
@@ -70,7 +71,17 @@ class lennard_jones_base(object):
         return self.force
     
     def mixing(self, constants_2):
+        r""" Calculates mixing for two sets of constants
         
+        ..math::
+            \sigma_{12} = \frac{\sigma_1 + \sigma_2}{2}
+            \epsilon{12} = \sqrt{\epsilon_1 * \epsilon_2}
+        
+        Attributes:
+        ----------
+        constants_2: float, array_like
+            The second set of constantss
+        """
         if self.type == 'a_b':
             a2 = constants_2[0]
             b2 = constants_2[1]
@@ -167,6 +178,18 @@ class buckingham(object):
         return self.force
 
     def mixing(self, constants2):
+        r""" Calculates mixing for two sets of constants
+        
+        ..math::
+            a_{12} = \sqrt{a_1 * a_2}
+            b_{12} = \sqrt{b_1 * b_2}
+            c_{12} = \sqrt{c_1 * c_2}
+        
+        Attributes:
+        ----------
+        constants_2: float, array_like
+            The second set of constantss
+        """
         self.a = np.sqrt(self.a*constants2[0])
         self.b = np.sqrt(self.b*constants2[1])
         self.c = np.sqrt(self.c*constants2[2])
