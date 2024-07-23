@@ -8,11 +8,11 @@ class TestForcefields(unittest.TestCase):
         a = forcefields.lennard_jones_base([1,2], a_b = True)
         assert_almost_equal([a.sigma, a.epsilon],[0.8908987, 1])
         a.mixing([3,4])
-        assert_almost_equal([a.a, a.b],[2.5171807, 4.0964869])
+        assert_almost_equal([a.a, a.b],[1.743954 , 2.8381294])
         b = forcefields.lennard_jones_base([1,2], sigma_epsilon = True)
         assert_almost_equal([b.a, b.b], [8, 8])
         b.mixing([3,4])
-        assert_almost_equal([b.sigma, b.epsilon],[2, 4.472135955])
+        assert_almost_equal([b.sigma, b.epsilon],[2, 2.8284271])
 
     def test_lennard_jones_energy(self):
         a = forcefields.lennard_jones([1.0, 1.0])
@@ -71,6 +71,11 @@ class TestForcefields(unittest.TestCase):
         assert_almost_equal(b.force([2.0]), 0.08846028324)
         c = forcefields.buckingham([1.5, 0.1, 2.0])
         assert_almost_equal(c.force([2.0, 1.0, 4.0]), [0.0290596, -11.8642744, 0.0998156])
+
+    def test_buckingham_mixing(self):
+        a = forcefields.buckingham([1.0, 1.0, 1.0])
+        a.mixing([4.0, 4.0, 4.0])
+        assert_almost_equal([a.a, a.b, a.c], [2.0, 2.0, 2.0])
 
     def test_square_well_energy(self):
         a = forcefields.square_well([1.0, 1.5, 2.0])

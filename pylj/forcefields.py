@@ -82,7 +82,7 @@ class lennard_jones_base(object):
             epsilon2 = constants_2[1]
         
         self.sigma = (self.sigma+sigma2)/2
-        self.epsilon = np.sqrt(self.epsilon**2 + epsilon2**2)
+        self.epsilon = np.sqrt(self.epsilon * epsilon2)
         self.a = 4 * self.epsilon * (self.sigma**12)
         self.b = 4 * self.epsilon * (self.sigma**6)
 
@@ -166,6 +166,10 @@ class buckingham(object):
         self.force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
         return self.force
 
+    def mixing(self, constants2):
+        self.a = np.sqrt(self.a*constants2[0])
+        self.b = np.sqrt(self.b*constants2[1])
+        self.c = np.sqrt(self.c*constants2[2])
 
 
 class square_well(object):
