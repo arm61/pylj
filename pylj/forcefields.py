@@ -1,73 +1,59 @@
 import numpy as np
 
-class lennard_jones_base(object):
+
+class lennard_jones_sigma_epsilon(object):
     r"""Calculate the energy or force for a pair of particles using the
-    Lennard-Jones forcefield. Either the a_b or sigma_epsilon constants
-    must be specified
+    Lennard-Jones (sigma/epsilon variant) forcefield.
 
     Parameters
     ----------
     constants: float, array_like
-        An array of length two consisting of the two parameters for the
-        12-6 Lennard-Jones function
-    a_b: bool
-        Controls whether parameters are a/b, default is false
-    sigma_epsilon: bool
-        Controls whether parameters are sigma/epsilon, default is false
+        An array of length two consisting of the sigma (a) and epsilon (e)
+        parameters for the 12-6 Lennard-Jones function
+
     """
-    def __init__(self, constants, a_b = False, sigma_epsilon = False):
-
-        if sigma_epsilon:
-            self.sigma = constants[0]
-            self.epsilon = constants[1]
-            self.a = 4 * self.epsilon * (self.sigma**12)
-            self.b = 4 * self.epsilon * (self.sigma**6)
-            self.type = 'sigma_epsilon'
-        
-        elif a_b:
-            self.a = constants[0]
-            self.b = constants[1]
-            self.sigma = (self.a / self.b)**(1/6)
-            self.epsilon = (self.b**2)/(4*self.a)
-            self.type = 'a_b'
-
-
-    def energy(self, dr ):
+    def __init__(self, constants):
+        self.sigma = constants[0]
+        self.epsilon = constants[1]
+    
+    def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
-        Lennard-Jones (A/B variant) forcefield.
+        Lennard-Jones (sigma/epsilon variant) forcefield.
 
         .. math::
-            E = \frac{A}{dr^{12}} - \frac{B}{dr^6}
+            E = \frac{4e*a^{12}}{dr^{12}} - \frac{4e*a^{6}}{dr^6}
 
         Attributes:
         ----------
         dr (float): The distance between particles.
-
+ 
         Returns
         -------
         float: array_like
         The potential energy between the particles.
         """
-        self.energy = self.a * np.power(dr, -12) - (self.b * np.power(dr, -6))
-        return self.energy
+        self.energy = 4 * self.epsilon * np.power(self.sigma, 12) * np.power(dr, -12) - (
+                        4 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -6)) 
+        return self.energy 
     
     def force(self, dr):
         r"""Calculate the force for a pair of particles using the
-        Lennard-Jones (A/B variant) forcefield.
+        Lennard-Jones (sigma/epsilon variant) forcefield.
 
         .. math::
-            f = \frac{12A}{dr^{13}} - \frac{6B}{dr^7}
+            f = \frac{48e*a^{12}}{dr^{13}} - \frac{24e*a^{6}}{dr^7}
 
         Attributes:
         ----------
         dr (float): The distance between particles.
-        
+ 
         Returns
         -------
         float: array_like
         The force between the particles.
         """
-        self.force = 12 * self.a * np.power(dr, -13) - (6 * self.b * np.power(dr, -7))
+        self.force = 48 * self.epsilon * np.power(self.sigma, 12) * np.power(
+            dr, -13) - (24 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -7))
         return self.force
     
     def mixing(self, constants_2):
@@ -77,29 +63,24 @@ class lennard_jones_base(object):
             \sigma_{12} = \frac{\sigma_1 + \sigma_2}{2}
             \epsilon{12} = \sqrt{\epsilon_1 * \epsilon_2}
         
-        Attributes:
+        Parameters:
         ----------
         constants_2: float, array_like
             The second set of constantss
         """
-        if self.type == 'a_b':
-            a2 = constants_2[0]
-            b2 = constants_2[1]
-            sigma2 = (a2 / b2)**(1/6)
-            epsilon2 = (b2**2)/(4*a2)
-
-        elif self.type == 'sigma_epsilon':
-            sigma2 = constants_2[0]
-            epsilon2 = constants_2[1]
-        
+        sigma2 = constants_2[0]
+        epsilon2 = constants_2[1]
         self.sigma = (self.sigma+sigma2)/2
         self.epsilon = np.sqrt(self.epsilon * epsilon2)
-        self.a = 4 * self.epsilon * (self.sigma**12)
-        self.b = 4 * self.epsilon * (self.sigma**6)
 
-class lennard_jones(lennard_jones_base):
-    r"""Calculate the energy or force for a pair of particles using the
-    Lennard-Jones (A/B variant) forcefield. Maps to lennard_jones_base class
+
+class lennard_jones(lennard_jones_sigma_epsilon):
+    r"""Converts a/b variant values to sigma/epsilon variant
+    then maps to lennard_jones_sigma_epsilon class
+
+    ..math::
+        \sigma = \frac{a}{b}^(\frac{1}{6})
+        \sigma = \frace{b^2}{4*a}
 
     Parameters
     ----------
@@ -108,20 +89,34 @@ class lennard_jones(lennard_jones_base):
         parameters for the 12-6 Lennard-Jones function
     """   
     def __init__(self, constants):
-        super().__init__(constants, a_b = True)
+        self.a = constants[0]
+        self.b = constants[1]
+        sigma = (self.a / self.b)**(1/6)
+        epsilon = (self.b**2)/(4*self.a)
+        super().__init__([sigma, epsilon])
 
-class lennard_jones_sigma_epsilon(lennard_jones_base):
-    r"""Calculate the energy or force for a pair of particles using the
-    Lennard-Jones (sigma/epsilon variant) forcefield. Maps to lennard_jones_base class
+    def mixing(self, constants_2):
+        r"""Converts second set of a/b constants into sigma/epsilon
+        for use in mixing method. Then converts changed self sigma/epsilon
+        values back to a/b
 
-    Parameters
-    ----------
-    constants: float, array_like
-        An array of length two consisting of the sigma (a) and epsilon (e)
-        parameters for the 12-6 Lennard-Jones function
-    """
-    def __init__(self, constants):
-        super().__init__(constants, sigma_epsilon = True)
+        ..math::
+            a = 4*\epsilon*(\sigma^12)
+            b = 4*\epsilon*(\sigma^6)
+
+        Parameters:
+        ----------
+        constants_2: float, array_like
+            The second set of constantss
+        """
+        a2 = constants_2[0]
+        b2 = constants_2[1]
+        sigma2 = (a2 / b2)**(1/6)
+        epsilon2 = (b2**2)/(4*a2)
+        super().mixing([sigma2,epsilon2])
+        self.a = 4 * self.epsilon * (self.sigma**12)
+        self.b = 4 * self.epsilon * (self.sigma**6)
+
 
 class buckingham(object):
     r""" Calculate the energy or force for a pair of particles using the
