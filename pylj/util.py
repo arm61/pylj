@@ -51,13 +51,15 @@ class System:
         self.init_temp = temperature
         self.constants = constants
         self.mass = mass
+        self.forcefield = forcefield
         self.type_identifiers = None
         self.particle_list = None
         self.long_const = None
         self.types = None
+        self.point_sizes = None
+        self.setup_point_sizes()
         self.setup_type_identifiers()
         self.setup_types()
-        self.forcefield = forcefield
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
@@ -174,6 +176,15 @@ class System:
                     type_identifiers[k][i] = 1
                     i+=1
         self.type_identifiers = type_identifiers
+
+    def setup_point_sizes(self):
+        """Sets point sizes for use in plotting
+        """
+        point_sizes = []
+        for pair in self.constants:
+            size = self.forcefield(pair).point_size
+            point_sizes.append(size)
+        self.point_sizes = point_sizes
 
     def compute_force(self):
         """Maps to the compute_force function in either the comp (if Cython is

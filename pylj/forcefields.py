@@ -15,6 +15,7 @@ class lennard_jones_sigma_epsilon(object):
     def __init__(self, constants):
         self.sigma = constants[0]
         self.epsilon = constants[1]
+        self.point_size = 1.3e10 * self.sigma*(2**(1/6))
     
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the

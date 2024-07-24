@@ -497,10 +497,10 @@ def setup_cellview(ax, system, scale=1):  # pragma: no cover
     # These numbers are chosen to scale the size of the particles nicely to
     # allow the particles to appear to interact appropriately
     mk = 6.00555e-8 / (system.box_length - 2.2727e-10) - 1e-10 / scale
-    for type in system.type_identifiers:
+    for index, type in enumerate(system.type_identifiers):
         xpos = system.particles["xposition"] * type
         ypos = system.particles["yposition"] * type   
-        ax.plot(xpos, ypos, "o", markersize=mk, markeredgecolor="black")
+        ax.plot(xpos, ypos, "o", markersize=system.point_sizes[index], markeredgecolor="black")
     ax.set_xlim([0, system.box_length])
     ax.set_ylim([0, system.box_length])
     ax.set_xticks([])
