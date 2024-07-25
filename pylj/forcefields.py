@@ -15,7 +15,7 @@ class lennard_jones_sigma_epsilon(object):
     def __init__(self, constants):
         self.sigma = constants[0]
         self.epsilon = constants[1]
-        self.point_size = 1.3e10 * self.sigma*(2**(1/6))
+        self.point_size = 1.3e10 * (self.sigma*(2**(1/6)))
     
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
@@ -134,6 +134,7 @@ class buckingham(object):
         self.a = constants[0]
         self.b = constants[1]
         self.c = constants[2]
+        self.point_size = 8 # Needs better solution relevant to constants
     
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
@@ -151,7 +152,11 @@ class buckingham(object):
         float: array_like
         The potential energy between the particles.
         """
-        self.energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
+        energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
+        # Cut out infinite values where r = 0
+        energy[energy > 10e300] = 0
+        energy[energy < -10e300] = 0
+        self.energy = energy
         return self.energy
     
     def force(self, dr):
@@ -170,7 +175,11 @@ class buckingham(object):
         float: array_like
         The force between the particles.
         """
-        self.force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
+        force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
+        # Cut out infinite values where r = 0
+        force[force > 10e300] = 0
+        force[force < -10e300] = 0
+        self.force = force
         return self.force
 
     def mixing(self, constants2):
@@ -210,6 +219,7 @@ class square_well(object):
         self.sigma = constants[1]
         self.lamda = constants[2] #Spelling as lamda not lambda to avoid calling python lambda function
         self.max_val = max_val
+        self.point_size = 10
 
     def energy(self, dr):
         r'''Calculate the energy for a pair of particles using a
