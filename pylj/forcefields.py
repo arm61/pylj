@@ -154,8 +154,10 @@ class buckingham(object):
         """
         energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
         # Cut out infinite values where r = 0
-        energy[energy > 10e300] = 0
-        energy[energy < -10e300] = 0
+        if type(dr) != float:
+            energy = np.array(energy)
+            energy[np.where(energy > 10e300)] = 0
+            energy[np.where(energy < -10e300)] = 0
         self.energy = energy
         return self.energy
     
@@ -177,8 +179,10 @@ class buckingham(object):
         """
         force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
         # Cut out infinite values where r = 0
-        force[force > 10e300] = 0
-        force[force < -10e300] = 0
+        if type(dr) != float:
+            force = np.array(force)
+            force[np.where(force > 10e300)] = 0
+            force[np.where(force < -10e300)] = 0
         self.force = force
         return self.force
 
