@@ -13,6 +13,9 @@ class lennard_jones_sigma_epsilon(object):
 
     """
     def __init__(self, constants):
+        if len(constants) != 2:
+            raise IndexError(f'There should be two constants per set, not {len(constants)}')
+        
         self.sigma = constants[0]
         self.epsilon = constants[1]
         self.point_size = 1.3e10 * (self.sigma*(2**(1/6)))
@@ -90,6 +93,8 @@ class lennard_jones(lennard_jones_sigma_epsilon):
         parameters for the 12-6 Lennard-Jones function
     """   
     def __init__(self, constants):
+        if len(constants) != 2:
+            raise IndexError(f'There should be two constants per set, not {len(constants)}')
         self.a = constants[0]
         self.b = constants[1]
         sigma = (self.a / self.b)**(1/6)
@@ -131,6 +136,8 @@ class buckingham(object):
 
     """
     def __init__(self, constants):
+        if len(constants) != 3:
+            raise IndexError(f'There should be three constants per set, not {len(constants)}')
         self.a = constants[0]
         self.b = constants[1]
         self.c = constants[2]
@@ -218,7 +225,8 @@ class square_well(object):
         
     '''
     def __init__(self, constants, max_val=np.inf):
-
+        if len(constants) != 3:
+            raise IndexError(f'There should be three constants per set, not {len(constants)}')
         self.epsilon = constants[0]
         self.sigma = constants[1]
         self.lamda = constants[2] #Spelling as lamda not lambda to avoid calling python lambda function
