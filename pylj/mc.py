@@ -9,8 +9,7 @@ def initialise(
     init_conf,
     mass=39.948,
     constants=[[1.363e-134, 9.273e-78]],
-    forcefield=ff.lennard_jones,
-    mixing = False
+    forcefield=ff.lennard_jones
 ):
     """Initialise the particle positions (this can be either as a square or
     random arrangement), velocities (based on the temperature defined, and #
