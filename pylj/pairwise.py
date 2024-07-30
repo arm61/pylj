@@ -110,12 +110,14 @@ def update_accelerations(particles, f, m, dx, dy, dr):
     k = 0
     for i in range(0, particles.size - 1):
         for j in range(i + 1, particles.size):
+
             particles["xacceleration"][i] += second_law(f[k], m, dx[k], dr[k]) if f[k]!=0 else 0
             particles["yacceleration"][i] += second_law(f[k], m, dy[k], dr[k]) if f[k]!=0 else 0
+            
             particles["xacceleration"][j] -= second_law(f[k], m, dx[k], dr[k]) if f[k]!=0 else 0
             particles["yacceleration"][j] -= second_law(f[k], m, dy[k], dr[k]) if f[k]!=0 else 0
             k += 1
-
+        
     return particles
 
 
@@ -187,7 +189,7 @@ def lennard_jones_force(A, B, dr):
     float:
         The force between the two particles.
     """
-    xacceleration(
+    print(
         "pairwise.lennard_jones_energy has been deprecated, please use "
         "forcefields.lennard_jones with force=True instead"
     )
