@@ -45,13 +45,21 @@ class System:
         mass,
         init_conf="square",
         timestep_length=1e-14,
-        cut_off=15,
+        cut_off=15
     ):
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         self.constants = constants
-        self.forcefield = forcefield
         self.mass = mass
+        self.forcefield = forcefield
+        self.type_identifiers = None
+        self.particle_list = None
+        self.long_const = None
+        self.types = None
+        self.point_sizes = None
+        self.setup_point_sizes()
+        self.setup_type_identifiers()
+        self.setup_types()
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
@@ -115,6 +123,7 @@ class System:
         """
         part_dt = particle_dt()
         self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
+        self.particles['types'] = self.types
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
         n = 0
@@ -130,9 +139,52 @@ class System:
         """
         part_dt = particle_dt()
         self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
+        self.particles['types'] = self.types
         num_part = self.number_of_particles
         self.particles["xposition"] = np.random.uniform(0, self.box_length, num_part)
         self.particles["yposition"] = np.random.uniform(0, self.box_length, num_part)
+
+    def setup_types(self):
+        """Sets the long constants and types arrays of the particles
+        """
+        long_const = []
+        types = []
+        particle_list = []
+        for i in range(self.number_of_particles):
+            # Get set of constants and index
+            constants_type = self.constants[i%len(self.constants)]
+            particle_type = f'{i%len(self.constants)}'
+            # Append to lists
+            long_const.append(constants_type)
+            types.append(particle_type)
+            particle = Particle(constants_type, i, self.mass, particle_type)
+            particle.add(particle_list)
+        self.particle_list = particle_list
+        self.long_const = long_const
+        self.types = types
+
+    def setup_type_identifiers(self):
+        """Sets type-identifers arrays - legacy method now only used for plotting
+        """
+        # Creates arrays to identify which particle is in which type
+        number_of_types = len(self.constants)
+        type_identifiers = np.zeros((number_of_types,self.number_of_particles))
+        i = 0
+        while i < self.number_of_particles:
+            for k in range(number_of_types):
+                if i < self.number_of_particles:
+                    type_identifiers[k][i] = 1
+                    i+=1
+        self.type_identifiers = type_identifiers
+
+    def setup_point_sizes(self):
+        """Sets point sizes for use in plotting
+        """
+        point_sizes = []
+        for pair in self.constants:
+            size = self.forcefield(pair).point_size
+            point_sizes.append(size)
+        self.point_sizes = point_sizes
 
     def compute_force(self):
         """Maps to the compute_force function in either the comp (if Cython is
@@ -152,17 +204,9 @@ class System:
         self.energies = energies
 
     def compute_energy(self):
-        """Maps to the compute_energy function in either the comp (if Cython
-        is installed) or the pairwise module and allows for a cleaner
-        interface.
+        """Maps to the compute_force function, as this also calculates energy
         """
-        self.distances, self.energies = md.compute_energy(
-            self.particles,
-            self.box_length,
-            self.cut_off,
-            self.constants,
-            self.forcefield,
-        )
+        self.compute_force()
 
     #Jit tag here had to be removed
     def integrate(self, method):
@@ -179,7 +223,7 @@ class System:
             self.cut_off,
             self.constants,
             self.forcefield,
-            self.mass,
+            self.mass
         )
 
     def md_sample(self):
@@ -234,6 +278,21 @@ class System:
             self.position_store, self.particles, self.random_particle
         )
 
+class Particle:
+    def __init__(self,
+               constants,
+               index,
+               mass,
+               particle_type
+               ):
+        self.constants = constants
+        self.index = index
+        self.mass = mass
+        self.type = particle_type
+
+    def add(self, particles):
+        particles.append(self)
+        return particles
 
 def __cite__():  # pragma: no cover
     """This function will launch the website for the JOSE publication on
@@ -257,6 +316,7 @@ def particle_dt():
     - xprevious_position and yprevious_position
     - xforce and yforce
     - energy
+    - types
     """
     return np.dtype(
         [
@@ -271,5 +331,6 @@ def particle_dt():
             ("energy", np.float64),
             ("xpbccount", int),
             ("ypbccount", int),
+            ("types", list)
         ]
     )

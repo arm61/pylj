@@ -1,61 +1,6 @@
 import numpy as np
 
 
-class lennard_jones(object):
-    r"""Calculate the energy or force for a pair of particles using the
-    Lennard-Jones (A/B variant) forcefield.
-
-    Parameters
-    ----------
-    constants: float, array_like
-        An array of length two consisting of the A and B parameters for the
-        12-6 Lennard-Jones function
-
-    """
-    def __init__(self, constants):
-        self.a = constants[0]
-        self.b = constants[1]
-
-    def energy(self, dr ):
-        r"""Calculate the energy for a pair of particles using the
-        Lennard-Jones (A/B variant) forcefield.
-
-        .. math::
-            E = \frac{A}{dr^{12}} - \frac{B}{dr^6}
-
-        Attributes:
-        ----------
-        dr (float): The distance between particles.
-
-        Returns
-        -------
-        float: array_like
-        The potential energy between the particles.
-        """
-        self.energy = self.a * np.power(dr, -12) - (self.b * np.power(dr, -6))
-        return self.energy
-    
-    def force(self, dr):
-        r"""Calculate the force for a pair of particles using the
-        Lennard-Jones (A/B variant) forcefield.
-
-        .. math::
-            f = \frac{12A}{dr^{13}} - \frac{6B}{dr^7}
-
-        Attributes:
-        ----------
-        dr (float): The distance between particles.
-        
-        Returns
-        -------
-        float: array_like
-        The force between the particles.
-        """
-        self.force = 12 * self.a * np.power(dr, -13) - (6 * self.b * np.power(dr, -7))
-        return self.force
-
-
-
 class lennard_jones_sigma_epsilon(object):
     r"""Calculate the energy or force for a pair of particles using the
     Lennard-Jones (sigma/epsilon variant) forcefield.
@@ -68,8 +13,12 @@ class lennard_jones_sigma_epsilon(object):
 
     """
     def __init__(self, constants):
+        if len(constants) != 2:
+            raise IndexError(f'There should be two constants per set, not {len(constants)}')
+        
         self.sigma = constants[0]
         self.epsilon = constants[1]
+        self.point_size = 1.3e10 * (self.sigma*(2**(1/6)))
     
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
@@ -110,7 +59,69 @@ class lennard_jones_sigma_epsilon(object):
         self.force = 48 * self.epsilon * np.power(self.sigma, 12) * np.power(
             dr, -13) - (24 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -7))
         return self.force
+    
+    def mixing(self, constants_2):
+        r""" Calculates mixing for two sets of constants
+        
+        ..math::
+            \sigma_{12} = \frac{\sigma_1 + \sigma_2}{2}
+            \epsilon{12} = \sqrt{\epsilon_1 * \epsilon_2}
+        
+        Parameters:
+        ----------
+        constants_2: float, array_like
+            The second set of constantss
+        """
+        sigma2 = constants_2[0]
+        epsilon2 = constants_2[1]
+        self.sigma = (self.sigma+sigma2)/2
+        self.epsilon = np.sqrt(self.epsilon * epsilon2)
 
+
+class lennard_jones(lennard_jones_sigma_epsilon):
+    r"""Converts a/b variant values to sigma/epsilon variant
+    then maps to lennard_jones_sigma_epsilon class
+
+    ..math::
+        \sigma = \frac{a}{b}^(\frac{1}{6})
+        \sigma = \frace{b^2}{4*a}
+
+    Parameters
+    ----------
+    constants: float, array_like
+        An array of length two consisting of the A and B
+        parameters for the 12-6 Lennard-Jones function
+    """   
+    def __init__(self, constants):
+        if len(constants) != 2:
+            raise IndexError(f'There should be two constants per set, not {len(constants)}')
+        self.a = constants[0]
+        self.b = constants[1]
+        sigma = (self.a / self.b)**(1/6)
+        epsilon = (self.b**2)/(4*self.a)
+        super().__init__([sigma, epsilon])
+
+    def mixing(self, constants_2):
+        r"""Converts second set of a/b constants into sigma/epsilon
+        for use in mixing method. Then converts changed self sigma/epsilon
+        values back to a/b
+
+        ..math::
+            a = 4*\epsilon*(\sigma^12)
+            b = 4*\epsilon*(\sigma^6)
+
+        Parameters:
+        ----------
+        constants_2: float, array_like
+            The second set of constantss
+        """
+        a2 = constants_2[0]
+        b2 = constants_2[1]
+        sigma2 = (a2 / b2)**(1/6)
+        epsilon2 = (b2**2)/(4*a2)
+        super().mixing([sigma2,epsilon2])
+        self.a = 4 * self.epsilon * (self.sigma**12)
+        self.b = 4 * self.epsilon * (self.sigma**6)
 
 
 class buckingham(object):
@@ -125,9 +136,12 @@ class buckingham(object):
 
     """
     def __init__(self, constants):
+        if len(constants) != 3:
+            raise IndexError(f'There should be three constants per set, not {len(constants)}')
         self.a = constants[0]
         self.b = constants[1]
         self.c = constants[2]
+        self.point_size = 8 # Needs better solution relevant to constants
     
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
@@ -145,7 +159,13 @@ class buckingham(object):
         float: array_like
         The potential energy between the particles.
         """
-        self.energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
+        energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
+        # Cut out infinite values where r = 0
+        if type(dr) != float:
+            energy = np.array(energy)
+            energy[np.where(energy > 10e300)] = 0
+            energy[np.where(energy < -10e300)] = 0
+        self.energy = energy
         return self.energy
     
     def force(self, dr):
@@ -164,9 +184,31 @@ class buckingham(object):
         float: array_like
         The force between the particles.
         """
-        self.force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
+        force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
+        # Cut out infinite values where r = 0
+        if type(dr) != float:
+            force = np.array(force)
+            force[np.where(force > 10e300)] = 0
+            force[np.where(force < -10e300)] = 0
+        self.force = force
         return self.force
 
+    def mixing(self, constants2):
+        r""" Calculates mixing for two sets of constants
+        
+        ..math::
+            a_{12} = \sqrt{a_1 * a_2}
+            b_{12} = \sqrt{b_1 * b_2}
+            c_{12} = \sqrt{c_1 * c_2}
+        
+        Attributes:
+        ----------
+        constants_2: float, array_like
+            The second set of constantss
+        """
+        self.a = np.sqrt(self.a*constants2[0])
+        self.b = np.sqrt(self.b*constants2[1])
+        self.c = np.sqrt(self.c*constants2[2])
 
 
 class square_well(object):
@@ -183,11 +225,13 @@ class square_well(object):
         
     '''
     def __init__(self, constants, max_val=np.inf):
-
+        if len(constants) != 3:
+            raise IndexError(f'There should be three constants per set, not {len(constants)}')
         self.epsilon = constants[0]
         self.sigma = constants[1]
         self.lamda = constants[2] #Spelling as lamda not lambda to avoid calling python lambda function
         self.max_val = max_val
+        self.point_size = 10
 
     def energy(self, dr):
         r'''Calculate the energy for a pair of particles using a

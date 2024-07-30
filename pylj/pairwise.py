@@ -39,17 +39,32 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
         (particles["xacceleration"].size - 1) * particles["xacceleration"].size / 2
     )
     forces = np.zeros(pairs)
-    distances = np.zeros(pairs)
     energies = np.zeros(pairs)
     atomic_mass_unit = 1.660539e-27  # kilograms
     mass_amu = mass  # amu
     mass_kg = mass_amu * atomic_mass_unit  # kilograms
-    distances, dx, dy = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length
+    distances, dx, dy, pair_types = heavy.dist(
+        particles["xposition"], particles["yposition"], box_length, particles['types']
     )
-    ff = forcefield(constants)
-    forces = ff.force(distances)
-    energies = ff.energy(distances)
+    unique_pairs = list(set(pair_types))
+    for pair in unique_pairs:
+        type_distances = distances.copy()
+        for i in range(len(distances)):
+            if pair != pair_types[i]:
+                type_distances[i] = 0
+        type_1 = pair.split(',')[0]
+        type_2 = pair.split(',')[1]
+        constants_1 = np.array(constants[int(pair.split(',')[0])])
+        ff = forcefield(constants_1)
+        if type_1 != type_2:
+            constants_2 = np.array(constants[int(pair.split(',')[1])])
+            ff.mixing(constants_2)
+        type_forces = ff.force(type_distances)
+        type_energies = ff.energy(distances)
+        type_forces = np.nan_to_num(type_forces)
+        type_energies = np.nan_to_num(type_energies)
+        forces+=type_forces
+        energies+=type_energies
     forces[np.where(distances > cut_off)] = 0.0
     energies[np.where(distances > cut_off)] = 0.0
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
@@ -95,11 +110,14 @@ def update_accelerations(particles, f, m, dx, dy, dr):
     k = 0
     for i in range(0, particles.size - 1):
         for j in range(i + 1, particles.size):
-            particles["xacceleration"][i] += second_law(f[k], m, dx[k], dr[k])
-            particles["yacceleration"][i] += second_law(f[k], m, dy[k], dr[k])
-            particles["xacceleration"][j] -= second_law(f[k], m, dx[k], dr[k])
-            particles["yacceleration"][j] -= second_law(f[k], m, dy[k], dr[k])
+
+            particles["xacceleration"][i] += second_law(f[k], m, dx[k], dr[k]) if f[k]!=0 else 0
+            particles["yacceleration"][i] += second_law(f[k], m, dy[k], dr[k]) if f[k]!=0 else 0
+            
+            particles["xacceleration"][j] -= second_law(f[k], m, dx[k], dr[k]) if f[k]!=0 else 0
+            particles["yacceleration"][j] -= second_law(f[k], m, dy[k], dr[k]) if f[k]!=0 else 0
             k += 1
+        
     return particles
 
 
@@ -178,47 +196,8 @@ def lennard_jones_force(A, B, dr):
     return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
 
 
-def compute_energy(particles, box_length, cut_off, constants, forcefield):
-    r"""Calculates the total energy of the simulation.
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
-    cut_off: float
-        The distance greater than which the energies between particles is
-        taken as zero.
-    constants: float, array_like (optional)
-        The constants associated with the particular forcefield used, e.g. for
-        the function forcefields.lennard_jones, theses are [A, B]
-    forcefield: function (optional)
-        The particular forcefield to be used to find the energy and forces.
-    Returns
-    -------
-    util.particle_dt, array_like
-        Information about particles, with updated accelerations and forces.
-    float, array_like
-        Current distances between pairs of particles in the simulation.
-    float, array_like
-        Current energies between pairs of particles in the simulation.
-    """
-    pairs = int(
-        (particles["xacceleration"].size - 1) * particles["xacceleration"].size / 2
-    )
-    distances = np.zeros(pairs)
-    energies = np.zeros(pairs)
-    distances, dx, dy = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length
-    )
-    ff = forcefield(constants)
-    energies = ff.energy(distances)
-    energies[np.where(distances > cut_off)] = 0.0
-    return distances, energies
-
-
 def calculate_pressure(
-    particles, box_length, temperature, cut_off, constants, forcefield
+    particles, box_length, temperature, cut_off, constants, forcefield, mass
 ):
     r"""Calculates the instantaneous pressure of the simulation cell, found
     with the following relationship:
@@ -241,17 +220,16 @@ def calculate_pressure(
         the function forcefields.lennard_jones, theses are [A, B]
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
+    mass: float (optional)
+        The mass of the particle being simulated (units of atomic mass units).
     Returns
     -------
     float:
         Instantaneous pressure of the simulation.
     """
-    distances, dx, dy = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length
-    )
-    ff = forcefield(constants)
-    forces = ff.force(distances)
-    forces[np.where(distances > cut_off)] = 0.0
+    particles, distances, forces, energies = heavy.compute_force(
+        particles, box_length, cut_off, constants, forcefield, mass
+        )
     pres = np.sum(forces * distances)
     boltzmann_constant = 1.3806e-23  # joules / kelvin
     pres = 1.0 / (2 * box_length * box_length) * pres + (
@@ -290,7 +268,7 @@ def heat_bath(particles, temperature_sample, bath_temp):
 
 
 #Jit tag here had to be removed
-def dist(xposition, yposition, box_length):
+def dist(xposition, yposition, box_length, types):
     """Returns the distance array for the set of particles.
     Parameters
     ----------
@@ -302,18 +280,25 @@ def dist(xposition, yposition, box_length):
         y-dimension positions of the particles.
     box_length: float
         The box length of the simulation cell.
+    types: str, array_like (N)
+        Array of length N, where N is the number of particles, providing the
+        type of each particle.
     Returns
     -------
-    drr float, array_like ((N - 1) * N / 2))
+    drr: float, array_like ((N - 1) * N / 2))
         The pairs of distances between the particles.
-    dxr float, array_like ((N - 1) * N / 2))
+    dxr: float, array_like ((N - 1) * N / 2))
         The pairs of distances between the particles, in only the x-dimension.
-    dyr float, array_like ((N - 1) * N / 2))
+    dyr: float, array_like ((N - 1) * N / 2))
         The pairs of distances between the particles, in only the y-dimension.
+    pair_types: str, array_like ((N - 1) * N / 2))
+        The types of the two particles in each interaction, saved as 
+        'type1,type2' for each
     """
     drr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
     dxr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
     dyr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
+    pair_types = []
     k = 0
     for i in range(0, xposition.size - 1):
         for j in range(i + 1, xposition.size):
@@ -325,8 +310,9 @@ def dist(xposition, yposition, box_length):
             drr[k] = dr
             dxr[k] = dx
             dyr[k] = dy
+            pair_types.append(types[i] + ',' + types[j])
             k += 1
-    return drr, dxr, dyr
+    return drr, dxr, dyr, pair_types
 
 
 #Jit tag here had to be removed
@@ -345,3 +331,28 @@ def pbc_correction(position, cell):
     if np.abs(position) > 0.5 * cell:
         position *= 1 - cell / np.abs(position)
     return position
+
+def create_dist_identifiers(type_identifier):
+    '''
+    Creates correct distance identifier matrix for particular type
+    of particle
+    Parameters
+    -------
+    type identifiers:
+        the identifier array listing 1 for particles of that type
+        or 0 for particles of a different type
+    Returns
+    -------
+    distances: float, array_like 
+        the distance identifier for interactions between each particle 
+        of that type, or 0 for interactions involving particles of a
+        different type
+
+    '''
+    distance_type_identifier = np.array([])
+    for index in range(len(type_identifier)):
+        if type_identifier[index]:
+            distance_type_identifier = np.append(distance_type_identifier,type_identifier[index+1:])
+        else:
+            distance_type_identifier = np.append(distance_type_identifier,np.zeros(len(type_identifier[index+1:])))
+    return distance_type_identifier

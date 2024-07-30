@@ -11,7 +11,7 @@ class TestUtil(unittest.TestCase):
             300,
             8,
             mass=39.948,
-            constants=[1.363e-134, 9.273e-78],
+            constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
         )
         assert_equal(a.number_of_particles, 2)
@@ -34,7 +34,7 @@ class TestUtil(unittest.TestCase):
             8,
             init_conf="random",
             mass=39.948,
-            constants=[1.363e-134, 9.273e-78],
+            constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
         )
         assert_equal(a.number_of_particles, 2)
@@ -57,7 +57,7 @@ class TestUtil(unittest.TestCase):
                 300,
                 1000,
                 mass=39.948,
-                constants=[1.363e-134, 9.273e-78],
+                constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
             )
         self.assertTrue(
@@ -73,7 +73,7 @@ class TestUtil(unittest.TestCase):
                 300,
                 2,
                 mass=39.948,
-                constants=[1.363e-134, 9.273e-78],
+                constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
             )
         self.assertTrue(
@@ -89,7 +89,7 @@ class TestUtil(unittest.TestCase):
                 100,
                 init_conf="horseradish",
                 mass=39.948,
-                constants=[1.363e-134, 9.273e-78],
+                constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
             )
         self.assertTrue(
