@@ -11,5 +11,5 @@ There are a number of ways to get using pylj:
 .. _GitHub: http://www.github.com/arm61/pylj
 .. _anaconda: http://pythoninchemistry.org/running-jupyter-locally
 .. _package: https://www.microsoft.com/en-gb/download/details.aspx?id=48145
-.. _Andrew: http://people.bath.ac.uk/arm61
-.. _link: http://pythoninchemistry.org/pylj/#examples
+.. _Andrew: https://mccluskey.scot/
+.. _link: https://maximillian-dolan.github.io/pylj-online/
