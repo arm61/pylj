@@ -9,7 +9,7 @@ There are a number of ways to get using pylj:
 - Get in touch: Andrew_ is always keen to chat to potential users or educators so feel free to drop him an email. 
 
 .. _GitHub: http://www.github.com/arm61/pylj
-.. _anaconda: http://pythoninchemistry.org/running-jupyter-locally
+.. _anaconda: https://docs.jupyter.org/en/latest/running.html
 .. _package: https://www.microsoft.com/en-gb/download/details.aspx?id=48145
 .. _Andrew: https://mccluskey.scot/
 .. _link: https://maximillian-dolan.github.io/pylj-online/
