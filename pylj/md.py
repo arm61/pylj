@@ -84,6 +84,7 @@ def velocity_verlet(
     Updates the particles positions and velocities in terms of the Velocity
     Verlet algorithm. Also calculates the instanteous temperature, pressure,
     and force and appends these to the appropriate system array.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -92,6 +93,7 @@ def velocity_verlet(
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
+
     Returns
     -------
     util.particle_dt, array_like:
@@ -127,6 +129,7 @@ def velocity_verlet(
 
 def sample(particles, box_length, initial_particles, system):
     """Sample parameters of interest in the simulation.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -137,6 +140,7 @@ def sample(particles, box_length, initial_particles, system):
         Information about the initial particle conformation.
     system: System
         Details about the whole system
+
     Returns
     -------
     System:
@@ -165,6 +169,7 @@ def sample(particles, box_length, initial_particles, system):
 
 def calculate_msd(particles, initial_particles, box_length):
     """Determines the mean squared displacement of the particles in the system.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -173,6 +178,7 @@ def calculate_msd(particles, initial_particles, box_length):
         Information about the initial state of the particles.
     box_length: float
         Size of the cell vector.
+
     Returns
     -------
     float:
@@ -205,6 +211,7 @@ def update_positions(
     positions, old_positions, velocities, accelerations, timestep_length, box_length
 ):
     """Update the particle positions using the Velocity-Verlet integrator.
+
     Parameters
     ----------
     positions: (2, N) array_like
@@ -224,6 +231,7 @@ def update_positions(
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
+
     Returns
     -------
     (2, N) array_like:
@@ -246,6 +254,7 @@ def update_velocities(
     velocities, accelerations_old, accelerations_new, timestep_length
 ):
     """Update the particle velocities using the Velocity-Verlet algoritm.
+
     Parameters
     ----------
     velocities: (2, N) array_like
@@ -257,6 +266,7 @@ def update_velocities(
         accelerations.
     timestep_length: float
         Length for each Velocity-Verlet integration step, in seconds.
+
     Returns
     -------
     (2, N) array_like:
@@ -273,10 +283,12 @@ def update_velocities(
 
 def calculate_temperature(particles, mass):
     """Determine the instantaneous temperature of the system.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
+
     Returns
     -------
     float:
@@ -297,6 +309,7 @@ def calculate_temperature(particles, mass):
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -313,6 +326,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
         The particular forcefield to be used to find the energy and forces.
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).
+
     Returns
     -------
     util.particle_dt, array_like
@@ -337,6 +351,7 @@ def heat_bath(particles, temperature_sample, bath_temperature):
     .. math::
         v_{\text{new}} = v_{\text{old}} \times
         \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -345,6 +360,7 @@ def heat_bath(particles, temperature_sample, bath_temperature):
         The temperature at each timestep in the simulation.
     bath_temp: float
         The desired temperature of the simulation.
+        
     Returns
     -------
     util.particle_dt, array_like
