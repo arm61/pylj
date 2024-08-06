@@ -58,7 +58,7 @@ author = 'Andrew R. McCluskey'
 # built documents.
 #
 # The short X.Y version.
-version = '1.4.1'
+version = '1.5.2'
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -172,4 +172,4 @@ texinfo_documents = [
 ]
 
 def setup(app):
-    app.add_stylesheet("my-styles.css")
+    app.add_css_file("my-styles.css") 
