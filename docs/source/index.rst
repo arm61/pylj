@@ -7,7 +7,7 @@ pylj documentation
 ==================
 
 .. image:: https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true
-   :width: 400px
+   :width: 300px
    :height: 200px
 
 .. toctree::
