@@ -172,4 +172,4 @@ texinfo_documents = [
 ]
 
 def setup(app):
-    app.add_stylesheet("my-styles.css")
+    app.add_css_file("my-styles.css") 
