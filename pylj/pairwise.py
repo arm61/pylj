@@ -6,6 +6,7 @@ from pylj import pairwise as heavy
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -22,6 +23,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
         The particular forcefield to be used to find the energy and forces.
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).
+
     Returns
     -------
     util.particle_dt, array_like
@@ -73,6 +75,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
 #Jit tag here had to be removed
 def separation(dx, dy):
     """Calculate the distance in 2D space.
+
     Parameters
     ----------
     dx: float
@@ -88,6 +91,7 @@ def separation(dx, dy):
 
 def update_accelerations(particles, f, m, dx, dy, dr):
     """Update the acceleration arrays of particles.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -124,6 +128,7 @@ def update_accelerations(particles, f, m, dx, dy, dr):
 def second_law(f, m, d1, d2):
     """Newton's second law of motion to get the acceleration of the particle
     in a given dimension.
+
     Parameters
     ----------
     f: float
@@ -204,6 +209,7 @@ def calculate_pressure(
     .. math::
         p = \langle \rho k_b T \rangle + \bigg\langle \frac{1}{3V}\sum_{i}
         \sum_{j<i} \mathbf{r}_{ij}\mathbf{f}_{ij} \bigg\rangle
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -222,6 +228,7 @@ def calculate_pressure(
         The particular forcefield to be used to find the energy and forces.
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).
+
     Returns
     -------
     float:
@@ -248,6 +255,7 @@ def heat_bath(particles, temperature_sample, bath_temp):
     .. math::
         v_{\text{new}} = v_{\text{old}} \times
         \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
@@ -256,6 +264,7 @@ def heat_bath(particles, temperature_sample, bath_temp):
         The temperature at each timestep in the simulation.
     bath_temp: float
         The desired temperature of the simulation.
+
     Returns
     -------
     util.particle_dt, array_like
@@ -270,6 +279,7 @@ def heat_bath(particles, temperature_sample, bath_temp):
 #Jit tag here had to be removed
 def dist(xposition, yposition, box_length, types):
     """Returns the distance array for the set of particles.
+
     Parameters
     ----------
     xpos: float, array_like (N)
@@ -283,6 +293,7 @@ def dist(xposition, yposition, box_length, types):
     types: str, array_like (N)
         Array of length N, where N is the number of particles, providing the
         type of each particle.
+
     Returns
     -------
     drr: float, array_like ((N - 1) * N / 2))
@@ -318,12 +329,14 @@ def dist(xposition, yposition, box_length, types):
 #Jit tag here had to be removed
 def pbc_correction(position, cell):
     """Correct for the periodic boundary condition.
+
     Parameters
     ----------
     position: float
         Particle position.
     cell: float
         Cell vector.
+
     Returns
     -------
     float:
@@ -336,11 +349,13 @@ def create_dist_identifiers(type_identifier):
     '''
     Creates correct distance identifier matrix for particular type
     of particle
+
     Parameters
-    -------
+    ----------
     type identifiers:
         the identifier array listing 1 for particles of that type
         or 0 for particles of a different type
+
     Returns
     -------
     distances: float, array_like 

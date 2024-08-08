@@ -27,7 +27,7 @@ class lennard_jones_sigma_epsilon(object):
         .. math::
             E = \frac{4e*a^{12}}{dr^{12}} - \frac{4e*a^{6}}{dr^6}
 
-        Attributes:
+        Parameters
         ----------
         dr (float): The distance between particles.
  
@@ -47,7 +47,7 @@ class lennard_jones_sigma_epsilon(object):
         .. math::
             f = \frac{48e*a^{12}}{dr^{13}} - \frac{24e*a^{6}}{dr^7}
 
-        Attributes:
+        Parameters
         ----------
         dr (float): The distance between particles.
  
@@ -110,7 +110,7 @@ class lennard_jones(lennard_jones_sigma_epsilon):
             a = 4*\epsilon*(\sigma^12)
             b = 4*\epsilon*(\sigma^6)
 
-        Parameters:
+        Parameters
         ----------
         constants_2: float, array_like
             The second set of constantss
@@ -150,7 +150,7 @@ class buckingham(object):
         .. math::
             E = Ae^{(-Bdr)} - \frac{C}{dr^6}
 
-        Attributes:
+        Parameters
         ----------
         dr (float): The distance between particles.
  
@@ -175,7 +175,7 @@ class buckingham(object):
         .. math::
             f = ABe^{(-Bdr)} - \frac{6C}{dr^7}
 
-        Attributes:
+        Parameters
         ----------
         dr (float): The distance between particles.
  
@@ -201,7 +201,7 @@ class buckingham(object):
             b_{12} = \sqrt{b_1 * b_2}
             c_{12} = \sqrt{c_1 * c_2}
         
-        Attributes:
+        Parameters
         ----------
         constants_2: float, array_like
             The second set of constantss
@@ -247,7 +247,7 @@ class square_well(object):
                 E = 0
             }
 
-        Attributes:
+        Parameters
         ----------
         dr (float): The distance between particles.
  

@@ -10,6 +10,7 @@ class System:
     is being run. This includes the particles
     object, as will as sampling objects such as the temperature, pressure, etc.
     arrays.
+
     Parameters
     ----------
     number_of_particles: int
@@ -310,6 +311,7 @@ def __version__():  # pragma: no cover
 
 def particle_dt():
     """Builds the data type for the particles, this consists of:
+    
     - xposition and yposition
     - xvelocity and yvelocity
     - xacceleration and yacceleration
