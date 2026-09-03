@@ -344,27 +344,38 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     return part, dist, forces, energies
 
 
-def heat_bath(particles, temperature_sample, bath_temperature):
-    r"""Rescales the velocities of the particles in the system to control the
-    temperature of the simulation. Thereby allowing for an NVT ensemble. The
-    velocities are rescaled according the following relationship,
+def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np.ndarray:
+    r"""Rescales the velocities of the particles to the bath temperature,
+    thereby allowing for an NVT ensemble. The rescaling is performed relative
+    to the instantaneous temperature of the current velocities, so the
+    result is correct at any point in the run rather than drifting towards
+    some historic average. The velocities are rescaled according to the
+    following relationship,
+
     .. math::
         v_{\text{new}} = v_{\text{old}} \times
-        \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
+        \sqrt{\frac{T_{\text{bath}}}{T_{\text{now}}}}
 
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    temperature_sample: float, array_like
-        The temperature at each timestep in the simulation.
-    bath_temp: float
-        The desired temperature of the simulation.
-        
-    Returns
-    -------
-    util.particle_dt, array_like
+    Args:
+        particles: Information about the particles.
+        mass: The mass of the particles being simulated, in atomic mass
+            units.
+        bath_temperature: The desired temperature of the simulation, in
+            Kelvin.
+
+    Returns:
         Information about the particles with new, rescaled velocities.
+
+    Raises:
+        ValueError: If the particles have no kinetic energy, so there is no
+            temperature to rescale.
     """
-    particles = heavy.heat_bath(particles, temperature_sample, bath_temperature)
+    current_temperature = calculate_temperature(particles, mass)
+    if current_temperature <= 0:
+        raise ValueError(
+            "Cannot rescale velocities: the particles have no kinetic energy."
+        )
+    scale = np.sqrt(bath_temperature / current_temperature)
+    particles["xvelocity"] = particles["xvelocity"] * scale
+    particles["yvelocity"] = particles["yvelocity"] * scale
     return particles

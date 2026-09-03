@@ -233,16 +233,14 @@ class System:
         self = md.sample(self.particles, self.box_length, self.initial_particles, self)
 
     def heat_bath(self, bath_temperature):
-        """Maps to the heat_bath function in either the comp (if Cython is
-        installed) or the pairwise modules.
+        """Maps to the md.heat_bath function.
+
         Parameters
         ----------
-        target_temperature: float
+        bath_temperature: float
             The target temperature for the simulation.
         """
-        self.particles = md.heat_bath(
-            self.particles, self.temperature_sample, bath_temperature
-        )
+        self.particles = md.heat_bath(self.particles, self.mass, bath_temperature)
 
     def mc_sample(self):
         """Maps to the mc.sample function.
