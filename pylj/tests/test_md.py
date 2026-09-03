@@ -33,6 +33,10 @@ class TestMd(unittest.TestCase):
         assert_equal(a.energy_sample.size, 1)
         assert_equal(a.force_sample.size, 1)
         assert_equal(a.msd_sample.size, 1)
+        a.step = 7
+        a.md_sample()
+        assert_equal(a.step_sample, [3, 7])
+        assert_equal(a.energy_sample.size, 2)
 
     def test_velocity_verlet(self):
         a = md.initialise(2, 300, 8, "square")

@@ -142,7 +142,7 @@ def sample(particles, box_length, initial_particles, system):
     -------
     System:
         Details about the whole system, with the new step, temperature,
-        pressure, msd, and force appended to the appropriate
+        pressure, energy, msd, and force appended to the appropriate
         arrays.
     """
     temperature_new = calculate_temperature(particles, system.mass)

@@ -240,7 +240,7 @@ class System:
     def md_sample(self):
         """Maps to the md.sample function.
         """
-        self = md.sample(self.particles, self.box_length, self.initial_particles, self)
+        md.sample(self.particles, self.box_length, self.initial_particles, self)
 
     def heat_bath(self, bath_temperature):
         """Maps to the heat_bath function in either the comp (if Cython is
@@ -255,12 +255,7 @@ class System:
         )
 
     def mc_sample(self):
-        """Maps to the mc.sample function.
-        Parameters
-        ----------
-        energy: float
-            Energy to add to the sample
-        """
+        """Maps to the mc.sample function, recording the current accepted energy."""
         mc.sample(self.old_energy, self)
 
     def select_random_particle(self):
