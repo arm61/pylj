@@ -7,12 +7,12 @@ import pytest
 from pylj.sample import environment
 
 
-def test_environment_rejects_other_pane_counts(drawing_display):
+def test_environment_rejects_other_pane_counts():
     with pytest.raises(ValueError):
         environment(3)
 
 
-def test_environment_rejects_unknown_size(drawing_display):
+def test_environment_rejects_unknown_size():
     with pytest.raises(ValueError):
         environment(1, size="huge")
 
@@ -24,8 +24,15 @@ def test_environment_axes_shape(drawing_display, panes, shape):
     plt.close(fig)
 
 
-def test_environment_without_kernel(monkeypatch):
-    monkeypatch.setattr("pylj.sample._display.display", lambda fig, display_id=True: None)
+def test_environment_without_kernel(capsys):
     fig, axes, handle = environment(1)
     handle.update(fig)
+    assert capsys.readouterr().out == ""
+    plt.close(fig)
+
+
+@pytest.mark.parametrize("size, width", [("small", 2.0), ("medium", 4.0), ("large", 8.0)])
+def test_environment_figure_size(drawing_display, size, width):
+    fig, axes, handle = environment(1, size=size)
+    assert fig.get_size_inches()[0] == width
     plt.close(fig)

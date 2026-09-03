@@ -25,14 +25,17 @@ class DrawingHandle:
 def drawing_display(monkeypatch):
     """Route viewer figures to DrawingHandle objects instead of IPython.
 
+    Patches the seam that chooses the display handle, so tests never depend
+    on whether a real IPython kernel is running.
+
     Returns the list of handles created, in order, so tests can count updates.
     """
     handles: list[DrawingHandle] = []
 
-    def fake_display(fig, display_id=True):
+    def fake_open_display(fig):
         handle = DrawingHandle()
         handles.append(handle)
         return handle
 
-    monkeypatch.setattr("pylj.sample._display.display", fake_display)
+    monkeypatch.setattr("pylj.sample._display._open_display", fake_open_display)
     return handles
