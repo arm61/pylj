@@ -1,4 +1,5 @@
 import unittest
+import numpy as np
 
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
@@ -129,3 +130,42 @@ class TestMd(unittest.TestCase):
     def test_initialise_accepts_diameter(self):
         a = md.initialise(2, 300, 8, "square", diameter=3.0)
         assert_almost_equal(a.diameters, [3e-10])
+
+    def test_heat_bath_rescales_to_bath_temperature(self):
+        a = md.initialise(10, 300, 20, "square")
+        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
+        t = md.calculate_temperature(a.particles, a.mass)
+        assert_almost_equal(t / 250.0, 1.0)
+
+    def test_heat_bath_preserves_velocity_directions(self):
+        a = md.initialise(10, 300, 20, "square")
+        old_x = np.array(a.particles["xvelocity"])
+        old_y = np.array(a.particles["yvelocity"])
+        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
+        x_ratio = a.particles["xvelocity"] / old_x
+        y_ratio = a.particles["yvelocity"] / old_y
+        assert_almost_equal(x_ratio, np.full(x_ratio.shape, x_ratio[0]))
+        assert_almost_equal(y_ratio, np.full(y_ratio.shape, x_ratio[0]))
+
+    def test_heat_bath_works_before_any_sample(self):
+        a = md.initialise(10, 300, 20, "square")
+        assert_equal(a.temperature_sample.size, 0)
+        a.heat_bath(50.0)
+        self.assertTrue(np.all(np.isfinite(a.particles["xvelocity"])))
+        self.assertTrue(np.all(np.isfinite(a.particles["yvelocity"])))
+        t = md.calculate_temperature(a.particles, a.mass)
+        assert_almost_equal(t, 50.0)
+
+    def test_heat_bath_two_calls_each_hit_their_own_target(self):
+        a = md.initialise(10, 300, 20, "square")
+        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
+        a.particles = md.heat_bath(a.particles, a.mass, 100.0)
+        t = md.calculate_temperature(a.particles, a.mass)
+        assert_almost_equal(t / 100.0, 1.0)
+
+    def test_heat_bath_raises_when_no_kinetic_energy(self):
+        a = md.initialise(10, 300, 20, "square")
+        a.particles["xvelocity"] = 0.0
+        a.particles["yvelocity"] = 0.0
+        with self.assertRaises(ValueError):
+            md.heat_bath(a.particles, a.mass, 250.0)

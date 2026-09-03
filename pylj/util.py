@@ -279,9 +279,7 @@ class System:
         bath_temperature: float
             The target temperature for the simulation.
         """
-        self.particles = md.heat_bath(
-            self.particles, self.temperature_sample, bath_temperature
-        )
+        self.particles = md.heat_bath(self.particles, self.mass, bath_temperature)
 
     def mc_sample(self):
         """Maps to the mc.sample function, recording the current accepted energy."""
