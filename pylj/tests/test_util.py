@@ -1,3 +1,4 @@
+import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 from pylj import util
 from pylj import forcefields as ff
@@ -132,6 +133,14 @@ class TestUtil(unittest.TestCase):
         constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
         a = util.System(
             2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0, 5.0]
+        )
+        assert_almost_equal(a.diameters, [3e-10, 5e-10])
+
+    def test_system_diameter_array_is_per_type(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        a = util.System(
+            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md",
+            diameter=np.array([3.0, 5.0]),
         )
         assert_almost_equal(a.diameters, [3e-10, 5e-10])
 

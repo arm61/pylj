@@ -39,7 +39,7 @@ def initialise(
         The values of the constants for the forcefield used.
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
-    diameter: float or list of float (optional)
+    diameter: float or iterable of float (optional)
         Drawn diameter of the particles in Angstrom, one value or one per
         set of constants. Defaults to the separation at the pair-potential
         minimum of the forcefield.
