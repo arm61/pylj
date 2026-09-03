@@ -7,7 +7,17 @@ from numpy.testing import assert_allclose
 
 from pylj import mc, md
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-from pylj.sample import environment
+from pylj.sample import (
+    RDF,
+    CellPlus,
+    Energy,
+    Interactions,
+    JustCell,
+    MaxBolt,
+    Phase,
+    Scattering,
+    environment,
+)
 from pylj.sample.panes import (
     CellPane,
     CustomPane,
@@ -20,6 +30,8 @@ from pylj.sample.panes import (
     ScatteringPane,
     TemperaturePane,
 )
+
+NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering]
 
 TWO_TYPES = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
 
@@ -231,3 +243,58 @@ def test_custom_pane_plots_supplied_data(drawing_display):
     assert_allclose(ax.lines[0].get_ydata(), [1, 4, 9])
     assert ax.get_xlabel() == "x label"
     plt.close(fig)
+
+
+@pytest.mark.parametrize("viewer_cls", NAMED_VIEWERS)
+def test_named_viewer_constructs_before_first_sample(drawing_display, viewer_cls):
+    viewer_cls(md.initialise(4, 100, 20, "square"))
+    assert drawing_display[0].updates == 1
+
+
+@pytest.mark.parametrize("viewer_cls", NAMED_VIEWERS)
+@pytest.mark.parametrize("every", [1, 3])
+def test_named_viewer_updates_at_any_sampling_cadence(drawing_display, viewer_cls, every):
+    system = md.initialise(4, 100, 20, "square")
+    viewer = viewer_cls(system)
+    for _ in range(6):
+        system.integrate(md.velocity_verlet)
+        system.step += 1
+        system.time += system.timestep_length
+        if system.step % every == 0:
+            system.md_sample()
+        viewer.update(system)
+    assert drawing_display[0].updates == 7
+
+
+def test_energy_viewer_on_mc_system(drawing_display):
+    system = sampled_mc_system(steps=3)
+    viewer = Energy(system)
+    viewer.update(system)
+    assert drawing_display[0].updates == 2
+
+
+def test_rdf_viewer_average(drawing_display):
+    system = sampled_md_system(steps=1, every=1)
+    viewer = RDF(system)
+    viewer.update(system)
+    viewer.average()
+    assert drawing_display[0].updates == 3
+
+
+def test_cell_plus_takes_custom_data(drawing_display):
+    system = md.initialise(4, 100, 20, "square")
+    viewer = CellPlus(system, "x label", "y label")
+    viewer.update(system, [0, 1, 2], [1, 4, 9])
+    assert_allclose(viewer.axes[1].lines[0].get_ydata(), [1, 4, 9])
+
+
+def test_viewer_size_option(drawing_display):
+    viewer = JustCell(md.initialise(4, 100, 20, "square"), size="small")
+    assert viewer.fig.get_figwidth() == 2
+
+
+def test_viewer_without_kernel(capsys):
+    system = md.initialise(4, 100, 20, "square")
+    viewer = JustCell(system)
+    viewer.update(system)
+    assert capsys.readouterr().out == ""

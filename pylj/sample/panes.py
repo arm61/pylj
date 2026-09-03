@@ -64,6 +64,16 @@ class Pane:
         """
         raise NotImplementedError
 
+    def average(self, ax: Axes) -> None:
+        """Show the average of every update so far, for panes that keep one.
+
+        Panes that keep a history of their updates (``RDFPane``,
+        ``ScatteringPane``) override this. Other panes do nothing.
+
+        Args:
+            ax: Axes this pane was set up in.
+        """
+
 
 class CellPane(Pane):
     """The particles drawn to scale inside the simulation cell."""
