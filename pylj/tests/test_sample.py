@@ -35,6 +35,48 @@ NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering
 
 TWO_TYPES = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
 
+SERIES_PANES = {
+    TemperaturePane: ("temperature_sample", "Temperature/K"),
+    PressurePane: ("pressure_sample", "Pressure/N m$^{-1}$"),
+    ForcePane: ("force_sample", "Force/N"),
+    MSDPane: ("msd_sample", "MSD/m$^2$"),
+}
+
+
+def run_md_loop(system, steps: int, every: int):
+    """Run an MD loop on the given system, sampling on every ``every``-th step."""
+    for _ in range(steps):
+        system.integrate(md.velocity_verlet)
+        system.step += 1
+        system.time += system.timestep_length
+        if system.step % every == 0:
+            system.md_sample()
+    return system
+
+
+def sampled_md_system(steps: int, every: int):
+    """Initialise a fresh MD system and run it, sampling every ``every``-th step."""
+    return run_md_loop(md.initialise(4, 100, 20, "square"), steps, every)
+
+
+def sampled_mc_system(steps: int):
+    """Run an MC loop that samples once per step, starting at step 0."""
+    system = mc.initialise(4, 100, 20, "square")
+    system.old_energy = system.energies.sum()
+    system.mc_sample()
+    for _ in range(steps):
+        system.step += 1
+        system.select_random_particle()
+        system.new_random_position()
+        system.compute_energy()
+        system.new_energy = system.energies.sum()
+        if mc.metropolis(100, system.old_energy, system.new_energy, n=0.5):
+            system.accept()
+        else:
+            system.reject()
+        system.mc_sample()
+    return system
+
 
 def test_environment_rejects_other_pane_counts():
     with pytest.raises(ValueError):
@@ -77,8 +119,9 @@ def test_cell_pane_draws_each_type_separately(drawing_display):
     plt.close(fig)
 
 
-def test_cell_pane_marker_matches_particle_diameter(drawing_display):
-    system = md.initialise(4, 100, 20, "square", diameter=4.0)
+@pytest.mark.parametrize("box_length", [20, 40])
+def test_cell_pane_marker_matches_particle_diameter(drawing_display, box_length):
+    system = md.initialise(4, 100, box_length, "square", diameter=4.0)
     fig, ax, handle = environment(1)
     pane = CellPane()
     pane.setup(ax, system)
@@ -94,44 +137,7 @@ def test_cell_pane_marker_matches_particle_diameter(drawing_display):
     plt.close(fig)
 
 
-def run_md_loop(system, steps: int, every: int):
-    """Run an MD loop on the given system, sampling on every ``every``-th step."""
-    for _ in range(steps):
-        system.integrate(md.velocity_verlet)
-        system.step += 1
-        system.time += system.timestep_length
-        if system.step % every == 0:
-            system.md_sample()
-    return system
-
-
-def sampled_md_system(steps: int, every: int):
-    """Initialise a fresh MD system and run it, sampling every ``every``-th step."""
-    return run_md_loop(md.initialise(4, 100, 20, "square"), steps, every)
-
-
-def sampled_mc_system(steps: int):
-    """Run an MC loop that samples once per step, starting at step 0."""
-    system = mc.initialise(4, 100, 20, "square")
-    system.old_energy = system.energies.sum()
-    system.mc_sample()
-    for _ in range(steps):
-        system.step += 1
-        system.select_random_particle()
-        system.new_random_position()
-        system.compute_energy()
-        system.new_energy = system.energies.sum()
-        if mc.metropolis(100, system.old_energy, system.new_energy, n=0.5):
-            system.accept()
-        else:
-            system.reject()
-        system.mc_sample()
-    return system
-
-
-@pytest.mark.parametrize(
-    "pane_cls", [TemperaturePane, PressurePane, ForcePane, MSDPane, EnergyPane]
-)
+@pytest.mark.parametrize("pane_cls", list(SERIES_PANES) + [EnergyPane])
 def test_time_panes_handle_empty_and_sparse_samples(drawing_display, pane_cls):
     system = md.initialise(4, 100, 20, "square")
     fig, ax, handle = environment(1)
@@ -144,9 +150,10 @@ def test_time_panes_handle_empty_and_sparse_samples(drawing_display, pane_cls):
     pane.update(ax, system)
     fig.canvas.draw()
     assert_allclose(ax.lines[0].get_xdata(), np.array([3, 6, 9]) * system.timestep_length)
-    if pane_cls is not EnergyPane:
-        assert_allclose(ax.lines[0].get_ydata(), getattr(system, pane_cls.attribute))
-        assert ax.get_ylabel() == pane_cls.ylabel
+    if pane_cls in SERIES_PANES:
+        attribute, ylabel = SERIES_PANES[pane_cls]
+        assert_allclose(ax.lines[0].get_ydata(), getattr(system, attribute))
+        assert ax.get_ylabel() == ylabel
     if pane_cls is MSDPane:
         assert ax.get_ylim()[0] == 0
     plt.close(fig)
@@ -225,26 +232,19 @@ def test_scattering_pane_is_finite_and_non_negative(drawing_display):
     plt.close(fig)
 
 
-def test_scattering_pane_intensity_is_independent_of_block_size(drawing_display, monkeypatch):
-    system = sampled_md_system(steps=1, every=1)
-
-    monkeypatch.setattr(ScatteringPane, "BLOCK", 7)
+def test_scattering_pane_matches_direct_debye_sum(drawing_display):
+    system = md.initialise(4, 100, 20, "square")
     fig, ax, handle = environment(1)
     pane = ScatteringPane()
     pane.setup(ax, system)
     pane.update(ax, system)
-    small_block = ax.lines[0].get_ydata().copy()
-    plt.close(fig)
 
-    monkeypatch.setattr(ScatteringPane, "BLOCK", 1000)
-    fig, ax, handle = environment(1)
-    pane = ScatteringPane()
-    pane.setup(ax, system)
-    pane.update(ax, system)
-    large_block = ax.lines[0].get_ydata().copy()
+    q = np.linspace(2 * np.pi / system.box_length, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
+    q = q[ScatteringPane.SKIP:]
+    r = system.distances
+    expected = np.clip(np.array([np.sum(np.sin(qi * r) / (qi * r)) for qi in q]), 0, None)
+    assert_allclose(ax.lines[0].get_ydata(), expected, rtol=1e-6)
     plt.close(fig)
-
-    assert_allclose(small_block, large_block)
 
 
 def test_maxwell_boltzmann_pane_accumulates_speeds(drawing_display):
@@ -252,9 +252,21 @@ def test_maxwell_boltzmann_pane_accumulates_speeds(drawing_display):
     fig, ax, handle = environment(1)
     pane = MaxwellBoltzmannPane()
     pane.setup(ax, system)
+
+    system.particles["xvelocity"] = 100.0
+    system.particles["yvelocity"] = 0.0
     pane.update(ax, system)
+
+    system.particles["xvelocity"] = 300.0
+    system.particles["yvelocity"] = 0.0
     pane.update(ax, system)
-    assert pane.speeds.size == 8
+
+    x = ax.lines[0].get_xdata()
+    assert x[0] <= 100
+    assert x[-1] >= 300
+    density = ax.lines[0].get_ydata()[:-1]
+    bin_width = x[1] - x[0]
+    assert np.sum(density * bin_width) == pytest.approx(1)
     fig.canvas.draw()
     plt.close(fig)
 
@@ -267,7 +279,7 @@ def test_maxwell_boltzmann_pane_draws_a_post_step_histogram(drawing_display):
     pane = MaxwellBoltzmannPane()
     pane.setup(ax, system)
     pane.update(ax, system)
-    _, edges = np.histogram(pane.speeds, bins=pane.BINS, density=True)
+    _, edges = np.histogram(np.full(4, 100.0), bins=MaxwellBoltzmannPane.BINS, density=True)
     assert_allclose(ax.lines[0].get_xdata()[0], edges[0])
     assert_allclose(ax.lines[0].get_xdata()[-1], edges[-1])
     assert ax.lines[0].get_drawstyle() == "steps-post"
@@ -317,14 +329,14 @@ def test_energy_viewer_on_mc_system(drawing_display):
 def test_rdf_viewer_average_shows_the_mean(drawing_display):
     system = md.initialise(20, 100, 20, "square")
     viewer = RDF(system)
+    history = [viewer.axes[1].lines[0].get_ydata().copy()]
     for _ in range(3):
         system.integrate(md.velocity_verlet)
         system.md_sample()
         viewer.update(system)
+        history.append(viewer.axes[1].lines[0].get_ydata().copy())
     viewer.average()
-    assert_allclose(
-        viewer.axes[1].lines[0].get_ydata(), np.mean(viewer.panes[1].history, axis=0)
-    )
+    assert_allclose(viewer.axes[1].lines[0].get_ydata(), np.mean(history, axis=0))
 
 
 def test_average_is_available_before_any_update(drawing_display):
@@ -350,7 +362,7 @@ def test_cell_plus_takes_custom_data(drawing_display):
     assert_allclose(viewer.axes[1].lines[0].get_ydata(), [1, 4, 9])
 
 
-def test_viewer_size_option(drawing_display):
+def test_viewer_forwards_size_to_environment(drawing_display):
     viewer = JustCell(md.initialise(4, 100, 20, "square"), size="small")
     assert viewer.fig.get_figwidth() == 2
 
