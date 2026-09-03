@@ -347,27 +347,54 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     return part, dist, forces, energies
 
 
-def heat_bath(particles, temperature_sample, bath_temperature):
-    r"""Rescales the velocities of the particles in the system to control the
-    temperature of the simulation. Thereby allowing for an NVT ensemble. The
-    velocities are rescaled according the following relationship,
+def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np.ndarray:
+    r"""Rescale the velocities so the instantaneous temperature equals the
+    bath temperature.
+
+    This is a velocity-rescaling thermostat: it holds the instantaneous
+    temperature at the bath temperature whenever it is called, rather than
+    sampling the canonical ensemble. The velocities are rescaled according to
+
     .. math::
         v_{\text{new}} = v_{\text{old}} \times
-        \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
+        \sqrt{\frac{T_{\text{bath}}}{T_{\text{now}}}}
 
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    temperature_sample: float, array_like
-        The temperature at each timestep in the simulation.
-    bath_temp: float
-        The desired temperature of the simulation.
-        
-    Returns
-    -------
-    util.particle_dt, array_like
-        Information about the particles with new, rescaled velocities.
+    where :math:`T_{\text{now}}` is the temperature of the current
+    velocities.
+
+    Args:
+        particles: Information about the particles.
+        mass: The mass of the particles being simulated, in atomic mass
+            units.
+        bath_temperature: The desired temperature of the simulation, in
+            Kelvin.
+
+    Returns:
+        The particles with velocities rescaled in place; the same array is
+        returned.
+
+    Raises:
+        ValueError: If bath_temperature is not positive.
+        ValueError: If the current temperature is zero (the particles are at
+            rest, as in a Monte Carlo system) or not finite (the simulation
+            has diverged).
     """
-    particles = heavy.heat_bath(particles, temperature_sample, bath_temperature)
+    if not bath_temperature > 0:
+        raise ValueError(
+            f"bath_temperature must be positive, not {bath_temperature}"
+        )
+    current_temperature = calculate_temperature(particles, mass)
+    if current_temperature == 0:
+        raise ValueError(
+            "Cannot rescale velocities: the particles are at rest. A Monte Carlo "
+            "system has no velocities to thermostat; use md.initialise for MD."
+        )
+    if not (np.isfinite(current_temperature) and current_temperature > 0):
+        raise ValueError(
+            "Cannot rescale velocities: the current temperature is "
+            f"{current_temperature}, so the simulation has diverged."
+        )
+    scale = np.sqrt(bath_temperature / current_temperature)
+    particles["xvelocity"] = particles["xvelocity"] * scale
+    particles["yvelocity"] = particles["yvelocity"] * scale
     return particles

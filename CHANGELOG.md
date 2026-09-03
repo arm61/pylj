@@ -16,6 +16,7 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Changed
 
+- `md.heat_bath(particles, mass, bath_temperature)` rescales on the instantaneous temperature; it previously took the temperature sample array and rescaled towards its cumulative mean. `System.heat_bath(bath_temperature)` is unchanged. A non-positive bath temperature, or a system with zero or non-finite temperature, raises `ValueError` (#76).
 - Python 3.11 or later is required. scipy is a dependency; Cython is not.
 - `System.__init__` takes keyword-only arguments after `mass`, including the required `simulation`.
 - The initialisers compute the initial forces, so the first integration step uses real accelerations.
@@ -37,4 +38,5 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Removed
 
+- `pairwise.heat_bath`; `md.heat_bath` is the implementation (#76).
 - `pylj/sample.py`, `point_size` on forcefields, `System.type_identifiers`, `pairwise.create_dist_identifiers`, `MANIFEST.in`, and the Code Climate upload from CI.

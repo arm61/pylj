@@ -129,3 +129,56 @@ class TestMd(unittest.TestCase):
     def test_initialise_accepts_diameter(self):
         a = md.initialise(2, 300, 8, "square", diameter=3.0)
         assert_almost_equal(a.diameters, [3e-10])
+
+    def test_heat_bath_rescales_to_bath_temperature(self):
+        a = md.initialise(10, 300, 20, "square")
+        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
+        t = md.calculate_temperature(a.particles, a.mass)
+        assert_almost_equal(t / 250.0, 1.0)
+
+    def test_heat_bath_preserves_velocity_directions(self):
+        a = md.initialise(10, 300, 20, "square")
+        old_x = np.array(a.particles["xvelocity"])
+        old_y = np.array(a.particles["yvelocity"])
+        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
+        x_ratio = a.particles["xvelocity"] / old_x
+        y_ratio = a.particles["yvelocity"] / old_y
+        assert_almost_equal(x_ratio, np.full(x_ratio.shape, x_ratio[0]))
+        assert_almost_equal(y_ratio, np.full(y_ratio.shape, x_ratio[0]))
+
+    def test_heat_bath_ignores_the_temperature_sample_record(self):
+        for history in ([], [1000.0, 1000.0, 1000.0]):
+            a = md.initialise(10, 300, 20, "square")
+            a.temperature_sample = np.array(history)
+            a.heat_bath(50.0)
+            t = md.calculate_temperature(a.particles, a.mass)
+            assert_almost_equal(t, 50.0)
+
+    def test_heat_bath_two_calls_each_hit_their_own_target(self):
+        a = md.initialise(10, 300, 20, "square")
+        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
+        a.particles = md.heat_bath(a.particles, a.mass, 100.0)
+        t = md.calculate_temperature(a.particles, a.mass)
+        assert_almost_equal(t / 100.0, 1.0)
+
+    def test_heat_bath_raises_when_the_particles_are_at_rest(self):
+        a = md.initialise(10, 300, 20, "square")
+        a.particles["xvelocity"] = 0.0
+        a.particles["yvelocity"] = 0.0
+        with self.assertRaises(ValueError) as context:
+            md.heat_bath(a.particles, a.mass, 250.0)
+        self.assertIn("at rest", str(context.exception))
+
+    def test_heat_bath_raises_when_the_temperature_is_not_finite(self):
+        for bad in (np.inf, np.nan):
+            a = md.initialise(10, 300, 20, "square")
+            a.particles["xvelocity"][0] = bad
+            with self.assertRaises(ValueError) as context:
+                md.heat_bath(a.particles, a.mass, 250.0)
+            self.assertIn("diverged", str(context.exception))
+
+    def test_heat_bath_raises_for_a_non_positive_bath_temperature(self):
+        for bad in (0.0, -5.0, np.nan):
+            a = md.initialise(10, 300, 20, "square")
+            with self.assertRaises(ValueError):
+                md.heat_bath(a.particles, a.mass, bad)

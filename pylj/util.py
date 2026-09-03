@@ -271,17 +271,17 @@ class System:
         """
         md.sample(self.particles, self.box_length, self.initial_particles, self)
 
-    def heat_bath(self, bath_temperature):
-        """Maps to the md.heat_bath function.
+    def heat_bath(self, bath_temperature: float) -> None:
+        """Rescale the particle velocities to the bath temperature.
 
-        Parameters
-        ----------
-        bath_temperature: float
-            The target temperature for the simulation.
+        Args:
+            bath_temperature: The desired temperature, in Kelvin.
+
+        Raises:
+            ValueError: If the bath temperature is not positive, or the
+                particles are at rest or the simulation has diverged.
         """
-        self.particles = md.heat_bath(
-            self.particles, self.temperature_sample, bath_temperature
-        )
+        self.particles = md.heat_bath(self.particles, self.mass, bath_temperature)
 
     def mc_sample(self):
         """Maps to the mc.sample function, recording the current accepted energy."""
