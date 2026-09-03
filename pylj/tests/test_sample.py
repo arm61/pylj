@@ -6,6 +6,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pylj import mc, md
+from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.sample import environment
 from pylj.sample.panes import (
     CellPane,
@@ -146,11 +147,12 @@ def test_energy_pane_md_includes_kinetic_energy(drawing_display):
     pane.setup(ax, system)
     pane.update(ax, system)
     particles = system.particles
-    mass_kg = system.mass * 1.660539e-27
+    mass_kg = system.mass * ATOMIC_MASS_UNIT
     kinetic = 0.5 * mass_kg * np.sum(particles["xvelocity"] ** 2 + particles["yvelocity"] ** 2)
     assert_allclose(ax.lines[0].get_ydata()[-1], system.energy_sample[-1] + kinetic)
     assert_allclose(
-        ax.lines[0].get_ydata(), system.energy_sample + 4 * 1.3806e-23 * system.temperature_sample
+        ax.lines[0].get_ydata(),
+        system.energy_sample + system.number_of_particles * BOLTZMANN * system.temperature_sample
     )
     assert ax.get_xlabel() == "Time/s"
     plt.close(fig)
