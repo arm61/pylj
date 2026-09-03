@@ -1,5 +1,6 @@
 from numpy.testing import assert_almost_equal, assert_equal
 from pylj import md
+import numpy as np
 import unittest
 
 
@@ -11,6 +12,16 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(a.init_temp, 300)
         assert_almost_equal(a.particles["xposition"] * 1e10, [2, 2])
         assert_almost_equal(a.particles["yposition"] * 1e10, [2, 6])
+        assert_equal(a.simulation, "md")
+
+    def test_initialise_computes_initial_forces(self):
+        a = md.initialise(2, 300, 8, "square")
+        assert_almost_equal(a.distances * 1e10, [4.0])
+        self.assertTrue(np.any(a.particles["yacceleration"] != 0))
+
+    def test_initialize_passes_keyword_arguments_through(self):
+        a = md.initialize(2, 300, 8, "square", mass=20.0)
+        assert_equal(a.mass, 20.0)
 
     def test_velocity_verlet(self):
         a = md.initialise(2, 300, 8, "square")

@@ -52,6 +52,7 @@ def initialise(
         constants,
         forcefield,
         mass,
+        simulation="md",
         init_conf=init_conf,
         timestep_length=timestep_length
     )
@@ -62,18 +63,13 @@ def initialise(
     v = v - np.average(v)
     system.particles["xvelocity"] = v[:, 0]
     system.particles["yvelocity"] = v[:, 1]
+    system.compute_force()
     return system
 
 
-def initialize(
-    number_particles, temperature, box_length, init_conf, timestep_length=1e-14
-):
-    """Maps to the md.initialise function to account for US english spelling.
-    """
-    a = initialise(
-        number_particles, temperature, box_length, init_conf, timestep_length
-    )
-    return a
+def initialize(*args, **kwargs):
+    """Alias of :func:`initialise` for US English spelling."""
+    return initialise(*args, **kwargs)
 
 
 #Jit tag here had to be removed

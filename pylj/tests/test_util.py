@@ -13,6 +13,7 @@ class TestUtil(unittest.TestCase):
             mass=39.948,
             constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
+            simulation="md",
         )
         assert_equal(a.number_of_particles, 2)
         assert_equal(a.init_temp, 300)
@@ -36,6 +37,7 @@ class TestUtil(unittest.TestCase):
             mass=39.948,
             constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
+            simulation="md",
         )
         assert_equal(a.number_of_particles, 2)
         assert_equal(a.init_temp, 300)
@@ -59,6 +61,7 @@ class TestUtil(unittest.TestCase):
                 mass=39.948,
                 constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
+                simulation="md",
             )
         self.assertTrue(
             "With a box length of 1000 the particles are probably "
@@ -75,6 +78,7 @@ class TestUtil(unittest.TestCase):
                 mass=39.948,
                 constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
+                simulation="md",
             )
         self.assertTrue(
             "With a box length of 2 the cell is too small to "
@@ -91,9 +95,22 @@ class TestUtil(unittest.TestCase):
                 mass=39.948,
                 constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
+                simulation="md",
             )
         self.assertTrue(
             "The initial configuration type horseradish is not "
             "recognised. Available options are: square or "
             "random" in str(context.exception)
         )
+
+    def test_system_records_simulation_kind(self):
+        a = util.System(
+            2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="mc"
+        )
+        assert_equal(a.simulation, "mc")
+
+    def test_system_rejects_unknown_simulation_kind(self):
+        with self.assertRaises(ValueError):
+            util.System(
+                2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="dft"
+            )

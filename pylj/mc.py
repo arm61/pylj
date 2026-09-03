@@ -48,18 +48,18 @@ def initialise(
         constants,
         forcefield,
         mass,
+        simulation="mc",
         init_conf=init_conf
     )
     system.particles["xvelocity"] = 0
     system.particles["yvelocity"] = 0
+    system.compute_force()
     return system
 
 
-def initialize(number_particles, temperature, box_length, init_conf):
-    """Maps to the mc.initialise function to account for US english spelling.
-    """
-    a = initialise(number_particles, temperature, box_length, init_conf)
-    return a
+def initialize(*args, **kwargs):
+    """Alias of :func:`initialise` for US English spelling."""
+    return initialise(*args, **kwargs)
 
 
 def sample(total_energy, system):

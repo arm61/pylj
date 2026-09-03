@@ -1,4 +1,5 @@
 from __future__ import division
+from typing import Literal
 import numpy as np
 import webbrowser
 from pylj import md, mc
@@ -19,6 +20,9 @@ class System:
         Initial temperature of the particles, in Kelvin.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
+    simulation: str
+        Which engine drives this system: 'md' or 'mc'. Set by
+        :func:`md.initialise` and :func:`mc.initialise`.
     init_conf: string, optional
         The way that the particles are initially positioned. Should be one of:
         - 'square'
@@ -38,16 +42,21 @@ class System:
 
     def __init__(
         self,
-        number_of_particles,
-        temperature,
-        box_length,
-        constants,
-        forcefield,
-        mass,
-        init_conf="square",
-        timestep_length=1e-14,
-        cut_off=15
+        number_of_particles: int,
+        temperature: float,
+        box_length: float,
+        constants: list[list[float]],
+        forcefield: type,
+        mass: float,
+        *,
+        simulation: Literal["md", "mc"],
+        init_conf: str = "square",
+        timestep_length: float = 1e-14,
+        cut_off: float = 15,
     ):
+        if simulation not in ("md", "mc"):
+            raise ValueError(f"simulation must be 'md' or 'mc', not {simulation!r}")
+        self.simulation = simulation
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         self.constants = constants
