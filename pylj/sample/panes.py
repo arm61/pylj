@@ -208,7 +208,7 @@ class RDFPane(Pane):
         # here, so setup does not itself contribute an entry to the history.
 
     def update(self, ax: Axes, system: System) -> None:
-        edges = np.linspace(0, system.box_length / 2, self.BINS)
+        edges = np.linspace(0, system.box_length / 2, self.BINS + 1)
         dr = edges[1] - edges[0]
         r = edges[:-1] + dr / 2
         counts, _ = np.histogram(system.distances, bins=edges)
@@ -234,10 +234,11 @@ class ScatteringPane(Pane):
     Keeps every profile it has drawn so ``average`` can show the mean.
     """
 
-    AMPLITUDE = 3.644
-    Q_MAX = 1e11  # 1/m, roughly the inverse of the argon van der Waals diameter
+    Q_MAX = 1e11  # 1/m; an empirical upper limit that shows the first few peaks for
+    # argon-sized particles
     POINTS = 1000
     SKIP = 20  # lowest-q points, where the box periodicity dominates
+    BLOCK = 64  # q values per block, bounding the q-by-pairs temporary
 
     def __init__(self) -> None:
         self.q = np.array([])
@@ -252,10 +253,12 @@ class ScatteringPane(Pane):
         # here, so setup does not itself contribute an entry to the history.
 
     def update(self, ax: Axes, system: System) -> None:
-        q = np.linspace(2 * np.pi / system.box_length, self.Q_MAX, self.POINTS)
-        q = q[self.SKIP :]
-        qr = np.outer(q, system.distances)
-        intensity = self.AMPLITUDE * np.sum(np.sinc(qr / np.pi), axis=1)
+        q = np.linspace(2 * np.pi / system.box_length, self.Q_MAX, self.POINTS)[self.SKIP :]
+        intensity = np.empty_like(q)
+        for start in range(0, q.size, self.BLOCK):
+            block = q[start : start + self.BLOCK]
+            qr = np.outer(block, system.distances)
+            intensity[start : start + self.BLOCK] = np.sum(np.sinc(qr / np.pi), axis=1)
         intensity = np.clip(intensity, 0, None)
         self.q = q
         self.history.append(intensity)
@@ -278,7 +281,7 @@ class MaxwellBoltzmannPane(Pane):
         self.speeds = np.array([])
 
     def setup(self, ax: Axes, system: System) -> None:
-        ax.step([], [], color=LINE_COLOUR)
+        ax.step([], [], where="post", color=LINE_COLOUR)
         ax.set_ylabel("PDF", fontsize=LABEL_SIZE)
         ax.set_xlabel("Velocity/ms$^{-1}$", fontsize=LABEL_SIZE)
 

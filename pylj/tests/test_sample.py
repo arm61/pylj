@@ -183,8 +183,12 @@ def test_energy_pane_mc_plots_against_step(drawing_display):
 
 
 def test_rdf_pane_normalisation_is_unity_for_random_positions(drawing_display):
-    np.random.seed(1)
-    system = md.initialise(400, 100, 100, "random")
+    state = np.random.get_state()
+    try:
+        np.random.seed(1)
+        system = md.initialise(400, 100, 100, "random")
+    finally:
+        np.random.set_state(state)
     fig, ax, handle = environment(1)
     pane = RDFPane()
     pane.setup(ax, system)
@@ -221,6 +225,28 @@ def test_scattering_pane_is_finite_and_non_negative(drawing_display):
     plt.close(fig)
 
 
+def test_scattering_pane_intensity_is_independent_of_block_size(drawing_display, monkeypatch):
+    system = sampled_md_system(steps=1, every=1)
+
+    monkeypatch.setattr(ScatteringPane, "BLOCK", 7)
+    fig, ax, handle = environment(1)
+    pane = ScatteringPane()
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    small_block = ax.lines[0].get_ydata().copy()
+    plt.close(fig)
+
+    monkeypatch.setattr(ScatteringPane, "BLOCK", 1000)
+    fig, ax, handle = environment(1)
+    pane = ScatteringPane()
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    large_block = ax.lines[0].get_ydata().copy()
+    plt.close(fig)
+
+    assert_allclose(small_block, large_block)
+
+
 def test_maxwell_boltzmann_pane_accumulates_speeds(drawing_display):
     system = md.initialise(4, 100, 20, "square")
     fig, ax, handle = environment(1)
@@ -230,6 +256,20 @@ def test_maxwell_boltzmann_pane_accumulates_speeds(drawing_display):
     pane.update(ax, system)
     assert pane.speeds.size == 8
     fig.canvas.draw()
+    plt.close(fig)
+
+
+def test_maxwell_boltzmann_pane_draws_a_post_step_histogram(drawing_display):
+    system = md.initialise(4, 100, 20, "square")
+    system.particles["xvelocity"] = 100.0
+    system.particles["yvelocity"] = 0.0
+    fig, ax, handle = environment(1)
+    pane = MaxwellBoltzmannPane()
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    _, edges = np.histogram(pane.speeds, bins=MaxwellBoltzmannPane.BINS, density=True)
+    assert_allclose(ax.lines[0].get_xdata()[0], edges[0])
+    assert ax.lines[0].get_drawstyle() == "steps-post"
     plt.close(fig)
 
 
