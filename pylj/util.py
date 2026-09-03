@@ -20,9 +20,6 @@ class System:
         Initial temperature of the particles, in Kelvin.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
-    simulation: str
-        Which engine drives this system: 'md' or 'mc'. Set by
-        :func:`md.initialise` and :func:`mc.initialise`.
     init_conf: string, optional
         The way that the particles are initially positioned. Should be one of:
         - 'square'
@@ -36,7 +33,10 @@ class System:
         The values of the constants for the forcefield used.
     mass: float (optional)
         The mass of the particles being simulated.
-    forcefield: function (optional)
+    simulation: {'md', 'mc'}
+        Required. Which engine drives this system; set for you by
+        :func:`md.initialise` and :func:`mc.initialise`.
+    forcefield: class (optional)
         The particular forcefield to be used to find the energy and forces.
     """
 

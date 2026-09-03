@@ -1,3 +1,4 @@
+import functools
 import numpy as np
 from pylj import forcefields as ff
 
@@ -11,9 +12,8 @@ def initialise(
     constants=[[1.363e-134, 9.273e-78]],
     forcefield=ff.lennard_jones
 ):
-    """Initialise the particle positions (this can be either as a square or
-    random arrangement), velocities (based on the temperature defined, and #
-    calculate the initial forces/accelerations.
+    """Initialise the particle positions (square or random arrangement), zero
+    the velocities, and calculate the initial pair energies.
 
     Parameters
     ----------
@@ -53,12 +53,12 @@ def initialise(
     )
     system.particles["xvelocity"] = 0
     system.particles["yvelocity"] = 0
-    system.compute_force()
+    system.compute_energy()
     return system
 
 
+@functools.wraps(initialise)
 def initialize(*args, **kwargs):
-    """Alias of :func:`initialise` for US English spelling."""
     return initialise(*args, **kwargs)
 
 
