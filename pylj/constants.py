@@ -1,7 +1,9 @@
 """Physical constants used throughout pylj, in SI units."""
 
-BOLTZMANN = 1.380649e-23
-"""Boltzmann constant, J / K."""
+from scipy.constants import atomic_mass, k
 
-ATOMIC_MASS_UNIT = 1.66053907e-27
-"""Atomic mass unit, kg."""
+BOLTZMANN = k
+"""Boltzmann constant, J / K, from scipy.constants."""
+
+ATOMIC_MASS_UNIT = atomic_mass
+"""Atomic mass unit, kg, from scipy.constants."""
