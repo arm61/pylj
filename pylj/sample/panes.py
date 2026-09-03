@@ -88,3 +88,81 @@ class CellPane(Pane):
                 system.particles["xposition"][mask], system.particles["yposition"][mask]
             )
             line.set_markersize(diameter / system.box_length * axes_width_points)
+
+
+class _SeriesPane(Pane):
+    """A sampled quantity plotted against simulation time.
+
+    Subclasses name the ``System`` attribute holding the samples and the
+    y-axis label.
+    """
+
+    attribute: str
+    ylabel: str
+    y_from_zero: bool = False
+
+    def setup(self, ax: Axes, system: System) -> None:
+        ax.plot([], [], color=LINE_COLOUR)
+        ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
+        ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)
+
+    def update(self, ax: Axes, system: System) -> None:
+        x = system.step_sample * system.timestep_length
+        y = getattr(system, self.attribute)
+        ax.lines[0].set_data(x, y)
+        _fit_axes(ax, x, y, y_from_zero=self.y_from_zero)
+
+
+class TemperaturePane(_SeriesPane):
+    """Instantaneous temperature against time."""
+
+    attribute = "temperature_sample"
+    ylabel = "Temperature/K"
+
+
+class PressurePane(_SeriesPane):
+    """Instantaneous two-dimensional pressure against time."""
+
+    attribute = "pressure_sample"
+    ylabel = "Pressure/N m$^{-1}$"
+
+
+class ForcePane(_SeriesPane):
+    """Sum of the pair forces against time."""
+
+    attribute = "force_sample"
+    ylabel = "Force/N"
+
+
+class MSDPane(_SeriesPane):
+    """Mean squared displacement against time."""
+
+    attribute = "msd_sample"
+    ylabel = "MSD/m$^2$"
+    y_from_zero = True
+
+
+class EnergyPane(Pane):
+    """Total energy of the system.
+
+    For an MD system this is the potential energy plus the kinetic energy
+    ``N k_B T`` of ``N`` particles in two dimensions, against time. For an
+    MC system it is the potential energy against step.
+    """
+
+    def setup(self, ax: Axes, system: System) -> None:
+        ax.plot([], [], color=LINE_COLOUR)
+        ax.set_ylabel("Energy/J", fontsize=LABEL_SIZE)
+        xlabel = "Time/s" if system.simulation == "md" else "Step"
+        ax.set_xlabel(xlabel, fontsize=LABEL_SIZE)
+
+    def update(self, ax: Axes, system: System) -> None:
+        if system.simulation == "md":
+            x = system.step_sample * system.timestep_length
+            kinetic = system.number_of_particles * BOLTZMANN * system.temperature_sample
+            y = system.energy_sample + kinetic
+        else:
+            x = system.step_sample
+            y = system.energy_sample
+        ax.lines[0].set_data(x, y)
+        _fit_axes(ax, x, y)
