@@ -16,7 +16,7 @@ class DrawingHandle:
     def __init__(self) -> None:
         self.updates = 0
 
-    def update(self, fig) -> None:
+    def update(self, fig, /) -> None:
         fig.canvas.draw()
         self.updates += 1
 

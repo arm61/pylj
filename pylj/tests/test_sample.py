@@ -331,8 +331,21 @@ def test_custom_pane_plots_supplied_data(drawing_display):
 
 def test_custom_pane_rejects_mismatched_data(drawing_display):
     pane = CustomPane("x label", "y label")
-    with pytest.raises(ValueError, match="same length"):
-        pane.set_data([0, 1, 2], [1, 4])
+    with pytest.raises(ValueError, match=r"\(2, 2\) and \(4,\)"):
+        pane.set_data([[0, 1], [2, 3]], [1, 4, 9, 16])
+
+
+def test_custom_pane_takes_scalar_data(drawing_display):
+    system = md.initialise(4, 100, 20, "square")
+    fig, ax, handle = environment(1)
+    pane = CustomPane("x label", "y label")
+    pane.setup(ax, system)
+    pane.set_data(1.0, 2.0)
+    pane.update(ax, system)
+    fig.canvas.draw()
+    assert_allclose(ax.lines[0].get_xdata(), [1.0])
+    assert_allclose(ax.lines[0].get_ydata(), [2.0])
+    plt.close(fig)
 
 
 def test_custom_pane_rejects_non_finite_data(drawing_display):
@@ -366,6 +379,20 @@ def test_md_only_viewer_rejects_an_mc_system(drawing_display):
     system = sampled_mc_system(steps=1)
     with pytest.raises(ValueError, match="Monte Carlo"):
         Interactions(system)
+
+
+def test_speed_histogram_rejects_an_mc_system(drawing_display):
+    system = sampled_mc_system(steps=1)
+    with pytest.raises(ValueError, match="Monte Carlo"):
+        MaxBolt(system)
+
+
+def test_failed_viewer_setup_closes_its_figure(drawing_display):
+    plt.close("all")
+    system = sampled_mc_system(steps=1)
+    with pytest.raises(ValueError):
+        Interactions(system)
+    assert plt.get_fignums() == []
 
 
 def test_energy_viewer_on_mc_system(drawing_display):

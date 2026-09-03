@@ -34,8 +34,12 @@ class Viewer:
         self.panes = list(panes)
         self.fig, axes, self.handle = environment(len(self.panes), size)
         self.axes: list[Axes] = [axes] if isinstance(axes, Axes) else list(axes.ravel())
-        for pane, ax in zip(self.panes, self.axes):
-            pane.setup(ax, system)
+        try:
+            for pane, ax in zip(self.panes, self.axes):
+                pane.setup(ax, system)
+        except Exception:
+            plt.close(self.fig)
+            raise
         self.fig.tight_layout()
         self.update(system)
         plt.close(self.fig)

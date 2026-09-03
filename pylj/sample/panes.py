@@ -53,8 +53,8 @@ class Pane:
     """One plot within a viewer.
 
     ``setup`` creates the artists; the viewer draws them by calling
-    ``update``. Panes that accumulate a history across updates derive from
-    ``_HistoryPane`` rather than from this class.
+    ``update``. A pane that keeps every curve it draws sets
+    ``keeps_history = True`` and overrides ``average``.
 
     Attributes:
         keeps_history: Whether this pane accumulates a history across
@@ -90,6 +90,23 @@ class Pane:
         Args:
             ax: Axes this pane was set up in.
         """
+
+
+def _require_md(pane: Pane, system: System) -> None:
+    """Refuse to plot MD-only samples for a Monte Carlo system.
+
+    Args:
+        pane: The pane being set up, named in the message.
+        system: The simulation being visualised.
+
+    Raises:
+        ValueError: If the system is not a molecular dynamics simulation.
+    """
+    if system.simulation != "md":
+        raise ValueError(
+            f"{type(pane).__name__} plots MD samples; this system is a "
+            "Monte Carlo simulation"
+        )
 
 
 class _HistoryPane(Pane):
@@ -156,11 +173,7 @@ class _SeriesPane(Pane):
     y_from_zero: bool = False
 
     def setup(self, ax: Axes, system: System) -> None:
-        if system.simulation != "md":
-            raise ValueError(
-                f"{type(self).__name__} plots MD samples; this system is a "
-                "Monte Carlo simulation"
-            )
+        _require_md(self, system)
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
         ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)
@@ -323,6 +336,7 @@ class MaxwellBoltzmannPane(Pane):
         self.speeds = np.array([])
 
     def setup(self, ax: Axes, system: System) -> None:
+        _require_md(self, system)
         ax.step([], [], where="post", color=LINE_COLOUR)
         ax.set_ylabel("PDF", fontsize=LABEL_SIZE)
         ax.set_xlabel("Speed/m s$^{-1}$", fontsize=LABEL_SIZE)
@@ -354,15 +368,15 @@ class CustomPane(Pane):
             y: y data to plot.
 
         Raises:
-            ValueError: If ``x`` and ``y`` are not the same length, or if
+            ValueError: If ``x`` and ``y`` do not have the same shape, or if
                 either contains a value that is not finite.
         """
-        x_data = np.asarray(x, dtype=float)
-        y_data = np.asarray(y, dtype=float)
+        x_data = np.atleast_1d(np.asarray(x, dtype=float))
+        y_data = np.atleast_1d(np.asarray(y, dtype=float))
         if x_data.shape != y_data.shape:
             raise ValueError(
-                "x and y must be the same length, but they are "
-                f"{x_data.size} and {y_data.size}"
+                "x and y must have the same shape, but they are "
+                f"{x_data.shape} and {y_data.shape}"
             )
         if not (np.isfinite(x_data).all() and np.isfinite(y_data).all()):
             raise ValueError("x and y must contain only finite values")

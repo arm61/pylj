@@ -15,7 +15,7 @@ FIGURE_WIDTH = {"small": 2.0, "medium": 4.0, "large": 8.0}
 class DisplayHandle(Protocol):
     """Anything that can be handed a figure to show."""
 
-    def update(self, fig: Figure) -> None:
+    def update(self, fig: Figure, /) -> None:
         """Show ``fig``, replacing whatever was shown before."""
         ...
 
@@ -23,7 +23,7 @@ class DisplayHandle(Protocol):
 class _NullHandle:
     """Stands in for the IPython display handle when no kernel is running."""
 
-    def update(self, fig: Figure) -> None:
+    def update(self, fig: Figure, /) -> None:
         """Do nothing; there is nowhere to send the figure."""
 
 
