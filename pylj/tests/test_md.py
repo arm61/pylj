@@ -1,5 +1,6 @@
 from numpy.testing import assert_almost_equal, assert_equal
 from pylj import md
+from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 import numpy as np
 import unittest
 
@@ -91,7 +92,9 @@ class TestMd(unittest.TestCase):
         a.particles["xacceleration"] = [1e4]
         a.particles["yacceleration"] = [1e4]
         b = md.calculate_temperature(a.particles, mass=39.948)
-        assert_almost_equal(b * 1e23, 4.8048103702737945)
+        # T = m (vx^2 + vy^2) / (2 N k_B) for the one particle in the cell.
+        expected = 0.5 * 39.948 * ATOMIC_MASS_UNIT * 2e-20 / BOLTZMANN
+        assert_almost_equal(b * 1e23, expected * 1e23)
 
     def test_calculate_msd(self):
         a = md.initialise(2, 300, 8, "square")

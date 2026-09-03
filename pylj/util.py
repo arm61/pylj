@@ -68,13 +68,11 @@ class System:
         self.constants = constants
         self.mass = mass
         self.forcefield = forcefield
-        self.type_identifiers = None
         self.particle_list = None
         self.long_const = None
         self.types = None
         self.diameters: list[float] = []
         self.setup_diameters(diameter)
-        self.setup_type_identifiers()
         self.setup_types()
         if box_length <= 600:
             self.box_length = box_length * 1e-10
@@ -172,20 +170,6 @@ class System:
         self.particle_list = particle_list
         self.long_const = long_const
         self.types = types
-
-    def setup_type_identifiers(self):
-        """Sets type-identifers arrays - legacy method now only used for plotting
-        """
-        # Creates arrays to identify which particle is in which type
-        number_of_types = len(self.constants)
-        type_identifiers = np.zeros((number_of_types,self.number_of_particles))
-        i = 0
-        while i < self.number_of_particles:
-            for k in range(number_of_types):
-                if i < self.number_of_particles:
-                    type_identifiers[k][i] = 1
-                    i+=1
-        self.type_identifiers = type_identifiers
 
     def setup_diameters(self, diameter: float | Iterable[float] | None) -> None:
         """Set the drawn diameter of each particle type, in metres.

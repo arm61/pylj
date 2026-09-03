@@ -61,7 +61,11 @@ class TestPairwise(unittest.TestCase):
             forcefield=ff.lennard_jones,
             mass = 39.948
         )
-        assert_almost_equal(p * 1e24, 7.07368867)
+        # Only the ideal-gas term N k_B T / L^2 depends on the Boltzmann
+        # constant. Moving from 1.3806e-23 to the CODATA 1.380649e-23 raises
+        # it by 3.267e-28 Pa, which is the whole of the change from the
+        # previous expectation of 7.07368867.
+        assert_almost_equal(p * 1e24, 7.07401534)
 
     def test_pbc_correction(self):
         a = pairwise.pbc_correction(1, 10)
@@ -100,5 +104,7 @@ class TestPairwise(unittest.TestCase):
         assert_almost_equal(np.array(energies) * 1e20, np.array(expected) * 1e20)
         assert_almost_equal(forces, [-9.6342138e-11, -5.1698213e-12, -6.1773405e-12])
         assert_almost_equal(particles["yacceleration"], [7.6421357e+13,  2.07196175e+13,-9.71409740e+13], decimal=-7)
-        assert_almost_equal(particles["xacceleration"][0] / 1e14, 4.4171075)
-        assert_almost_equal(particles["xacceleration"][1] / 1e14, -4.7771464)
+        # The accelerations go as 1 / mass, so they shift by 42 parts in 1e9
+        # with the CODATA atomic mass unit, from 4.4171075 and -4.7771464.
+        assert_almost_equal(particles["xacceleration"][0] / 1e14, 4.4171073)
+        assert_almost_equal(particles["xacceleration"][1] / 1e14, -4.7771462)

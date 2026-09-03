@@ -1,4 +1,3 @@
-import functools
 import numpy as np
 from pylj import pairwise as heavy
 from pylj import forcefields as ff
@@ -75,9 +74,7 @@ def initialise(
     return system
 
 
-@functools.wraps(initialise)
-def initialize(*args, **kwargs):
-    return initialise(*args, **kwargs)
+initialize = initialise  # US spelling
 
 
 #Jit tag here had to be removed

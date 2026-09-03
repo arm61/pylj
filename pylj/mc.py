@@ -1,4 +1,3 @@
-import functools
 import numpy as np
 from pylj import forcefields as ff
 from pylj.constants import BOLTZMANN
@@ -65,9 +64,7 @@ def initialise(
     return system
 
 
-@functools.wraps(initialise)
-def initialize(*args, **kwargs):
-    return initialise(*args, **kwargs)
+initialize = initialise  # US spelling
 
 
 def sample(total_energy, system):
