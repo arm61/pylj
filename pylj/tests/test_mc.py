@@ -18,6 +18,11 @@ class TestMc(unittest.TestCase):
         assert_almost_equal(a.distances * 1e10, [4.0])
         self.assertTrue(a.energies[0] != 0)
 
+    def test_initialise_sets_the_starting_energy(self):
+        a = mc.initialise(2, 300, 8, "square")
+        assert_almost_equal(a.old_energy, a.energies.sum())
+        self.assertTrue(a.old_energy != 0)
+
     def test_initialize_passes_keyword_arguments_through(self):
         a = mc.initialize(2, 300, 8, "square", mass=20.0)
         assert_equal(a.mass, 20.0)

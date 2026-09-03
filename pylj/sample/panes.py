@@ -130,6 +130,11 @@ class _SeriesPane(Pane):
     y_from_zero: bool = False
 
     def setup(self, ax: Axes, system: System) -> None:
+        if system.simulation != "md":
+            raise ValueError(
+                f"{type(self).__name__} plots MD samples; this system is a "
+                "Monte Carlo simulation"
+            )
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
         ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)

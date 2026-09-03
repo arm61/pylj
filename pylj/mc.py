@@ -61,6 +61,7 @@ def initialise(
     system.particles["xvelocity"] = 0
     system.particles["yvelocity"] = 0
     system.compute_energy()
+    system.old_energy = system.energies.sum()
     return system
 
 

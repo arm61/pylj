@@ -62,7 +62,6 @@ def sampled_md_system(steps: int, every: int):
 def sampled_mc_system(steps: int):
     """Run an MC loop that samples once per step, starting at step 0."""
     system = mc.initialise(4, 100, 20, "square")
-    system.old_energy = system.energies.sum()
     system.mc_sample()
     for _ in range(steps):
         system.step += 1
@@ -317,6 +316,12 @@ def test_named_viewer_updates_at_any_sampling_cadence(drawing_display, viewer_cl
             system.md_sample()
         viewer.update(system)
     assert drawing_display[0].updates == 7
+
+
+def test_md_only_viewer_rejects_an_mc_system(drawing_display):
+    system = sampled_mc_system(steps=1)
+    with pytest.raises(ValueError, match="Monte Carlo"):
+        Interactions(system)
 
 
 def test_energy_viewer_on_mc_system(drawing_display):
