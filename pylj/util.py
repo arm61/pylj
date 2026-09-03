@@ -1,5 +1,5 @@
 from __future__ import division
-import numbers
+from collections.abc import Sequence
 from typing import Literal
 import numpy as np
 import webbrowser
@@ -39,7 +39,7 @@ class System:
         :func:`md.initialise` and :func:`mc.initialise`.
     forcefield: class (optional)
         The particular forcefield to be used to find the energy and forces.
-    diameter: float or list of float (optional)
+    diameter: float or sequence of float (optional)
         Drawn diameter of the particles in Angstrom, one value or one per
         set of constants. Defaults to the separation at the pair-potential
         minimum of the forcefield. Stored in metres as ``diameters``.
@@ -58,7 +58,7 @@ class System:
         init_conf: str = "square",
         timestep_length: float = 1e-14,
         cut_off: float = 15,
-        diameter: float | list[float] | None = None,
+        diameter: float | Sequence[float] | None = None,
     ):
         if simulation not in ("md", "mc"):
             raise ValueError(f"simulation must be 'md' or 'mc', not {simulation!r}")
@@ -94,7 +94,8 @@ class System:
                 "particle.".format(box_length)
             )
         self.timestep_length = timestep_length
-        self.particles = None
+        self.particles: np.ndarray = np.zeros(self.number_of_particles, dtype=particle_dt())
+        self.particles["types"] = self.types
         if init_conf == "square":
             self.square()
         elif init_conf == "random":
@@ -136,11 +137,8 @@ class System:
         return int((self.number_of_particles - 1) * self.number_of_particles / 2)
 
     def square(self):
-        """Sets the initial positions of the particles on a square lattice.
+        """Places the particles on a square lattice.
         """
-        part_dt = particle_dt()
-        self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
-        self.particles['types'] = self.types
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
         n = 0
@@ -152,11 +150,8 @@ class System:
                     n += 1
 
     def random(self):
-        """Sets the initial positions of the particles in a random arrangement.
+        """Places the particles at random positions.
         """
-        part_dt = particle_dt()
-        self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
-        self.particles['types'] = self.types
         num_part = self.number_of_particles
         self.particles["xposition"] = np.random.uniform(0, self.box_length, num_part)
         self.particles["yposition"] = np.random.uniform(0, self.box_length, num_part)
@@ -194,26 +189,26 @@ class System:
                     i+=1
         self.type_identifiers = type_identifiers
 
-    def setup_diameters(self, diameter: float | list[float] | None) -> None:
+    def setup_diameters(self, diameter: float | Sequence[float] | None) -> None:
         """Set the drawn diameter of each particle type, in metres.
 
         Args:
             diameter: Diameter in Angstrom. ``None`` takes the separation at
                 the pair-potential minimum from the forcefield for each set
-                of constants. A single number applies to every type; a list
-                gives one value per set of constants.
+                of constants. A single number applies to every type; a
+                sequence gives one value per set of constants.
 
         Raises:
-            ValueError: If a list is given whose length differs from the
+            ValueError: If a sequence is given whose length differs from the
                 number of sets of constants.
         """
         if diameter is None:
             self.diameters = [self.forcefield(c).diameter for c in self.constants]
             return
-        if isinstance(diameter, numbers.Real):
-            values = [float(diameter)] * len(self.constants)
-        else:
+        if isinstance(diameter, Sequence):
             values = [float(d) for d in diameter]
+        else:
+            values = [float(diameter)] * len(self.constants)
         if len(values) != len(self.constants):
             raise ValueError(
                 f"Expected {len(self.constants)} diameters, one per set of "
