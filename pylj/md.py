@@ -367,14 +367,20 @@ def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np
             Kelvin.
 
     Returns:
-        Information about the particles with new, rescaled velocities.
+        The particles with velocities rescaled in place; the same array is
+        returned.
 
     Raises:
+        ValueError: If bath_temperature is not positive.
         ValueError: If the particles have no kinetic energy, so there is no
             temperature to rescale.
     """
+    if not bath_temperature > 0:
+        raise ValueError(
+            f"bath_temperature must be positive, not {bath_temperature}"
+        )
     current_temperature = calculate_temperature(particles, mass)
-    if current_temperature <= 0:
+    if not current_temperature > 0:
         raise ValueError(
             "Cannot rescale velocities: the particles have no kinetic energy."
         )

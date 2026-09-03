@@ -169,3 +169,13 @@ class TestMd(unittest.TestCase):
         a.particles["yvelocity"] = 0.0
         with self.assertRaises(ValueError):
             md.heat_bath(a.particles, a.mass, 250.0)
+
+    def test_heat_bath_raises_for_negative_bath_temperature(self):
+        a = md.initialise(10, 300, 20, "square")
+        with self.assertRaises(ValueError):
+            md.heat_bath(a.particles, a.mass, -5.0)
+
+    def test_heat_bath_raises_for_zero_bath_temperature(self):
+        a = md.initialise(10, 300, 20, "square")
+        with self.assertRaises(ValueError):
+            md.heat_bath(a.particles, a.mass, 0.0)
