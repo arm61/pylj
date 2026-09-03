@@ -141,10 +141,25 @@ class System:
         """
         return int((self.number_of_particles - 1) * self.number_of_particles / 2)
 
-    def square(self):
-        """Places the particles on a square lattice."""
+    def square(self) -> None:
+        """Places the particles on a square lattice.
+
+        Raises:
+            ValueError: If the lattice spacing, ``box_length`` divided by
+                ``ceil(sqrt(number_of_particles))``, is less than the
+                largest drawn diameter. Reduce the number of particles or
+                use a larger box.
+        """
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
+        if self.diameters and d < max(self.diameters):
+            raise ValueError(
+                f"A square lattice of {self.number_of_particles} particles in a "
+                f"{self.box_length * 1e10:.1f} Angstrom box spaces them {d * 1e10:.2f} "
+                f"Angstrom apart, less than the particle diameter of "
+                f"{max(self.diameters) * 1e10:.2f} Angstrom; reduce the number of "
+                "particles or use a larger box."
+            )
         n = 0
         for i in range(0, m):
             for j in range(0, m):
@@ -162,11 +177,18 @@ class System:
         at least the mean of the two particles' diameters (``self.diameters``,
         indexed by ``self.particles["types"]``).
 
+        Rejection sampling of non-overlapping circles reaches area fractions
+        of only around 0.4 to 0.5 (a reduced density N sigma^2 / L^2 of
+        about 0.5 for argon-like particles), well below liquid densities.
+        Near that limit, whether a given call succeeds or raises depends on
+        the random draw, so the same arguments may not always behave the
+        same way.
+
         Raises:
             ValueError: If 1000 candidate positions are rejected for a
                 single particle, which suggests the particles are too large,
-                or too many, for the box. Use ``init_conf='square'`` or a
-                larger box instead.
+                or too many, for the box. Reduce the number of particles or
+                use a larger box.
         """
         num_part = self.number_of_particles
         box_length = self.box_length
@@ -193,13 +215,13 @@ class System:
                     self.particles[i]["yposition"] = y
                     break
             else:
-                diameter_angstrom = max(self.diameters) * 1e10
+                diameter_angstrom = self.diameters[type_i] * 1e10
                 box_angstrom = box_length * 1e10
                 raise ValueError(
-                    f"Could not place {num_part} particles of diameter "
-                    f"{diameter_angstrom:.2f} Angstrom without overlap in a "
+                    f"Could not place particle {i + 1} of {num_part} (diameter "
+                    f"{diameter_angstrom:.2f} Angstrom) without overlap in a "
                     f"{box_angstrom:.1f} Angstrom box after {max_attempts} "
-                    "attempts; use init_conf='square' or a larger box."
+                    "attempts; reduce the number of particles or use a larger box."
                 )
 
     def setup_types(self):

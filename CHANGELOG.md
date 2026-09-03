@@ -36,6 +36,7 @@ All notable changes to pylj are recorded here. The format follows
 - The square-well hard core tested epsilon rather than sigma (part of #80), and `square_well.energy` failed on integer input.
 - A custom forcefield without a `diameter` property, a diameter given in metres, or a non-positive diameter is refused with a clear message.
 - `System.random` placed particles uniformly with no separation check, so a first step could give overlapping particles and unphysical accelerations; it now places each particle by rejection sampling, keeping every pair at least the mean of their diameters apart, and raises `ValueError` if a placement cannot be found after 1000 attempts (#82).
+- `System.square` had the same defect at higher density: it spaced particles by `box_length / ceil(sqrt(n))` with no check, silently overlapping them above a threshold particle count. It now raises `ValueError` if that spacing is less than the largest drawn diameter (#82).
 
 ### Removed
 

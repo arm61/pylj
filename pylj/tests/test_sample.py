@@ -125,7 +125,7 @@ def test_fit_axes_is_silent_on_empty_data():
 
 
 def test_cell_pane_draws_each_type_separately():
-    system = md.initialise(4, 100, 20, "square", constants=TWO_TYPES)
+    system = md.initialise(4, 100, 30, "square", constants=TWO_TYPES)
     fig, ax = environment(1)
     pane = CellPane()
     pane.setup(ax, system)

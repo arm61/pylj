@@ -95,7 +95,22 @@ class TestUtil(unittest.TestCase):
                 forcefield=ff.lennard_jones,
                 simulation="md",
             )
-        self.assertTrue("square" in str(context.exception))
+        message = str(context.exception)
+        self.assertTrue("particle" in message)
+        self.assertFalse("square" in message)
+
+    def test_system_square_overlap_raises(self):
+        with self.assertRaises(ValueError) as context:
+            util.System(
+                50,
+                100,
+                20,
+                mass=39.948,
+                constants=[[1.363e-134, 9.273e-78]],
+                forcefield=ff.lennard_jones,
+                simulation="md",
+            )
+        self.assertTrue("diameter" in str(context.exception))
 
     def test_system_random_diameter_override(self):
         a = util.System(
@@ -200,14 +215,14 @@ class TestUtil(unittest.TestCase):
     def test_system_diameter_list_is_per_type(self):
         constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
         a = util.System(
-            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0, 5.0]
+            2, 300, 10, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0, 5.0]
         )
         assert_almost_equal(a.diameters, [3e-10, 5e-10])
 
     def test_system_diameter_array_is_per_type(self):
         constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
         a = util.System(
-            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md",
+            2, 300, 10, constants, ff.lennard_jones, 39.948, simulation="md",
             diameter=np.array([3.0, 5.0]),
         )
         assert_almost_equal(a.diameters, [3e-10, 5e-10])
