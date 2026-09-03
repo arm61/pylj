@@ -2,6 +2,7 @@ import functools
 import numpy as np
 from pylj import pairwise as heavy
 from pylj import forcefields as ff
+from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
 def initialise(
@@ -65,8 +66,8 @@ def initialise(
     )
     v = np.random.rand(system.particles.size, 2, 12)
     v = np.sum(v, axis=2) - 6.0
-    mass_kg = mass * 1.6605e-27
-    v = v * np.sqrt(1.3806e-23 * system.init_temp / mass_kg)
+    mass_kg = mass * ATOMIC_MASS_UNIT
+    v = v * np.sqrt(BOLTZMANN * system.init_temp / mass_kg)
     v = v - np.average(v)
     system.particles["xvelocity"] = v[:, 0]
     system.particles["yvelocity"] = v[:, 1]
@@ -298,15 +299,13 @@ def calculate_temperature(particles, mass):
     float:
         Calculated instantaneous simulation temperature.
     """
-    boltzmann_constant = 1.3806e-23  # joules/kelvin
-    atomic_mass_unit = 1.660539e-27  # kilograms
-    mass_kg = mass * atomic_mass_unit  # kilograms
+    mass_kg = mass * ATOMIC_MASS_UNIT  # kilograms
     v = np.sqrt(
         (particles["xvelocity"] * particles["xvelocity"])
         + (particles["yvelocity"] * particles["yvelocity"])
     )
     k = 0.5 * np.sum(mass_kg * v * v)
-    t = k / (particles.size * boltzmann_constant)
+    t = k / (particles.size * BOLTZMANN)
     return t
 
 

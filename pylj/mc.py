@@ -1,6 +1,7 @@
 import functools
 import numpy as np
 from pylj import forcefields as ff
+from pylj.constants import BOLTZMANN
 
 
 def initialise(
@@ -196,8 +197,7 @@ def metropolis(temperature, old_energy, new_energy, n=np.random.rand()):
     bool
         True if the move should be accepted.
     """
-    boltzmann_constant = 1.3806e-23  # joules/kelvin
-    beta = 1 / (boltzmann_constant * temperature)
+    beta = 1 / (BOLTZMANN * temperature)
     energy_difference = new_energy - old_energy
     metropolis_factor = np.exp(-beta * energy_difference)
     if n < metropolis_factor:

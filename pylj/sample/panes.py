@@ -9,10 +9,10 @@ updates.
 import numpy as np
 from matplotlib.axes import Axes
 
+from pylj.constants import BOLTZMANN
 from pylj.util import System
 
 LINE_COLOUR = "#34a5daff"
-BOLTZMANN = 1.3806e-23  # J / K
 LABEL_SIZE = 16
 
 
@@ -95,6 +95,13 @@ class _SeriesPane(Pane):
 
     Subclasses name the ``System`` attribute holding the samples and the
     y-axis label.
+
+    Attributes:
+        attribute: Name of the ``System`` attribute holding the sample array
+            to plot on the y axis.
+        ylabel: Label for the y axis.
+        y_from_zero: Whether the y axis should start at zero rather than
+            below the minimum of the data.
     """
 
     attribute: str
@@ -105,6 +112,7 @@ class _SeriesPane(Pane):
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
         ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)
+        self.update(ax, system)
 
     def update(self, ax: Axes, system: System) -> None:
         x = system.step_sample * system.timestep_length

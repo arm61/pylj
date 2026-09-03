@@ -77,9 +77,8 @@ def test_cell_pane_marker_matches_particle_diameter(drawing_display):
     plt.close(fig)
 
 
-def sampled_md_system(steps: int, every: int):
-    """Run an MD loop, sampling on every ``every``-th step."""
-    system = md.initialise(4, 100, 20, "square")
+def run_md_loop(system, steps: int, every: int):
+    """Run an MD loop on the given system, sampling on every ``every``-th step."""
     for _ in range(steps):
         system.integrate(md.velocity_verlet)
         system.step += 1
@@ -87,6 +86,11 @@ def sampled_md_system(steps: int, every: int):
         if system.step % every == 0:
             system.md_sample()
     return system
+
+
+def sampled_md_system(steps: int, every: int):
+    """Initialise a fresh MD system and run it, sampling every ``every``-th step."""
+    return run_md_loop(md.initialise(4, 100, 20, "square"), steps, every)
 
 
 def sampled_mc_system(steps: int):
@@ -111,15 +115,23 @@ def sampled_mc_system(steps: int):
 @pytest.mark.parametrize(
     "pane_cls", [TemperaturePane, PressurePane, ForcePane, MSDPane, EnergyPane]
 )
-def test_series_pane_handles_empty_and_sparse_samples(drawing_display, pane_cls):
+def test_time_panes_handle_empty_and_sparse_samples(drawing_display, pane_cls):
+    system = md.initialise(4, 100, 20, "square")
     fig, ax, handle = environment(1)
     pane = pane_cls()
-    pane.setup(ax, md.initialise(4, 100, 20, "square"))
+    pane.setup(ax, system)
+    pane.update(ax, system)
     fig.canvas.draw()
-    system = sampled_md_system(steps=9, every=3)
+    assert ax.lines[0].get_xdata().size == 0
+    run_md_loop(system, steps=9, every=3)
     pane.update(ax, system)
     fig.canvas.draw()
     assert_allclose(ax.lines[0].get_xdata(), np.array([3, 6, 9]) * system.timestep_length)
+    if pane_cls is not EnergyPane:
+        assert_allclose(ax.lines[0].get_ydata(), getattr(system, pane_cls.attribute))
+        assert ax.get_ylabel() == pane_cls.ylabel
+    if pane_cls is MSDPane:
+        assert ax.get_ylim()[0] == 0
     plt.close(fig)
 
 
@@ -129,8 +141,13 @@ def test_energy_pane_md_includes_kinetic_energy(drawing_display):
     pane = EnergyPane()
     pane.setup(ax, system)
     pane.update(ax, system)
-    expected = system.energy_sample + 4 * 1.3806e-23 * system.temperature_sample
-    assert_allclose(ax.lines[0].get_ydata(), expected)
+    particles = system.particles
+    mass_kg = system.mass * 1.660539e-27
+    kinetic = 0.5 * mass_kg * np.sum(particles["xvelocity"] ** 2 + particles["yvelocity"] ** 2)
+    assert_allclose(ax.lines[0].get_ydata()[-1], system.energy_sample[-1] + kinetic)
+    assert_allclose(
+        ax.lines[0].get_ydata(), system.energy_sample + 4 * 1.3806e-23 * system.temperature_sample
+    )
     assert ax.get_xlabel() == "Time/s"
     plt.close(fig)
 

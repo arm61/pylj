@@ -1,6 +1,7 @@
 from __future__ import division
 import numpy as np
 from pylj import pairwise as heavy
+from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 #Jit tag here had to be removed
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
@@ -42,9 +43,8 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     )
     forces = np.zeros(pairs)
     energies = np.zeros(pairs)
-    atomic_mass_unit = 1.660539e-27  # kilograms
     mass_amu = mass  # amu
-    mass_kg = mass_amu * atomic_mass_unit  # kilograms
+    mass_kg = mass_amu * ATOMIC_MASS_UNIT  # kilograms
     distances, dx, dy, pair_types = heavy.dist(
         particles["xposition"], particles["yposition"], box_length, particles['types']
     )
@@ -238,11 +238,10 @@ def calculate_pressure(
         particles, box_length, cut_off, constants, forcefield, mass
         )
     pres = np.sum(forces * distances)
-    boltzmann_constant = 1.3806e-23  # joules / kelvin
     pres = 1.0 / (2 * box_length * box_length) * pres + (
         particles["xposition"].size
         / (box_length * box_length)
-        * boltzmann_constant
+        * BOLTZMANN
         * temperature
     )
     return pres
