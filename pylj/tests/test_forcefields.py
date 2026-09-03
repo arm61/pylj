@@ -1,6 +1,8 @@
-from numpy.testing import assert_almost_equal, assert_equal
-from pylj import forcefields
 import unittest
+
+from numpy.testing import assert_almost_equal, assert_equal
+
+from pylj import forcefields
 
 
 class TestForcefields(unittest.TestCase):
@@ -17,8 +19,10 @@ class TestForcefields(unittest.TestCase):
         assert_almost_equal(c.energy([2.0, 4.5],), [-0.05456543, -0.00042149])
         assert_almost_equal(c.force([2.0, 4.5],), [-0.1633301, -0.000562])
         d = forcefields.lennard_jones( [5.0, 3.5])
-        assert_almost_equal(d.energy([1.0, 1.5, 20.0]), [1.50000000, -0.268733500, -5.46874988e-08])
-        assert_almost_equal(d.force([1.0, 1.5, 20.0]), [ 3.9000000e+01, -9.2078707e-01, -1.6406249e-08])
+        assert_almost_equal(d.energy([1.0, 1.5, 20.0]),
+                            [1.50000000, -0.268733500, -5.46874988e-08])
+        assert_almost_equal(d.force([1.0, 1.5, 20.0]),
+                            [3.9000000e+01, -9.2078707e-01, -1.6406249e-08])
         e = forcefields.lennard_jones([100.0, 300.0])
         assert_almost_equal(e.energy([100.0, 200.0, 500.0]), [0, 0, 0])
         assert_almost_equal(e.force([100.0, 200.0, 500.0]), [0, 0, 0])
@@ -58,7 +62,8 @@ class TestForcefields(unittest.TestCase):
         assert_almost_equal(c.force([2.0, 4.0]), [0.0884603, 0.0179494])
         d = forcefields.buckingham([0.01, 0.01, 0.01])
         assert_almost_equal(d.energy([2.0, 4.0, 5.0]), [0.0096457, 0.0096055, 0.0095117])
-        assert_almost_equal(d.force([2.0, 4.0, 5.0]), [-3.7073013e-04,  9.2416835e-05,  9.4354942e-05])
+        assert_almost_equal(d.force([2.0, 4.0, 5.0]),
+                            [-3.7073013e-04,  9.2416835e-05,  9.4354942e-05])
         with self.assertRaises(IndexError):
             forcefields.buckingham([1.0, 1.0])
 
@@ -103,7 +108,7 @@ class TestForcefields(unittest.TestCase):
     def test_buckingham_diameter_rejects_constants_without_a_well(self):
         a = forcefields.buckingham([1.0, 1.0, 1.0])
         with self.assertRaises(ValueError):
-            a.diameter
+            _ = a.diameter
 
 if __name__ == '__main__':
     unittest.main(exit=False)

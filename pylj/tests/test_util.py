@@ -1,8 +1,10 @@
+import unittest
+
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
-from pylj import util
+
 from pylj import forcefields as ff
-import unittest
+from pylj import util
 
 
 class TestUtil(unittest.TestCase):

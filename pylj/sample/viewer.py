@@ -35,7 +35,7 @@ class Viewer:
         self.fig, axes, self.handle = environment(len(self.panes), size)
         self.axes: list[Axes] = [axes] if isinstance(axes, Axes) else list(axes.ravel())
         try:
-            for pane, ax in zip(self.panes, self.axes):
+            for pane, ax in zip(self.panes, self.axes, strict=True):
                 pane.setup(ax, system)
         except Exception:
             plt.close(self.fig)
@@ -50,7 +50,7 @@ class Viewer:
         Args:
             system: The simulation to visualise.
         """
-        for pane, ax in zip(self.panes, self.axes):
+        for pane, ax in zip(self.panes, self.axes, strict=True):
             pane.update(ax, system)
         self.handle.update(self.fig)
 
@@ -62,7 +62,7 @@ class Viewer:
         """
         if not any(pane.keeps_history for pane in self.panes):
             raise ValueError("None of this viewer's panes keeps a history to average")
-        for pane, ax in zip(self.panes, self.axes):
+        for pane, ax in zip(self.panes, self.axes, strict=True):
             pane.average(ax)
         self.handle.update(self.fig)
 

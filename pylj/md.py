@@ -1,6 +1,7 @@
 import numpy as np
-from pylj import pairwise as heavy
+
 from pylj import forcefields as ff
+from pylj import pairwise as heavy
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
@@ -11,7 +12,7 @@ def initialise(
     init_conf,
     timestep_length=1e-14,
     mass=39.948,
-    constants=[[1.363e-134, 9.273e-78]],
+    constants=None,
     forcefield=ff.lennard_jones,
     diameter=None
 ):
@@ -51,6 +52,8 @@ def initialise(
     """
     from pylj import util
 
+    if constants is None:
+        constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
         number_of_particles,
         temperature,

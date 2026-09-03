@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class lennard_jones_sigma_epsilon(object):
+class lennard_jones_sigma_epsilon:
     r"""Calculate the energy or force for a pair of particles using the
     Lennard-Jones (sigma/epsilon variant) forcefield.
 
@@ -131,7 +131,7 @@ class lennard_jones(lennard_jones_sigma_epsilon):
         self.b = 4 * self.epsilon * (self.sigma**6)
 
 
-class buckingham(object):
+class buckingham:
     r""" Calculate the energy or force for a pair of particles using the
     Buckingham forcefield.
 
@@ -243,7 +243,7 @@ class buckingham(object):
         return float(r[well])
 
 
-class square_well(object):
+class square_well:
     r'''Calculate the energy or force for a pair of particles using a
     square well model.
 
@@ -261,7 +261,8 @@ class square_well(object):
             raise IndexError(f'There should be three constants per set, not {len(constants)}')
         self.epsilon = constants[0]
         self.sigma = constants[1]
-        self.lamda = constants[2] #Spelling as lamda not lambda to avoid calling python lambda function
+        # Spelling as lamda not lambda to avoid calling the python lambda keyword.
+        self.lamda = constants[2]
         self.max_val = max_val
 
     def energy(self, dr):

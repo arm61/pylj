@@ -1,9 +1,11 @@
-from numpy.testing import assert_almost_equal, assert_equal
-from pylj import md
-from pylj import forcefields as ff
-from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-import numpy as np
 import unittest
+
+import numpy as np
+from numpy.testing import assert_almost_equal, assert_equal
+
+from pylj import forcefields as ff
+from pylj import md
+from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
 class TestMd(unittest.TestCase):

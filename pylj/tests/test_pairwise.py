@@ -1,8 +1,10 @@
-from numpy.testing import assert_almost_equal
-from pylj import pairwise, util
-from pylj import forcefields as ff
 import unittest
+
 import numpy as np
+from numpy.testing import assert_almost_equal
+
+from pylj import forcefields as ff
+from pylj import pairwise, util
 
 
 class TestPairwise(unittest.TestCase):
@@ -96,14 +98,16 @@ class TestPairwise(unittest.TestCase):
         # the distances come back. Unlike pairs mix the two sets of constants,
         # as compute_force does.
         expected = []
-        for distance, pair in zip(distances, [(0, 1), (0, 0), (1, 0)]):
+        for distance, pair in zip(distances, [(0, 1), (0, 0), (1, 0)], strict=True):
             forcefield = ff.lennard_jones(constants[pair[0]])
             if pair[0] != pair[1]:
                 forcefield.mixing(constants[pair[1]])
             expected.append(forcefield.energy(distance))
         assert_almost_equal(np.array(energies) * 1e20, np.array(expected) * 1e20)
         assert_almost_equal(forces, [-9.6342138e-11, -5.1698213e-12, -6.1773405e-12])
-        assert_almost_equal(particles["yacceleration"], [7.6421357e+13,  2.07196175e+13,-9.71409740e+13], decimal=-7)
+        assert_almost_equal(particles["yacceleration"],
+                            [7.6421357e+13, 2.07196175e+13, -9.71409740e+13],
+                            decimal=-7)
         # The accelerations go as 1 / mass, so they shift by 42 parts in 1e9
         # with the CODATA atomic mass unit, from 4.4171075 and -4.7771464.
         assert_almost_equal(particles["xacceleration"][0] / 1e14, 4.4171073)

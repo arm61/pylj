@@ -1,9 +1,10 @@
-from __future__ import division
+import webbrowser
 from collections.abc import Iterable
 from typing import Literal
+
 import numpy as np
-import webbrowser
-from pylj import md, mc
+
+from pylj import mc, md
 
 
 class System:
@@ -81,18 +82,18 @@ class System:
             self.box_length = box_length * 1e-10
         else:
             raise AttributeError(
-                "With a box length of {} the particles are "
+                f"With a box length of {box_length} the particles are "
                 "probably too small to be seen in the "
                 "viewer. Try something (much) less than "
-                "600.".format(box_length)
+                "600."
             )
         if box_length >= 4:
             self.box_length = box_length * 1e-10
         else:
             raise AttributeError(
-                "With a box length of {} the cell is too "
+                f"With a box length of {box_length} the cell is too "
                 "small to really hold more than one "
-                "particle.".format(box_length)
+                "particle."
             )
         self.timestep_length = timestep_length
         self.particles: np.ndarray = np.zeros(self.number_of_particles, dtype=particle_dt())
@@ -103,9 +104,9 @@ class System:
             self.random()
         else:
             raise NotImplementedError(
-                "The initial configuration type {} is "
+                f"The initial configuration type {init_conf} is "
                 "not recognised. Available options are: "
-                "square or random".format(init_conf)
+                "square or random"
             )
         if box_length > 30:
             self.cut_off = cut_off * 1e-10
@@ -315,7 +316,7 @@ def __version__():  # pragma: no cover
     major = 1
     minor = 4
     micro = 1
-    print("pylj-{:d}.{:d}.{:d}".format(major, minor, micro))
+    print(f"pylj-{major:d}.{minor:d}.{micro:d}")
 
 
 def particle_dt():

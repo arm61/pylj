@@ -17,7 +17,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e . pytest pytest-cov
+        pip install -e . pytest pytest-cov ruff mypy
+    - name: Lint with ruff
+      run: |
+        ruff check pylj
+    - name: Type check with mypy
+      run: |
+        mypy pylj
     - name: Generate coverage report
       run: |
         pytest --cov-report xml --cov=.

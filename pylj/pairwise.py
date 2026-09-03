@@ -1,7 +1,8 @@
-from __future__ import division
 import numpy as np
+
 from pylj import pairwise as heavy
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+
 
 #Jit tag here had to be removed
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):

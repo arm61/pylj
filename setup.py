@@ -25,7 +25,7 @@ info = {
         'author_email': 'arm61@bath.ac.uk',
         'packages': packages,
         'include_package_data': True,
-        'setup_requires': ['jupyter', 'numpy', 'scipy', 'matplotlib'],
+        'package_data': {'pylj': ['py.typed']},
         'install_requires': ['jupyter', 'numpy', 'scipy', 'matplotlib'],
         'python_requires': '>=3.11',
         'version': VERSION,

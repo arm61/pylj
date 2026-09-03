@@ -146,7 +146,7 @@ class CellPane(Pane):
         types = np.asarray(system.particles["types"])
         ax.apply_aspect()
         axes_width_points = ax.get_window_extent().width / ax.figure.dpi * 72
-        for index, (line, diameter) in enumerate(zip(ax.lines, system.diameters)):
+        for index, (line, diameter) in enumerate(zip(ax.lines, system.diameters, strict=True)):
             mask = types == str(index)
             line.set_data(
                 system.particles["xposition"][mask], system.particles["yposition"][mask]

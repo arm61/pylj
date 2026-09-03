@@ -1,4 +1,5 @@
 import numpy as np
+
 from pylj import forcefields as ff
 from pylj.constants import BOLTZMANN
 
@@ -9,7 +10,7 @@ def initialise(
     box_length,
     init_conf,
     mass=39.948,
-    constants=[[1.363e-134, 9.273e-78]],
+    constants=None,
     forcefield=ff.lennard_jones,
     diameter=None
 ):
@@ -46,6 +47,8 @@ def initialise(
     """
     from pylj import util
 
+    if constants is None:
+        constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
         number_of_particles,
         temperature,
@@ -174,7 +177,7 @@ def reject(position_store, particles, random_particle):
     return particles
 
 
-def metropolis(temperature, old_energy, new_energy, n=np.random.rand()):
+def metropolis(temperature, old_energy, new_energy, n=None):
     """Determines if the move is accepted or rejected based on the metropolis
     condition.
 
@@ -195,6 +198,8 @@ def metropolis(temperature, old_energy, new_energy, n=np.random.rand()):
     bool
         True if the move should be accepted.
     """
+    if n is None:
+        n = np.random.rand()
     beta = 1 / (BOLTZMANN * temperature)
     energy_difference = new_energy - old_energy
     metropolis_factor = np.exp(-beta * energy_difference)

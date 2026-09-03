@@ -1,7 +1,9 @@
-from numpy.testing import assert_almost_equal, assert_equal
-from pylj import mc
-from pylj import forcefields as ff
 import unittest
+
+from numpy.testing import assert_almost_equal, assert_equal
+
+from pylj import forcefields as ff
+from pylj import mc
 
 
 class TestMc(unittest.TestCase):
