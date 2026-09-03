@@ -457,6 +457,16 @@ def test_rdf_pane_on_a_single_particle_draws_nothing(drawing_display):
     assert len(viewer.axes[1].lines[0].get_ydata()) == 0
 
 
+def test_average_with_no_history_leaves_the_line_alone(drawing_display):
+    system = md.initialise(1, 100, 20, "square")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        viewer = RDF(system)
+        viewer.average()
+    assert len(viewer.axes[1].lines[0].get_xdata()) == 0
+    assert len(viewer.axes[1].lines[0].get_ydata()) == 0
+
+
 def test_energy_viewer_on_mc_system(drawing_display):
     system = sampled_mc_system(steps=3)
     viewer = Energy(system)

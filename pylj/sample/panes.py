@@ -124,6 +124,9 @@ class _HistoryPane(Pane):
     def average(self, ax: Axes) -> None:
         """Replace the drawn curve with the mean of every update so far.
 
+        Subclasses leave the curve alone when ``history`` is empty, as there
+        is then nothing to average.
+
         Args:
             ax: Axes this pane was set up in.
         """
@@ -284,7 +287,12 @@ class RDFPane(_HistoryPane):
         _fit_axes(ax, r, gr, y_from_zero=True)
 
     def average(self, ax: Axes) -> None:
-        """Replace the current g(r) with the mean of every update so far."""
+        """Replace the current g(r) with the mean of every update so far.
+
+        Leaves the curve alone when nothing has been drawn to average.
+        """
+        if not self.history:
+            return
         gr = np.mean(self.history, axis=0)
         ax.lines[0].set_data(self.r, gr)
         _fit_axes(ax, self.r, gr, y_from_zero=True)
@@ -331,7 +339,12 @@ class ScatteringPane(_HistoryPane):
         _fit_axes(ax, q, intensity, x_from_zero=False, y_from_zero=True)
 
     def average(self, ax: Axes) -> None:
-        """Replace the current I(q) with the mean of every update so far."""
+        """Replace the current I(q) with the mean of every update so far.
+
+        Leaves the curve alone when nothing has been drawn to average.
+        """
+        if not self.history:
+            return
         intensity = np.mean(self.history, axis=0)
         ax.lines[0].set_data(self.q, intensity)
         _fit_axes(ax, self.q, intensity, x_from_zero=False, y_from_zero=True)
