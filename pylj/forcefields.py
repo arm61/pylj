@@ -1,4 +1,31 @@
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+
+def _finite_or_zero(x: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Replace non-finite values (from division at r = 0) with zero.
+
+    Args:
+        x: The values to clean, typically an energy or force array.
+
+    Returns:
+        The array with any nan or inf entries replaced by 0.0.
+    """
+    return np.where(np.isfinite(x), x, 0.0)
+
+
+def _scalar_or_array(x: NDArray[np.float64]) -> float | NDArray[np.float64]:
+    """Return a Python float for a 0-d array, otherwise the array itself.
+
+    Args:
+        x: The array to convert.
+
+    Returns:
+        A float when `x` is 0-d, otherwise `x` unchanged.
+    """
+    if x.ndim == 0:
+        return float(x)
+    return x
 
 
 class lennard_jones_sigma_epsilon:
@@ -19,7 +46,7 @@ class lennard_jones_sigma_epsilon:
         self.sigma = constants[0]
         self.epsilon = constants[1]
 
-    def energy(self, dr):
+    def energy(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r"""Calculate the energy for a pair of particles using the
         Lennard-Jones (sigma/epsilon variant) forcefield.
 
@@ -28,18 +55,21 @@ class lennard_jones_sigma_epsilon:
 
         Parameters
         ----------
-        dr (float): The distance between particles.
- 
+        dr: float, array_like
+            Separation between the particles, in metres; a float or an array.
+
         Returns
         -------
         float: array_like
-        The potential energy between the particles.
+            The pair energy (or force), as a float for scalar input and an array otherwise.
         """
-        self.energy = 4 * self.epsilon * np.power(self.sigma, 12) * np.power(dr, -12) - (
-                        4 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -6)) 
-        return self.energy 
-    
-    def force(self, dr):
+        dr = np.asarray(dr, dtype=float)
+        energy = 4 * self.epsilon * np.power(self.sigma, 12) * np.power(dr, -12) - (
+                        4 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -6))
+        energy = _finite_or_zero(energy)
+        return _scalar_or_array(energy)
+
+    def force(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r"""Calculate the force for a pair of particles using the
         Lennard-Jones (sigma/epsilon variant) forcefield.
 
@@ -48,16 +78,19 @@ class lennard_jones_sigma_epsilon:
 
         Parameters
         ----------
-        dr (float): The distance between particles.
- 
+        dr: float, array_like
+            Separation between the particles, in metres; a float or an array.
+
         Returns
         -------
         float: array_like
-        The force between the particles.
+            The pair energy (or force), as a float for scalar input and an array otherwise.
         """
-        self.force = 48 * self.epsilon * np.power(self.sigma, 12) * np.power(
+        dr = np.asarray(dr, dtype=float)
+        force = 48 * self.epsilon * np.power(self.sigma, 12) * np.power(
             dr, -13) - (24 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -7))
-        return self.force
+        force = _finite_or_zero(force)
+        return _scalar_or_array(force)
     
     def mixing(self, constants_2):
         r""" Calculates mixing for two sets of constants
@@ -152,7 +185,7 @@ class buckingham:
         self.b = constants[1]
         self.c = constants[2]
 
-    def energy(self, dr):
+    def energy(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r"""Calculate the energy for a pair of particles using the
         Buckingham forcefield.
 
@@ -161,23 +194,21 @@ class buckingham:
 
         Parameters
         ----------
-        dr (float): The distance between particles.
- 
+        dr: float, array_like
+            Separation between the particles, in metres; a float or an array.
+
         Returns
         -------
         float: array_like
-        The potential energy between the particles.
+            The pair energy (or force), as a float for scalar input and an array otherwise.
         """
+        dr = np.asarray(dr, dtype=float)
         energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
         # Cut out infinite values where r = 0
-        if not isinstance(dr, float):
-            energy = np.array(energy)
-            energy[np.where(energy > 10e300)] = 0
-            energy[np.where(energy < -10e300)] = 0
-        self.energy = energy
-        return self.energy
-    
-    def force(self, dr):
+        energy = _finite_or_zero(energy)
+        return _scalar_or_array(energy)
+
+    def force(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r"""Calculate the force for a pair of particles using the
         Buckingham forcefield.
 
@@ -186,21 +217,19 @@ class buckingham:
 
         Parameters
         ----------
-        dr (float): The distance between particles.
- 
+        dr: float, array_like
+            Separation between the particles, in metres; a float or an array.
+
         Returns
         -------
         float: array_like
-        The force between the particles.
+            The pair energy (or force), as a float for scalar input and an array otherwise.
         """
+        dr = np.asarray(dr, dtype=float)
         force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
         # Cut out infinite values where r = 0
-        if not isinstance(dr, float):
-            force = np.array(force)
-            force[np.where(force > 10e300)] = 0
-            force[np.where(force < -10e300)] = 0
-        self.force = force
-        return self.force
+        force = _finite_or_zero(force)
+        return _scalar_or_array(force)
 
     def mixing(self, constants2):
         r""" Calculates mixing for two sets of constants
@@ -270,7 +299,7 @@ class square_well:
         self.lamda = constants[2]
         self.max_val = max_val
 
-    def energy(self, dr):
+    def energy(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r'''Calculate the energy for a pair of particles using a
         square well model.
 
@@ -283,12 +312,13 @@ class square_well:
 
         Parameters
         ----------
-        dr (float): The distance between particles.
- 
+        dr: float, array_like
+            Separation between the particles, in metres; a float or an array.
+
         Returns
         -------
         float: array_like
-            The potential energy between the particles.
+            The pair energy (or force), as a float for scalar input and an array otherwise.
         '''
 
         dr = np.atleast_1d(np.asarray(dr, dtype=float))
@@ -303,11 +333,8 @@ class square_well:
         E[np.where(a & b)] = -self.epsilon
 
         if len(E) == 1:
-            self.energy = float(E[0])
-        else:
-            self.energy = np.array(E, dtype='float')
-
-        return self.energy
+            return float(E[0])
+        return np.array(E, dtype='float')
 
     @property
     def diameter(self) -> float:

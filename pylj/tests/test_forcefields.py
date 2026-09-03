@@ -121,5 +121,120 @@ class TestForcefields(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = a.diameter
 
+    def test_lennard_jones_energy_and_force_are_repeatable(self):
+        a = forcefields.lennard_jones([1.0, 1.0])
+        assert_almost_equal(a.energy(2.0), a.energy(2.0))
+        assert_almost_equal(a.force(2.0), a.force(2.0))
+
+    def test_lennard_jones_sigma_epsilon_energy_and_force_are_repeatable(self):
+        a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])
+        assert_almost_equal(a.energy(2.0), a.energy(2.0))
+        assert_almost_equal(a.force(2.0), a.force(2.0))
+
+    def test_buckingham_energy_and_force_are_repeatable(self):
+        a = forcefields.buckingham([1.0, 1.0, 1.0])
+        assert_almost_equal(a.energy(2.0), a.energy(2.0))
+        assert_almost_equal(a.force(2.0), a.force(2.0))
+
+    def test_square_well_energy_is_repeatable(self):
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(a.energy(2.0), a.energy(2.0))
+
+    def test_lennard_jones_accepts_float_numpy_scalar_list_and_array(self):
+        a = forcefields.lennard_jones([1.0, 1.0])
+        e_float = a.energy(2.0)
+        e_np_scalar = a.energy(np.float64(2.0))
+        e_list = a.energy([2.0])
+        e_array = a.energy(np.array([2.0]))
+        self.assertIsInstance(e_float, float)
+        self.assertIsInstance(e_np_scalar, float)
+        self.assertEqual(np.shape(e_list), (1,))
+        self.assertEqual(np.shape(e_array), (1,))
+        assert_almost_equal(e_float, e_np_scalar)
+        assert_almost_equal(e_float, e_list[0])
+        assert_almost_equal(e_float, e_array[0])
+
+        f_float = a.force(2.0)
+        f_np_scalar = a.force(np.float64(2.0))
+        f_list = a.force([2.0])
+        f_array = a.force(np.array([2.0]))
+        self.assertIsInstance(f_float, float)
+        self.assertIsInstance(f_np_scalar, float)
+        self.assertEqual(np.shape(f_list), (1,))
+        self.assertEqual(np.shape(f_array), (1,))
+        assert_almost_equal(f_float, f_np_scalar)
+        assert_almost_equal(f_float, f_list[0])
+        assert_almost_equal(f_float, f_array[0])
+
+    def test_lennard_jones_sigma_epsilon_accepts_float_numpy_scalar_list_and_array(self):
+        a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])
+        e_float = a.energy(2.0)
+        e_np_scalar = a.energy(np.float64(2.0))
+        e_list = a.energy([2.0])
+        e_array = a.energy(np.array([2.0]))
+        self.assertIsInstance(e_float, float)
+        self.assertIsInstance(e_np_scalar, float)
+        self.assertEqual(np.shape(e_list), (1,))
+        self.assertEqual(np.shape(e_array), (1,))
+        assert_almost_equal(e_float, e_np_scalar)
+        assert_almost_equal(e_float, e_list[0])
+        assert_almost_equal(e_float, e_array[0])
+
+        f_float = a.force(2.0)
+        f_np_scalar = a.force(np.float64(2.0))
+        f_list = a.force([2.0])
+        f_array = a.force(np.array([2.0]))
+        self.assertIsInstance(f_float, float)
+        self.assertIsInstance(f_np_scalar, float)
+        self.assertEqual(np.shape(f_list), (1,))
+        self.assertEqual(np.shape(f_array), (1,))
+        assert_almost_equal(f_float, f_np_scalar)
+        assert_almost_equal(f_float, f_list[0])
+        assert_almost_equal(f_float, f_array[0])
+
+    def test_buckingham_accepts_float_numpy_scalar_list_and_array(self):
+        a = forcefields.buckingham([1.0, 1.0, 1.0])
+        e_float = a.energy(2.0)
+        e_np_scalar = a.energy(np.float64(2.0))
+        e_list = a.energy([2.0])
+        e_array = a.energy(np.array([2.0]))
+        self.assertIsInstance(e_float, float)
+        self.assertIsInstance(e_np_scalar, float)
+        self.assertEqual(np.shape(e_list), (1,))
+        self.assertEqual(np.shape(e_array), (1,))
+        assert_almost_equal(e_float, e_np_scalar)
+        assert_almost_equal(e_float, e_list[0])
+        assert_almost_equal(e_float, e_array[0])
+
+        f_float = a.force(2.0)
+        f_np_scalar = a.force(np.float64(2.0))
+        f_list = a.force([2.0])
+        f_array = a.force(np.array([2.0]))
+        self.assertIsInstance(f_float, float)
+        self.assertIsInstance(f_np_scalar, float)
+        self.assertEqual(np.shape(f_list), (1,))
+        self.assertEqual(np.shape(f_array), (1,))
+        assert_almost_equal(f_float, f_np_scalar)
+        assert_almost_equal(f_float, f_list[0])
+        assert_almost_equal(f_float, f_array[0])
+
+    def test_square_well_energy_accepts_float_numpy_scalar_list_and_array(self):
+        # square_well keeps its existing rule: a single value always comes
+        # back as a float, regardless of whether the input was scalar or a
+        # length-one list/array.
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        e_float = a.energy(2.0)
+        e_np_scalar = a.energy(np.float64(2.0))
+        e_list = a.energy([2.0])
+        e_array = a.energy(np.array([2.0]))
+        self.assertIsInstance(e_float, float)
+        self.assertIsInstance(e_np_scalar, float)
+        self.assertIsInstance(e_list, float)
+        self.assertIsInstance(e_array, float)
+        assert_almost_equal(e_float, e_np_scalar)
+        assert_almost_equal(e_float, e_list)
+        assert_almost_equal(e_float, e_array)
+
+
 if __name__ == '__main__':
     unittest.main(exit=False)

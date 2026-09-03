@@ -39,6 +39,8 @@ All notable changes to pylj are recorded here. The format follows
 - Random initial configurations no longer overlap: particles are placed at least their repulsive-core separation apart (#82).
 - The square lattice refuses a spacing below the repulsive core, with the largest count or the smallest box that fits, rounded up so the suggested box is accepted, in the message (#82).
 - A forcefield whose `energy` does not return one value per separation, whose pair energy is positive at every grid point (suggesting its constants are in the wrong units) is refused with a clear message.
+- `energy` and `force` on the forcefields no longer store their result on `self`, overwriting the bound method and breaking a second call on the same instance (#79).
+- `buckingham.energy` and `buckingham.force` raised under NumPy 2 when `dr` was a NumPy scalar rather than a Python float (#83).
 
 ### Removed
 
