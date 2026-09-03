@@ -24,7 +24,7 @@ class lennard_jones_sigma_epsilon:
         Lennard-Jones (sigma/epsilon variant) forcefield.
 
         .. math::
-            E = \frac{4e*a^{12}}{dr^{12}} - \frac{4e*a^{6}}{dr^6}
+            E = \frac{4 \epsilon \sigma^{12}}{r^{12}} - \frac{4 \epsilon \sigma^{6}}{r^{6}}
 
         Parameters
         ----------
@@ -44,7 +44,7 @@ class lennard_jones_sigma_epsilon:
         Lennard-Jones (sigma/epsilon variant) forcefield.
 
         .. math::
-            f = \frac{48e*a^{12}}{dr^{13}} - \frac{24e*a^{6}}{dr^7}
+            f = \frac{48 \epsilon \sigma^{12}}{r^{13}} - \frac{24 \epsilon \sigma^{6}}{r^{7}}
 
         Parameters
         ----------
@@ -62,9 +62,10 @@ class lennard_jones_sigma_epsilon:
     def mixing(self, constants_2):
         r""" Calculates mixing for two sets of constants
         
-        ..math::
+        .. math::
             \sigma_{12} = \frac{\sigma_1 + \sigma_2}{2}
-            \epsilon{12} = \sqrt{\epsilon_1 * \epsilon_2}
+
+            \epsilon_{12} = \sqrt{\epsilon_1 \epsilon_2}
         
         Parameters:
         ----------
@@ -89,9 +90,10 @@ class lennard_jones(lennard_jones_sigma_epsilon):
     r"""Converts a/b variant values to sigma/epsilon variant
     then maps to lennard_jones_sigma_epsilon class
 
-    ..math::
-        \sigma = \frac{a}{b}^(\frac{1}{6})
-        \epsilon = \frac{b^2}{4*a}
+    .. math::
+        \sigma = \left(\frac{A}{B}\right)^{1/6}
+
+        \epsilon = \frac{B^{2}}{4A}
 
     Parameters
     ----------
@@ -113,9 +115,10 @@ class lennard_jones(lennard_jones_sigma_epsilon):
         for use in mixing method. Then converts changed self sigma/epsilon
         values back to a/b
 
-        ..math::
-            a = 4*\epsilon*(\sigma^12)
-            b = 4*\epsilon*(\sigma^6)
+        .. math::
+            A = 4 \epsilon \sigma^{12}
+
+            B = 4 \epsilon \sigma^{6}
 
         Parameters
         ----------
@@ -154,7 +157,7 @@ class buckingham:
         Buckingham forcefield.
 
         .. math::
-            E = Ae^{(-Bdr)} - \frac{C}{dr^6}
+            E = A e^{-Br} - \frac{C}{r^{6}}
 
         Parameters
         ----------
@@ -179,7 +182,7 @@ class buckingham:
         Buckingham forcefield.
 
         .. math::
-            f = ABe^{(-Bdr)} - \frac{6C}{dr^7}
+            f = A B e^{-Br} - \frac{6C}{r^{7}}
 
         Parameters
         ----------
@@ -202,10 +205,12 @@ class buckingham:
     def mixing(self, constants2):
         r""" Calculates mixing for two sets of constants
         
-        ..math::
-            a_{12} = \sqrt{a_1 * a_2}
-            b_{12} = \sqrt{b_1 * b_2}
-            c_{12} = \sqrt{c_1 * c_2}
+        .. math::
+            A_{12} = \sqrt{A_1 A_2}
+
+            B_{12} = \sqrt{B_1 B_2}
+
+            C_{12} = \sqrt{C_1 C_2}
         
         Parameters
         ----------
@@ -270,14 +275,11 @@ class square_well:
         square well model.
 
         .. math::
-            E = {
-            if dr < sigma:
-                E = max_val
-            elif sigma <= dr < lambda * sigma:
-                E = -epsilon
-            elif r >= lambda * sigma:
-                E = 0
-            }
+            E = \begin{cases}
+                E_{\mathrm{max}} & r < \sigma \\
+                -\epsilon & \sigma \le r < \lambda \sigma \\
+                0 & r \ge \lambda \sigma
+            \end{cases}
 
         Parameters
         ----------
@@ -316,13 +318,12 @@ class square_well:
         r'''The force of a pair of particles using a square well model is given by:
 
         .. math::
-        f = {
-        if sigma <= dr < lambda * sigma:
-            f = inf
-        else:
-            f = 0
-        }
+            f = \begin{cases}
+                \infty & r = \sigma \text{ or } r = \lambda \sigma \\
+                0 & \text{otherwise}
+            \end{cases}
 
-        Therefore the force here will always be infinite, and therefore not possible to simulate
+        The force is infinite at the steps and zero elsewhere, so the model
+        cannot be integrated and is for Monte Carlo only.
         '''
         raise ValueError("Force is infinite at sigma <= dr < lambda * sigma")
