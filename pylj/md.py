@@ -372,8 +372,9 @@ def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np
 
     Raises:
         ValueError: If bath_temperature is not positive.
-        ValueError: If the particles have no kinetic energy, so there is no
-            temperature to rescale.
+        ValueError: If the current temperature is zero or not finite, so
+            there is nothing to rescale from: the particles are at rest or
+            the simulation has diverged.
     """
     if not bath_temperature > 0:
         raise ValueError(
@@ -382,7 +383,9 @@ def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np
     current_temperature = calculate_temperature(particles, mass)
     if not current_temperature > 0:
         raise ValueError(
-            "Cannot rescale velocities: the particles have no kinetic energy."
+            "Cannot rescale velocities: the current temperature is "
+            f"{current_temperature}, so the particles are at rest or the "
+            "simulation has diverged."
         )
     scale = np.sqrt(bath_temperature / current_temperature)
     particles["xvelocity"] = particles["xvelocity"] * scale
