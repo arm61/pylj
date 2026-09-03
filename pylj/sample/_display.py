@@ -31,23 +31,19 @@ def _open_display(fig: Figure) -> DisplayHandle:
     """Return a handle that pushes ``fig`` to the notebook, or a no-op handle."""
     if get_ipython() is None:
         return _NullHandle()
-    return display(fig, display_id=True) or _NullHandle()
+    return display(fig, display_id=True)
 
 
-def environment(
-    panes: int, size: str = "medium"
-) -> tuple[Figure, Axes | np.ndarray, DisplayHandle]:
-    """Create the figure grid for a viewer and register it for display.
+def environment(panes: int, size: str = "medium") -> tuple[Figure, Axes | np.ndarray]:
+    """Create the figure grid for a viewer.
 
     Args:
         panes: Number of plots: 1, 2 or 4.
         size: Overall figure size: 'small', 'medium' or 'large'.
 
     Returns:
-        A tuple of the figure, the axes (a single Axes for one pane, a 1-D
-        array for two and a 2-by-2 array for four) and a display handle whose
-        ``update(fig)`` pushes the figure to the notebook. Outside a Jupyter
-        kernel the handle does nothing.
+        A tuple of the figure and its axes: a single Axes for one pane, a 1-D
+        array for two and a 2-by-2 array for four.
 
     Raises:
         ValueError: If ``panes`` or ``size`` is not one of the allowed values.
@@ -63,5 +59,4 @@ def environment(
         fig, axes = plt.subplots(2, 2, figsize=(2 * width, 2 * width))
     else:
         raise ValueError(f"panes must be 1, 2 or 4, not {panes!r}")
-    handle = _open_display(fig)
-    return fig, axes, handle
+    return fig, axes

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy.typing as npt
 from matplotlib.axes import Axes
 
+from pylj.sample import _display
 from pylj.sample._display import environment
 from pylj.sample.panes import (
     CellPane,
@@ -32,16 +33,18 @@ class Viewer:
 
     def __init__(self, system: System, panes: list[Pane], size: str = "medium") -> None:
         self.panes = list(panes)
-        self.fig, axes, self.handle = environment(len(self.panes), size)
+        self.fig, axes = environment(len(self.panes), size)
         self.axes: list[Axes] = [axes] if isinstance(axes, Axes) else list(axes.ravel())
         try:
             for pane, ax in zip(self.panes, self.axes, strict=True):
                 pane.setup(ax, system)
-        except Exception:
+            self.fig.tight_layout()
+            for pane, ax in zip(self.panes, self.axes, strict=True):
+                pane.update(ax, system)
+        except BaseException:
             plt.close(self.fig)
             raise
-        self.fig.tight_layout()
-        self.update(system)
+        self.handle = _display._open_display(self.fig)
         plt.close(self.fig)
 
     def update(self, system: System) -> None:

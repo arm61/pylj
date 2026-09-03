@@ -16,6 +16,7 @@ from pylj.sample import (
     MaxBolt,
     Phase,
     Scattering,
+    Viewer,
     environment,
 )
 from pylj.sample.panes import (
@@ -88,29 +89,22 @@ def test_environment_rejects_unknown_size():
 
 
 @pytest.mark.parametrize("panes, shape", [(1, ()), (2, (2,)), (4, (2, 2))])
-def test_environment_axes_shape(drawing_display, panes, shape):
-    fig, axes, handle = environment(panes)
+def test_environment_axes_shape(panes, shape):
+    fig, axes = environment(panes)
     assert np.shape(axes) == shape
     plt.close(fig)
 
 
-def test_environment_without_kernel(capsys):
-    fig, axes, handle = environment(1)
-    handle.update(fig)
-    assert capsys.readouterr().out == ""
-    plt.close(fig)
-
-
 @pytest.mark.parametrize("size, width", [("small", 2.0), ("medium", 4.0), ("large", 8.0)])
-def test_environment_figure_size(drawing_display, size, width):
-    fig, axes, handle = environment(1, size=size)
+def test_environment_figure_size(size, width):
+    fig, axes = environment(1, size=size)
     assert fig.get_size_inches()[0] == width
     plt.close(fig)
 
 
-def test_cell_pane_draws_each_type_separately(drawing_display):
+def test_cell_pane_draws_each_type_separately():
     system = md.initialise(4, 100, 20, "square", constants=TWO_TYPES)
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = CellPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -121,9 +115,9 @@ def test_cell_pane_draws_each_type_separately(drawing_display):
 
 
 @pytest.mark.parametrize("box_length", [20, 40])
-def test_cell_pane_marker_matches_particle_diameter(drawing_display, box_length):
+def test_cell_pane_marker_matches_particle_diameter(box_length):
     system = md.initialise(4, 100, box_length, "square", diameter=4.0)
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = CellPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -140,9 +134,9 @@ def test_cell_pane_marker_matches_particle_diameter(drawing_display, box_length)
 
 
 @pytest.mark.parametrize("pane_cls", list(SERIES_PANES) + [EnergyPane])
-def test_time_panes_handle_empty_and_sparse_samples(drawing_display, pane_cls):
+def test_time_panes_handle_empty_and_sparse_samples(pane_cls):
     system = md.initialise(4, 100, 20, "square")
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = pane_cls()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -161,9 +155,9 @@ def test_time_panes_handle_empty_and_sparse_samples(drawing_display, pane_cls):
     plt.close(fig)
 
 
-def test_energy_pane_md_includes_kinetic_energy(drawing_display):
+def test_energy_pane_md_includes_kinetic_energy():
     system = sampled_md_system(steps=3, every=1)
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = EnergyPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -179,9 +173,9 @@ def test_energy_pane_md_includes_kinetic_energy(drawing_display):
     plt.close(fig)
 
 
-def test_energy_pane_mc_plots_against_step(drawing_display):
+def test_energy_pane_mc_plots_against_step():
     system = sampled_mc_system(steps=3)
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = EnergyPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -191,14 +185,14 @@ def test_energy_pane_mc_plots_against_step(drawing_display):
     plt.close(fig)
 
 
-def test_rdf_pane_normalisation_is_unity_for_random_positions(drawing_display):
+def test_rdf_pane_normalisation_is_unity_for_random_positions():
     state = np.random.get_state()
     try:
         np.random.seed(1)
         system = md.initialise(400, 100, 100, "random")
     finally:
         np.random.set_state(state)
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = RDFPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -207,8 +201,8 @@ def test_rdf_pane_normalisation_is_unity_for_random_positions(drawing_display):
     plt.close(fig)
 
 
-def test_rdf_pane_average_is_mean_of_updates(drawing_display):
-    fig, ax, handle = environment(1)
+def test_rdf_pane_average_is_mean_of_updates():
+    fig, ax = environment(1)
     pane = RDFPane()
     system = sampled_md_system(steps=1, every=1)
     pane.setup(ax, system)
@@ -222,9 +216,9 @@ def test_rdf_pane_average_is_mean_of_updates(drawing_display):
     plt.close(fig)
 
 
-def test_rdf_pane_x_values_are_the_bin_centres(drawing_display):
+def test_rdf_pane_x_values_are_the_bin_centres():
     system = md.initialise(4, 100, 20, "square")
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = RDFPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -236,8 +230,8 @@ def test_rdf_pane_x_values_are_the_bin_centres(drawing_display):
     plt.close(fig)
 
 
-def test_scattering_pane_average_is_mean_of_updates(drawing_display):
-    fig, ax, handle = environment(1)
+def test_scattering_pane_average_is_mean_of_updates():
+    fig, ax = environment(1)
     pane = ScatteringPane()
     system = sampled_md_system(steps=1, every=1)
     pane.setup(ax, system)
@@ -251,9 +245,9 @@ def test_scattering_pane_average_is_mean_of_updates(drawing_display):
     plt.close(fig)
 
 
-def test_scattering_pane_is_finite_and_non_negative(drawing_display):
+def test_scattering_pane_is_finite_and_non_negative():
     system = sampled_md_system(steps=1, every=1)
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = ScatteringPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -263,9 +257,9 @@ def test_scattering_pane_is_finite_and_non_negative(drawing_display):
     plt.close(fig)
 
 
-def test_scattering_pane_matches_direct_debye_sum(drawing_display):
+def test_scattering_pane_matches_direct_debye_sum():
     system = md.initialise(4, 100, 20, "square")
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = ScatteringPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -278,9 +272,9 @@ def test_scattering_pane_matches_direct_debye_sum(drawing_display):
     plt.close(fig)
 
 
-def test_maxwell_boltzmann_pane_accumulates_speeds(drawing_display):
+def test_maxwell_boltzmann_pane_accumulates_speeds():
     system = md.initialise(4, 100, 20, "square")
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = MaxwellBoltzmannPane()
     pane.setup(ax, system)
 
@@ -302,11 +296,11 @@ def test_maxwell_boltzmann_pane_accumulates_speeds(drawing_display):
     plt.close(fig)
 
 
-def test_maxwell_boltzmann_pane_draws_a_post_step_histogram(drawing_display):
+def test_maxwell_boltzmann_pane_draws_a_post_step_histogram():
     system = md.initialise(4, 100, 20, "square")
     system.particles["xvelocity"] = 100.0
     system.particles["yvelocity"] = 0.0
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = MaxwellBoltzmannPane()
     pane.setup(ax, system)
     pane.update(ax, system)
@@ -317,9 +311,9 @@ def test_maxwell_boltzmann_pane_draws_a_post_step_histogram(drawing_display):
     plt.close(fig)
 
 
-def test_custom_pane_plots_supplied_data(drawing_display):
+def test_custom_pane_plots_supplied_data():
     system = md.initialise(4, 100, 20, "square")
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = CustomPane("x label", "y label")
     pane.setup(ax, system)
     pane.set_data([0, 1, 2], [1, 4, 9])
@@ -329,15 +323,15 @@ def test_custom_pane_plots_supplied_data(drawing_display):
     plt.close(fig)
 
 
-def test_custom_pane_rejects_mismatched_data(drawing_display):
+def test_custom_pane_rejects_mismatched_data():
     pane = CustomPane("x label", "y label")
     with pytest.raises(ValueError, match=r"\(2, 2\) and \(4,\)"):
         pane.set_data([[0, 1], [2, 3]], [1, 4, 9, 16])
 
 
-def test_custom_pane_takes_scalar_data(drawing_display):
+def test_custom_pane_takes_scalar_data():
     system = md.initialise(4, 100, 20, "square")
-    fig, ax, handle = environment(1)
+    fig, ax = environment(1)
     pane = CustomPane("x label", "y label")
     pane.setup(ax, system)
     pane.set_data(1.0, 2.0)
@@ -348,7 +342,7 @@ def test_custom_pane_takes_scalar_data(drawing_display):
     plt.close(fig)
 
 
-def test_custom_pane_rejects_non_finite_data(drawing_display):
+def test_custom_pane_rejects_non_finite_data():
     pane = CustomPane("x label", "y label")
     with pytest.raises(ValueError, match="finite"):
         pane.set_data([0, 1, 2], [1, 4, np.nan])
@@ -357,7 +351,7 @@ def test_custom_pane_rejects_non_finite_data(drawing_display):
 @pytest.mark.parametrize("viewer_cls", NAMED_VIEWERS)
 def test_named_viewer_constructs_before_first_sample(drawing_display, viewer_cls):
     viewer_cls(md.initialise(4, 100, 20, "square"))
-    assert drawing_display[0].updates == 1
+    assert drawing_display[0].updates == 0
 
 
 @pytest.mark.parametrize("viewer_cls", NAMED_VIEWERS)
@@ -372,7 +366,7 @@ def test_named_viewer_updates_at_any_sampling_cadence(drawing_display, viewer_cl
         if system.step % every == 0:
             system.md_sample()
         viewer.update(system)
-    assert drawing_display[0].updates == 7
+    assert drawing_display[0].updates == 6
 
 
 def test_md_only_viewer_rejects_an_mc_system(drawing_display):
@@ -395,11 +389,24 @@ def test_failed_viewer_setup_closes_its_figure(drawing_display):
     assert plt.get_fignums() == []
 
 
+def test_failed_first_draw_closes_the_figure_without_opening_a_display(drawing_display):
+    class FailingPane(CellPane):
+        def update(self, ax, system):
+            raise RuntimeError("this pane cannot draw")
+
+    plt.close("all")
+    system = md.initialise(4, 100, 20, "square")
+    with pytest.raises(RuntimeError, match="cannot draw"):
+        Viewer(system, [FailingPane()])
+    assert plt.get_fignums() == []
+    assert drawing_display == []
+
+
 def test_energy_viewer_on_mc_system(drawing_display):
     system = sampled_mc_system(steps=3)
     viewer = Energy(system)
     viewer.update(system)
-    assert drawing_display[0].updates == 2
+    assert drawing_display[0].updates == 1
 
 
 def test_rdf_viewer_average_shows_the_mean(drawing_display):
