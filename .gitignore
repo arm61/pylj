@@ -13,6 +13,7 @@ pylj/comp.cpython-37m-darwin.so
 # stay out of the repository; tracked project documents are whitelisted.
 *.md
 !README.md
+!CHANGELOG.md
 !CONTRIBUTING.md
 !CODE_OF_CONDUCT.md
 !PULL_REQUEST_TEMPLATE.md
