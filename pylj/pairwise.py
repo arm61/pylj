@@ -247,34 +247,6 @@ def calculate_pressure(
     return pres
 
 
-def heat_bath(particles, temperature_sample, bath_temp):
-    r"""Rescales the velocities of the particles in the system to control the
-    temperature of the simulation. Thereby allowing for an NVT ensemble. The
-    velocities are rescaled according the following relationship,
-    .. math::
-        v_{\text{new}} = v_{\text{old}} \times
-        \sqrt{\frac{T_{\text{desired}}}{\bar{T}}}
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    temperature_sample: float, array_like
-        The temperature at each timestep in the simulation.
-    bath_temp: float
-        The desired temperature of the simulation.
-
-    Returns
-    -------
-    util.particle_dt, array_like
-        Information about the particles with new, rescaled velocities.
-    """
-    average_temp = np.average(temperature_sample)
-    particles["xvelocity"] = particles["xvelocity"] * np.sqrt(bath_temp / average_temp)
-    particles["yvelocity"] = particles["yvelocity"] * np.sqrt(bath_temp / average_temp)
-    return particles
-
-
 #Jit tag here had to be removed
 def dist(xposition, yposition, box_length, types):
     """Returns the distance array for the set of particles.
