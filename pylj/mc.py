@@ -10,7 +10,8 @@ def initialise(
     init_conf,
     mass=39.948,
     constants=[[1.363e-134, 9.273e-78]],
-    forcefield=ff.lennard_jones
+    forcefield=ff.lennard_jones,
+    diameter=None
 ):
     """Initialise the particle positions (square or random arrangement), zero
     the velocities, and calculate the initial pair energies.
@@ -33,6 +34,10 @@ def initialise(
         The values of the constants for the forcefield used.
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
+    diameter: float or list of float (optional)
+        Drawn diameter of the particles in Angstrom, one value or one per
+        set of constants. Defaults to the separation at the pair-potential
+        minimum of the forcefield.
 
     Returns
     -------
@@ -49,7 +54,8 @@ def initialise(
         forcefield,
         mass,
         simulation="mc",
-        init_conf=init_conf
+        init_conf=init_conf,
+        diameter=diameter
     )
     system.particles["xvelocity"] = 0
     system.particles["yvelocity"] = 0

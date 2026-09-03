@@ -80,5 +80,21 @@ class TestForcefields(unittest.TestCase):
         with self.assertRaises(IndexError):
             g = forcefields.square_well([1.0, 1.0])
 
+    def test_lennard_jones_sigma_epsilon_diameter(self):
+        a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])
+        assert_almost_equal(a.diameter, 2 ** (1 / 6))
+
+    def test_lennard_jones_diameter(self):
+        a = forcefields.lennard_jones([1.363e-134, 9.273e-78])
+        assert_almost_equal(a.diameter * 1e10, 3.78, decimal=2)
+
+    def test_buckingham_diameter_is_at_the_well(self):
+        a = forcefields.buckingham([1.69e-15, 3.66e10, 1.01e-77])
+        assert_almost_equal(a.diameter * 1e10, 3.83, decimal=1)
+
+    def test_square_well_diameter(self):
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(a.diameter, 1.5)
+
 if __name__ == '__main__':
     unittest.main(exit=False)

@@ -114,3 +114,30 @@ class TestUtil(unittest.TestCase):
             util.System(
                 2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="dft"
             )
+
+    def test_system_diameters_default_to_forcefield(self):
+        a = util.System(
+            2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="md"
+        )
+        assert_almost_equal(a.diameters[0] * 1e10, 3.78, decimal=2)
+
+    def test_system_single_diameter_applies_to_every_type(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        a = util.System(
+            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=3.0
+        )
+        assert_almost_equal(a.diameters, [3e-10, 3e-10])
+
+    def test_system_diameter_list_is_per_type(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        a = util.System(
+            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0, 5.0]
+        )
+        assert_almost_equal(a.diameters, [3e-10, 5e-10])
+
+    def test_system_diameter_list_must_match_types(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        with self.assertRaises(ValueError):
+            util.System(
+                2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0]
+            )

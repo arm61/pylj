@@ -1,4 +1,5 @@
 from __future__ import division
+import numbers
 from typing import Literal
 import numpy as np
 import webbrowser
@@ -38,6 +39,10 @@ class System:
         :func:`md.initialise` and :func:`mc.initialise`.
     forcefield: class (optional)
         The particular forcefield to be used to find the energy and forces.
+    diameter: float or list of float (optional)
+        Drawn diameter of the particles in Angstrom, one value or one per
+        set of constants. Defaults to the separation at the pair-potential
+        minimum of the forcefield.
     """
 
     def __init__(
@@ -53,6 +58,7 @@ class System:
         init_conf: str = "square",
         timestep_length: float = 1e-14,
         cut_off: float = 15,
+        diameter: float | list[float] | None = None,
     ):
         if simulation not in ("md", "mc"):
             raise ValueError(f"simulation must be 'md' or 'mc', not {simulation!r}")
@@ -66,8 +72,8 @@ class System:
         self.particle_list = None
         self.long_const = None
         self.types = None
-        self.point_sizes = None
-        self.setup_point_sizes()
+        self.diameters: list[float] = []
+        self.setup_diameters(diameter)
         self.setup_type_identifiers()
         self.setup_types()
         if box_length <= 600:
@@ -188,14 +194,32 @@ class System:
                     i+=1
         self.type_identifiers = type_identifiers
 
-    def setup_point_sizes(self):
-        """Sets point sizes for use in plotting
+    def setup_diameters(self, diameter: float | list[float] | None) -> None:
+        """Set the drawn diameter of each particle type, in metres.
+
+        Args:
+            diameter: Diameter in Angstrom. ``None`` takes the separation at
+                the pair-potential minimum from the forcefield for each set
+                of constants. A single number applies to every type; a list
+                gives one value per set of constants.
+
+        Raises:
+            ValueError: If a list is given whose length differs from the
+                number of sets of constants.
         """
-        point_sizes = []
-        for pair in self.constants:
-            size = self.forcefield(pair).point_size
-            point_sizes.append(size)
-        self.point_sizes = point_sizes
+        if diameter is None:
+            self.diameters = [self.forcefield(c).diameter for c in self.constants]
+            return
+        if isinstance(diameter, numbers.Real):
+            values = [float(diameter)] * len(self.constants)
+        else:
+            values = [float(d) for d in diameter]
+        if len(values) != len(self.constants):
+            raise ValueError(
+                f"{len(values)} diameters were given for {len(self.constants)} "
+                "sets of constants"
+            )
+        self.diameters = [value * 1e-10 for value in values]
 
     def compute_force(self):
         """Maps to the compute_force function in either the comp (if Cython is

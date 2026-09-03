@@ -12,7 +12,8 @@ def initialise(
     timestep_length=1e-14,
     mass=39.948,
     constants=[[1.363e-134, 9.273e-78]],
-    forcefield=ff.lennard_jones
+    forcefield=ff.lennard_jones,
+    diameter=None
 ):
     """Initialise the particle positions (this can be either as a square or
     random arrangement), velocities (based on the temperature defined, and
@@ -38,6 +39,10 @@ def initialise(
         The values of the constants for the forcefield used.
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
+    diameter: float or list of float (optional)
+        Drawn diameter of the particles in Angstrom, one value or one per
+        set of constants. Defaults to the separation at the pair-potential
+        minimum of the forcefield.
 
     Returns
     -------
@@ -55,7 +60,8 @@ def initialise(
         mass,
         simulation="md",
         init_conf=init_conf,
-        timestep_length=timestep_length
+        timestep_length=timestep_length,
+        diameter=diameter
     )
     v = np.random.rand(system.particles.size, 2, 12)
     v = np.sum(v, axis=2) - 6.0

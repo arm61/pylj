@@ -18,8 +18,7 @@ class lennard_jones_sigma_epsilon(object):
         
         self.sigma = constants[0]
         self.epsilon = constants[1]
-        self.point_size = 1.3e10 * (self.sigma*(2**(1/6)))
-    
+
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
         Lennard-Jones (sigma/epsilon variant) forcefield.
@@ -76,6 +75,14 @@ class lennard_jones_sigma_epsilon(object):
         epsilon2 = constants_2[1]
         self.sigma = (self.sigma+sigma2)/2
         self.epsilon = np.sqrt(self.epsilon * epsilon2)
+
+    @property
+    def diameter(self) -> float:
+        """Separation at the minimum of the pair potential, in metres.
+
+        Used as the particle diameter when drawing the simulation cell.
+        """
+        return 2 ** (1 / 6) * self.sigma
 
 
 class lennard_jones(lennard_jones_sigma_epsilon):
@@ -141,8 +148,7 @@ class buckingham(object):
         self.a = constants[0]
         self.b = constants[1]
         self.c = constants[2]
-        self.point_size = 8 # Needs better solution relevant to constants
-    
+
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
         Buckingham forcefield.
@@ -210,6 +216,22 @@ class buckingham(object):
         self.b = np.sqrt(self.b*constants2[1])
         self.c = np.sqrt(self.c*constants2[2])
 
+    @property
+    def diameter(self) -> float:
+        """Separation at the minimum of the pair potential, in metres.
+
+        The Buckingham potential has no closed-form minimum, so it is located
+        numerically on a logarithmic grid between 0.1 and 50 Angstrom. The
+        global maximum on that grid is the repulsive barrier separating the
+        unphysical collapse at small separation from the well; the diameter
+        is the position of the minimum beyond that barrier.
+        """
+        r = np.logspace(-11, np.log10(5e-9), 2000)
+        energy = self.a * np.exp(-self.b * r) - self.c / np.power(r, 6)
+        barrier = int(np.argmax(energy))
+        well = barrier + int(np.argmin(energy[barrier:]))
+        return float(r[well])
+
 
 class square_well(object):
     r'''Calculate the energy or force for a pair of particles using a
@@ -231,7 +253,6 @@ class square_well(object):
         self.sigma = constants[1]
         self.lamda = constants[2] #Spelling as lamda not lambda to avoid calling python lambda function
         self.max_val = max_val
-        self.point_size = 10
 
     def energy(self, dr):
         r'''Calculate the energy for a pair of particles using a
@@ -277,9 +298,14 @@ class square_well(object):
             self.energy = float(E[0])
         else:
             self.energy = np.array(E, dtype='float')
-            
+
         return self.energy
-        
+
+    @property
+    def diameter(self) -> float:
+        """Hard-core diameter sigma, in metres."""
+        return self.sigma
+
     def force(self):
         r'''The force of a pair of particles using a square well model is given by:
 

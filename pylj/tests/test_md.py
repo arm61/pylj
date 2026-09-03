@@ -106,3 +106,7 @@ class TestMd(unittest.TestCase):
         a.particles["yposition"] = [7e-10, 7e-10]
         b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
         assert_almost_equal(b, 10e-20)
+
+    def test_initialise_accepts_diameter(self):
+        a = md.initialise(2, 300, 8, "square", diameter=3.0)
+        assert_almost_equal(a.diameters, [3e-10])
