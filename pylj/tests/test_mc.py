@@ -1,9 +1,11 @@
 import unittest
 
+import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields as ff
 from pylj import mc
+from pylj.constants import BOLTZMANN
 
 
 class TestMc(unittest.TestCase):
@@ -98,3 +100,13 @@ class TestMc(unittest.TestCase):
     def test_metropolis_energy_increase_reject(self):
         a = mc.metropolis(300, 100e-20, 101e-20, n=0.1)
         self.assertFalse(a)
+
+    def test_metropolis_draws_a_new_random_number_on_every_call(self):
+        # An uphill move whose acceptance probability is exactly one half, so
+        # ten calls that each draw afresh give both outcomes; ten calls that
+        # share one draw give ten of the same.
+        energy_difference = BOLTZMANN * 300 * np.log(2)
+        np.random.seed(0)
+        outcomes = [mc.metropolis(300, 0.0, energy_difference) for _ in range(10)]
+        self.assertIn(True, outcomes)
+        self.assertIn(False, outcomes)

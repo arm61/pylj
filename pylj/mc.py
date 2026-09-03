@@ -190,8 +190,9 @@ def metropolis(temperature, old_energy, new_energy, n=None):
     new_energy: float
         The total energy of the simulation in the current configuration.
     n: float, optional
-        The random number against which the Metropolis condition is tested. The
-        default is from a numpy uniform distribution.
+        The random number against which the Metropolis condition is tested. By
+        default a fresh number is drawn from a numpy uniform distribution on
+        every call.
 
     Returns
     -------
