@@ -1,5 +1,7 @@
 """Tests for the visualisation package."""
 
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -30,6 +32,7 @@ from pylj.sample.panes import (
     RDFPane,
     ScatteringPane,
     TemperaturePane,
+    _fit_axes,
 )
 
 NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering]
@@ -99,6 +102,25 @@ def test_environment_axes_shape(panes, shape):
 def test_environment_figure_size(size, width):
     fig, axes = environment(1, size=size)
     assert fig.get_size_inches()[0] == width
+    plt.close(fig)
+
+
+def test_fit_axes_warns_on_non_finite_data_and_leaves_the_limits():
+    fig, ax = environment(1)
+    ax.set_xlim(0, 3)
+    ax.set_ylim(0, 4)
+    with pytest.warns(RuntimeWarning, match="Non-finite"):
+        _fit_axes(ax, [0, 1], [0, np.nan])
+    assert ax.get_xlim() == (0, 3)
+    assert ax.get_ylim() == (0, 4)
+    plt.close(fig)
+
+
+def test_fit_axes_is_silent_on_empty_data():
+    fig, ax = environment(1)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        _fit_axes(ax, [], [])
     plt.close(fig)
 
 

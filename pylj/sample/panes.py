@@ -6,6 +6,8 @@ system into those artists. Panes hold any history they accumulate across
 updates.
 """
 
+import warnings
+
 import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
@@ -33,12 +35,22 @@ def _fit_axes(
         y: y data.
         x_from_zero: Start the x axis at zero rather than at the first point.
         y_from_zero: Start the y axis at zero rather than below the minimum.
+
+    Warns:
+        RuntimeWarning: If the data holds a non-finite value, which limits
+            cannot be fitted to.
     """
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
     if x.size == 0 or y.size == 0:
         return
     if not (np.isfinite(x).all() and np.isfinite(y).all()):
+        warnings.warn(
+            "Non-finite values in the data; axis limits left unchanged. The "
+            "simulation may have diverged.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         return
     x_low = 0.0 if x_from_zero else float(x.min())
     if x.max() > x_low:
