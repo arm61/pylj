@@ -394,22 +394,35 @@ def test_named_viewer_updates_at_any_sampling_cadence(drawing_display, viewer_cl
 @pytest.mark.parametrize("viewer_cls", [Interactions, Phase, Scattering])
 def test_md_only_viewer_rejects_an_mc_system(drawing_display, viewer_cls):
     system = sampled_mc_system(steps=1)
-    with pytest.raises(ValueError, match="Monte Carlo"):
+    with pytest.raises(ValueError, match=f"{viewer_cls.__name__} plots"):
         viewer_cls(system)
 
 
 def test_speed_histogram_rejects_an_mc_system(drawing_display):
     system = sampled_mc_system(steps=1)
-    with pytest.raises(ValueError, match="Monte Carlo"):
+    with pytest.raises(ValueError, match="MaxBolt plots"):
         MaxBolt(system)
 
 
-def test_failed_viewer_setup_closes_its_figure(drawing_display):
+def test_md_only_viewer_is_refused_before_a_figure_is_made(drawing_display):
     plt.close("all")
     system = sampled_mc_system(steps=1)
     with pytest.raises(ValueError):
         Interactions(system)
     assert plt.get_fignums() == []
+
+
+def test_failed_pane_setup_closes_its_figure(drawing_display):
+    class FailingPane(CellPane):
+        def setup(self, ax, system):
+            raise ValueError("this pane cannot be set up")
+
+    plt.close("all")
+    system = md.initialise(4, 100, 20, "square")
+    with pytest.raises(ValueError, match="cannot be set up"):
+        Viewer(system, [FailingPane()])
+    assert plt.get_fignums() == []
+    assert drawing_display == []
 
 
 def test_failed_first_draw_closes_the_figure_without_opening_a_display(drawing_display):
@@ -423,6 +436,25 @@ def test_failed_first_draw_closes_the_figure_without_opening_a_display(drawing_d
         Viewer(system, [FailingPane()])
     assert plt.get_fignums() == []
     assert drawing_display == []
+
+
+def test_cell_pane_tolerates_extra_artists_on_its_axes(drawing_display):
+    system = md.initialise(4, 100, 20, "square")
+    viewer = JustCell(system)
+    line = viewer.axes[0].lines[0]
+    before = [data.copy() for data in line.get_data()]
+    viewer.axes[0].axvline(system.box_length / 2)
+    viewer.update(system)
+    assert_allclose(line.get_data(), before)
+
+
+def test_rdf_pane_on_a_single_particle_draws_nothing(drawing_display):
+    system = md.initialise(1, 100, 20, "square")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        viewer = RDF(system)
+    assert len(viewer.axes[1].lines[0].get_xdata()) == 0
+    assert len(viewer.axes[1].lines[0].get_ydata()) == 0
 
 
 def test_energy_viewer_on_mc_system(drawing_display):

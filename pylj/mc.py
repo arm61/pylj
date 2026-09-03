@@ -32,7 +32,8 @@ def initialise(
     mass: float (optional)
         The mass of the particles being simulated.
     constants: float, array_like (optional)
-        The values of the constants for the forcefield used.
+        The values of the constants for the forcefield used. Defaults to the
+        argon Lennard-Jones constants, ``[[1.363e-134, 9.273e-78]]``.
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
     diameter: float or iterable of float (optional)

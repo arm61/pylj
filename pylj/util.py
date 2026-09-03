@@ -198,15 +198,17 @@ class System:
             self.diameters = []
             for c in self.constants:
                 forcefield = self.forcefield(c)
-                if not hasattr(forcefield, "diameter"):
+                try:
+                    value = forcefield.diameter
+                except AttributeError as error:
                     raise ValueError(
                         f"{type(forcefield).__name__} has no diameter property. A "
                         "forcefield must provide a diameter property giving the "
                         "separation at the pair-potential minimum in metres, or the "
                         "caller must pass diameter= to initialise. See the bring "
                         "your own forcefield documentation."
-                    )
-                self.diameters.append(forcefield.diameter)
+                    ) from error
+                self.diameters.append(value)
             return
         if isinstance(diameter, Iterable):
             values = [float(d) for d in diameter]

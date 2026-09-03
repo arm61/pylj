@@ -71,9 +71,13 @@ class Pane:
     Attributes:
         keeps_history: Whether this pane accumulates a history across
             updates that ``average`` can summarise.
+        needs_md: Whether this pane plots samples that only a molecular
+            dynamics run records. The viewer refuses a Monte Carlo system
+            when any of its panes sets this.
     """
 
     keeps_history: bool = False
+    needs_md: bool = False
 
     def setup(self, ax: Axes, system: System) -> None:
         """Create the artists and static decoration for this pane.
@@ -103,24 +107,6 @@ class Pane:
         Args:
             ax: Axes this pane was set up in.
         """
-
-
-def _require_md(pane: Pane, system: System) -> None:
-    """Refuse to plot MD-only samples for a Monte Carlo system.
-
-    Args:
-        pane: The pane being set up, named in the message.
-        system: The simulation being visualised.
-
-    Raises:
-        ValueError: If the system is not a molecular dynamics simulation.
-    """
-    if system.simulation != "md":
-        raise ValueError(
-            f"{type(pane).__name__} plots molecular dynamics samples, which a Monte "
-            "Carlo system does not record. Use JustCell, Energy or RDF with a Monte "
-            "Carlo system, or build the system with md.initialise."
-        )
 
 
 class _HistoryPane(Pane):
@@ -162,7 +148,8 @@ class CellPane(Pane):
         ax.apply_aspect()
         # Marker sizes are in points, and there are 72 points to the inch.
         axes_width_points = ax.get_window_extent().width / ax.figure.dpi * 72
-        for index, (line, diameter) in enumerate(zip(ax.lines, system.diameters, strict=True)):
+        for index, diameter in enumerate(system.diameters):
+            line = ax.lines[index]
             mask = types == str(index)
             line.set_data(
                 system.particles["xposition"][mask], system.particles["yposition"][mask]
@@ -184,12 +171,12 @@ class _SeriesPane(Pane):
             below the minimum of the data.
     """
 
+    needs_md = True
     attribute: str
     ylabel: str
     y_from_zero: bool = False
 
     def setup(self, ax: Axes, system: System) -> None:
-        _require_md(self, system)
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
         ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)
@@ -282,6 +269,11 @@ class RDFPane(_HistoryPane):
         counts, _ = np.histogram(system.distances, bins=edges)
         n = system.number_of_particles
         pairs = n * (n - 1) / 2
+        if pairs == 0:
+            # A single particle has no pairs, and so no radial distribution
+            # function to draw or to average.
+            ax.lines[0].set_data([], [])
+            return
         # The ideal-gas count for the N(N - 1) / 2 pairs, spread evenly over
         # the box, in a 2D shell of area 2 pi r dr at radius r.
         ideal = pairs * 2 * np.pi * r * dr / system.box_length**2
@@ -351,13 +343,13 @@ class MaxwellBoltzmannPane(Pane):
     It keeps no per-frame history, so it has no average.
     """
 
+    needs_md = True
     BINS = 25
 
     def __init__(self) -> None:
         self.speeds = np.array([])
 
     def setup(self, ax: Axes, system: System) -> None:
-        _require_md(self, system)
         ax.step([], [], where="post", color=LINE_COLOUR)
         ax.set_ylabel("PDF", fontsize=LABEL_SIZE)
         ax.set_xlabel("Speed/m s$^{-1}$", fontsize=LABEL_SIZE)

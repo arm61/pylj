@@ -167,6 +167,20 @@ class TestUtil(unittest.TestCase):
                 2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=3.4e-10
             )
 
+    def test_system_forcefield_whose_diameter_raises_keeps_the_cause(self):
+        class BrokenDiameter:
+            def __init__(self, constants):
+                self.constants = constants
+
+            @property
+            def diameter(self):
+                raise AttributeError("oops")
+
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaises(ValueError) as caught:
+            util.System(2, 300, 8, constants, BrokenDiameter, 39.948, simulation="md")
+        self.assertIn("oops", str(caught.exception.__cause__))
+
     def test_system_forcefield_without_a_diameter_is_rejected(self):
         class NoDiameter:
             def __init__(self, constants):

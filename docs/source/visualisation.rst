@@ -15,7 +15,7 @@ pylj comes with eight viewers, each a live figure that redraws when its :code:`u
 - :code:`Phase`: positions, total energy, mean squared displacement and the radial distribution function
 - :code:`Scattering`: positions, the radial distribution function, mean squared displacement and the scattering profile
 
-The :code:`MaxBolt`, :code:`Interactions`, :code:`Phase` and :code:`Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo system. Every viewer takes the :code:`System` and an optional :code:`size` of :code:`'small'`, :code:`'medium'` or :code:`'large'`. Every viewer has an :code:`average()` method that replaces the latest curve with the mean of every update so far; it raises :code:`ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the :doc:`sample` module documentation.
+The :code:`MaxBolt`, :code:`Interactions`, :code:`Phase` and :code:`Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo system before they build their figure, naming themselves in the error. Every viewer takes the :code:`System` and an optional :code:`size` of :code:`'small'`, :code:`'medium'` or :code:`'large'`. Every viewer has an :code:`average()` method that replaces the latest curve with the mean of every update so far; it raises :code:`ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the :doc:`sample` module documentation.
 
 The viewers use the inline matplotlib backend. Start notebooks with :code:`%matplotlib inline`.
 

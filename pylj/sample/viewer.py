@@ -33,6 +33,13 @@ class Viewer:
 
     def __init__(self, system: System, panes: list[Pane], size: str = "medium") -> None:
         self.panes = list(panes)
+        if system.simulation != "md" and any(pane.needs_md for pane in self.panes):
+            raise ValueError(
+                f"{type(self).__name__} plots molecular dynamics samples, which a "
+                "Monte Carlo system does not record. Use JustCell, Energy, RDF or "
+                "CellPlus with a Monte Carlo system, or build the system with "
+                "md.initialise."
+            )
         self.fig, axes = environment(len(self.panes), size)
         self.axes: list[Axes] = [axes] if isinstance(axes, Axes) else list(axes.ravel())
         try:

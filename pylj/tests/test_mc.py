@@ -106,7 +106,11 @@ class TestMc(unittest.TestCase):
         # ten calls that each draw afresh give both outcomes; ten calls that
         # share one draw give ten of the same.
         energy_difference = BOLTZMANN * 300 * np.log(2)
-        np.random.seed(0)
-        outcomes = [mc.metropolis(300, 0.0, energy_difference) for _ in range(10)]
+        state = np.random.get_state()
+        try:
+            np.random.seed(0)
+            outcomes = [mc.metropolis(300, 0.0, energy_difference) for _ in range(10)]
+        finally:
+            np.random.set_state(state)
         self.assertIn(True, outcomes)
         self.assertIn(False, outcomes)
