@@ -313,12 +313,33 @@ def test_energy_viewer_on_mc_system(drawing_display):
     assert drawing_display[0].updates == 2
 
 
-def test_rdf_viewer_average(drawing_display):
-    system = sampled_md_system(steps=1, every=1)
+def test_rdf_viewer_average_shows_the_mean(drawing_display):
+    system = md.initialise(20, 100, 20, "square")
     viewer = RDF(system)
-    viewer.update(system)
+    for _ in range(3):
+        system.integrate(md.velocity_verlet)
+        system.md_sample()
+        viewer.update(system)
     viewer.average()
-    assert drawing_display[0].updates == 3
+    assert_allclose(
+        viewer.axes[1].lines[0].get_ydata(), np.mean(viewer.panes[1].history, axis=0)
+    )
+
+
+def test_average_is_available_before_any_update(drawing_display):
+    RDF(md.initialise(20, 100, 20, "square")).average()
+
+
+def test_average_rejects_viewers_without_history(drawing_display):
+    with pytest.raises(ValueError):
+        Energy(md.initialise(4, 100, 20, "square")).average()
+
+
+def test_cell_plus_rejects_half_supplied_data(drawing_display):
+    viewer = CellPlus(md.initialise(4, 100, 20, "square"), "x", "y")
+    system = md.initialise(4, 100, 20, "square")
+    with pytest.raises(ValueError):
+        viewer.update(system, [0, 1, 2])
 
 
 def test_cell_plus_takes_custom_data(drawing_display):

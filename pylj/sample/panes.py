@@ -7,6 +7,7 @@ updates.
 """
 
 import numpy as np
+import numpy.typing as npt
 from matplotlib.axes import Axes
 
 from pylj.constants import BOLTZMANN
@@ -44,7 +45,17 @@ def _fit_axes(
 
 
 class Pane:
-    """One plot within a viewer."""
+    """One plot within a viewer.
+
+    Panes that accumulate a history across updates set ``keeps_history`` and
+    override ``average``.
+
+    Attributes:
+        keeps_history: Whether this pane accumulates a history across
+            updates that ``average`` can summarise.
+    """
+
+    keeps_history: bool = False
 
     def setup(self, ax: Axes, system: System) -> None:
         """Create the artists and static decoration for this pane.
@@ -193,6 +204,7 @@ class RDFPane(Pane):
     """
 
     BINS = 100
+    keeps_history = True
 
     def __init__(self) -> None:
         self.r = np.array([])
@@ -239,6 +251,7 @@ class ScatteringPane(Pane):
     POINTS = 1000
     SKIP = 20  # lowest-q points, where the box periodicity dominates
     BLOCK = 64  # q values per block, bounding the q-by-pairs temporary
+    keeps_history = True
 
     def __init__(self) -> None:
         self.q = np.array([])
@@ -303,7 +316,7 @@ class CustomPane(Pane):
         self.x = np.array([])
         self.y = np.array([])
 
-    def set_data(self, x: np.ndarray, y: np.ndarray) -> None:
+    def set_data(self, x: npt.ArrayLike, y: npt.ArrayLike) -> None:
         """Store the data to draw on the next update.
 
         Args:

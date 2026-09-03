@@ -1,6 +1,7 @@
 """Viewers compose panes into one live figure."""
 
 import matplotlib.pyplot as plt
+import numpy.typing as npt
 from matplotlib.axes import Axes
 
 from pylj.sample._display import environment
@@ -50,7 +51,13 @@ class Viewer:
         self.handle.update(self.fig)
 
     def average(self) -> None:
-        """Show the average of every update so far on panes that keep one."""
+        """Show the average of every update so far on panes that keep one.
+
+        Raises:
+            ValueError: If no pane keeps a history.
+        """
+        if not any(pane.keeps_history for pane in self.panes):
+            raise ValueError("None of this viewer's panes keeps a history to average")
         for pane, ax in zip(self.panes, self.axes):
             pane.average(ax)
         self.handle.update(self.fig)
@@ -98,14 +105,24 @@ class CellPlus(Viewer):
         self.custom = CustomPane(xlabel, ylabel)
         super().__init__(system, [CellPane(), self.custom], size)
 
-    def update(self, system: System, xdata=None, ydata=None) -> None:
+    def update(
+        self,
+        system: System,
+        xdata: npt.ArrayLike | None = None,
+        ydata: npt.ArrayLike | None = None,
+    ) -> None:
         """Redraw the cell and, if given, replace the custom plot's data.
 
         Args:
             system: The simulation to visualise.
             xdata: x values for the custom plot.
             ydata: y values for the custom plot.
+
+        Raises:
+            ValueError: If exactly one of ``xdata`` and ``ydata`` is given.
         """
+        if (xdata is None) != (ydata is None):
+            raise ValueError("xdata and ydata must be given together")
         if xdata is not None and ydata is not None:
             self.custom.set_data(xdata, ydata)
         super().update(system)
