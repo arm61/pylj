@@ -225,11 +225,21 @@ class buckingham(object):
         global maximum on that grid is the repulsive barrier separating the
         unphysical collapse at small separation from the well; the diameter
         is the position of the minimum beyond that barrier.
+
+        Raises:
+            ValueError: If the potential has no minimum between 0.1 and 50
+                Angstrom.
         """
         r = np.logspace(-11, np.log10(5e-9), 2000)
         energy = self.a * np.exp(-self.b * r) - self.c / np.power(r, 6)
         barrier = int(np.argmax(energy))
         well = barrier + int(np.argmin(energy[barrier:]))
+        if barrier == r.size - 1 or well == r.size - 1:
+            raise ValueError(
+                "No potential minimum was found between 0.1 and 50 Angstrom for "
+                f"a={self.a}, b={self.b}, c={self.c}. Check the units of the constants, "
+                "or pass diameter= to initialise."
+            )
         return float(r[well])
 
 

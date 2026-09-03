@@ -96,5 +96,10 @@ class TestForcefields(unittest.TestCase):
         a = forcefields.square_well([1.0, 1.5, 2.0])
         assert_equal(a.diameter, 1.5)
 
+    def test_buckingham_diameter_rejects_constants_without_a_well(self):
+        a = forcefields.buckingham([1.0, 1.0, 1.0])
+        with self.assertRaises(ValueError):
+            a.diameter
+
 if __name__ == '__main__':
     unittest.main(exit=False)

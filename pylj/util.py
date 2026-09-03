@@ -42,7 +42,7 @@ class System:
     diameter: float or list of float (optional)
         Drawn diameter of the particles in Angstrom, one value or one per
         set of constants. Defaults to the separation at the pair-potential
-        minimum of the forcefield.
+        minimum of the forcefield. Stored in metres as ``diameters``.
     """
 
     def __init__(
@@ -216,8 +216,8 @@ class System:
             values = [float(d) for d in diameter]
         if len(values) != len(self.constants):
             raise ValueError(
-                f"{len(values)} diameters were given for {len(self.constants)} "
-                "sets of constants"
+                f"Expected {len(self.constants)} diameters, one per set of "
+                f"constants, but got {len(values)}"
             )
         self.diameters = [value * 1e-10 for value in values]
 
