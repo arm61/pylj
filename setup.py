@@ -27,6 +27,7 @@ info = {
         'include_package_data': True,
         'package_data': {'pylj': ['py.typed']},
         'install_requires': ['jupyter', 'numpy', 'scipy', 'matplotlib'],
+        'extras_require': {'dev': ['pytest', 'pytest-cov', 'ruff', 'mypy', 'scipy-stubs']},
         'python_requires': '>=3.11',
         'version': VERSION,
         'license': 'MIT',
