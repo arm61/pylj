@@ -9,10 +9,14 @@ from pylj import mc, md
 from pylj.sample import environment
 from pylj.sample.panes import (
     CellPane,
+    CustomPane,
     EnergyPane,
     ForcePane,
+    MaxwellBoltzmannPane,
     MSDPane,
     PressurePane,
+    RDFPane,
+    ScatteringPane,
     TemperaturePane,
 )
 
@@ -161,4 +165,67 @@ def test_energy_pane_mc_plots_against_step(drawing_display):
     assert_allclose(ax.lines[0].get_xdata(), [0, 1, 2, 3])
     assert_allclose(ax.lines[0].get_ydata(), system.energy_sample)
     assert ax.get_xlabel() == "Step"
+    plt.close(fig)
+
+
+def test_rdf_pane_normalisation_is_unity_for_random_positions(drawing_display):
+    np.random.seed(1)
+    system = md.initialise(400, 100, 100, "random")
+    fig, ax, handle = environment(1)
+    pane = RDFPane()
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    gr = ax.lines[0].get_ydata()
+    assert abs(np.mean(gr[20:80]) - 1.0) < 0.1
+    plt.close(fig)
+
+
+def test_rdf_pane_average_is_mean_of_updates(drawing_display):
+    fig, ax, handle = environment(1)
+    pane = RDFPane()
+    system = sampled_md_system(steps=1, every=1)
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    first = ax.lines[0].get_ydata().copy()
+    system.integrate(md.velocity_verlet)
+    pane.update(ax, system)
+    second = ax.lines[0].get_ydata().copy()
+    pane.average(ax)
+    assert_allclose(ax.lines[0].get_ydata(), (first + second) / 2)
+    plt.close(fig)
+
+
+def test_scattering_pane_is_finite_and_non_negative(drawing_display):
+    system = sampled_md_system(steps=1, every=1)
+    fig, ax, handle = environment(1)
+    pane = ScatteringPane()
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    intensity = ax.lines[0].get_ydata()
+    assert np.isfinite(intensity).all()
+    assert (intensity >= 0).all()
+    plt.close(fig)
+
+
+def test_maxwell_boltzmann_pane_accumulates_speeds(drawing_display):
+    system = md.initialise(4, 100, 20, "square")
+    fig, ax, handle = environment(1)
+    pane = MaxwellBoltzmannPane()
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    pane.update(ax, system)
+    assert pane.speeds.size == 8
+    fig.canvas.draw()
+    plt.close(fig)
+
+
+def test_custom_pane_plots_supplied_data(drawing_display):
+    system = md.initialise(4, 100, 20, "square")
+    fig, ax, handle = environment(1)
+    pane = CustomPane("x label", "y label")
+    pane.setup(ax, system)
+    pane.set_data([0, 1, 2], [1, 4, 9])
+    pane.update(ax, system)
+    assert_allclose(ax.lines[0].get_ydata(), [1, 4, 9])
+    assert ax.get_xlabel() == "x label"
     plt.close(fig)
