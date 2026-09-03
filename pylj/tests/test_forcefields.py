@@ -1,5 +1,6 @@
 import unittest
 
+import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields
@@ -100,6 +101,16 @@ class TestForcefields(unittest.TestCase):
     def test_buckingham_diameter_is_at_the_well(self):
         a = forcefields.buckingham([1.69e-15, 3.66e10, 1.01e-77])
         assert_almost_equal(a.diameter * 1e10, 3.83, decimal=1)
+
+    def test_square_well_energy_takes_an_integer_array(self):
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        energy = a.energy(np.arange(1, 6))
+        assert_equal(energy.dtype, np.dtype(float))
+        assert_almost_equal(energy, [np.inf, -1.0, 0.0, 0.0, 0.0])
+
+    def test_square_well_energy_takes_a_python_integer(self):
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(a.energy(2), forcefields.square_well([1.0, 1.5, 2.0]).energy(2.0))
 
     def test_square_well_diameter(self):
         a = forcefields.square_well([1.0, 1.5, 2.0])

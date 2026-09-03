@@ -104,8 +104,9 @@ def _require_md(pane: Pane, system: System) -> None:
     """
     if system.simulation != "md":
         raise ValueError(
-            f"{type(pane).__name__} plots MD samples; this system is a "
-            "Monte Carlo simulation"
+            f"{type(pane).__name__} plots molecular dynamics samples, which a Monte "
+            "Carlo system does not record. Use JustCell, Energy or RDF with a Monte "
+            "Carlo system, or build the system with md.initialise."
         )
 
 

@@ -369,10 +369,11 @@ def test_named_viewer_updates_at_any_sampling_cadence(drawing_display, viewer_cl
     assert drawing_display[0].updates == 6
 
 
-def test_md_only_viewer_rejects_an_mc_system(drawing_display):
+@pytest.mark.parametrize("viewer_cls", [Interactions, Phase, Scattering])
+def test_md_only_viewer_rejects_an_mc_system(drawing_display, viewer_cls):
     system = sampled_mc_system(steps=1)
     with pytest.raises(ValueError, match="Monte Carlo"):
-        Interactions(system)
+        viewer_cls(system)
 
 
 def test_speed_histogram_rejects_an_mc_system(drawing_display):
@@ -436,6 +437,13 @@ def test_cell_plus_rejects_half_supplied_data(drawing_display):
     system = md.initialise(4, 100, 20, "square")
     with pytest.raises(ValueError):
         viewer.update(system, [0, 1, 2])
+
+
+def test_cell_plus_rejects_y_data_without_x_data(drawing_display):
+    viewer = CellPlus(md.initialise(4, 100, 20, "square"), "x", "y")
+    system = md.initialise(4, 100, 20, "square")
+    with pytest.raises(ValueError):
+        viewer.update(system, ydata=[1, 2])
 
 
 def test_cell_plus_takes_custom_data(drawing_display):

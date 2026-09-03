@@ -40,10 +40,12 @@ class TestMc(unittest.TestCase):
             mass=20.0,
             constants=constants,
             forcefield=ff.lennard_jones_sigma_epsilon,
+            diameter=3.0,
         )
         assert_equal(a.mass, 20.0)
         assert_equal(a.constants, constants)
         assert_equal(a.forcefield, ff.lennard_jones_sigma_epsilon)
+        assert_almost_equal(a.diameters, [3e-10])
 
     def test_initialize_square(self):
         a = mc.initialize(2, 300, 8, "square")

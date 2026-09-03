@@ -289,13 +289,9 @@ class square_well:
             The potential energy between the particles.
         '''
 
-        if not isinstance(dr, np.ndarray):
-            if isinstance(dr, list):
-                dr = np.array(dr, dtype='float')
-            elif isinstance(dr, float):
-                dr = np.array([dr], dtype='float')
+        dr = np.atleast_1d(np.asarray(dr, dtype=float))
 
-        E = np.zeros_like(dr)
+        E = np.zeros_like(dr, dtype=float)
         E[np.where(dr < self.sigma)] = self.max_val
         E[np.where(dr >= self.lamda * self.sigma)] = 0
 
