@@ -348,16 +348,19 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
 
 
 def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np.ndarray:
-    r"""Rescales the velocities of the particles to the bath temperature,
-    thereby allowing for an NVT ensemble. The rescaling is performed relative
-    to the instantaneous temperature of the current velocities, so the
-    result is correct at any point in the run rather than drifting towards
-    some historic average. The velocities are rescaled according to the
-    following relationship,
+    r"""Rescale the velocities so the instantaneous temperature equals the
+    bath temperature.
+
+    This is a velocity-rescaling thermostat: it holds the instantaneous
+    temperature at the bath temperature whenever it is called, rather than
+    sampling the canonical ensemble. The velocities are rescaled according to
 
     .. math::
         v_{\text{new}} = v_{\text{old}} \times
         \sqrt{\frac{T_{\text{bath}}}{T_{\text{now}}}}
+
+    where :math:`T_{\text{now}}` is the temperature of the current
+    velocities.
 
     Args:
         particles: Information about the particles.
@@ -372,20 +375,24 @@ def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np
 
     Raises:
         ValueError: If bath_temperature is not positive.
-        ValueError: If the current temperature is zero or not finite, so
-            there is nothing to rescale from: the particles are at rest or
-            the simulation has diverged.
+        ValueError: If the current temperature is zero (the particles are at
+            rest, as in a Monte Carlo system) or not finite (the simulation
+            has diverged).
     """
     if not bath_temperature > 0:
         raise ValueError(
             f"bath_temperature must be positive, not {bath_temperature}"
         )
     current_temperature = calculate_temperature(particles, mass)
-    if not current_temperature > 0:
+    if current_temperature == 0:
+        raise ValueError(
+            "Cannot rescale velocities: the particles are at rest. A Monte Carlo "
+            "system has no velocities to thermostat; use md.initialise for MD."
+        )
+    if not (np.isfinite(current_temperature) and current_temperature > 0):
         raise ValueError(
             "Cannot rescale velocities: the current temperature is "
-            f"{current_temperature}, so the particles are at rest or the "
-            "simulation has diverged."
+            f"{current_temperature}, so the simulation has diverged."
         )
     scale = np.sqrt(bath_temperature / current_temperature)
     particles["xvelocity"] = particles["xvelocity"] * scale
