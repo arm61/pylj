@@ -17,12 +17,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e . pytest pytest-cov ruff mypy scipy-stubs
+        pip install -e '.[dev]'
     - name: Lint with ruff
       run: |
         ruff check pylj
     - name: Type check with mypy
-      if: matrix.python-version == '3.12'
       run: |
         mypy pylj
     - name: Generate coverage report
