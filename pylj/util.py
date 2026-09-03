@@ -152,7 +152,7 @@ class System:
         """
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
-        if self.diameters and d < max(self.diameters):
+        if d < max(self.diameters):
             raise ValueError(
                 f"A square lattice of {self.number_of_particles} particles in a "
                 f"{self.box_length * 1e10:.1f} Angstrom box spaces them {d * 1e10:.2f} "
