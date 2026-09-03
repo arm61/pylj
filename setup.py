@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # System imports
-from setuptools import setup, Extension, find_packages
+from setuptools import setup, find_packages
 from os import path
 import io
 

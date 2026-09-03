@@ -343,30 +343,3 @@ def pbc_correction(position, cell):
     if np.abs(position) > 0.5 * cell:
         position *= 1 - cell / np.abs(position)
     return position
-
-def create_dist_identifiers(type_identifier):
-    '''
-    Creates correct distance identifier matrix for particular type
-    of particle
-
-    Parameters
-    ----------
-    type identifiers:
-        the identifier array listing 1 for particles of that type
-        or 0 for particles of a different type
-
-    Returns
-    -------
-    distances: float, array_like 
-        the distance identifier for interactions between each particle 
-        of that type, or 0 for interactions involving particles of a
-        different type
-
-    '''
-    distance_type_identifier = np.array([])
-    for index in range(len(type_identifier)):
-        if type_identifier[index]:
-            distance_type_identifier = np.append(distance_type_identifier,type_identifier[index+1:])
-        else:
-            distance_type_identifier = np.append(distance_type_identifier,np.zeros(len(type_identifier[index+1:])))
-    return distance_type_identifier
