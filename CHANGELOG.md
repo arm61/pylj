@@ -40,7 +40,7 @@ All notable changes to pylj are recorded here. The format follows
 - The square lattice refuses a spacing below the repulsive core, with the largest count or the smallest box that fits, rounded up so the suggested box is accepted, in the message (#82).
 - A forcefield whose `energy` does not return one value per separation, whose pair energy is positive at every grid point (suggesting its constants are in the wrong units) is refused with a clear message.
 - `energy` and `force` on the forcefields no longer store their result on `self`, overwriting the bound method and breaking a second call on the same instance (#79).
-- `buckingham.energy` and `buckingham.force` raised under NumPy 2 when `dr` was a NumPy scalar rather than a Python float (#83).
+- `buckingham.energy` and `buckingham.force` raised under NumPy 2 when the separation was an integer, a 0-d array, or a NumPy scalar that is not a float subclass (#83). `lennard_jones` and `lennard_jones_sigma_epsilon` also failed on integer input.
 
 ### Removed
 

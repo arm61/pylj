@@ -61,7 +61,7 @@ class lennard_jones_sigma_epsilon:
         Returns
         -------
         float: array_like
-            The pair energy (or force), as a float for scalar input and an array otherwise.
+            The pair energy, as a float for scalar input and an array otherwise.
         """
         dr = np.asarray(dr, dtype=float)
         energy = 4 * self.epsilon * np.power(self.sigma, 12) * np.power(dr, -12) - (
@@ -84,7 +84,7 @@ class lennard_jones_sigma_epsilon:
         Returns
         -------
         float: array_like
-            The pair energy (or force), as a float for scalar input and an array otherwise.
+            The magnitude of the pair force, as a float for scalar input and an array otherwise.
         """
         dr = np.asarray(dr, dtype=float)
         force = 48 * self.epsilon * np.power(self.sigma, 12) * np.power(
@@ -200,7 +200,7 @@ class buckingham:
         Returns
         -------
         float: array_like
-            The pair energy (or force), as a float for scalar input and an array otherwise.
+            The pair energy, as a float for scalar input and an array otherwise.
         """
         dr = np.asarray(dr, dtype=float)
         energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
@@ -223,7 +223,7 @@ class buckingham:
         Returns
         -------
         float: array_like
-            The pair energy (or force), as a float for scalar input and an array otherwise.
+            The magnitude of the pair force, as a float for scalar input and an array otherwise.
         """
         dr = np.asarray(dr, dtype=float)
         force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
@@ -318,23 +318,24 @@ class square_well:
         Returns
         -------
         float: array_like
-            The pair energy (or force), as a float for scalar input and an array otherwise.
+            The pair energy, as a float for scalar input and an array otherwise.
         '''
 
-        dr = np.atleast_1d(np.asarray(dr, dtype=float))
+        dr = np.asarray(dr, dtype=float)
+        dr_1d = np.atleast_1d(dr)
 
-        E = np.zeros_like(dr, dtype=float)
-        E[np.where(dr < self.sigma)] = self.max_val
-        E[np.where(dr >= self.lamda * self.sigma)] = 0
+        E = np.zeros_like(dr_1d, dtype=float)
+        E[np.where(dr_1d < self.sigma)] = self.max_val
+        E[np.where(dr_1d >= self.lamda * self.sigma)] = 0
 
         # apply mask for sigma <= dr < lambda * sigma
-        a = self.sigma <= dr
-        b = dr < self.lamda * self.sigma
+        a = self.sigma <= dr_1d
+        b = dr_1d < self.lamda * self.sigma
         E[np.where(a & b)] = -self.epsilon
 
-        if len(E) == 1:
+        if dr.ndim == 0:
             return float(E[0])
-        return np.array(E, dtype='float')
+        return E
 
     @property
     def diameter(self) -> float:
