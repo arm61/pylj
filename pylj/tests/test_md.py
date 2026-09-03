@@ -23,6 +23,17 @@ class TestMd(unittest.TestCase):
         a = md.initialize(2, 300, 8, "square", mass=20.0)
         assert_equal(a.mass, 20.0)
 
+    def test_sample_records_step_and_thermodynamics(self):
+        a = md.initialise(2, 300, 8, "square")
+        a.step = 3
+        a.md_sample()
+        assert_equal(a.step_sample, [3])
+        assert_equal(a.temperature_sample.size, 1)
+        assert_equal(a.pressure_sample.size, 1)
+        assert_equal(a.energy_sample.size, 1)
+        assert_equal(a.force_sample.size, 1)
+        assert_equal(a.msd_sample.size, 1)
+
     def test_velocity_verlet(self):
         a = md.initialise(2, 300, 8, "square")
         a.particles, a.distances, a.forces, a.energies = md.velocity_verlet(

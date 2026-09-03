@@ -141,8 +141,8 @@ def sample(particles, box_length, initial_particles, system):
     Returns
     -------
     System:
-        Details about the whole system, with the new temperature, pressure,
-        msd, and force appended to the appropriate
+        Details about the whole system, with the new step, temperature,
+        pressure, msd, and force appended to the appropriate
         arrays.
     """
     temperature_new = calculate_temperature(particles, system.mass)
@@ -161,6 +161,7 @@ def sample(particles, box_length, initial_particles, system):
     system.force_sample = np.append(system.force_sample, np.sum(system.forces))
     system.energy_sample = np.append(system.energy_sample, np.sum(system.energies))
     system.msd_sample = np.append(system.msd_sample, msd_new)
+    system.step_sample = np.append(system.step_sample, system.step)
     return system
 
 

@@ -113,6 +113,7 @@ class System:
         self.force_sample = np.array([])
         self.msd_sample = np.array([])
         self.energy_sample = np.array([])
+        self.step_sample = np.array([])
         self.initial_particles = np.array(self.particles)
         self.position_store = [0, 0]
         self.old_energy = 0

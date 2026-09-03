@@ -75,11 +75,11 @@ def sample(total_energy, system):
     Returns
     -------
     System:
-        Details about the whole system, with the new temperature, pressure,
-        msd, and force appended to the appropriate
-        arrays.
+        Details about the whole system, with the new step and energy
+        appended to the appropriate arrays.
     """
     system.energy_sample = np.append(system.energy_sample, total_energy)
+    system.step_sample = np.append(system.step_sample, system.step)
     return system
 
 

@@ -32,8 +32,10 @@ class TestMc(unittest.TestCase):
 
     def test_sample(self):
         a = mc.initialise(2, 300, 8, "square")
+        a.step = 5
         a = mc.sample(300, a)
         assert_almost_equal(a.energy_sample, [300])
+        assert_equal(a.step_sample, [5])
 
     def test_select_random_particle(self):
         a = mc.initialise(2, 300, 8, "square")
