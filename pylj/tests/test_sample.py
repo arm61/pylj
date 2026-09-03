@@ -267,8 +267,9 @@ def test_maxwell_boltzmann_pane_draws_a_post_step_histogram(drawing_display):
     pane = MaxwellBoltzmannPane()
     pane.setup(ax, system)
     pane.update(ax, system)
-    _, edges = np.histogram(pane.speeds, bins=MaxwellBoltzmannPane.BINS, density=True)
+    _, edges = np.histogram(pane.speeds, bins=pane.BINS, density=True)
     assert_allclose(ax.lines[0].get_xdata()[0], edges[0])
+    assert_allclose(ax.lines[0].get_xdata()[-1], edges[-1])
     assert ax.lines[0].get_drawstyle() == "steps-post"
     plt.close(fig)
 

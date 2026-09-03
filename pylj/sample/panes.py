@@ -250,7 +250,9 @@ class ScatteringPane(Pane):
     # argon-sized particles
     POINTS = 1000
     SKIP = 20  # lowest-q points, where the box periodicity dominates
-    BLOCK = 64  # q values per block, bounding the q-by-pairs temporary
+    # q values per block; np.sinc allocates several temporaries of this size
+    # times the pair count
+    BLOCK = 16
     keeps_history = True
 
     def __init__(self) -> None:
@@ -303,8 +305,9 @@ class MaxwellBoltzmannPane(Pane):
         speeds = np.hypot(particles["xvelocity"], particles["yvelocity"])
         self.speeds = np.append(self.speeds, speeds)
         density, edges = np.histogram(self.speeds, bins=self.BINS, density=True)
-        ax.lines[0].set_data(edges[:-1], density)
-        _fit_axes(ax, edges[:-1], density, y_from_zero=True)
+        plateau = np.append(density, density[-1])
+        ax.lines[0].set_data(edges, plateau)
+        _fit_axes(ax, edges, plateau, y_from_zero=True)
 
 
 class CustomPane(Pane):
