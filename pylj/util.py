@@ -17,20 +17,20 @@ class System:
     Parameters
     ----------
     number_of_particles: int
-        Required. Number of particles to simulate.
+        Number of particles to simulate.
     temperature: float
-        Required. Initial temperature of the particles, in Kelvin.
+        Initial temperature of the particles, in Kelvin.
     box_length: float
-        Required. Length of a single dimension of the simulation square, in
+        Length of a single dimension of the simulation square, in
         Angstrom.
     constants: float, array_like
-        Required. The values of the constants for the forcefield used, one
+        The values of the constants for the forcefield used, one
         set per particle type.
     forcefield: class
-        Required. The particular forcefield to be used to find the energy and
+        The particular forcefield to be used to find the energy and
         forces.
     mass: float
-        Required. The mass of the particles being simulated.
+        The mass of the particles being simulated.
     simulation: {'md', 'mc'}
         Required, keyword only. Which engine drives this system; set for you
         by :func:`md.initialise` and :func:`mc.initialise`.
@@ -228,9 +228,7 @@ class System:
         self.diameters = [value * 1e-10 for value in values]
 
     def compute_force(self):
-        """Maps to the compute_force function in either the comp (if Cython is
-        installed) or the pairwise module and allows for a cleaner interface.
-        """
+        """Maps to the md.compute_force function, storing what it returns."""
         part, dist, forces, energies = md.compute_force(
             self.particles,
             self.box_length,
@@ -249,7 +247,6 @@ class System:
         """
         self.compute_force()
 
-    #Jit tag here had to be removed
     def integrate(self, method):
         """Maps the chosen integration method.
         Parameters
@@ -273,11 +270,11 @@ class System:
         md.sample(self.particles, self.box_length, self.initial_particles, self)
 
     def heat_bath(self, bath_temperature):
-        """Maps to the heat_bath function in either the comp (if Cython is
-        installed) or the pairwise modules.
+        """Maps to the md.heat_bath function.
+
         Parameters
         ----------
-        target_temperature: float
+        bath_temperature: float
             The target temperature for the simulation.
         """
         self.particles = md.heat_bath(

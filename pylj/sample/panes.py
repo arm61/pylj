@@ -84,8 +84,9 @@ class Pane:
     def average(self, ax: Axes) -> None:
         """Show the average of every update so far, for panes that keep one.
 
-        Panes that keep a history of their updates (the ``_HistoryPane``
-        subclasses) override this. Other panes do nothing.
+        Panes that keep a history of their updates override this to draw the
+        mean of that history. Panes that keep no history do nothing, and
+        report that by leaving ``keeps_history`` false.
 
         Args:
             ax: Axes this pane was set up in.
@@ -145,7 +146,9 @@ class CellPane(Pane):
 
     def update(self, ax: Axes, system: System) -> None:
         types = np.asarray(system.particles["types"])
+        # Settle the axes box to the equal aspect before its width is read.
         ax.apply_aspect()
+        # Marker sizes are in points, and there are 72 points to the inch.
         axes_width_points = ax.get_window_extent().width / ax.figure.dpi * 72
         for index, (line, diameter) in enumerate(zip(ax.lines, system.diameters, strict=True)):
             mask = types == str(index)
@@ -267,6 +270,8 @@ class RDFPane(_HistoryPane):
         counts, _ = np.histogram(system.distances, bins=edges)
         n = system.number_of_particles
         pairs = n * (n - 1) / 2
+        # The ideal-gas count for the N(N - 1) / 2 pairs, spread evenly over
+        # the box, in a 2D shell of area 2 pi r dr at radius r.
         ideal = pairs * 2 * np.pi * r * dr / system.box_length**2
         gr = counts / ideal
         self.r = r
@@ -287,8 +292,9 @@ class ScatteringPane(_HistoryPane):
     Keeps every profile it has drawn so ``average`` can show the mean.
     """
 
-    Q_MAX = 1e11  # 1/m; an empirical upper limit that shows the first few peaks for
-    # argon-sized particles
+    # An empirical upper limit, in 1/m, that shows the first few peaks for
+    # argon-sized particles.
+    Q_MAX = 1e11
     POINTS = 1000
     SKIP = 20  # lowest-q points, where the box periodicity dominates
     # q values per block; np.sinc allocates several temporaries of this size
@@ -312,6 +318,8 @@ class ScatteringPane(_HistoryPane):
             block = q[start : start + self.BLOCK]
             qr = np.outer(block, system.distances)
             intensity[start : start + self.BLOCK] = np.sum(np.sinc(qr / np.pi), axis=1)
+        # The Debye sum is truncated to a finite set of pairs, so it can come
+        # out slightly negative; an intensity cannot be.
         intensity = np.clip(intensity, 0, None)
         self.q = q
         self.history.append(intensity)
@@ -326,7 +334,7 @@ class ScatteringPane(_HistoryPane):
 
 
 class MaxwellBoltzmannPane(Pane):
-    """Histogram of particle speeds, including every update so far.
+    """Histogram of the speeds of every particle at every update so far.
 
     It keeps no per-frame history, so it has no average.
     """

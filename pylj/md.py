@@ -80,7 +80,6 @@ def initialise(
 initialize = initialise  # US spelling
 
 
-#Jit tag here had to be removed
 def velocity_verlet(
     particles, timestep_length, box_length, cut_off, constants, forcefield, mass
 ):

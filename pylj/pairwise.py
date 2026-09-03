@@ -4,7 +4,6 @@ from pylj import pairwise as heavy
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
-#Jit tag here had to be removed
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
@@ -73,7 +72,6 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
     return particles, distances, forces, energies
 
-#Jit tag here had to be removed
 def separation(dx, dy):
     """Calculate the distance in 2D space.
 
@@ -276,7 +274,6 @@ def heat_bath(particles, temperature_sample, bath_temp):
     return particles
 
 
-#Jit tag here had to be removed
 def dist(xposition, yposition, box_length, types):
     """Returns the distance array for the set of particles.
 
@@ -326,7 +323,6 @@ def dist(xposition, yposition, box_length, types):
     return drr, dxr, dyr, pair_types
 
 
-#Jit tag here had to be removed
 def pbc_correction(position, cell):
     """Correct for the periodic boundary condition.
 

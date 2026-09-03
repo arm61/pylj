@@ -91,7 +91,7 @@ class lennard_jones(lennard_jones_sigma_epsilon):
 
     ..math::
         \sigma = \frac{a}{b}^(\frac{1}{6})
-        \sigma = \frace{b^2}{4*a}
+        \epsilon = \frac{b^2}{4*a}
 
     Parameters
     ----------
