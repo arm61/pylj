@@ -45,8 +45,11 @@ class System:
         interaction to be negliable.
     diameter: float or iterable of float (optional)
         Drawn diameter of the particles in Angstrom, one value or one per
-        set of constants. Defaults to the separation at the pair-potential
-        minimum of the forcefield. Stored in metres as ``diameters``.
+        set of constants. Each value must be positive, and at least 0.01, as
+        values below that are metres mistaken for Angstrom. Defaults to the
+        separation at the pair-potential minimum of the forcefield, which the
+        forcefield must then provide as its ``diameter`` property. Stored in
+        metres as ``diameters``.
     """
 
     def __init__(
@@ -186,10 +189,24 @@ class System:
 
         Raises:
             ValueError: If an iterable is given whose length differs from the
-                number of sets of constants.
+                number of sets of constants, if any diameter is not positive,
+                if any diameter looks like a value in metres rather than
+                Angstrom, or if ``None`` is given and the forcefield has no
+                ``diameter`` property.
         """
         if diameter is None:
-            self.diameters = [self.forcefield(c).diameter for c in self.constants]
+            self.diameters = []
+            for c in self.constants:
+                forcefield = self.forcefield(c)
+                if not hasattr(forcefield, "diameter"):
+                    raise ValueError(
+                        f"{type(forcefield).__name__} has no diameter property. A "
+                        "forcefield must provide a diameter property giving the "
+                        "separation at the pair-potential minimum in metres, or the "
+                        "caller must pass diameter= to initialise. See the bring "
+                        "your own forcefield documentation."
+                    )
+                self.diameters.append(forcefield.diameter)
             return
         if isinstance(diameter, Iterable):
             values = [float(d) for d in diameter]
@@ -200,6 +217,14 @@ class System:
                 f"Expected {len(self.constants)} diameters, one per set of "
                 f"constants, but got {len(values)}"
             )
+        for value in values:
+            if value <= 0:
+                raise ValueError(f"Every diameter must be positive, but got {value}")
+            if value < 0.01:
+                raise ValueError(
+                    f"The diameter is in Angstrom, and {value} looks like a value in "
+                    "metres. An Angstrom is 1e-10 metres."
+                )
         self.diameters = [value * 1e-10 for value in values]
 
     def compute_force(self):

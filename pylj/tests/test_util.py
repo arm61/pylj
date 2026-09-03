@@ -152,3 +152,26 @@ class TestUtil(unittest.TestCase):
             util.System(
                 2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0]
             )
+
+    def test_system_diameter_must_be_positive(self):
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaisesRegex(ValueError, "positive"):
+            util.System(
+                2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=0.0
+            )
+
+    def test_system_diameter_in_metres_is_rejected(self):
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaisesRegex(ValueError, "Angstrom"):
+            util.System(
+                2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=3.4e-10
+            )
+
+    def test_system_forcefield_without_a_diameter_is_rejected(self):
+        class NoDiameter:
+            def __init__(self, constants):
+                self.constants = constants
+
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaisesRegex(ValueError, "diameter"):
+            util.System(2, 300, 8, constants, NoDiameter, 39.948, simulation="md")
