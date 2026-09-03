@@ -3,7 +3,7 @@ bring your own forcefield
 
 Although pylj was originally designed to use only the Lennard-Jones potential model, hence pyLennard-Jones. Following the release of pylj-1.1.0, it is now possible to pass custom forcefields to the simulation. As of pylj-1.5.0, these have become class-based.
 
-The particles are drawn with a diameter taken from the forcefield's :code:`diameter` property, which should return the separation at the minimum of the pair potential in metres. It can be overridden with the :code:`diameter` argument to :code:`md.initialise` or :code:`mc.initialise`. For mixing rules, geometric or arithmetic means of the two sets of constants are usual.
+The particles are drawn with a diameter taken from the forcefield's :code:`diameter` property, which should return the separation at the minimum of the pair potential in metres. It can be overridden with the :code:`diameter` argument to :code:`md.initialise` or :code:`mc.initialise`, which is given in Angstrom. For mixing rules, geometric or arithmetic means of the two sets of constants are usual.
 
 Writing your own forcefield and passing it to the pylj engine is very simple, firstly the forcefield should have the following form,
 

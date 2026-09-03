@@ -16,12 +16,24 @@ class System:
     Parameters
     ----------
     number_of_particles: int
-        Number of particles to simulate.
+        Required. Number of particles to simulate.
     temperature: float
-        Initial temperature of the particles, in Kelvin.
+        Required. Initial temperature of the particles, in Kelvin.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
-    init_conf: string, optional
+        Required. Length of a single dimension of the simulation square, in
+        Angstrom.
+    constants: float, array_like
+        Required. The values of the constants for the forcefield used, one
+        set per particle type.
+    forcefield: class
+        Required. The particular forcefield to be used to find the energy and
+        forces.
+    mass: float
+        Required. The mass of the particles being simulated.
+    simulation: {'md', 'mc'}
+        Required, keyword only. Which engine drives this system; set for you
+        by :func:`md.initialise` and :func:`mc.initialise`.
+    init_conf: string (optional)
         The way that the particles are initially positioned. Should be one of:
         - 'square'
         - 'random'
@@ -30,15 +42,6 @@ class System:
     cut_off: float (optional)
         The distance apart that the particles must be to consider there
         interaction to be negliable.
-    constants: float, array_like (optional)
-        The values of the constants for the forcefield used.
-    mass: float (optional)
-        The mass of the particles being simulated.
-    simulation: {'md', 'mc'}
-        Required. Which engine drives this system; set for you by
-        :func:`md.initialise` and :func:`mc.initialise`.
-    forcefield: class (optional)
-        The particular forcefield to be used to find the energy and forces.
     diameter: float or iterable of float (optional)
         Drawn diameter of the particles in Angstrom, one value or one per
         set of constants. Defaults to the separation at the pair-potential

@@ -16,7 +16,7 @@ def initialise(
     diameter=None
 ):
     """Initialise the particle positions (this can be either as a square or
-    random arrangement), velocities (based on the temperature defined, and
+    random arrangement) and velocities (based on the temperature defined), and
     calculate the initial forces/accelerations.
 
     Parameters

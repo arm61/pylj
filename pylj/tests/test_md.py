@@ -1,5 +1,6 @@
 from numpy.testing import assert_almost_equal, assert_equal
 from pylj import md
+from pylj import forcefields as ff
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 import numpy as np
 import unittest
@@ -21,8 +22,19 @@ class TestMd(unittest.TestCase):
         self.assertTrue(np.any(a.particles["yacceleration"] != 0))
 
     def test_initialize_passes_keyword_arguments_through(self):
-        a = md.initialize(2, 300, 8, "square", mass=20.0)
+        constants = [[1.0, 0.25]]
+        a = md.initialize(
+            2,
+            300,
+            8,
+            "square",
+            mass=20.0,
+            constants=constants,
+            forcefield=ff.lennard_jones_sigma_epsilon,
+        )
         assert_equal(a.mass, 20.0)
+        assert_equal(a.constants, constants)
+        assert_equal(a.forcefield, ff.lennard_jones_sigma_epsilon)
 
     def test_sample_records_step_and_thermodynamics(self):
         a = md.initialise(2, 300, 8, "square")
