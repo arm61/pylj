@@ -167,7 +167,7 @@ class buckingham(object):
         """
         energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
         # Cut out infinite values where r = 0
-        if type(dr) != float:
+        if not isinstance(dr, float):
             energy = np.array(energy)
             energy[np.where(energy > 10e300)] = 0
             energy[np.where(energy < -10e300)] = 0
@@ -192,7 +192,7 @@ class buckingham(object):
         """
         force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
         # Cut out infinite values where r = 0
-        if type(dr) != float:
+        if not isinstance(dr, float):
             force = np.array(force)
             force[np.where(force > 10e300)] = 0
             force[np.where(force < -10e300)] = 0
@@ -295,8 +295,7 @@ class square_well(object):
                 dr = np.array([dr], dtype='float')
 
         E = np.zeros_like(dr)
-        E = np.zeros_like(dr)
-        E[np.where(dr < self.epsilon)] = self.max_val
+        E[np.where(dr < self.sigma)] = self.max_val
         E[np.where(dr >= self.lamda * self.sigma)] = 0
 
         # apply mask for sigma <= dr < lambda * sigma

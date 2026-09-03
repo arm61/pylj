@@ -62,7 +62,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
             constants_2 = np.array(constants[int(pair.split(',')[1])])
             ff.mixing(constants_2)
         type_forces = ff.force(type_distances)
-        type_energies = ff.energy(distances)
+        type_energies = ff.energy(type_distances)
         type_forces = np.nan_to_num(type_forces)
         type_energies = np.nan_to_num(type_energies)
         forces+=type_forces

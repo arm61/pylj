@@ -23,7 +23,7 @@ class TestForcefields(unittest.TestCase):
         assert_almost_equal(e.energy([100.0, 200.0, 500.0]), [0, 0, 0])
         assert_almost_equal(e.force([100.0, 200.0, 500.0]), [0, 0, 0])
         with self.assertRaises(IndexError):
-            f = forcefields.lennard_jones([1.0, 1.0, 1.0])
+            forcefields.lennard_jones([1.0, 1.0, 1.0])
 
     def test_lennard_jones_sigma_epsilon(self):
         a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])
@@ -42,7 +42,7 @@ class TestForcefields(unittest.TestCase):
         e.mixing([4.0, 4.0])
         assert_almost_equal([e.sigma, e.epsilon], [2.5, 2.0])
         with self.assertRaises(IndexError):
-            f = forcefields.lennard_jones_sigma_epsilon([1.0, 1.0, 1.0])
+            forcefields.lennard_jones_sigma_epsilon([1.0, 1.0, 1.0])
 
     def test_buckingham(self):
         a = forcefields.buckingham([1.0, 1.0, 1.0])
@@ -60,7 +60,7 @@ class TestForcefields(unittest.TestCase):
         assert_almost_equal(d.energy([2.0, 4.0, 5.0]), [0.0096457, 0.0096055, 0.0095117])
         assert_almost_equal(d.force([2.0, 4.0, 5.0]), [-3.7073013e-04,  9.2416835e-05,  9.4354942e-05])
         with self.assertRaises(IndexError):
-            e = forcefields.buckingham([1.0, 1.0])
+            forcefields.buckingham([1.0, 1.0])
 
     def test_square_well(self):
         a = forcefields.square_well([1.0, 1.5, 2.0])
@@ -77,8 +77,12 @@ class TestForcefields(unittest.TestCase):
         assert_equal(e.energy([3.0, 3.0, 0.25]), [0, 0, float('inf')])
         f = forcefields.square_well([1.0, 1.5, 1.25], max_val=5000)
         assert_equal(f.energy([3.0, 3.0, 0.25]), [0, 0, 5000])
+        h = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(h.energy(1.2), float('inf'))
+        i = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(i.energy(1.6), -1.0)
         with self.assertRaises(IndexError):
-            g = forcefields.square_well([1.0, 1.0])
+            forcefields.square_well([1.0, 1.0])
 
     def test_lennard_jones_sigma_epsilon_diameter(self):
         a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])

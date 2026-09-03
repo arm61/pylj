@@ -76,16 +76,28 @@ class TestPairwise(unittest.TestCase):
         particles["xposition"][1] = 5e-10
         particles["yposition"][2] = 5e-10
         particles['types'] = ['0','1','0']
+        constants = [[1.363e-134, 9.273e-78], [1.363e-133, 9.273e-77]]
         particles, distances, forces, energies = pairwise.compute_force(
             particles,
             30,
             15,
-            constants=[[1.363e-134, 9.273e-78],[1.363e-133, 9.273e-77]],
+            constants=constants,
             forcefield=ff.lennard_jones,
             mass=39.948
         )
         assert_almost_equal(distances, [4.0000000e-10, 5.0990195e-10, 7.0710678e-10])
-        assert_almost_equal(energies, [-3.0626388e-20, -1.0201147e-20, -1.5468582e-21])
+        # Each pair contributes its energy once, evaluated with the forcefield
+        # for its own pair of types. Particles 0 and 2 are type 0 and particle
+        # 1 is type 1, so the pairs are (0, 1), (0, 0) and (1, 0) in the order
+        # the distances come back. Unlike pairs mix the two sets of constants,
+        # as compute_force does.
+        expected = []
+        for distance, pair in zip(distances, [(0, 1), (0, 0), (1, 0)]):
+            forcefield = ff.lennard_jones(constants[pair[0]])
+            if pair[0] != pair[1]:
+                forcefield.mixing(constants[pair[1]])
+            expected.append(forcefield.energy(distance))
+        assert_almost_equal(np.array(energies) * 1e20, np.array(expected) * 1e20)
         assert_almost_equal(forces, [-9.6342138e-11, -5.1698213e-12, -6.1773405e-12])
         assert_almost_equal(particles["yacceleration"], [7.6421357e+13,  2.07196175e+13,-9.71409740e+13], decimal=-7)
         assert_almost_equal(particles["xacceleration"][0] / 1e14, 4.4171075)
