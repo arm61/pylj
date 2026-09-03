@@ -53,13 +53,18 @@ def test_cell_pane_draws_each_type_separately(drawing_display):
     plt.close(fig)
 
 
-def test_cell_pane_marker_scales_with_box(drawing_display):
-    sizes = []
-    for box in (20, 40):
-        system = md.initialise(4, 100, box, "square", diameter=4.0)
-        fig, ax, handle = environment(1)
-        CellPane().setup(ax, system)
-        sizes.append(ax.lines[0].get_markersize())
-        plt.close(fig)
-    assert_allclose(sizes[0], 2 * sizes[1])
-    assert sizes[0] > 0
+def test_cell_pane_marker_matches_particle_diameter(drawing_display):
+    system = md.initialise(4, 100, 20, "square", diameter=4.0)
+    fig, ax, handle = environment(1)
+    pane = CellPane()
+    pane.setup(ax, system)
+
+    def drawn_and_true_diameter_px():
+        origin, edge = ax.transData.transform([(0, 0), (system.diameters[0], 0)])
+        return ax.lines[0].get_markersize() * fig.dpi / 72, edge[0] - origin[0]
+
+    assert_allclose(*drawn_and_true_diameter_px())
+    fig.tight_layout()
+    pane.update(ax, system)
+    assert_allclose(*drawn_and_true_diameter_px())
+    plt.close(fig)

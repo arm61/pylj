@@ -9,6 +9,8 @@ updates.
 import numpy as np
 from matplotlib.axes import Axes
 
+from pylj.util import System
+
 LINE_COLOUR = "#34a5daff"
 BOLTZMANN = 1.3806e-23  # J / K
 LABEL_SIZE = 16
@@ -44,7 +46,7 @@ def _fit_axes(
 class Pane:
     """One plot within a viewer."""
 
-    def setup(self, ax: Axes, system) -> None:
+    def setup(self, ax: Axes, system: System) -> None:
         """Create the artists and static decoration for this pane.
 
         Args:
@@ -53,7 +55,7 @@ class Pane:
         """
         raise NotImplementedError
 
-    def update(self, ax: Axes, system) -> None:
+    def update(self, ax: Axes, system: System) -> None:
         """Push the current state of the system into the artists.
 
         Args:
@@ -66,7 +68,7 @@ class Pane:
 class CellPane(Pane):
     """The particles drawn to scale inside the simulation cell."""
 
-    def setup(self, ax: Axes, system) -> None:
+    def setup(self, ax: Axes, system: System) -> None:
         for _ in system.diameters:
             ax.plot([], [], "o", markeredgecolor="black")
         ax.set_xlim(0, system.box_length)
@@ -76,10 +78,10 @@ class CellPane(Pane):
         ax.set_aspect("equal")
         self.update(ax, system)
 
-    def update(self, ax: Axes, system) -> None:
+    def update(self, ax: Axes, system: System) -> None:
         types = np.asarray(system.particles["types"])
         ax.apply_aspect()
-        axes_width_points = ax.get_position().width * ax.figure.get_figwidth() * 72
+        axes_width_points = ax.get_window_extent().width / ax.figure.dpi * 72
         for index, (line, diameter) in enumerate(zip(ax.lines, system.diameters)):
             mask = types == str(index)
             line.set_data(
