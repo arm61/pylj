@@ -1,7 +1,10 @@
-from numpy.testing import assert_almost_equal, assert_equal
-from pylj import util
-from pylj import forcefields as ff
 import unittest
+
+import numpy as np
+from numpy.testing import assert_almost_equal, assert_equal
+
+from pylj import forcefields as ff
+from pylj import util
 
 
 class TestUtil(unittest.TestCase):
@@ -13,6 +16,7 @@ class TestUtil(unittest.TestCase):
             mass=39.948,
             constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
+            simulation="md",
         )
         assert_equal(a.number_of_particles, 2)
         assert_equal(a.init_temp, 300)
@@ -36,6 +40,7 @@ class TestUtil(unittest.TestCase):
             mass=39.948,
             constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
+            simulation="md",
         )
         assert_equal(a.number_of_particles, 2)
         assert_equal(a.init_temp, 300)
@@ -59,6 +64,7 @@ class TestUtil(unittest.TestCase):
                 mass=39.948,
                 constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
+                simulation="md",
             )
         self.assertTrue(
             "With a box length of 1000 the particles are probably "
@@ -75,6 +81,7 @@ class TestUtil(unittest.TestCase):
                 mass=39.948,
                 constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
+                simulation="md",
             )
         self.assertTrue(
             "With a box length of 2 the cell is too small to "
@@ -91,9 +98,94 @@ class TestUtil(unittest.TestCase):
                 mass=39.948,
                 constants=[[1.363e-134, 9.273e-78]],
                 forcefield=ff.lennard_jones,
+                simulation="md",
             )
         self.assertTrue(
             "The initial configuration type horseradish is not "
             "recognised. Available options are: square or "
             "random" in str(context.exception)
         )
+
+    def test_system_records_simulation_kind(self):
+        a = util.System(
+            2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="mc"
+        )
+        assert_equal(a.simulation, "mc")
+
+    def test_system_rejects_unknown_simulation_kind(self):
+        with self.assertRaises(ValueError):
+            util.System(
+                2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="dft"
+            )
+
+    def test_system_diameters_default_to_forcefield(self):
+        a = util.System(
+            2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="md"
+        )
+        assert_almost_equal(a.diameters[0] * 1e10, 3.78, decimal=2)
+
+    def test_system_single_diameter_applies_to_every_type(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        a = util.System(
+            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=3.0
+        )
+        assert_almost_equal(a.diameters, [3e-10, 3e-10])
+
+    def test_system_diameter_list_is_per_type(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        a = util.System(
+            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0, 5.0]
+        )
+        assert_almost_equal(a.diameters, [3e-10, 5e-10])
+
+    def test_system_diameter_array_is_per_type(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        a = util.System(
+            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md",
+            diameter=np.array([3.0, 5.0]),
+        )
+        assert_almost_equal(a.diameters, [3e-10, 5e-10])
+
+    def test_system_diameter_list_must_match_types(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        with self.assertRaises(ValueError):
+            util.System(
+                2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0]
+            )
+
+    def test_system_diameter_must_be_positive(self):
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaisesRegex(ValueError, "positive"):
+            util.System(
+                2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=0.0
+            )
+
+    def test_system_diameter_in_metres_is_rejected(self):
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaisesRegex(ValueError, "Angstrom"):
+            util.System(
+                2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=3.4e-10
+            )
+
+    def test_system_forcefield_whose_diameter_raises_keeps_the_cause(self):
+        class BrokenDiameter:
+            def __init__(self, constants):
+                self.constants = constants
+
+            @property
+            def diameter(self):
+                raise AttributeError("oops")
+
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaises(ValueError) as caught:
+            util.System(2, 300, 8, constants, BrokenDiameter, 39.948, simulation="md")
+        self.assertIn("oops", str(caught.exception.__cause__))
+
+    def test_system_forcefield_without_a_diameter_is_rejected(self):
+        class NoDiameter:
+            def __init__(self, constants):
+                self.constants = constants
+
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaisesRegex(ValueError, "diameter"):
+            util.System(2, 300, 8, constants, NoDiameter, 39.948, simulation="md")

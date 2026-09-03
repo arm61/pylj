@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 # System imports
-from setuptools import setup, Extension, find_packages
+from setuptools import setup, find_packages
 from os import path
 import io
 
@@ -25,8 +25,10 @@ info = {
         'author_email': 'arm61@bath.ac.uk',
         'packages': packages,
         'include_package_data': True,
-        'setup_requires': ['jupyter', 'numpy', 'matplotlib', 'cython'],
-        'install_requires': ['jupyter', 'numpy', 'matplotlib', 'cython'],
+        'package_data': {'pylj': ['py.typed']},
+        'install_requires': ['jupyter', 'numpy', 'scipy', 'matplotlib'],
+        'extras_require': {'dev': ['pytest', 'pytest-cov', 'ruff', 'mypy', 'scipy-stubs']},
+        'python_requires': '>=3.11',
         'version': VERSION,
         'license': 'MIT',
         'long_description': long_description,
@@ -37,10 +39,10 @@ info = {
                         'License :: OSI Approved :: MIT License',
                         'Natural Language :: English',
                         'Operating System :: OS Independent',
-                        'Programming Language :: Python :: 2.7',
-                        'Programming Language :: Python :: 3.5',
-                        'Programming Language :: Python :: 3.6',
-                        'Programming Language :: Python :: 3.7',
+                        'Programming Language :: Python :: 3.11',
+                        'Programming Language :: Python :: 3.12',
+                        'Programming Language :: Python :: 3.13',
+                        'Programming Language :: Python :: 3.14',
                         'Topic :: Scientific/Engineering',
                         'Topic :: Scientific/Engineering :: Chemistry',
                         'Topic :: Scientific/Engineering :: Physics']

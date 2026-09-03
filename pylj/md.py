@@ -1,6 +1,8 @@
 import numpy as np
-from pylj import pairwise as heavy
+
 from pylj import forcefields as ff
+from pylj import pairwise as heavy
+from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
 def initialise(
@@ -10,11 +12,12 @@ def initialise(
     init_conf,
     timestep_length=1e-14,
     mass=39.948,
-    constants=[[1.363e-134, 9.273e-78]],
-    forcefield=ff.lennard_jones
+    constants=None,
+    forcefield=ff.lennard_jones,
+    diameter=None
 ):
     """Initialise the particle positions (this can be either as a square or
-    random arrangement), velocities (based on the temperature defined, and
+    random arrangement) and velocities (based on the temperature defined), and
     calculate the initial forces/accelerations.
 
     Parameters
@@ -34,9 +37,14 @@ def initialise(
     mass: float (optional)
         The mass of the particles being simulated.
     constants: float, array_like (optional)
-        The values of the constants for the forcefield used.
+        The values of the constants for the forcefield used. Defaults to the
+        argon Lennard-Jones constants, ``[[1.363e-134, 9.273e-78]]``.
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
+    diameter: float or iterable of float (optional)
+        Drawn diameter of the particles in Angstrom, one value or one per
+        set of constants. Defaults to the separation at the pair-potential
+        minimum of the forcefield.
 
     Returns
     -------
@@ -45,6 +53,8 @@ def initialise(
     """
     from pylj import util
 
+    if constants is None:
+        constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
         number_of_particles,
         temperature,
@@ -52,31 +62,25 @@ def initialise(
         constants,
         forcefield,
         mass,
+        simulation="md",
         init_conf=init_conf,
-        timestep_length=timestep_length
+        timestep_length=timestep_length,
+        diameter=diameter
     )
     v = np.random.rand(system.particles.size, 2, 12)
     v = np.sum(v, axis=2) - 6.0
-    mass_kg = mass * 1.6605e-27
-    v = v * np.sqrt(1.3806e-23 * system.init_temp / mass_kg)
+    mass_kg = mass * ATOMIC_MASS_UNIT
+    v = v * np.sqrt(BOLTZMANN * system.init_temp / mass_kg)
     v = v - np.average(v)
     system.particles["xvelocity"] = v[:, 0]
     system.particles["yvelocity"] = v[:, 1]
+    system.compute_force()
     return system
 
 
-def initialize(
-    number_particles, temperature, box_length, init_conf, timestep_length=1e-14
-):
-    """Maps to the md.initialise function to account for US english spelling.
-    """
-    a = initialise(
-        number_particles, temperature, box_length, init_conf, timestep_length
-    )
-    return a
+initialize = initialise  # US spelling
 
 
-#Jit tag here had to be removed
 def velocity_verlet(
     particles, timestep_length, box_length, cut_off, constants, forcefield, mass
 ):
@@ -144,8 +148,8 @@ def sample(particles, box_length, initial_particles, system):
     Returns
     -------
     System:
-        Details about the whole system, with the new temperature, pressure,
-        msd, and force appended to the appropriate
+        Details about the whole system, with the new step, temperature,
+        pressure, energy, msd, and force appended to the appropriate
         arrays.
     """
     temperature_new = calculate_temperature(particles, system.mass)
@@ -164,6 +168,7 @@ def sample(particles, box_length, initial_particles, system):
     system.force_sample = np.append(system.force_sample, np.sum(system.forces))
     system.energy_sample = np.append(system.energy_sample, np.sum(system.energies))
     system.msd_sample = np.append(system.msd_sample, msd_new)
+    system.step_sample = np.append(system.step_sample, system.step)
     return system
 
 
@@ -294,15 +299,13 @@ def calculate_temperature(particles, mass):
     float:
         Calculated instantaneous simulation temperature.
     """
-    boltzmann_constant = 1.3806e-23  # joules/kelvin
-    atomic_mass_unit = 1.660539e-27  # kilograms
-    mass_kg = mass * atomic_mass_unit  # kilograms
+    mass_kg = mass * ATOMIC_MASS_UNIT  # kilograms
     v = np.sqrt(
         (particles["xvelocity"] * particles["xvelocity"])
         + (particles["yvelocity"] * particles["yvelocity"])
     )
     k = 0.5 * np.sum(mass_kg * v * v)
-    t = k / (particles.size * boltzmann_constant)
+    t = k / (particles.size * BOLTZMANN)
     return t
 
 

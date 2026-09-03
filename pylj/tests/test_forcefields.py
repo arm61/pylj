@@ -1,6 +1,9 @@
-from numpy.testing import assert_almost_equal, assert_equal
-from pylj import forcefields
 import unittest
+
+import numpy as np
+from numpy.testing import assert_almost_equal, assert_equal
+
+from pylj import forcefields
 
 
 class TestForcefields(unittest.TestCase):
@@ -17,13 +20,15 @@ class TestForcefields(unittest.TestCase):
         assert_almost_equal(c.energy([2.0, 4.5],), [-0.05456543, -0.00042149])
         assert_almost_equal(c.force([2.0, 4.5],), [-0.1633301, -0.000562])
         d = forcefields.lennard_jones( [5.0, 3.5])
-        assert_almost_equal(d.energy([1.0, 1.5, 20.0]), [1.50000000, -0.268733500, -5.46874988e-08])
-        assert_almost_equal(d.force([1.0, 1.5, 20.0]), [ 3.9000000e+01, -9.2078707e-01, -1.6406249e-08])
+        assert_almost_equal(d.energy([1.0, 1.5, 20.0]),
+                            [1.50000000, -0.268733500, -5.46874988e-08])
+        assert_almost_equal(d.force([1.0, 1.5, 20.0]),
+                            [3.9000000e+01, -9.2078707e-01, -1.6406249e-08])
         e = forcefields.lennard_jones([100.0, 300.0])
         assert_almost_equal(e.energy([100.0, 200.0, 500.0]), [0, 0, 0])
         assert_almost_equal(e.force([100.0, 200.0, 500.0]), [0, 0, 0])
         with self.assertRaises(IndexError):
-            f = forcefields.lennard_jones([1.0, 1.0, 1.0])
+            forcefields.lennard_jones([1.0, 1.0, 1.0])
 
     def test_lennard_jones_sigma_epsilon(self):
         a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])
@@ -42,7 +47,7 @@ class TestForcefields(unittest.TestCase):
         e.mixing([4.0, 4.0])
         assert_almost_equal([e.sigma, e.epsilon], [2.5, 2.0])
         with self.assertRaises(IndexError):
-            f = forcefields.lennard_jones_sigma_epsilon([1.0, 1.0, 1.0])
+            forcefields.lennard_jones_sigma_epsilon([1.0, 1.0, 1.0])
 
     def test_buckingham(self):
         a = forcefields.buckingham([1.0, 1.0, 1.0])
@@ -58,9 +63,10 @@ class TestForcefields(unittest.TestCase):
         assert_almost_equal(c.force([2.0, 4.0]), [0.0884603, 0.0179494])
         d = forcefields.buckingham([0.01, 0.01, 0.01])
         assert_almost_equal(d.energy([2.0, 4.0, 5.0]), [0.0096457, 0.0096055, 0.0095117])
-        assert_almost_equal(d.force([2.0, 4.0, 5.0]), [-3.7073013e-04,  9.2416835e-05,  9.4354942e-05])
+        assert_almost_equal(d.force([2.0, 4.0, 5.0]),
+                            [-3.7073013e-04,  9.2416835e-05,  9.4354942e-05])
         with self.assertRaises(IndexError):
-            e = forcefields.buckingham([1.0, 1.0])
+            forcefields.buckingham([1.0, 1.0])
 
     def test_square_well(self):
         a = forcefields.square_well([1.0, 1.5, 2.0])
@@ -77,8 +83,43 @@ class TestForcefields(unittest.TestCase):
         assert_equal(e.energy([3.0, 3.0, 0.25]), [0, 0, float('inf')])
         f = forcefields.square_well([1.0, 1.5, 1.25], max_val=5000)
         assert_equal(f.energy([3.0, 3.0, 0.25]), [0, 0, 5000])
+        h = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(h.energy(1.2), float('inf'))
+        i = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(i.energy(1.6), -1.0)
         with self.assertRaises(IndexError):
-            g = forcefields.square_well([1.0, 1.0])
+            forcefields.square_well([1.0, 1.0])
+
+    def test_lennard_jones_sigma_epsilon_diameter(self):
+        a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])
+        assert_almost_equal(a.diameter, 2 ** (1 / 6))
+
+    def test_lennard_jones_diameter(self):
+        a = forcefields.lennard_jones([1.363e-134, 9.273e-78])
+        assert_almost_equal(a.diameter * 1e10, 3.78, decimal=2)
+
+    def test_buckingham_diameter_is_at_the_well(self):
+        a = forcefields.buckingham([1.69e-15, 3.66e10, 1.01e-77])
+        assert_almost_equal(a.diameter * 1e10, 3.83, decimal=1)
+
+    def test_square_well_energy_takes_an_integer_array(self):
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        energy = a.energy(np.arange(1, 6))
+        assert_equal(energy.dtype, np.dtype(float))
+        assert_almost_equal(energy, [np.inf, -1.0, 0.0, 0.0, 0.0])
+
+    def test_square_well_energy_takes_a_python_integer(self):
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(a.energy(2), forcefields.square_well([1.0, 1.5, 2.0]).energy(2.0))
+
+    def test_square_well_diameter(self):
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(a.diameter, 1.5)
+
+    def test_buckingham_diameter_rejects_constants_without_a_well(self):
+        a = forcefields.buckingham([1.0, 1.0, 1.0])
+        with self.assertRaises(ValueError):
+            _ = a.diameter
 
 if __name__ == '__main__':
     unittest.main(exit=False)

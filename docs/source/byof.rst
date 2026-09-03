@@ -1,33 +1,30 @@
 bring your own forcefield
 =========================
 
-Although pylj was originally designed to use only the Lennard-Jones potential model, hence pyLennard-Jones. Following the release of pylj-1.1.0, it is now possible to pass custom forcefields to the simulation. As of pylj-1.5.0, these have become class-based.
+pylj takes the pair potential as a class passed to :code:`md.initialise` or :code:`mc.initialise` as :code:`forcefield`, with its parameters passed as :code:`constants`. The Lennard-Jones, Buckingham and square-well potentials in the :doc:`forcefields` module are written this way, and a custom potential follows the same form.
 
-A rough piece of advice for the particle sizing is that 10 looks normal, and is the fixed size in Buckingham and Square Well potentials, but this can be set as a function of the constants as in the Lennard-Jones forcefield. As for mixing rules, these are usually either geometric or arithmetic means of the two constants.
-
-Writing your own forcefield and passing it to the pylj engine is very simple, firstly the forcefield should have the following form,
+Writing your own forcefield and passing it to the pylj engine is very simple. Firstly, the forcefield should have the following form:
 
 .. code-block:: python
 
     class forcefield(object):
 
-        def __init__(self, constants)
+        def __init__(self, constants):
             # Define constants
             # For instance:
             self.a = constants[0]
             self.b = constants[1]
 
-            # Define sizing, this could be equal to 10 or some function of the constants
-            # For instance:
-            self.point_size = self.a**2
-        
+        @property
+        def diameter(self):
+            # The separation at the potential minimum, in metres
+            return some_function_of(self.a, self.b)
+
         def energy(self, dr):
-            self.energy = func(dr, self.a, self.b)
-            return energy
+            return func(dr, self.a, self.b)
 
         def force(self, dr):
-            self.force = other_func(dr, self.a, self.b)
-            return force
+            return other_func(dr, self.a, self.b)
 
         def mixing(self, constants2):
             a2 = constants2[0]
@@ -36,8 +33,10 @@ Writing your own forcefield and passing it to the pylj engine is very simple, fi
             self.a = mixing_func(self.a, a2)
             self.b = other_mixing_func(self.b, b2)
 
-An example of this for the Lennard-Jones forcefield (which is the default for pylj) and be found in the :doc:`forcefields` module.
+The four members do the following.
 
-It is necessary to pass this forcefield to the pylj engine. This can be achieved during the initialisation of the :code:`System` class object, by passing the defined class as the variable :code:`forcefield`. This can be seen for the Lennard-Jones forcefield in the :code:`System` class definition in the :doc:`util` module. 
+- :code:`diameter` is the separation at the minimum of the pair potential, in metres. The particles are drawn with this diameter, so the picture of the cell is to scale. It can be overridden with the :code:`diameter` argument to :code:`md.initialise` or :code:`mc.initialise`, which is given in Angstrom.
+- :code:`energy` and :code:`force` return the pair energy and the magnitude of the pair force for an array of separations :code:`dr`, in metres.
+- :code:`mixing` combines this forcefield's constants with those of a second particle type, and is called when a simulation has more than one set of constants. Geometric or arithmetic means of the two sets are the usual choices.
 
-.. _issue: https://github.com/arm61/pylj/issues/29
+The Lennard-Jones forcefield in the :doc:`forcefields` module is a complete example.

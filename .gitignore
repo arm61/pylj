@@ -1,6 +1,22 @@
 build/
 dist/
-pylj/__pycache__/
-pylj/tests/__pycache__/
 pylj.egg-info/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage_html_report/
 pylj/comp.cpython-37m-darwin.so
+
+# Markdown is ignored by default so local notes (CLAUDE.md, plans, specs)
+# stay out of the repository; tracked project documents are whitelisted.
+*.md
+!README.md
+!CHANGELOG.md
+!CONTRIBUTING.md
+!CODE_OF_CONDUCT.md
+!PULL_REQUEST_TEMPLATE.md
+!TODO.md
+!paper/paper.md
+!.github/ISSUE_TEMPLATE/*.md

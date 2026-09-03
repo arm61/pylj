@@ -1,8 +1,9 @@
-from __future__ import division
 import numpy as np
-from pylj import pairwise as heavy
 
-#Jit tag here had to be removed
+from pylj import pairwise as heavy
+from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+
+
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     r"""Calculates the forces and therefore the accelerations on each of the
     particles in the simulation.
@@ -42,9 +43,8 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     )
     forces = np.zeros(pairs)
     energies = np.zeros(pairs)
-    atomic_mass_unit = 1.660539e-27  # kilograms
     mass_amu = mass  # amu
-    mass_kg = mass_amu * atomic_mass_unit  # kilograms
+    mass_kg = mass_amu * ATOMIC_MASS_UNIT  # kilograms
     distances, dx, dy, pair_types = heavy.dist(
         particles["xposition"], particles["yposition"], box_length, particles['types']
     )
@@ -62,7 +62,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
             constants_2 = np.array(constants[int(pair.split(',')[1])])
             ff.mixing(constants_2)
         type_forces = ff.force(type_distances)
-        type_energies = ff.energy(distances)
+        type_energies = ff.energy(type_distances)
         type_forces = np.nan_to_num(type_forces)
         type_energies = np.nan_to_num(type_energies)
         forces+=type_forces
@@ -72,7 +72,6 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
     return particles, distances, forces, energies
 
-#Jit tag here had to be removed
 def separation(dx, dy):
     """Calculate the distance in 2D space.
 
@@ -238,11 +237,10 @@ def calculate_pressure(
         particles, box_length, cut_off, constants, forcefield, mass
         )
     pres = np.sum(forces * distances)
-    boltzmann_constant = 1.3806e-23  # joules / kelvin
     pres = 1.0 / (2 * box_length * box_length) * pres + (
         particles["xposition"].size
         / (box_length * box_length)
-        * boltzmann_constant
+        * BOLTZMANN
         * temperature
     )
     return pres
@@ -276,7 +274,6 @@ def heat_bath(particles, temperature_sample, bath_temp):
     return particles
 
 
-#Jit tag here had to be removed
 def dist(xposition, yposition, box_length, types):
     """Returns the distance array for the set of particles.
 
@@ -326,7 +323,6 @@ def dist(xposition, yposition, box_length, types):
     return drr, dxr, dyr, pair_types
 
 
-#Jit tag here had to be removed
 def pbc_correction(position, cell):
     """Correct for the periodic boundary condition.
 
@@ -344,30 +340,3 @@ def pbc_correction(position, cell):
     if np.abs(position) > 0.5 * cell:
         position *= 1 - cell / np.abs(position)
     return position
-
-def create_dist_identifiers(type_identifier):
-    '''
-    Creates correct distance identifier matrix for particular type
-    of particle
-
-    Parameters
-    ----------
-    type identifiers:
-        the identifier array listing 1 for particles of that type
-        or 0 for particles of a different type
-
-    Returns
-    -------
-    distances: float, array_like 
-        the distance identifier for interactions between each particle 
-        of that type, or 0 for interactions involving particles of a
-        different type
-
-    '''
-    distance_type_identifier = np.array([])
-    for index in range(len(type_identifier)):
-        if type_identifier[index]:
-            distance_type_identifier = np.append(distance_type_identifier,type_identifier[index+1:])
-        else:
-            distance_type_identifier = np.append(distance_type_identifier,np.zeros(len(type_identifier[index+1:])))
-    return distance_type_identifier

@@ -1,139 +1,65 @@
 visualisation
 =============
 
-existing classes
+existing viewers
 ----------------
 
-pylj comes with four different methods for visualising the simulation that is taking place:
+pylj comes with eight viewers, each a live figure that redraws when its :code:`update(system)` method is called:
 
-- JustCell
-- RDF
-- Scattering
-- Interactions
-- Energy
+- :code:`JustCell`: the particle positions
+- :code:`Energy`: positions and the total energy
+- :code:`MaxBolt`: positions and a histogram of particle speeds
+- :code:`RDF`: positions and the radial distribution function
+- :code:`CellPlus`: positions and one plot of data you supply
+- :code:`Interactions`: positions, temperature, pressure and total force
+- :code:`Phase`: positions, total energy, mean squared displacement and the radial distribution function
+- :code:`Scattering`: positions, the radial distribution function, mean squared displacement and the scattering profile
 
-Full information about the existing classes can be found in the :doc:`sample` class documentation. 
+The :code:`MaxBolt`, :code:`Interactions`, :code:`Phase` and :code:`Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo system before they build their figure, naming themselves in the error. Every viewer takes the :code:`System` and an optional :code:`size` of :code:`'small'`, :code:`'medium'` or :code:`'large'`. Every viewer has an :code:`average()` method that replaces the latest curve with the mean of every update so far; it raises :code:`ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the :doc:`sample` module documentation.
 
-building your own class
------------------------
+The viewers use the inline matplotlib backend. Start notebooks with :code:`%matplotlib inline`.
 
-Using the inbuild tools it is straightforward to build your own custom sample class, or to have students design their own. 
+panes
+-----
 
-Each sample class consists of at least an :code:`__init__` function and an :code:`update` function. The :code:`__init__` function should select the number of panes in the visualisation environment by calling the :code:`sample.environment(n)` function and setup the various windows using the different setup functions. The :code:`update` function then updates the panes each time it is called, this function should consist of a series of update functions related to each pane. A commented example of the JustCell sample class is shown below.  
+A viewer is a grid of panes. A pane draws one quantity into one matplotlib axes and has two methods: :code:`setup(ax, system)` creates the line and labels once, and :code:`update(ax, system)` pushes the current state of the system into that line. The panes that exist are :code:`CellPane`, :code:`EnergyPane`, :code:`TemperaturePane`, :code:`PressurePane`, :code:`ForcePane`, :code:`MSDPane`, :code:`RDFPane`, :code:`ScatteringPane`, :code:`MaxwellBoltzmannPane` and :code:`CustomPane`.
 
-.. code-block:: python 
+Panes that plot a quantity against time read it from the sample arrays on the :code:`System` object, which the :code:`md.sample` and :code:`mc.sample` functions fill. Each call records the current step in :code:`step_sample`, so a loop may sample as often or as rarely as it likes. The time axes are derived from :code:`step_sample`, so the loop is responsible for advancing :code:`system.step` and :code:`system.time` on every iteration, as the example notebooks do.
 
-    class JustCell(object):
-        """The JustCell class will plot just the particle positions.
-        This is a simplistic sampling class for quick visualisation. 
-    
-        Parameters
-        ----------
-        system: System
-            The whole system information. 
-        """
-        def __init__(self):
-            # First the fig and ax must be defined. These are the 
-            # Matplotlib.figure.Figure object for the whole 
-            # visualisation environment and the axes object (or 
-            # array of axes objects) related to the individual panes. 
-            fig, ax = environment(1)
-    
-            # This is a setup function (detailed below) for the 
-            # particle positions 
-            setup_cellview(ax, system)
-    
-            # Generally looks better with the tight_layout function 
-            # called
-            plt.tight_layout()
-    
-            # The Matplotlib.figure.Figure and axes object are set to
-            # self variables for the class
-            self.ax = ax
-            self.fig = fig
-    
-        def update(self, system):
-            """This updates the visualisation environment. Often this 
-            can be slower than the cythonised force calculation so 
-            use this wisely.
-    
-            Parameters
-            ----------
-            system: System
-                The whole system information. 
-            """
-            # This is the update function (detailed below) for the 
-            # particle positions
-            update_cellview(self.ax, system)
-    
-            # The use of the `%matplotlib notebook' magic function in 
-            # the Jupyter notebook means that the canvas must be 
-            # redrawn
-            self.fig.canvas.draw()
+building your own viewer
+------------------------
 
-The :code:`setup_cellview` and :code:`update_cellview` functions have the following form.
+To combine existing panes in a new layout, pass a list of one, two or four panes to :code:`Viewer`:
 
 .. code-block:: python
 
-    def setup_cellview(ax, system):
-        """Builds the particle position visualisation pane.
+    from pylj.sample import Viewer, CellPane, TemperaturePane
 
-        Parameters
-        ----------
-        ax: Axes object
-            The axes position that the pane should be placed in.
-        system: System
-            The whole system information.
-        """
-        # Assign the particles x and y coordinates to new lists
-        xpos = system.particles['xposition']
-        ypos = system.particles['yposition']
-        
-        # This simply defines the size of the particle such that
-        # it is proportional to the box size
-        mk = (1052.2 / (system.box_length - 0.78921) - 1.2174)
+    viewer = Viewer(system, [CellPane(), TemperaturePane()])
 
-        # Plot the initial positions of the particles
-        ax.plot(xpos, ypos, 'o', markersize=mk, 
-                markeredgecolor='black', color='#34a5daff')
-        
-        # Make the box the right size and remove the ticks
-        ax.set_xlim([0, system.box_length])
-        ax.set_ylim([0, system.box_length])
-        ax.set_xticks([])
-        ax.set_yticks([])
+To plot a new quantity, write a pane. This one plots the x velocity of the first particle against time:
 
-    def update_cellview(ax, system):
-        """Updates the particle positions visualisation pane.
+.. code-block:: python
 
-        Parameters
-        ----------
-        ax: Axes object
-            The axes position that the pane should be placed in.
-        system: System
-            The whole system information.
-        """
-        # Assign the particles x and y coordinates to new lists
-        xpos = system.particles['xposition']
-        ypos = system.particles['yposition']
-        
-        # The plotted data is accessed as an object in the axes 
-        # object
-        line = ax.lines[0]
-        line.set_ydata(ypos)
-        line.set_xdata(xpos)
+    from pylj.sample import Pane, Viewer, CellPane
 
-Hopefully, it is clear how a custom enivornment could be created. Currently there are functions to setup and update the following panes:
+    class FirstParticlePane(Pane):
+        def __init__(self):
+            self.times = []
+            self.velocities = []
 
-- :code:`cellview`: the particle positions
-- :code:`rdfview`: the radial distribution function
-- :code:`diffview`: the scattering profile
-- :code:`msdview`: the mean squared deviation against time
-- :code:`pressureview`: the instantaneous pressure against time
-- :code:`tempview`: the instantaneous temperature against time
-- :code:`forceview`: the total force against time
-- :code:`energyview`: the total energy against time
+        def setup(self, ax, system):
+            ax.plot([], [])
+            ax.set_xlabel("Time/s")
+            ax.set_ylabel("x velocity/m s$^{-1}$")
 
-For those plotted against time, the samples are stored as np.arrays in the System object. To design a new sampling pane based on a different variable it may be necessary to impliment this in the System class, and the sampling of it would be added to the sample function in the particular module being used e.g. :code:`md`. 
+        def update(self, ax, system):
+            self.times.append(system.time)
+            self.velocities.append(system.particles["xvelocity"][0])
+            ax.lines[0].set_data(self.times, self.velocities)
+            ax.relim()
+            ax.autoscale_view()
 
+    viewer = Viewer(system, [CellPane(), FirstParticlePane()])
 
+A pane that needs a quantity sampled by the simulation itself, rather than one it can compute from the particles, needs that quantity added to :code:`System` and recorded in the :code:`sample` function of the engine in use.

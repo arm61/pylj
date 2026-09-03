@@ -1,6 +1,6 @@
 jupyter
-cython
 numpy>=1.16
+scipy
 matplotlib
 coverage
 coveralls

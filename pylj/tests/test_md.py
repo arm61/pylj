@@ -1,6 +1,11 @@
-from numpy.testing import assert_almost_equal, assert_equal
-from pylj import md
 import unittest
+
+import numpy as np
+from numpy.testing import assert_almost_equal, assert_equal
+
+from pylj import forcefields as ff
+from pylj import md
+from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
 class TestMd(unittest.TestCase):
@@ -11,6 +16,44 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(a.init_temp, 300)
         assert_almost_equal(a.particles["xposition"] * 1e10, [2, 2])
         assert_almost_equal(a.particles["yposition"] * 1e10, [2, 6])
+        assert_equal(a.simulation, "md")
+
+    def test_initialise_computes_initial_forces(self):
+        a = md.initialise(2, 300, 8, "square")
+        assert_almost_equal(a.distances * 1e10, [4.0])
+        self.assertTrue(np.any(a.particles["yacceleration"] != 0))
+
+    def test_initialize_passes_keyword_arguments_through(self):
+        constants = [[1.0, 0.25]]
+        a = md.initialize(
+            2,
+            300,
+            8,
+            "square",
+            mass=20.0,
+            constants=constants,
+            forcefield=ff.lennard_jones_sigma_epsilon,
+            diameter=3.0,
+        )
+        assert_equal(a.mass, 20.0)
+        assert_equal(a.constants, constants)
+        assert_equal(a.forcefield, ff.lennard_jones_sigma_epsilon)
+        assert_almost_equal(a.diameters, [3e-10])
+
+    def test_sample_records_step_and_thermodynamics(self):
+        a = md.initialise(2, 300, 8, "square")
+        a.step = 3
+        a.md_sample()
+        assert_equal(a.step_sample, [3])
+        assert_equal(a.temperature_sample.size, 1)
+        assert_equal(a.pressure_sample.size, 1)
+        assert_equal(a.energy_sample.size, 1)
+        assert_equal(a.force_sample.size, 1)
+        assert_equal(a.msd_sample.size, 1)
+        a.step = 7
+        a.md_sample()
+        assert_equal(a.step_sample, [3, 7])
+        assert_equal(a.energy_sample.size, 2)
 
     def test_velocity_verlet(self):
         a = md.initialise(2, 300, 8, "square")
@@ -65,7 +108,9 @@ class TestMd(unittest.TestCase):
         a.particles["xacceleration"] = [1e4]
         a.particles["yacceleration"] = [1e4]
         b = md.calculate_temperature(a.particles, mass=39.948)
-        assert_almost_equal(b * 1e23, 4.8048103702737945)
+        # T = m (vx^2 + vy^2) / (2 N k_B) for the one particle in the cell.
+        expected = 0.5 * 39.948 * ATOMIC_MASS_UNIT * 2e-20 / BOLTZMANN
+        assert_almost_equal(b * 1e23, expected * 1e23)
 
     def test_calculate_msd(self):
         a = md.initialise(2, 300, 8, "square")
@@ -80,3 +125,7 @@ class TestMd(unittest.TestCase):
         a.particles["yposition"] = [7e-10, 7e-10]
         b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
         assert_almost_equal(b, 10e-20)
+
+    def test_initialise_accepts_diameter(self):
+        a = md.initialise(2, 300, 8, "square", diameter=3.0)
+        assert_almost_equal(a.diameters, [3e-10])

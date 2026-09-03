@@ -1,5 +1,7 @@
 import numpy as np
+
 from pylj import forcefields as ff
+from pylj.constants import BOLTZMANN
 
 
 def initialise(
@@ -8,12 +10,12 @@ def initialise(
     box_length,
     init_conf,
     mass=39.948,
-    constants=[[1.363e-134, 9.273e-78]],
-    forcefield=ff.lennard_jones
+    constants=None,
+    forcefield=ff.lennard_jones,
+    diameter=None
 ):
-    """Initialise the particle positions (this can be either as a square or
-    random arrangement), velocities (based on the temperature defined, and #
-    calculate the initial forces/accelerations.
+    """Initialise the particle positions (square or random arrangement), zero
+    the velocities, and calculate the initial pair energies.
 
     Parameters
     ----------
@@ -30,9 +32,14 @@ def initialise(
     mass: float (optional)
         The mass of the particles being simulated.
     constants: float, array_like (optional)
-        The values of the constants for the forcefield used.
+        The values of the constants for the forcefield used. Defaults to the
+        argon Lennard-Jones constants, ``[[1.363e-134, 9.273e-78]]``.
     forcefield: function (optional)
         The particular forcefield to be used to find the energy and forces.
+    diameter: float or iterable of float (optional)
+        Drawn diameter of the particles in Angstrom, one value or one per
+        set of constants. Defaults to the separation at the pair-potential
+        minimum of the forcefield.
 
     Returns
     -------
@@ -41,6 +48,8 @@ def initialise(
     """
     from pylj import util
 
+    if constants is None:
+        constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
         number_of_particles,
         temperature,
@@ -48,18 +57,18 @@ def initialise(
         constants,
         forcefield,
         mass,
-        init_conf=init_conf
+        simulation="mc",
+        init_conf=init_conf,
+        diameter=diameter
     )
     system.particles["xvelocity"] = 0
     system.particles["yvelocity"] = 0
+    system.compute_energy()
+    system.old_energy = system.energies.sum()
     return system
 
 
-def initialize(number_particles, temperature, box_length, init_conf):
-    """Maps to the mc.initialise function to account for US english spelling.
-    """
-    a = initialise(number_particles, temperature, box_length, init_conf)
-    return a
+initialize = initialise  # US spelling
 
 
 def sample(total_energy, system):
@@ -75,11 +84,11 @@ def sample(total_energy, system):
     Returns
     -------
     System:
-        Details about the whole system, with the new temperature, pressure,
-        msd, and force appended to the appropriate
-        arrays.
+        Details about the whole system, with the new step and energy
+        appended to the appropriate arrays.
     """
     system.energy_sample = np.append(system.energy_sample, total_energy)
+    system.step_sample = np.append(system.step_sample, system.step)
     return system
 
 
@@ -169,7 +178,7 @@ def reject(position_store, particles, random_particle):
     return particles
 
 
-def metropolis(temperature, old_energy, new_energy, n=np.random.rand()):
+def metropolis(temperature, old_energy, new_energy, n=None):
     """Determines if the move is accepted or rejected based on the metropolis
     condition.
 
@@ -182,16 +191,18 @@ def metropolis(temperature, old_energy, new_energy, n=np.random.rand()):
     new_energy: float
         The total energy of the simulation in the current configuration.
     n: float, optional
-        The random number against which the Metropolis condition is tested. The
-        default is from a numpy uniform distribution.
+        The random number against which the Metropolis condition is tested. By
+        default a fresh number is drawn from a numpy uniform distribution on
+        every call.
 
     Returns
     -------
     bool
         True if the move should be accepted.
     """
-    boltzmann_constant = 1.3806e-23  # joules/kelvin
-    beta = 1 / (boltzmann_constant * temperature)
+    if n is None:
+        n = np.random.rand()
+    beta = 1 / (BOLTZMANN * temperature)
     energy_difference = new_energy - old_energy
     metropolis_factor = np.exp(-beta * energy_difference)
     if n < metropolis_factor:

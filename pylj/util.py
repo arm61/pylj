@@ -1,7 +1,10 @@
-from __future__ import division
-import numpy as np
 import webbrowser
-from pylj import md, mc
+from collections.abc import Iterable
+from typing import Literal
+
+import numpy as np
+
+from pylj import mc, md
 
 
 class System:
@@ -18,8 +21,20 @@ class System:
     temperature: float
         Initial temperature of the particles, in Kelvin.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
-    init_conf: string, optional
+        Length of a single dimension of the simulation square, in
+        Angstrom.
+    constants: float, array_like
+        The values of the constants for the forcefield used, one
+        set per particle type.
+    forcefield: class
+        The particular forcefield to be used to find the energy and
+        forces.
+    mass: float
+        The mass of the particles being simulated.
+    simulation: {'md', 'mc'}
+        Required, keyword only. Which engine drives this system; set for you
+        by :func:`md.initialise` and :func:`mc.initialise`.
+    init_conf: string (optional)
         The way that the particles are initially positioned. Should be one of:
         - 'square'
         - 'random'
@@ -28,67 +43,73 @@ class System:
     cut_off: float (optional)
         The distance apart that the particles must be to consider there
         interaction to be negliable.
-    constants: float, array_like (optional)
-        The values of the constants for the forcefield used.
-    mass: float (optional)
-        The mass of the particles being simulated.
-    forcefield: function (optional)
-        The particular forcefield to be used to find the energy and forces.
+    diameter: float or iterable of float (optional)
+        Drawn diameter of the particles in Angstrom, one value or one per
+        set of constants. Each value must be positive, and at least 0.01, as
+        values below that are metres mistaken for Angstrom. Defaults to the
+        separation at the pair-potential minimum of the forcefield, which the
+        forcefield must then provide as its ``diameter`` property. Stored in
+        metres as ``diameters``.
     """
 
     def __init__(
         self,
-        number_of_particles,
-        temperature,
-        box_length,
-        constants,
-        forcefield,
-        mass,
-        init_conf="square",
-        timestep_length=1e-14,
-        cut_off=15
+        number_of_particles: int,
+        temperature: float,
+        box_length: float,
+        constants: list[list[float]],
+        forcefield: type,
+        mass: float,
+        *,
+        simulation: Literal["md", "mc"],
+        init_conf: str = "square",
+        timestep_length: float = 1e-14,
+        cut_off: float = 15,
+        diameter: float | Iterable[float] | None = None,
     ):
+        if simulation not in ("md", "mc"):
+            raise ValueError(f"simulation must be 'md' or 'mc', not {simulation!r}")
+        self.simulation = simulation
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
         self.constants = constants
         self.mass = mass
         self.forcefield = forcefield
-        self.type_identifiers = None
         self.particle_list = None
         self.long_const = None
         self.types = None
-        self.point_sizes = None
-        self.setup_point_sizes()
-        self.setup_type_identifiers()
+        self.diameters: list[float] = []
+        self.setup_diameters(diameter)
         self.setup_types()
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
             raise AttributeError(
-                "With a box length of {} the particles are "
+                f"With a box length of {box_length} the particles are "
                 "probably too small to be seen in the "
                 "viewer. Try something (much) less than "
-                "600.".format(box_length)
+                "600."
             )
         if box_length >= 4:
             self.box_length = box_length * 1e-10
         else:
             raise AttributeError(
-                "With a box length of {} the cell is too "
+                f"With a box length of {box_length} the cell is too "
                 "small to really hold more than one "
-                "particle.".format(box_length)
+                "particle."
             )
         self.timestep_length = timestep_length
-        self.particles = None
+        self.particles: np.ndarray = np.zeros(self.number_of_particles, dtype=particle_dt())
+        self.particles["types"] = self.types
         if init_conf == "square":
             self.square()
         elif init_conf == "random":
             self.random()
         else:
             raise NotImplementedError(
-                "The initial configuration type {} is "
+                f"The initial configuration type {init_conf} is "
                 "not recognised. Available options are: "
-                "square or random".format(init_conf)
+                "square or random"
             )
         if box_length > 30:
             self.cut_off = cut_off * 1e-10
@@ -104,6 +125,7 @@ class System:
         self.force_sample = np.array([])
         self.msd_sample = np.array([])
         self.energy_sample = np.array([])
+        self.step_sample = np.array([])
         self.initial_particles = np.array(self.particles)
         self.position_store = [0, 0]
         self.old_energy = 0
@@ -120,11 +142,7 @@ class System:
         return int((self.number_of_particles - 1) * self.number_of_particles / 2)
 
     def square(self):
-        """Sets the initial positions of the particles on a square lattice.
-        """
-        part_dt = particle_dt()
-        self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
-        self.particles['types'] = self.types
+        """Places the particles on a square lattice."""
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
         n = 0
@@ -136,11 +154,7 @@ class System:
                     n += 1
 
     def random(self):
-        """Sets the initial positions of the particles in a random arrangement.
-        """
-        part_dt = particle_dt()
-        self.particles = np.zeros(self.number_of_particles, dtype=part_dt)
-        self.particles['types'] = self.types
+        """Places the particles at random positions."""
         num_part = self.number_of_particles
         self.particles["xposition"] = np.random.uniform(0, self.box_length, num_part)
         self.particles["yposition"] = np.random.uniform(0, self.box_length, num_part)
@@ -164,33 +178,59 @@ class System:
         self.long_const = long_const
         self.types = types
 
-    def setup_type_identifiers(self):
-        """Sets type-identifers arrays - legacy method now only used for plotting
-        """
-        # Creates arrays to identify which particle is in which type
-        number_of_types = len(self.constants)
-        type_identifiers = np.zeros((number_of_types,self.number_of_particles))
-        i = 0
-        while i < self.number_of_particles:
-            for k in range(number_of_types):
-                if i < self.number_of_particles:
-                    type_identifiers[k][i] = 1
-                    i+=1
-        self.type_identifiers = type_identifiers
+    def setup_diameters(self, diameter: float | Iterable[float] | None) -> None:
+        """Set the drawn diameter of each particle type, in metres.
 
-    def setup_point_sizes(self):
-        """Sets point sizes for use in plotting
+        Args:
+            diameter: Diameter in Angstrom. ``None`` takes the separation at
+                the pair-potential minimum from the forcefield for each set
+                of constants. A single number applies to every type; an
+                iterable gives one value per set of constants.
+
+        Raises:
+            ValueError: If an iterable is given whose length differs from the
+                number of sets of constants, if any diameter is not positive,
+                if any diameter looks like a value in metres rather than
+                Angstrom, or if ``None`` is given and the forcefield has no
+                ``diameter`` property.
         """
-        point_sizes = []
-        for pair in self.constants:
-            size = self.forcefield(pair).point_size
-            point_sizes.append(size)
-        self.point_sizes = point_sizes
+        if diameter is None:
+            self.diameters = []
+            for c in self.constants:
+                forcefield = self.forcefield(c)
+                try:
+                    value = forcefield.diameter
+                except AttributeError as error:
+                    raise ValueError(
+                        f"{type(forcefield).__name__} has no diameter property. A "
+                        "forcefield must provide a diameter property giving the "
+                        "separation at the pair-potential minimum in metres, or the "
+                        "caller must pass diameter= to initialise. See the bring "
+                        "your own forcefield documentation."
+                    ) from error
+                self.diameters.append(value)
+            return
+        if isinstance(diameter, Iterable):
+            values = [float(d) for d in diameter]
+        else:
+            values = [float(diameter)] * len(self.constants)
+        if len(values) != len(self.constants):
+            raise ValueError(
+                f"Expected {len(self.constants)} diameters, one per set of "
+                f"constants, but got {len(values)}"
+            )
+        for value in values:
+            if value <= 0:
+                raise ValueError(f"Every diameter must be positive, but got {value}")
+            if value < 0.01:
+                raise ValueError(
+                    f"The diameter is in Angstrom, and {value} looks like a value in "
+                    "metres. An Angstrom is 1e-10 metres."
+                )
+        self.diameters = [value * 1e-10 for value in values]
 
     def compute_force(self):
-        """Maps to the compute_force function in either the comp (if Cython is
-        installed) or the pairwise module and allows for a cleaner interface.
-        """
+        """Maps to the md.compute_force function, storing what it returns."""
         part, dist, forces, energies = md.compute_force(
             self.particles,
             self.box_length,
@@ -209,7 +249,6 @@ class System:
         """
         self.compute_force()
 
-    #Jit tag here had to be removed
     def integrate(self, method):
         """Maps the chosen integration method.
         Parameters
@@ -230,14 +269,14 @@ class System:
     def md_sample(self):
         """Maps to the md.sample function.
         """
-        self = md.sample(self.particles, self.box_length, self.initial_particles, self)
+        md.sample(self.particles, self.box_length, self.initial_particles, self)
 
     def heat_bath(self, bath_temperature):
-        """Maps to the heat_bath function in either the comp (if Cython is
-        installed) or the pairwise modules.
+        """Maps to the md.heat_bath function.
+
         Parameters
         ----------
-        target_temperature: float
+        bath_temperature: float
             The target temperature for the simulation.
         """
         self.particles = md.heat_bath(
@@ -245,12 +284,7 @@ class System:
         )
 
     def mc_sample(self):
-        """Maps to the mc.sample function.
-        Parameters
-        ----------
-        energy: float
-            Energy to add to the sample
-        """
+        """Maps to the mc.sample function, recording the current accepted energy."""
         mc.sample(self.old_energy, self)
 
     def select_random_particle(self):
@@ -306,7 +340,7 @@ def __version__():  # pragma: no cover
     major = 1
     minor = 4
     micro = 1
-    print("pylj-{:d}.{:d}.{:d}".format(major, minor, micro))
+    print(f"pylj-{major:d}.{minor:d}.{micro:d}")
 
 
 def particle_dt():

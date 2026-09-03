@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class lennard_jones_sigma_epsilon(object):
+class lennard_jones_sigma_epsilon:
     r"""Calculate the energy or force for a pair of particles using the
     Lennard-Jones (sigma/epsilon variant) forcefield.
 
@@ -18,14 +18,13 @@ class lennard_jones_sigma_epsilon(object):
         
         self.sigma = constants[0]
         self.epsilon = constants[1]
-        self.point_size = 1.3e10 * (self.sigma*(2**(1/6)))
-    
+
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
         Lennard-Jones (sigma/epsilon variant) forcefield.
 
         .. math::
-            E = \frac{4e*a^{12}}{dr^{12}} - \frac{4e*a^{6}}{dr^6}
+            E = \frac{4 \epsilon \sigma^{12}}{r^{12}} - \frac{4 \epsilon \sigma^{6}}{r^{6}}
 
         Parameters
         ----------
@@ -45,7 +44,7 @@ class lennard_jones_sigma_epsilon(object):
         Lennard-Jones (sigma/epsilon variant) forcefield.
 
         .. math::
-            f = \frac{48e*a^{12}}{dr^{13}} - \frac{24e*a^{6}}{dr^7}
+            f = \frac{48 \epsilon \sigma^{12}}{r^{13}} - \frac{24 \epsilon \sigma^{6}}{r^{7}}
 
         Parameters
         ----------
@@ -63,9 +62,10 @@ class lennard_jones_sigma_epsilon(object):
     def mixing(self, constants_2):
         r""" Calculates mixing for two sets of constants
         
-        ..math::
+        .. math::
             \sigma_{12} = \frac{\sigma_1 + \sigma_2}{2}
-            \epsilon{12} = \sqrt{\epsilon_1 * \epsilon_2}
+
+            \epsilon_{12} = \sqrt{\epsilon_1 \epsilon_2}
         
         Parameters:
         ----------
@@ -77,14 +77,23 @@ class lennard_jones_sigma_epsilon(object):
         self.sigma = (self.sigma+sigma2)/2
         self.epsilon = np.sqrt(self.epsilon * epsilon2)
 
+    @property
+    def diameter(self) -> float:
+        """Separation at the minimum of the pair potential, in metres.
+
+        Used as the particle diameter when drawing the simulation cell.
+        """
+        return 2 ** (1 / 6) * self.sigma
+
 
 class lennard_jones(lennard_jones_sigma_epsilon):
     r"""Converts a/b variant values to sigma/epsilon variant
     then maps to lennard_jones_sigma_epsilon class
 
-    ..math::
-        \sigma = \frac{a}{b}^(\frac{1}{6})
-        \sigma = \frace{b^2}{4*a}
+    .. math::
+        \sigma = \left(\frac{A}{B}\right)^{1/6}
+
+        \epsilon = \frac{B^{2}}{4A}
 
     Parameters
     ----------
@@ -106,9 +115,10 @@ class lennard_jones(lennard_jones_sigma_epsilon):
         for use in mixing method. Then converts changed self sigma/epsilon
         values back to a/b
 
-        ..math::
-            a = 4*\epsilon*(\sigma^12)
-            b = 4*\epsilon*(\sigma^6)
+        .. math::
+            A = 4 \epsilon \sigma^{12}
+
+            B = 4 \epsilon \sigma^{6}
 
         Parameters
         ----------
@@ -124,7 +134,7 @@ class lennard_jones(lennard_jones_sigma_epsilon):
         self.b = 4 * self.epsilon * (self.sigma**6)
 
 
-class buckingham(object):
+class buckingham:
     r""" Calculate the energy or force for a pair of particles using the
     Buckingham forcefield.
 
@@ -141,14 +151,13 @@ class buckingham(object):
         self.a = constants[0]
         self.b = constants[1]
         self.c = constants[2]
-        self.point_size = 8 # Needs better solution relevant to constants
-    
+
     def energy(self, dr):
         r"""Calculate the energy for a pair of particles using the
         Buckingham forcefield.
 
         .. math::
-            E = Ae^{(-Bdr)} - \frac{C}{dr^6}
+            E = A e^{-Br} - \frac{C}{r^{6}}
 
         Parameters
         ----------
@@ -161,7 +170,7 @@ class buckingham(object):
         """
         energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
         # Cut out infinite values where r = 0
-        if type(dr) != float:
+        if not isinstance(dr, float):
             energy = np.array(energy)
             energy[np.where(energy > 10e300)] = 0
             energy[np.where(energy < -10e300)] = 0
@@ -173,7 +182,7 @@ class buckingham(object):
         Buckingham forcefield.
 
         .. math::
-            f = ABe^{(-Bdr)} - \frac{6C}{dr^7}
+            f = A B e^{-Br} - \frac{6C}{r^{7}}
 
         Parameters
         ----------
@@ -186,7 +195,7 @@ class buckingham(object):
         """
         force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
         # Cut out infinite values where r = 0
-        if type(dr) != float:
+        if not isinstance(dr, float):
             force = np.array(force)
             force[np.where(force > 10e300)] = 0
             force[np.where(force < -10e300)] = 0
@@ -196,10 +205,12 @@ class buckingham(object):
     def mixing(self, constants2):
         r""" Calculates mixing for two sets of constants
         
-        ..math::
-            a_{12} = \sqrt{a_1 * a_2}
-            b_{12} = \sqrt{b_1 * b_2}
-            c_{12} = \sqrt{c_1 * c_2}
+        .. math::
+            A_{12} = \sqrt{A_1 A_2}
+
+            B_{12} = \sqrt{B_1 B_2}
+
+            C_{12} = \sqrt{C_1 C_2}
         
         Parameters
         ----------
@@ -210,8 +221,34 @@ class buckingham(object):
         self.b = np.sqrt(self.b*constants2[1])
         self.c = np.sqrt(self.c*constants2[2])
 
+    @property
+    def diameter(self) -> float:
+        """Separation at the minimum of the pair potential, in metres.
 
-class square_well(object):
+        The Buckingham potential has no closed-form minimum, so it is located
+        numerically on a logarithmic grid between 0.1 and 50 Angstrom. The
+        global maximum on that grid is the repulsive barrier separating the
+        unphysical collapse at small separation from the well; the diameter
+        is the position of the minimum beyond that barrier.
+
+        Raises:
+            ValueError: If the potential has no minimum between 0.1 and 50
+                Angstrom.
+        """
+        r = np.logspace(-11, np.log10(5e-9), 2000)
+        energy = self.a * np.exp(-self.b * r) - self.c / np.power(r, 6)
+        barrier = int(np.argmax(energy))
+        well = barrier + int(np.argmin(energy[barrier:]))
+        if barrier == r.size - 1 or well == r.size - 1:
+            raise ValueError(
+                "No potential minimum was found between 0.1 and 50 Angstrom for "
+                f"a={self.a}, b={self.b}, c={self.c}. Check the units of the constants, "
+                "or pass diameter= to initialise."
+            )
+        return float(r[well])
+
+
+class square_well:
     r'''Calculate the energy or force for a pair of particles using a
     square well model.
 
@@ -229,23 +266,20 @@ class square_well(object):
             raise IndexError(f'There should be three constants per set, not {len(constants)}')
         self.epsilon = constants[0]
         self.sigma = constants[1]
-        self.lamda = constants[2] #Spelling as lamda not lambda to avoid calling python lambda function
+        # Spelling as lamda not lambda to avoid calling the python lambda keyword.
+        self.lamda = constants[2]
         self.max_val = max_val
-        self.point_size = 10
 
     def energy(self, dr):
         r'''Calculate the energy for a pair of particles using a
         square well model.
 
         .. math::
-            E = {
-            if dr < sigma:
-                E = max_val
-            elif sigma <= dr < lambda * sigma:
-                E = -epsilon
-            elif r >= lambda * sigma:
-                E = 0
-            }
+            E = \begin{cases}
+                E_{\mathrm{max}} & r < \sigma \\
+                -\epsilon & \sigma \le r < \lambda \sigma \\
+                0 & r \ge \lambda \sigma
+            \end{cases}
 
         Parameters
         ----------
@@ -257,15 +291,10 @@ class square_well(object):
             The potential energy between the particles.
         '''
 
-        if not isinstance(dr, np.ndarray):
-            if isinstance(dr, list):
-                dr = np.array(dr, dtype='float')
-            elif isinstance(dr, float):
-                dr = np.array([dr], dtype='float')
+        dr = np.atleast_1d(np.asarray(dr, dtype=float))
 
-        E = np.zeros_like(dr)
-        E = np.zeros_like(dr)
-        E[np.where(dr < self.epsilon)] = self.max_val
+        E = np.zeros_like(dr, dtype=float)
+        E[np.where(dr < self.sigma)] = self.max_val
         E[np.where(dr >= self.lamda * self.sigma)] = 0
 
         # apply mask for sigma <= dr < lambda * sigma
@@ -277,20 +306,24 @@ class square_well(object):
             self.energy = float(E[0])
         else:
             self.energy = np.array(E, dtype='float')
-            
+
         return self.energy
-        
+
+    @property
+    def diameter(self) -> float:
+        """Hard-core diameter sigma, in metres."""
+        return self.sigma
+
     def force(self):
         r'''The force of a pair of particles using a square well model is given by:
 
         .. math::
-        f = {
-        if sigma <= dr < lambda * sigma:
-            f = inf
-        else:
-            f = 0
-        }
+            f = \begin{cases}
+                \infty & r = \sigma \text{ or } r = \lambda \sigma \\
+                0 & \text{otherwise}
+            \end{cases}
 
-        Therefore the force here will always be infinite, and therefore not possible to simulate
+        The force is infinite at the steps and zero elsewhere, so the model
+        cannot be integrated and is for Monte Carlo only.
         '''
         raise ValueError("Force is infinite at sigma <= dr < lambda * sigma")
