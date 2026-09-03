@@ -55,6 +55,72 @@ class TestUtil(unittest.TestCase):
         assert_equal(a.forces.size, 1)
         assert_equal(a.energies.size, 1)
 
+    def test_system_random_no_overlap(self):
+        state = np.random.get_state()
+        np.random.seed(0)
+        try:
+            a = util.System(
+                30,
+                100,
+                40,
+                init_conf="random",
+                mass=39.948,
+                constants=[[1.363e-134, 9.273e-78]],
+                forcefield=ff.lennard_jones,
+                simulation="md",
+            )
+        finally:
+            np.random.set_state(state)
+        box_length = a.box_length
+        x = a.particles["xposition"]
+        y = a.particles["yposition"]
+        for i in range(a.number_of_particles):
+            for j in range(i + 1, a.number_of_particles):
+                dx = x[i] - x[j]
+                dy = y[i] - y[j]
+                dx -= box_length * np.round(dx / box_length)
+                dy -= box_length * np.round(dy / box_length)
+                distance = np.sqrt(dx**2 + dy**2)
+                self.assertTrue(distance >= a.diameters[0])
+
+    def test_system_random_too_dense_raises(self):
+        with self.assertRaises(ValueError) as context:
+            util.System(
+                200,
+                100,
+                20,
+                init_conf="random",
+                mass=39.948,
+                constants=[[1.363e-134, 9.273e-78]],
+                forcefield=ff.lennard_jones,
+                simulation="md",
+            )
+        self.assertTrue("square" in str(context.exception))
+
+    def test_system_random_diameter_override(self):
+        a = util.System(
+            10,
+            100,
+            40,
+            init_conf="random",
+            mass=39.948,
+            constants=[[1.363e-134, 9.273e-78]],
+            forcefield=ff.lennard_jones,
+            simulation="md",
+            diameter=8.0,
+        )
+        box_length = a.box_length
+        x = a.particles["xposition"]
+        y = a.particles["yposition"]
+        for i in range(a.number_of_particles):
+            for j in range(i + 1, a.number_of_particles):
+                dx = x[i] - x[j]
+                dy = y[i] - y[j]
+                dx -= box_length * np.round(dx / box_length)
+                dy -= box_length * np.round(dy / box_length)
+                distance = np.sqrt(dx**2 + dy**2)
+                self.assertTrue(distance >= 8e-10)
+
     def test_system_too_big(self):
         with self.assertRaises(AttributeError) as context:
             util.System(

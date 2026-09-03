@@ -153,11 +153,54 @@ class System:
                     self.particles[n]["yposition"] = (j + 0.5) * d
                     n += 1
 
-    def random(self):
-        """Places the particles at random positions."""
+    def random(self) -> None:
+        """Places the particles at random positions, without overlap.
+
+        Particles are placed one at a time by rejection sampling: a
+        candidate position for a particle is accepted only if, for every
+        already placed particle, the minimum-image distance between them is
+        at least the mean of the two particles' diameters (``self.diameters``,
+        indexed by ``self.particles["types"]``).
+
+        Raises:
+            ValueError: If 1000 candidate positions are rejected for a
+                single particle, which suggests the particles are too large,
+                or too many, for the box. Use ``init_conf='square'`` or a
+                larger box instead.
+        """
         num_part = self.number_of_particles
-        self.particles["xposition"] = np.random.uniform(0, self.box_length, num_part)
-        self.particles["yposition"] = np.random.uniform(0, self.box_length, num_part)
+        box_length = self.box_length
+        types = self.particles["types"]
+        max_attempts = 1000
+        for i in range(num_part):
+            type_i = int(types[i])
+            for _attempt in range(max_attempts):
+                x = np.random.uniform(0, box_length)
+                y = np.random.uniform(0, box_length)
+                placed = True
+                for j in range(i):
+                    type_j = int(types[j])
+                    min_separation = (self.diameters[type_i] + self.diameters[type_j]) / 2
+                    dx = x - self.particles[j]["xposition"]
+                    dy = y - self.particles[j]["yposition"]
+                    dx -= box_length * np.round(dx / box_length)
+                    dy -= box_length * np.round(dy / box_length)
+                    if np.sqrt(dx**2 + dy**2) < min_separation:
+                        placed = False
+                        break
+                if placed:
+                    self.particles[i]["xposition"] = x
+                    self.particles[i]["yposition"] = y
+                    break
+            else:
+                diameter_angstrom = max(self.diameters) * 1e10
+                box_angstrom = box_length * 1e10
+                raise ValueError(
+                    f"Could not place {num_part} particles of diameter "
+                    f"{diameter_angstrom:.2f} Angstrom without overlap in a "
+                    f"{box_angstrom:.1f} Angstrom box after {max_attempts} "
+                    "attempts; use init_conf='square' or a larger box."
+                )
 
     def setup_types(self):
         """Sets the long constants and types arrays of the particles
