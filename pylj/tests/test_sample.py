@@ -527,3 +527,10 @@ def test_viewer_without_kernel(capsys):
     viewer = JustCell(system)
     viewer.update(system)
     assert capsys.readouterr().out == ""
+
+
+def test_md_only_message_names_the_offending_panes(drawing_display):
+    from pylj.sample import CellPane, TemperaturePane, Viewer
+
+    with pytest.raises(ValueError, match=r"Viewer plots .*\(TemperaturePane\)"):
+        Viewer(sampled_mc_system(steps=1), [CellPane(), TemperaturePane()])
