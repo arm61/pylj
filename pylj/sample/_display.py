@@ -1,13 +1,23 @@
 """Figure creation and display for the pylj viewers."""
 
+from typing import Protocol
+
 import matplotlib.pyplot as plt
 import numpy as np
 from IPython import get_ipython
-from IPython.display import DisplayHandle, display
+from IPython.display import display
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 FIGURE_WIDTH = {"small": 2.0, "medium": 4.0, "large": 8.0}
+
+
+class DisplayHandle(Protocol):
+    """Anything that can be handed a figure to show."""
+
+    def update(self, fig: Figure) -> None:
+        """Show ``fig``, replacing whatever was shown before."""
+        ...
 
 
 class _NullHandle:
@@ -17,7 +27,7 @@ class _NullHandle:
         """Do nothing; there is nowhere to send the figure."""
 
 
-def _open_display(fig: Figure) -> DisplayHandle | _NullHandle:
+def _open_display(fig: Figure) -> DisplayHandle:
     """Return a handle that pushes ``fig`` to the notebook, or a no-op handle."""
     if get_ipython() is None:
         return _NullHandle()
@@ -26,7 +36,7 @@ def _open_display(fig: Figure) -> DisplayHandle | _NullHandle:
 
 def environment(
     panes: int, size: str = "medium"
-) -> tuple[Figure, Axes | np.ndarray, DisplayHandle | _NullHandle]:
+) -> tuple[Figure, Axes | np.ndarray, DisplayHandle]:
     """Create the figure grid for a viewer and register it for display.
 
     Args:

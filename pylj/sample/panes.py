@@ -18,7 +18,12 @@ LABEL_SIZE = 16
 
 
 def _fit_axes(
-    ax: Axes, x, y, *, x_from_zero: bool = True, y_from_zero: bool = False
+    ax: Axes,
+    x: npt.ArrayLike,
+    y: npt.ArrayLike,
+    *,
+    x_from_zero: bool = True,
+    y_from_zero: bool = False,
 ) -> None:
     """Fit the axis limits to the data, leaving them alone when there is none.
 
@@ -47,8 +52,9 @@ def _fit_axes(
 class Pane:
     """One plot within a viewer.
 
-    Panes that accumulate a history across updates set ``keeps_history`` and
-    override ``average``.
+    ``setup`` creates the artists; the viewer draws them by calling
+    ``update``. Panes that accumulate a history across updates derive from
+    ``_HistoryPane`` rather than from this class.
 
     Attributes:
         keeps_history: Whether this pane accumulates a history across
@@ -78,12 +84,33 @@ class Pane:
     def average(self, ax: Axes) -> None:
         """Show the average of every update so far, for panes that keep one.
 
-        Panes that keep a history of their updates (``RDFPane``,
-        ``ScatteringPane``) override this. Other panes do nothing.
+        Panes that keep a history of their updates (the ``_HistoryPane``
+        subclasses) override this. Other panes do nothing.
 
         Args:
             ax: Axes this pane was set up in.
         """
+
+
+class _HistoryPane(Pane):
+    """A pane that keeps every curve it has drawn so ``average`` can show the mean.
+
+    Attributes:
+        history: One entry per update, in the order they were drawn.
+    """
+
+    keeps_history = True
+
+    def __init__(self) -> None:
+        self.history: list[np.ndarray] = []
+
+    def average(self, ax: Axes) -> None:
+        """Replace the drawn curve with the mean of every update so far.
+
+        Args:
+            ax: Axes this pane was set up in.
+        """
+        raise NotImplementedError
 
 
 class CellPane(Pane):
@@ -97,7 +124,6 @@ class CellPane(Pane):
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_aspect("equal")
-        self.update(ax, system)
 
     def update(self, ax: Axes, system: System) -> None:
         types = np.asarray(system.particles["types"])
@@ -138,7 +164,6 @@ class _SeriesPane(Pane):
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
         ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)
-        self.update(ax, system)
 
     def update(self, ax: Axes, system: System) -> None:
         x = system.step_sample * system.timestep_length
@@ -202,18 +227,17 @@ class EnergyPane(Pane):
         _fit_axes(ax, x, y)
 
 
-class RDFPane(Pane):
+class RDFPane(_HistoryPane):
     """Radial distribution function of the current configuration.
 
     Keeps every g(r) it has drawn so ``average`` can show the mean.
     """
 
     BINS = 100
-    keeps_history = True
 
     def __init__(self) -> None:
+        super().__init__()
         self.r = np.array([])
-        self.history: list[np.ndarray] = []
 
     def setup(self, ax: Axes, system: System) -> None:
         ax.plot([], [], color=LINE_COLOUR)
@@ -221,8 +245,6 @@ class RDFPane(Pane):
         ax.set_yticks([])
         ax.set_ylabel("RDF", fontsize=LABEL_SIZE)
         ax.set_xlabel("r/m", fontsize=LABEL_SIZE)
-        # History-keeping panes draw on the viewer's first update rather than
-        # here, so setup does not itself contribute an entry to the history.
 
     def update(self, ax: Axes, system: System) -> None:
         edges = np.linspace(0, system.box_length / 2, self.BINS + 1)
@@ -245,7 +267,7 @@ class RDFPane(Pane):
         _fit_axes(ax, self.r, gr, y_from_zero=True)
 
 
-class ScatteringPane(Pane):
+class ScatteringPane(_HistoryPane):
     """Scattering profile I(q) from the Debye sum over pair distances.
 
     Keeps every profile it has drawn so ``average`` can show the mean.
@@ -258,19 +280,16 @@ class ScatteringPane(Pane):
     # q values per block; np.sinc allocates several temporaries of this size
     # times the pair count
     BLOCK = 16
-    keeps_history = True
 
     def __init__(self) -> None:
+        super().__init__()
         self.q = np.array([])
-        self.history: list[np.ndarray] = []
 
     def setup(self, ax: Axes, system: System) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_yticks([])
         ax.set_ylabel("I(q)", fontsize=LABEL_SIZE)
         ax.set_xlabel("q/m$^{-1}$", fontsize=LABEL_SIZE)
-        # History-keeping panes draw on the viewer's first update rather than
-        # here, so setup does not itself contribute an entry to the history.
 
     def update(self, ax: Axes, system: System) -> None:
         q = np.linspace(2 * np.pi / system.box_length, self.Q_MAX, self.POINTS)[self.SKIP :]
@@ -293,7 +312,10 @@ class ScatteringPane(Pane):
 
 
 class MaxwellBoltzmannPane(Pane):
-    """Histogram of particle speeds accumulated over every update."""
+    """Histogram of particle speeds, including every update so far.
+
+    It keeps no per-frame history, so it has no average.
+    """
 
     BINS = 25
 
@@ -303,7 +325,7 @@ class MaxwellBoltzmannPane(Pane):
     def setup(self, ax: Axes, system: System) -> None:
         ax.step([], [], where="post", color=LINE_COLOUR)
         ax.set_ylabel("PDF", fontsize=LABEL_SIZE)
-        ax.set_xlabel("Velocity/ms$^{-1}$", fontsize=LABEL_SIZE)
+        ax.set_xlabel("Speed/m s$^{-1}$", fontsize=LABEL_SIZE)
 
     def update(self, ax: Axes, system: System) -> None:
         particles = system.particles
@@ -330,9 +352,22 @@ class CustomPane(Pane):
         Args:
             x: x data to plot.
             y: y data to plot.
+
+        Raises:
+            ValueError: If ``x`` and ``y`` are not the same length, or if
+                either contains a value that is not finite.
         """
-        self.x = np.asarray(x, dtype=float)
-        self.y = np.asarray(y, dtype=float)
+        x_data = np.asarray(x, dtype=float)
+        y_data = np.asarray(y, dtype=float)
+        if x_data.shape != y_data.shape:
+            raise ValueError(
+                "x and y must be the same length, but they are "
+                f"{x_data.size} and {y_data.size}"
+            )
+        if not (np.isfinite(x_data).all() and np.isfinite(y_data).all()):
+            raise ValueError("x and y must contain only finite values")
+        self.x = x_data
+        self.y = y_data
 
     def setup(self, ax: Axes, system: System) -> None:
         ax.plot([], [], color=LINE_COLOUR)

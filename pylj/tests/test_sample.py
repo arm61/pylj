@@ -111,7 +111,9 @@ def test_environment_figure_size(drawing_display, size, width):
 def test_cell_pane_draws_each_type_separately(drawing_display):
     system = md.initialise(4, 100, 20, "square", constants=TWO_TYPES)
     fig, ax, handle = environment(1)
-    CellPane().setup(ax, system)
+    pane = CellPane()
+    pane.setup(ax, system)
+    pane.update(ax, system)
     x = system.particles["xposition"]
     assert_allclose(ax.lines[0].get_xdata(), x[[0, 2]])
     assert_allclose(ax.lines[1].get_xdata(), x[[1, 3]])
@@ -124,6 +126,7 @@ def test_cell_pane_marker_matches_particle_diameter(drawing_display, box_length)
     fig, ax, handle = environment(1)
     pane = CellPane()
     pane.setup(ax, system)
+    pane.update(ax, system)
 
     def drawn_and_true_diameter_px():
         origin, edge = ax.transData.transform([(0, 0), (system.diameters[0], 0)])
@@ -219,6 +222,35 @@ def test_rdf_pane_average_is_mean_of_updates(drawing_display):
     plt.close(fig)
 
 
+def test_rdf_pane_x_values_are_the_bin_centres(drawing_display):
+    system = md.initialise(4, 100, 20, "square")
+    fig, ax, handle = environment(1)
+    pane = RDFPane()
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    dr = system.box_length / 2 / RDFPane.BINS
+    r = ax.lines[0].get_xdata()
+    assert r.size == RDFPane.BINS
+    assert_allclose(r[0], dr / 2)
+    assert_allclose(r, np.arange(RDFPane.BINS) * dr + dr / 2)
+    plt.close(fig)
+
+
+def test_scattering_pane_average_is_mean_of_updates(drawing_display):
+    fig, ax, handle = environment(1)
+    pane = ScatteringPane()
+    system = sampled_md_system(steps=1, every=1)
+    pane.setup(ax, system)
+    pane.update(ax, system)
+    first = ax.lines[0].get_ydata().copy()
+    system.integrate(md.velocity_verlet)
+    pane.update(ax, system)
+    second = ax.lines[0].get_ydata().copy()
+    pane.average(ax)
+    assert_allclose(ax.lines[0].get_ydata(), (first + second) / 2)
+    plt.close(fig)
+
+
 def test_scattering_pane_is_finite_and_non_negative(drawing_display):
     system = sampled_md_system(steps=1, every=1)
     fig, ax, handle = environment(1)
@@ -295,6 +327,18 @@ def test_custom_pane_plots_supplied_data(drawing_display):
     assert_allclose(ax.lines[0].get_ydata(), [1, 4, 9])
     assert ax.get_xlabel() == "x label"
     plt.close(fig)
+
+
+def test_custom_pane_rejects_mismatched_data(drawing_display):
+    pane = CustomPane("x label", "y label")
+    with pytest.raises(ValueError, match="same length"):
+        pane.set_data([0, 1, 2], [1, 4])
+
+
+def test_custom_pane_rejects_non_finite_data(drawing_display):
+    pane = CustomPane("x label", "y label")
+    with pytest.raises(ValueError, match="finite"):
+        pane.set_data([0, 1, 2], [1, 4, np.nan])
 
 
 @pytest.mark.parametrize("viewer_cls", NAMED_VIEWERS)
