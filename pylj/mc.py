@@ -192,7 +192,9 @@ def reject(position_store, particles, random_particle):
 
 def metropolis(temperature, old_energy, new_energy, n=None, rng=None):
     """Determines if the move is accepted or rejected based on the metropolis
-    condition.
+    condition. A move that does not raise the energy is always accepted
+    without drawing a random number; ``n`` and ``rng`` apply only to moves
+    that raise it.
 
     Parameters
     ----------

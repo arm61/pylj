@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields as ff
-from pylj import md, pairwise
+from pylj import mc, md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
@@ -48,9 +48,15 @@ class TestMd(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at least two particles"):
             md.initialise(1, 300, 8, "square")
 
-    def test_initialise_rejects_a_non_positive_temperature(self):
-        with self.assertRaisesRegex(ValueError, "temperature must be positive"):
-            md.initialise(2, 0, 8, "square")
+    def test_initialise_rejects_a_non_positive_or_infinite_temperature(self):
+        for temperature in (0, -10, np.inf):
+            with self.assertRaisesRegex(ValueError, "temperature must be positive"):
+                md.initialise(2, temperature, 8, "square")
+
+    def test_calculate_temperature_needs_two_particles(self):
+        a = mc.initialise(1, 300, 8, "square")
+        with self.assertRaisesRegex(ValueError, "at least two particles"):
+            md.calculate_temperature(a.particles, a.mass)
 
     def test_initialize_passes_keyword_arguments_through(self):
         constants = [[3.4e-10, 1.65e-21]]

@@ -21,10 +21,11 @@ def initialise(
     random arrangement) and velocities (based on the temperature defined), and
     calculate the initial forces/accelerations.
 
-    The velocities are drawn from the Maxwell-Boltzmann distribution at the
-    requested temperature, the centre-of-mass velocity is removed, and the
-    result is rescaled so that the instantaneous temperature is exactly the
-    requested one. Molecular dynamics needs at least two particles.
+    Each velocity component is drawn from a normal (Gaussian) distribution
+    with the thermal width at the requested temperature, the centre-of-mass
+    velocity is removed, and the result is rescaled so that the instantaneous
+    temperature is exactly the requested one. Molecular dynamics needs at
+    least two particles.
 
     Parameters
     ----------
@@ -76,8 +77,8 @@ def initialise(
             "Molecular dynamics needs at least two particles: with one particle "
             "there is no thermal motion once the centre-of-mass velocity is removed."
         )
-    if not temperature > 0:
-        raise ValueError(f"temperature must be positive, not {temperature}")
+    if not (np.isfinite(temperature) and temperature > 0):
+        raise ValueError(f"temperature must be positive and finite, not {temperature}")
     if constants is None:
         constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
@@ -325,7 +326,17 @@ def calculate_temperature(particles, mass):
     -------
     float:
         Calculated instantaneous simulation temperature, in kelvin.
+
+    Raises
+    ------
+    ValueError
+        If there are fewer than two particles.
     """
+    if particles.size < 2:
+        raise ValueError(
+            "The temperature needs at least two particles: with one particle there "
+            "is no thermal motion once the centre-of-mass velocity is removed."
+        )
     mass_kg = mass * ATOMIC_MASS_UNIT
     kinetic = 0.5 * mass_kg * np.sum(
         particles["xvelocity"] * particles["xvelocity"]

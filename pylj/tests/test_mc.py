@@ -122,6 +122,15 @@ class TestMc(unittest.TestCase):
         self.assertTrue(mc.metropolis(300, 0.0, accepted, rng=np.random.default_rng(5)))
         self.assertFalse(mc.metropolis(300, 0.0, rejected, rng=np.random.default_rng(5)))
 
+    def test_system_metropolis_accepts_downhill_and_rejects_steep_uphill_moves(self):
+        system = mc.initialise(2, 300, 8, "square")
+        system.old_energy = 1e-20
+        system.new_energy = 0.0
+        self.assertTrue(system.metropolis())
+        system.old_energy = 0.0
+        system.new_energy = 100 * BOLTZMANN * 300
+        self.assertFalse(system.metropolis())
+
     def test_seeded_runs_are_identical(self):
         def run(seed):
             system = mc.initialise(16, 300, 30, "random", seed=seed)
