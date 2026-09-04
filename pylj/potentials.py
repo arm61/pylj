@@ -119,11 +119,12 @@ class SquareWell(PairPotential):
         self.max_val = max_val
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
-        dr = np.atleast_1d(np.asarray(dr, dtype=float))
-        e = np.zeros_like(dr)
-        e[dr < self.sigma] = self.max_val
-        e[(dr >= self.sigma) & (dr < self.lambda_ * self.sigma)] = -self.epsilon
-        return e
+        dr = np.asarray(dr, dtype=float)
+        return np.where(
+            dr < self.sigma,
+            self.max_val,
+            np.where(dr < self.lambda_ * self.sigma, -self.epsilon, 0.0),
+        )
 
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
         raise ValueError(

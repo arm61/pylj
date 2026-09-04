@@ -108,6 +108,13 @@ class TestSquareWell:
         energies = sw.energies(np.array([3.0e-10, 4.0e-10, 6.0e-10]))
         np.testing.assert_allclose(energies, [1e5, -1.65e-21, 0.0])
 
+    def test_energies_keep_the_shape_of_the_separations(self):
+        # A separation of any shape, including a scalar 0-d array, comes back
+        # with the same shape, as for every other potential.
+        sw = SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5)
+        assert sw.energies(np.array(4.0e-10)).shape == ()
+        assert sw.energies(np.array([3.0e-10, 4.0e-10])).shape == (2,)
+
     def test_force_raises(self):
         sw = SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5)
         with pytest.raises(ValueError, match="Monte Carlo"):

@@ -303,7 +303,7 @@ def calculate_temperature(particles, mass):
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
-    mass: float or float, array_like
+    mass: float or array_like
         The mass of the particles, in atomic mass units: one value per
         particle, or a single value for all of them.
 

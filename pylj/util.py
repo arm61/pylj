@@ -220,7 +220,12 @@ class System:
         from the restarted configuration. The current system is not changed.
         Use it to start a production run after equilibration::
 
-            system = md.initialise(100, 300, 40, "random")
+            argon = Species(mass=39.948, name="argon")
+            lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
+            system = md.initialise(
+                100, 300, 40, "random",
+                species=[argon], pair_potentials={(argon, argon): lj},
+            )
             for _ in range(1000):
                 system.integrate(md.velocity_verlet)
                 system.heat_bath(300)
