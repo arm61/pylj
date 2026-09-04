@@ -1,3 +1,5 @@
+from dataclasses import FrozenInstanceError
+
 import numpy as np
 import pytest
 
@@ -15,7 +17,7 @@ class TestSpecies:
 
     def test_is_frozen(self):
         argon = Species(mass=39.948, name="argon")
-        with pytest.raises(Exception):  # noqa: B017
+        with pytest.raises(FrozenInstanceError):
             argon.mass = 1.0
 
     def test_is_hashable_so_it_can_key_a_mapping(self):
