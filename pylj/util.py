@@ -129,6 +129,8 @@ class System:
                 "not recognised. Available options are: "
                 "square or random"
             )
+        self.particles["xunwrapped"] = self.particles["xposition"]
+        self.particles["yunwrapped"] = self.particles["yposition"]
         if box_length > 30:
             self.cut_off = cut_off * 1e-10
         else:
@@ -517,12 +519,13 @@ def __version__():  # pragma: no cover
 
 def particle_dt():
     """Builds the data type for the particles, this consists of:
-    
-    - xposition and yposition
+
+    - xposition and yposition, wrapped into the simulation cell
+    - xunwrapped and yunwrapped, the positions without periodic wrapping,
+      advanced by md.velocity_verlet and used for the mean squared
+      displacement
     - xvelocity and yvelocity
     - xacceleration and yacceleration
-    - xprevious_position and yprevious_position
-    - xforce and yforce
     - energy
     - types
     """
@@ -530,15 +533,13 @@ def particle_dt():
         [
             ("xposition", np.float64),
             ("yposition", np.float64),
+            ("xunwrapped", np.float64),
+            ("yunwrapped", np.float64),
             ("xvelocity", np.float64),
             ("yvelocity", np.float64),
             ("xacceleration", np.float64),
             ("yacceleration", np.float64),
-            ("xprevious_position", np.float64),
-            ("yprevious_position", np.float64),
             ("energy", np.float64),
-            ("xpbccount", int),
-            ("ypbccount", int),
-            ("types", list)
+            ("types", list),
         ]
     )
