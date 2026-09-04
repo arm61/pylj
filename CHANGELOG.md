@@ -25,7 +25,7 @@ All notable changes to pylj are recorded here. The format follows
 - `System.__init__` takes keyword-only arguments after `mass`, including the required `simulation`.
 - The initialisers compute the initial forces, so the first integration step uses real accelerations.
 - Viewers are built before their display is opened, and a viewer whose panes need molecular dynamics samples refuses a Monte Carlo system.
-- The energy pane plots potential plus N k_B T; the radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in N m^-1.
+- The energy pane plots potential plus kinetic energy, (N - 1) k_B T; the radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in N m^-1.
 - `md.initialize` and `mc.initialize` pass every argument through.
 - `JustCell` no longer takes a `scale` argument. `Viewer.average()` raises on a viewer whose panes keep no history. `CellPlus.update` rejects half-supplied custom data.
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.

@@ -175,8 +175,9 @@ class System:
         """Return a new system that continues from the current configuration.
 
         The new system keeps the box, forcefield, constants, mass, timestep
-        and cut-off, shares the random number generator so the two systems
-        draw from one stream, and copies the particle positions, velocities
+        and cut-off, copies the state of the random number generator so the
+        new system's draws do not depend on what the current system does
+        next, and copies the particle positions, velocities
         and accelerations and the pair distances, forces and energies. A
         Monte Carlo system also keeps its accepted energy. Step and time are
         zero, the sample arrays are empty, and initial_particles is replaced
@@ -202,6 +203,7 @@ class System:
         # change, and keeps the accepted energy; the state that belongs to one
         # run is copied or reset below.
         new = copy.copy(self)
+        new.rng = copy.deepcopy(self.rng)
         new.particles = self.particles.copy()
         new.particles["xunwrapped"] = new.particles["xposition"]
         new.particles["yunwrapped"] = new.particles["yposition"]

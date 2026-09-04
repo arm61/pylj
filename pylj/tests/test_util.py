@@ -563,11 +563,20 @@ class TestUtil(unittest.TestCase):
             )
 
         first = build()
-        np.random.seed(99)
-        second = build()
+        state = np.random.get_state()
+        try:
+            np.random.seed(99)
+            second = build()
+        finally:
+            np.random.set_state(state)
         assert_equal(first.particles["xposition"], second.particles["xposition"])
 
-    def test_restart_shares_the_generator(self):
+    def test_restart_copies_the_generator_state(self):
         system = md.initialise(4, 300, 12, "square", seed=1)
         production = system.restart()
-        self.assertIs(production.rng, system.rng)
+        self.assertIsNot(production.rng, system.rng)
+        # Equal state: the next draw agrees. Independent: drawing from one
+        # leaves the other where it was.
+        self.assertEqual(production.rng.random(), system.rng.random())
+        system.rng.random()
+        self.assertNotEqual(production.rng.random(), system.rng.random())

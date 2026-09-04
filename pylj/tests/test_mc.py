@@ -131,6 +131,12 @@ class TestMc(unittest.TestCase):
         system.new_energy = 100 * BOLTZMANN * 300
         self.assertFalse(system.metropolis())
 
+    def test_metropolis_does_not_draw_for_a_downhill_move(self):
+        rng = np.random.default_rng(3)
+        untouched = np.random.default_rng(3)
+        mc.metropolis(300, 1e-20, 0.0, rng=rng)
+        self.assertEqual(rng.random(), untouched.random())
+
     def test_seeded_runs_are_identical(self):
         def run(seed):
             system = mc.initialise(16, 300, 30, "random", seed=seed)

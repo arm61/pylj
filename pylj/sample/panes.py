@@ -224,8 +224,9 @@ class EnergyPane(Pane):
     """Total energy of the system.
 
     For an MD system this is the potential energy plus the kinetic energy
-    ``N k_B T`` of ``N`` particles in two dimensions, against time. For an
-    MC system it is the potential energy against step.
+    ``(N - 1) k_B T`` of ``N`` particles in two dimensions with the
+    centre-of-mass motion removed, against time. For an MC system it is the
+    potential energy against step.
     """
 
     def setup(self, ax: Axes, system: System) -> None:
