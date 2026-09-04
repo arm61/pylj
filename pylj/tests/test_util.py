@@ -80,21 +80,17 @@ class TestUtil(unittest.TestCase):
         assert_equal(a.energies.size, 1)
 
     def test_system_random_no_overlap(self):
-        state = np.random.get_state()
-        np.random.seed(0)
-        try:
-            a = util.System(
-                30,
-                100,
-                40,
-                init_conf="random",
-                mass=39.948,
-                constants=[[1.363e-134, 9.273e-78]],
-                forcefield=ff.lennard_jones,
-                simulation="md",
-            )
-        finally:
-            np.random.set_state(state)
+        a = util.System(
+            30,
+            100,
+            40,
+            init_conf="random",
+            mass=39.948,
+            constants=[[1.363e-134, 9.273e-78]],
+            forcefield=ff.lennard_jones,
+            simulation="md",
+            seed=0,
+        )
         for distance in minimum_image_distances(a):
             self.assertTrue(distance >= a.cores[0])
 
@@ -152,43 +148,35 @@ class TestUtil(unittest.TestCase):
         # how far apart random() places them: with seed 4, particles land
         # closer together than 8 Angstrom but still respect the 3.37
         # Angstrom repulsive core.
-        state = np.random.get_state()
-        np.random.seed(4)
-        try:
-            a = util.System(
-                10,
-                100,
-                30,
-                init_conf="random",
-                mass=39.948,
-                constants=[[1.363e-134, 9.273e-78]],
-                forcefield=ff.lennard_jones,
-                simulation="md",
-                diameter=8.0,
-            )
-        finally:
-            np.random.set_state(state)
+        a = util.System(
+            10,
+            100,
+            30,
+            init_conf="random",
+            mass=39.948,
+            constants=[[1.363e-134, 9.273e-78]],
+            forcefield=ff.lennard_jones,
+            simulation="md",
+            diameter=8.0,
+            seed=4,
+        )
         distances = minimum_image_distances(a)
         self.assertTrue(all(distance >= a.cores[0] for distance in distances))
         self.assertTrue(any(distance < 8e-10 for distance in distances))
 
     def test_system_random_two_types_uses_the_mean_of_the_pair_cores(self):
         constants = [ARGON, LARGER]
-        state = np.random.get_state()
-        np.random.seed(5)
-        try:
-            a = util.System(
-                12,
-                100,
-                60,
-                init_conf="random",
-                mass=39.948,
-                constants=constants,
-                forcefield=ff.lennard_jones_sigma_epsilon,
-                simulation="md",
-            )
-        finally:
-            np.random.set_state(state)
+        a = util.System(
+            12,
+            100,
+            60,
+            init_conf="random",
+            mass=39.948,
+            constants=constants,
+            forcefield=ff.lennard_jones_sigma_epsilon,
+            simulation="md",
+            seed=5,
+        )
         types = a.particles["types"]
         distances = minimum_image_distances(a)
         pairs = itertools.combinations(range(a.number_of_particles), 2)
@@ -453,21 +441,17 @@ class TestUtil(unittest.TestCase):
             )
 
     def test_system_random_buckingham_core_energy_is_near_zero(self):
-        state = np.random.get_state()
-        np.random.seed(0)
-        try:
-            a = util.System(
-                10,
-                100,
-                40,
-                init_conf="random",
-                mass=39.948,
-                constants=[[1.69e-15, 3.66e10, 1.01e-77]],
-                forcefield=ff.buckingham,
-                simulation="md",
-            )
-        finally:
-            np.random.set_state(state)
+        a = util.System(
+            10,
+            100,
+            40,
+            init_conf="random",
+            mass=39.948,
+            constants=[[1.69e-15, 3.66e10, 1.01e-77]],
+            forcefield=ff.buckingham,
+            simulation="md",
+            seed=0,
+        )
         self.assertTrue(a.cores[0] > 3e-10)
         r = np.logspace(-11, np.log10(5e-9), 4000)
         well_depth = ff.buckingham([1.69e-15, 3.66e10, 1.01e-77]).energy(r).min()
@@ -538,3 +522,47 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(production.old_energy, system.old_energy)
         self.assertEqual(production.energy_sample.size, 0)
         self.assertEqual(system.energy_sample.size, 1)
+
+    def test_system_seed_reproduces_random_placement(self):
+        def build(seed):
+            return util.System(
+                10,
+                100,
+                40,
+                init_conf="random",
+                mass=39.948,
+                constants=[[1.363e-134, 9.273e-78]],
+                forcefield=ff.lennard_jones,
+                simulation="md",
+                seed=seed,
+            )
+
+        first = build(3)
+        second = build(3)
+        other = build(4)
+        assert_equal(first.particles["xposition"], second.particles["xposition"])
+        assert_equal(first.particles["yposition"], second.particles["yposition"])
+        self.assertFalse(
+            np.array_equal(first.particles["xposition"], other.particles["xposition"])
+        )
+
+    def test_system_seed_is_not_taken_from_the_global_state(self):
+        # Two systems built with the same seed agree even when the global
+        # NumPy state differs between them.
+        def build():
+            return util.System(
+                10,
+                100,
+                40,
+                init_conf="random",
+                mass=39.948,
+                constants=[[1.363e-134, 9.273e-78]],
+                forcefield=ff.lennard_jones,
+                simulation="md",
+                seed=3,
+            )
+
+        first = build()
+        np.random.seed(99)
+        second = build()
+        assert_equal(first.particles["xposition"], second.particles["xposition"])

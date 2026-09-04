@@ -58,6 +58,11 @@ class System:
         forcefield must then provide as its ``diameter`` property. Stored in
         metres as ``diameters``. This sets how the particles are drawn;
         placement uses ``cores``.
+    seed: int (optional)
+        Seed for the random number generator used to place a random initial
+        configuration, draw the initial velocities and make Monte Carlo
+        moves. The same seed reproduces the same run. Without one the run
+        differs each time.
 
     Attributes
     ----------
@@ -67,6 +72,8 @@ class System:
         Separation at which each type's pair energy falls to zero, in
         metres. Particles of one type are placed at least this far apart,
         and particles of two types at least the mean of their cores apart.
+    rng: numpy.random.Generator
+        The random number generator for this system.
     """
 
     def __init__(
@@ -83,6 +90,7 @@ class System:
         timestep_length: float = 1e-14,
         cut_off: float = 15,
         diameter: float | Iterable[float] | None = None,
+        seed: int | None = None,
     ):
         if simulation not in ("md", "mc"):
             raise ValueError(f"simulation must be 'md' or 'mc', not {simulation!r}")
@@ -100,6 +108,7 @@ class System:
         self.cores: list[float] = []
         self.setup_cores()
         self.setup_types()
+        self.rng = np.random.default_rng(seed)
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
@@ -297,8 +306,8 @@ class System:
         cores = np.asarray(self.cores)
         thresholds = (cores[type_i] + cores[[int(t) for t in types[:index]]]) / 2
         for _attempt in range(PLACEMENT_ATTEMPTS):
-            x = np.random.uniform(0, box_length)
-            y = np.random.uniform(0, box_length)
+            x = self.rng.uniform(0, box_length)
+            y = self.rng.uniform(0, box_length)
             dx = x - placed_x[:index]
             dy = y - placed_y[:index]
             # minimum-image convention: wrap the separation to the
