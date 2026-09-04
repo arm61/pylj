@@ -3,14 +3,15 @@ import unittest
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
-from pylj import forcefields as ff
 from pylj import mc
 from pylj.constants import BOLTZMANN
+from pylj.potentials import square_well
+from pylj.tests.argon import ARGON, ARGON_MODEL
 
 
 class TestMc(unittest.TestCase):
     def test_initialise_square(self):
-        a = mc.initialise(2, 300, 8, "square")
+        a = mc.initialise(2, 300, 8, "square", **ARGON_MODEL)
         assert_equal(a.number_of_particles, 2)
         assert_almost_equal(a.box_length, 8e-10)
         assert_almost_equal(a.init_temp, 300)
@@ -19,38 +20,44 @@ class TestMc(unittest.TestCase):
         assert_equal(a.simulation, "mc")
 
     def test_initialise_computes_initial_energy(self):
-        a = mc.initialise(2, 300, 8, "square")
+        a = mc.initialise(2, 300, 8, "square", **ARGON_MODEL)
         assert_almost_equal(a.distances * 1e10, [4.0])
         self.assertTrue(a.energies[0] != 0)
 
     def test_initialise_sets_the_starting_energy(self):
-        a = mc.initialise(2, 300, 8, "square")
+        a = mc.initialise(2, 300, 8, "square", **ARGON_MODEL)
         assert_almost_equal(a.old_energy, a.energies.sum())
         self.assertTrue(a.old_energy != 0)
 
-    def test_initialise_accepts_diameter(self):
-        a = mc.initialise(2, 300, 8, "square", diameter=3.0)
-        assert_almost_equal(a.diameters, [3e-10])
+    def test_square_well_drives_monte_carlo(self):
+        # Nine particles on a 3 by 3 lattice in a 12 Angstrom box: each has
+        # four lattice neighbours 4 Angstrom away, inside the well, and four
+        # diagonal ones 5.66 Angstrom away, beyond it, so 18 pairs sit at
+        # -epsilon. The cut-off, half the box, is 6 Angstrom.
+        well = square_well(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
+        model = {"species": [ARGON], "pair_potentials": {(ARGON, ARGON): well}}
+        system = mc.initialise(9, 300, 12, "square", seed=2, **model)
+        assert_almost_equal(system.old_energy * 1e21, -27.0)
+        for _ in range(50):
+            system.select_random_particle()
+            system.new_random_position()
+            system.compute_energy()
+            system.new_energy = system.energies.sum()
+            if system.metropolis():
+                system.accept()
+            else:
+                system.reject()
+        self.assertTrue(np.isfinite(system.old_energy))
+        self.assertTrue(np.all(system.particles["xacceleration"] == 0.0))
 
     def test_initialize_passes_keyword_arguments_through(self):
-        constants = [[3.4e-10, 1.65e-21]]
-        a = mc.initialize(
-            2,
-            300,
-            8,
-            "square",
-            mass=20.0,
-            constants=constants,
-            forcefield=ff.lennard_jones_sigma_epsilon,
-            diameter=3.0,
-        )
-        assert_equal(a.mass, 20.0)
-        assert_equal(a.constants, constants)
-        assert_equal(a.forcefield, ff.lennard_jones_sigma_epsilon)
-        assert_almost_equal(a.diameters, [3e-10])
+        a = mc.initialize(2, 300, 8, "square", seed=5, **ARGON_MODEL)
+        assert_equal(a.species, [ARGON])
+        assert_equal(a.pair_potentials, ARGON_MODEL["pair_potentials"])
+        assert_equal(a.rng.random(), np.random.default_rng(5).random())
 
     def test_initialize_square(self):
-        a = mc.initialize(2, 300, 8, "square")
+        a = mc.initialize(2, 300, 8, "square", **ARGON_MODEL)
         assert_equal(a.number_of_particles, 2)
         assert_almost_equal(a.box_length, 8e-10)
         assert_almost_equal(a.init_temp, 300)
@@ -58,21 +65,21 @@ class TestMc(unittest.TestCase):
         assert_almost_equal(a.particles["yposition"] * 1e10, [2, 6])
 
     def test_sample(self):
-        a = mc.initialise(2, 300, 8, "square")
+        a = mc.initialise(2, 300, 8, "square", **ARGON_MODEL)
         a.step = 5
         a = mc.sample(300, a)
         assert_almost_equal(a.energy_sample, [300])
         assert_equal(a.step_sample, [5])
 
     def test_select_random_particle(self):
-        a = mc.initialise(2, 300, 8, "square")
+        a = mc.initialise(2, 300, 8, "square", **ARGON_MODEL)
         b, c = mc.select_random_particle(a.particles, np.random.default_rng(0))
         self.assertTrue(0 <= b < 2)
         self.assertTrue(0 <= c[0] <= 8e-10)
         self.assertTrue(0 <= c[1] <= 8e-10)
 
     def test_get_new_particle(self):
-        a = mc.initialise(2, 300, 8, "square")
+        a = mc.initialise(2, 300, 8, "square", **ARGON_MODEL)
         rng = np.random.default_rng(0)
         b, c = mc.select_random_particle(a.particles, rng)
         d = mc.get_new_particle(a.particles, b, a.box_length, rng)
@@ -84,7 +91,7 @@ class TestMc(unittest.TestCase):
         assert_almost_equal(a, 300)
 
     def test_reject(self):
-        a = mc.initialise(2, 300, 8, "square")
+        a = mc.initialise(2, 300, 8, "square", **ARGON_MODEL)
         b = [1e-10, 1e-10]
         c = mc.reject(b, a.particles, 1)
         assert_almost_equal(c["xposition"][1] * 1e10, 1)
@@ -123,7 +130,7 @@ class TestMc(unittest.TestCase):
         self.assertFalse(mc.metropolis(300, 0.0, rejected, rng=np.random.default_rng(5)))
 
     def test_system_metropolis_accepts_downhill_and_rejects_steep_uphill_moves(self):
-        system = mc.initialise(2, 300, 8, "square")
+        system = mc.initialise(2, 300, 8, "square", **ARGON_MODEL)
         system.old_energy = 1e-20
         system.new_energy = 0.0
         self.assertTrue(system.metropolis())
@@ -139,7 +146,7 @@ class TestMc(unittest.TestCase):
 
     def test_seeded_runs_are_identical(self):
         def run(seed):
-            system = mc.initialise(16, 300, 30, "random", seed=seed)
+            system = mc.initialise(16, 300, 30, "random", seed=seed, **ARGON_MODEL)
             for _ in range(200):
                 system.select_random_particle()
                 system.new_random_position()

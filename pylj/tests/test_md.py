@@ -3,14 +3,15 @@ import unittest
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
-from pylj import forcefields as ff
 from pylj import mc, md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+from pylj.potentials import square_well
+from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL
 
 
 class TestMd(unittest.TestCase):
     def test_initialise_square(self):
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         assert_equal(a.number_of_particles, 2)
         assert_almost_equal(a.box_length, 8e-10)
         assert_almost_equal(a.init_temp, 300)
@@ -19,24 +20,41 @@ class TestMd(unittest.TestCase):
         assert_equal(a.simulation, "md")
 
     def test_initialise_computes_initial_forces(self):
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         assert_almost_equal(a.distances * 1e10, [4.0])
         self.assertTrue(np.any(a.particles["yacceleration"] != 0))
 
     def test_initialise_velocities_have_no_net_momentum(self):
-        a = md.initialise(25, 100, 40, "square")
-        thermal_speed = np.sqrt(BOLTZMANN * 100 / (a.mass * ATOMIC_MASS_UNIT))
+        a = md.initialise(25, 100, 40, "square", **ARGON_MODEL)
+        thermal_speed = np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
         self.assertLess(abs(a.particles["xvelocity"].sum()), 1e-12 * thermal_speed)
         self.assertLess(abs(a.particles["yvelocity"].sum()), 1e-12 * thermal_speed)
 
     def test_initialise_velocities_match_the_requested_temperature(self):
-        a = md.initialise(25, 100, 40, "square")
-        assert_almost_equal(md.calculate_temperature(a.particles, a.mass), 100)
+        a = md.initialise(25, 100, 40, "square", **ARGON_MODEL)
+        assert_almost_equal(md.calculate_temperature(a.particles, a.masses), 100)
+
+    def test_initialise_with_two_species_has_no_net_momentum_at_the_temperature(self):
+        # The centre-of-mass velocity is mass weighted, so with unequal
+        # masses the total momentum is zero and the temperature exact.
+        a = md.initialise(24, 100, 60, "square", **MIXTURE_MODEL)
+        assert_almost_equal(a.masses[:4], [39.948, 80.0, 39.948, 80.0])
+        momentum_scale = ARGON.mass * np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
+        self.assertLess(abs(np.sum(a.masses * a.particles["xvelocity"])), 1e-12 * momentum_scale)
+        self.assertLess(abs(np.sum(a.masses * a.particles["yvelocity"])), 1e-12 * momentum_scale)
+        assert_almost_equal(md.calculate_temperature(a.particles, a.masses), 100)
+
+    def test_initialise_refuses_a_potential_with_no_force(self):
+        well = square_well(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
+        with self.assertRaisesRegex(ValueError, "Monte Carlo"):
+            md.initialise(
+                2, 300, 8, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): well}
+            )
 
     def test_initialise_is_reproducible_with_a_seed(self):
-        first = md.initialise(10, 100, 40, "random", seed=3)
-        second = md.initialise(10, 100, 40, "random", seed=3)
-        other = md.initialise(10, 100, 40, "random", seed=4)
+        first = md.initialise(10, 100, 40, "random", seed=3, **ARGON_MODEL)
+        second = md.initialise(10, 100, 40, "random", seed=3, **ARGON_MODEL)
+        other = md.initialise(10, 100, 40, "random", seed=4, **ARGON_MODEL)
         assert_equal(first.particles["xposition"], second.particles["xposition"])
         assert_equal(first.particles["xvelocity"], second.particles["xvelocity"])
         assert_equal(first.particles["yvelocity"], second.particles["yvelocity"])
@@ -46,37 +64,28 @@ class TestMd(unittest.TestCase):
 
     def test_initialise_one_particle_raises(self):
         with self.assertRaisesRegex(ValueError, "at least two particles"):
-            md.initialise(1, 300, 8, "square")
+            md.initialise(1, 300, 8, "square", **ARGON_MODEL)
 
     def test_initialise_rejects_a_non_positive_or_infinite_temperature(self):
         for temperature in (0, -10, np.inf):
             with self.assertRaisesRegex(ValueError, "temperature must be positive"):
-                md.initialise(2, temperature, 8, "square")
+                md.initialise(2, temperature, 8, "square", **ARGON_MODEL)
 
     def test_calculate_temperature_needs_two_particles(self):
-        a = mc.initialise(1, 300, 8, "square")
+        a = mc.initialise(1, 300, 8, "square", **ARGON_MODEL)
         with self.assertRaisesRegex(ValueError, "at least two particles"):
-            md.calculate_temperature(a.particles, a.mass)
+            md.calculate_temperature(a.particles, a.masses)
 
     def test_initialize_passes_keyword_arguments_through(self):
-        constants = [[3.4e-10, 1.65e-21]]
-        a = md.initialize(
-            2,
-            300,
-            8,
-            "square",
-            mass=20.0,
-            constants=constants,
-            forcefield=ff.lennard_jones_sigma_epsilon,
-            diameter=3.0,
-        )
-        assert_equal(a.mass, 20.0)
-        assert_equal(a.constants, constants)
-        assert_equal(a.forcefield, ff.lennard_jones_sigma_epsilon)
-        assert_almost_equal(a.diameters, [3e-10])
+        a = md.initialize(2, 300, 8, "square", timestep_length=2e-15, seed=5, **ARGON_MODEL)
+        b = md.initialize(2, 300, 8, "square", timestep_length=2e-15, seed=5, **ARGON_MODEL)
+        assert_equal(a.species, [ARGON])
+        assert_equal(a.pair_potentials, ARGON_MODEL["pair_potentials"])
+        assert_almost_equal(a.timestep_length, 2e-15)
+        assert_equal(a.particles["xvelocity"], b.particles["xvelocity"])
 
     def test_sample_records_step_and_thermodynamics(self):
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         a.step = 3
         a.md_sample()
         assert_equal(a.step_sample, [3])
@@ -91,7 +100,7 @@ class TestMd(unittest.TestCase):
         assert_equal(a.energy_sample.size, 2)
 
     def test_sample_pressure_uses_the_stored_pair_forces(self):
-        system = md.initialise(20, 300, 20, "square")
+        system = md.initialise(20, 300, 20, "square", **ARGON_MODEL)
         system.integrate(md.velocity_verlet)
         # Sentinels no force evaluation would produce: the sampled pressure
         # reflects them only if sample reuses the stored data instead of
@@ -99,7 +108,7 @@ class TestMd(unittest.TestCase):
         system.distances = np.full_like(system.distances, 3e-10)
         system.forces = np.full_like(system.forces, 1e-12)
         system.md_sample()
-        temperature = md.calculate_temperature(system.particles, system.mass)
+        temperature = md.calculate_temperature(system.particles, system.masses)
         expected = pairwise.calculate_pressure(
             system.distances,
             system.forces,
@@ -114,20 +123,20 @@ class TestMd(unittest.TestCase):
         # A y velocity of 3e4 m/s moves each by 3 Angstrom in one 1e-14 s
         # step, so the second particle crosses the boundary: its wrapped
         # position comes back into the box and its unwrapped one does not.
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         a.particles["xvelocity"] = 0.0
         a.particles["yvelocity"] = 3e4
         a.particles["xacceleration"] = 0.0
         a.particles["yacceleration"] = 0.0
         a.particles, a.distances, a.forces, a.energies = md.velocity_verlet(
-            a.particles, 1e-14, a.box_length, a.cut_off, a.constants, a.forcefield, a.mass
+            a.particles, 1e-14, a.box_length, a.cut_off, a.pair_potentials, a.species
         )
         assert_almost_equal(a.particles["xunwrapped"] * 1e10, [2, 2])
         assert_almost_equal(a.particles["yunwrapped"] * 1e10, [5, 9])
         assert_almost_equal(a.particles["yposition"] * 1e10, [5, 1])
 
     def test_update_positions_wraps_the_position_and_not_the_unwrapped_one(self):
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         a.particles["xvelocity"] = 1e4
         a.particles["yvelocity"] = 3e4
         a.particles["xacceleration"] = 0.0
@@ -146,7 +155,7 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(unwrapped[1] * 1e10, [5, 9])
 
     def test_update_velocities(self):
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         a.particles["xvelocity"] = 1e-10
         a.particles["yvelocity"] = 1e-10
         a.particles["xacceleration"] = 1e4
@@ -168,7 +177,7 @@ class TestMd(unittest.TestCase):
         # Two particles with equal and opposite velocities of 1e-10 m/s in x
         # and y: kinetic energy m (vx^2 + vy^2), divided by (N - 1) k_B with
         # N - 1 = 1 for the two particles.
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         a.particles["xvelocity"] = [1e-10, -1e-10]
         a.particles["yvelocity"] = [1e-10, -1e-10]
         b = md.calculate_temperature(a.particles, mass=39.948)
@@ -178,7 +187,7 @@ class TestMd(unittest.TestCase):
     def test_calculate_msd(self):
         # Displacements of (1, 1) and (5, 1) Angstrom from the origin
         # positions give (2 + 26) / 2 = 14 Angstrom^2.
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         a.particles["xunwrapped"] = a.initial_particles["xunwrapped"] + [1e-10, 5e-10]
         a.particles["yunwrapped"] = a.initial_particles["yunwrapped"] + [1e-10, 1e-10]
         msd = md.calculate_msd(a.particles, a.initial_particles)
@@ -186,7 +195,7 @@ class TestMd(unittest.TestCase):
 
     def test_calculate_msd_is_zero_before_the_first_step(self):
         # The unwrapped positions start equal to the initial positions.
-        a = md.initialise(16, 300, 20, "square")
+        a = md.initialise(16, 300, 20, "square", **ARGON_MODEL)
         self.assertEqual(md.calculate_msd(a.particles, a.initial_particles), 0.0)
 
     def test_calculate_msd_with_sparse_sampling(self):
@@ -197,7 +206,7 @@ class TestMd(unittest.TestCase):
         # imposed drift. The oracle accumulates the minimum-image
         # displacement between consecutive steps, which is exact while a
         # particle moves less than half a box per step.
-        a = md.initialise(2, 300, 8, "square")
+        a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         a.particles["xvelocity"] = -1e4
         a.particles["yvelocity"] = 0.0
         box = a.box_length
@@ -224,14 +233,16 @@ class TestMd(unittest.TestCase):
         # four. Measured: 1.6e-4 at 1e-14 s, 3.9e-5 at 5e-15 s.
         def worst_drift(timestep_length, steps):
             system = md.initialise(
-                25, 100, 20, "square", timestep_length=timestep_length, seed=0
+                25, 100, 20, "square", timestep_length=timestep_length, seed=0, **ARGON_MODEL
             )
             system.cut_off = 1e-8
             system.compute_force()
 
             def total_energy():
-                kinetic = 0.5 * system.mass * ATOMIC_MASS_UNIT * np.sum(
-                    system.particles["xvelocity"] ** 2 + system.particles["yvelocity"] ** 2
+                kinetic = 0.5 * np.sum(
+                    system.masses
+                    * ATOMIC_MASS_UNIT
+                    * (system.particles["xvelocity"] ** 2 + system.particles["yvelocity"] ** 2)
                 )
                 return kinetic + np.sum(system.energies)
 
@@ -250,28 +261,24 @@ class TestMd(unittest.TestCase):
     def test_velocity_verlet_conserves_momentum(self):
         # The pair forces are equal and opposite, so the total momentum,
         # zero after initialisation, stays zero to rounding.
-        system = md.initialise(25, 100, 20, "square", seed=0)
-        thermal_speed = np.sqrt(BOLTZMANN * 100 / (system.mass * ATOMIC_MASS_UNIT))
+        system = md.initialise(25, 100, 20, "square", seed=0, **ARGON_MODEL)
+        thermal_speed = np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
         for _ in range(200):
             system.integrate(md.velocity_verlet)
         self.assertLess(abs(system.particles["xvelocity"].sum()), 1e-12 * thermal_speed)
         self.assertLess(abs(system.particles["yvelocity"].sum()), 1e-12 * thermal_speed)
 
-    def test_initialise_accepts_diameter(self):
-        a = md.initialise(2, 300, 8, "square", diameter=3.0)
-        assert_almost_equal(a.diameters, [3e-10])
-
     def test_heat_bath_rescales_to_bath_temperature(self):
-        a = md.initialise(10, 300, 20, "square")
-        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
-        t = md.calculate_temperature(a.particles, a.mass)
+        a = md.initialise(10, 300, 20, "square", **ARGON_MODEL)
+        a.particles = md.heat_bath(a.particles, a.masses, 250.0)
+        t = md.calculate_temperature(a.particles, a.masses)
         assert_almost_equal(t / 250.0, 1.0)
 
     def test_heat_bath_preserves_velocity_directions(self):
-        a = md.initialise(10, 300, 20, "square")
+        a = md.initialise(10, 300, 20, "square", **ARGON_MODEL)
         old_x = np.array(a.particles["xvelocity"])
         old_y = np.array(a.particles["yvelocity"])
-        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
+        a.particles = md.heat_bath(a.particles, a.masses, 250.0)
         x_ratio = a.particles["xvelocity"] / old_x
         y_ratio = a.particles["yvelocity"] / old_y
         assert_almost_equal(x_ratio, np.full(x_ratio.shape, x_ratio[0]))
@@ -279,37 +286,37 @@ class TestMd(unittest.TestCase):
 
     def test_heat_bath_ignores_the_temperature_sample_record(self):
         for history in ([], [1000.0, 1000.0, 1000.0]):
-            a = md.initialise(10, 300, 20, "square")
+            a = md.initialise(10, 300, 20, "square", **ARGON_MODEL)
             a.temperature_sample = np.array(history)
             a.heat_bath(50.0)
-            t = md.calculate_temperature(a.particles, a.mass)
+            t = md.calculate_temperature(a.particles, a.masses)
             assert_almost_equal(t, 50.0)
 
     def test_heat_bath_two_calls_each_hit_their_own_target(self):
-        a = md.initialise(10, 300, 20, "square")
-        a.particles = md.heat_bath(a.particles, a.mass, 250.0)
-        a.particles = md.heat_bath(a.particles, a.mass, 100.0)
-        t = md.calculate_temperature(a.particles, a.mass)
+        a = md.initialise(10, 300, 20, "square", **ARGON_MODEL)
+        a.particles = md.heat_bath(a.particles, a.masses, 250.0)
+        a.particles = md.heat_bath(a.particles, a.masses, 100.0)
+        t = md.calculate_temperature(a.particles, a.masses)
         assert_almost_equal(t / 100.0, 1.0)
 
     def test_heat_bath_raises_when_the_particles_are_at_rest(self):
-        a = md.initialise(10, 300, 20, "square")
+        a = md.initialise(10, 300, 20, "square", **ARGON_MODEL)
         a.particles["xvelocity"] = 0.0
         a.particles["yvelocity"] = 0.0
         with self.assertRaises(ValueError) as context:
-            md.heat_bath(a.particles, a.mass, 250.0)
+            md.heat_bath(a.particles, a.masses, 250.0)
         self.assertIn("at rest", str(context.exception))
 
     def test_heat_bath_raises_when_the_temperature_is_not_finite(self):
         for bad in (np.inf, np.nan):
-            a = md.initialise(10, 300, 20, "square")
+            a = md.initialise(10, 300, 20, "square", **ARGON_MODEL)
             a.particles["xvelocity"][0] = bad
             with self.assertRaises(ValueError) as context:
-                md.heat_bath(a.particles, a.mass, 250.0)
+                md.heat_bath(a.particles, a.masses, 250.0)
             self.assertIn("diverged", str(context.exception))
 
     def test_heat_bath_raises_for_a_non_positive_bath_temperature(self):
         for bad in (0.0, -5.0, np.nan):
-            a = md.initialise(10, 300, 20, "square")
+            a = md.initialise(10, 300, 20, "square", **ARGON_MODEL)
             with self.assertRaises(ValueError):
-                md.heat_bath(a.particles, a.mass, bad)
+                md.heat_bath(a.particles, a.masses, bad)

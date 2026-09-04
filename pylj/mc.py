@@ -1,6 +1,5 @@
 import numpy as np
 
-from pylj import forcefields as ff
 from pylj.constants import BOLTZMANN
 
 
@@ -9,14 +8,13 @@ def initialise(
     temperature,
     box_length,
     init_conf,
-    mass=39.948,
-    constants=None,
-    forcefield=ff.lennard_jones,
-    diameter=None,
+    *,
+    species,
+    pair_potentials,
     seed=None,
 ):
-    """Initialise the particle positions (square or random arrangement), zero
-    the velocities, and calculate the initial pair energies.
+    """Initialise the particle positions (square or random arrangement) and
+    calculate the initial pair energies.
 
     Parameters
     ----------
@@ -32,17 +30,14 @@ def initialise(
         - 'random'
         Both raise ``ValueError`` if the particles cannot be placed without
         their repulsive cores overlapping.
-    mass: float (optional)
-        The mass of the particles being simulated.
-    constants: float, array_like (optional)
-        The values of the constants for the forcefield used. Defaults to the
-        argon Lennard-Jones constants, ``[[1.363e-134, 9.273e-78]]``.
-    forcefield: class (optional)
-        The particular forcefield to be used to find the energy and forces.
-    diameter: float or iterable of float (optional)
-        Drawn diameter of the particles in Angstrom, one value or one per
-        set of constants. Defaults to the separation at the pair-potential
-        minimum of the forcefield.
+    species: sequence of Species
+        Required, keyword only. The species in the system; particles are
+        assigned to them in turn.
+    pair_potentials: mapping of (Species, Species) to PairPotential
+        Required, keyword only. The potential acting between each pair of
+        species, including each species with itself. Only the pair energies
+        are evaluated, so a potential with no finite force, such as the
+        square well, can be used.
     seed: int (optional)
         Seed for the random number generator used to place a random initial
         configuration and make the Monte Carlo moves. The same seed
@@ -55,22 +50,16 @@ def initialise(
     """
     from pylj import util
 
-    if constants is None:
-        constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
         number_of_particles,
         temperature,
         box_length,
-        constants,
-        forcefield,
-        mass,
+        species=species,
+        pair_potentials=pair_potentials,
         simulation="mc",
         init_conf=init_conf,
-        diameter=diameter,
         seed=seed,
     )
-    system.particles["xvelocity"] = 0
-    system.particles["yvelocity"] = 0
     system.compute_energy()
     system.old_energy = system.energies.sum()
     return system

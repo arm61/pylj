@@ -1,15 +1,44 @@
 import copy
+import itertools
 import webbrowser
-from collections.abc import Iterable
+from collections.abc import Sequence
 from typing import Literal, Self
 
 import numpy as np
 
-from pylj import mc, md
+from pylj import mc, md, pairwise
+from pylj.pairwise import PairPotentials
+from pylj.potentials import PairPotential, Species
 
 #: Number of rejection-sampling attempts made for a single particle in
 #: :meth:`System.random` before it gives up and raises ``ValueError``.
 PLACEMENT_ATTEMPTS = 1000
+
+
+def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPotentials) -> None:
+    """Check that a system's model is complete.
+
+    Args:
+        species: The species in the system.
+        pair_potentials: The potential between each pair of species.
+
+    Raises:
+        ValueError: If ``species`` is empty, or a pair of species has no
+            entry in ``pair_potentials`` in either order.
+        TypeError: If a value in ``pair_potentials`` is not a
+            ``PairPotential`` instance, such as the class itself.
+    """
+    if not species:
+        raise ValueError("species must name at least one Species")
+    for one, other in itertools.combinations_with_replacement(species, 2):
+        if (one, other) not in pair_potentials and (other, one) not in pair_potentials:
+            raise ValueError(f"pair_potentials has no entry for the pair {one} and {other}")
+    for pair, potential in pair_potentials.items():
+        if not isinstance(potential, PairPotential):
+            raise TypeError(
+                f"pair_potentials[{pair}] must be a PairPotential instance, such as "
+                f"lennard_jones(epsilon=..., sigma=...), not {potential!r}"
+            )
 
 
 class System:
@@ -28,14 +57,14 @@ class System:
     box_length: float
         Length of a single dimension of the simulation square, in
         Angstrom.
-    constants: float, array_like
-        The values of the constants for the forcefield used, one
-        set per particle type.
-    forcefield: class
-        The particular forcefield to be used to find the energy and
-        forces.
-    mass: float
-        The mass of the particles being simulated.
+    species: sequence of Species
+        Required, keyword only. The species in the system. Particles are
+        assigned to the species in turn, so particle i is of species
+        ``i % len(species)``.
+    pair_potentials: mapping of (Species, Species) to PairPotential
+        Required, keyword only. The potential acting between each pair of
+        species, keyed by the two species in either order. Every pair,
+        including each species with itself, needs an entry.
     simulation: {'md', 'mc'}
         Required, keyword only. Which engine drives this system; set for you
         by :func:`md.initialise` and :func:`mc.initialise`.
@@ -50,14 +79,6 @@ class System:
     cut_off: float (optional)
         The distance apart that the particles must be to consider there
         interaction to be negliable.
-    diameter: float or iterable of float (optional)
-        Drawn diameter of the particles in Angstrom, one value or one per
-        set of constants. Each value must be positive, and at least 0.01, as
-        values below that are metres mistaken for Angstrom. Defaults to the
-        separation at the pair-potential minimum of the forcefield, which the
-        forcefield must then provide as its ``diameter`` property. Stored in
-        metres as ``diameters``. This sets how the particles are drawn;
-        placement uses ``cores``.
     seed: int (optional)
         Seed for the random number generator used to place a random initial
         configuration, draw the initial velocities and make Monte Carlo
@@ -66,14 +87,26 @@ class System:
 
     Attributes
     ----------
-    diameters: list of float
-        Drawn diameter of each particle type, in metres.
+    species: list of Species
+        The species in the system; ``particles["types"]`` holds the index
+        of each particle's species in this list.
+    pair_potentials: dict of (Species, Species) to PairPotential
+        The potential acting between each pair of species.
+    masses: numpy.ndarray
+        The mass of each particle, in atomic mass units, from its species.
     cores: list of float
-        Separation at which each type's pair energy falls to zero, in
-        metres. Particles of one type are placed at least this far apart,
-        and particles of two types at least the mean of their cores apart.
+        Separation at which each species' pair energy falls to zero, in
+        metres. Particles of one species are placed at least this far apart,
+        and particles of two species at least the mean of their cores apart.
     rng: numpy.random.Generator
         The random number generator for this system.
+
+    Raises
+    ------
+    ValueError
+        If ``species`` is empty or a pair of species has no potential.
+    TypeError
+        If a pair potential is not a ``PairPotential`` instance.
     """
 
     def __init__(
@@ -81,15 +114,13 @@ class System:
         number_of_particles: int,
         temperature: float,
         box_length: float,
-        constants: list[list[float]],
-        forcefield: type,
-        mass: float,
         *,
+        species: Sequence[Species],
+        pair_potentials: PairPotentials,
         simulation: Literal["md", "mc"],
         init_conf: str = "square",
         timestep_length: float = 1e-14,
         cut_off: float = 15,
-        diameter: float | Iterable[float] | None = None,
         seed: int | None = None,
     ):
         if simulation not in ("md", "mc"):
@@ -97,17 +128,11 @@ class System:
         self.simulation = simulation
         self.number_of_particles = number_of_particles
         self.init_temp = temperature
-        self.constants = constants
-        self.mass = mass
-        self.forcefield = forcefield
-        self.particle_list = None
-        self.long_const = None
-        self.types = None
-        self.diameters: list[float] = []
-        self.setup_diameters(diameter)
+        self.species = list(species)
+        self.pair_potentials = dict(pair_potentials)
+        _check_pair_potentials(self.species, self.pair_potentials)
         self.cores: list[float] = []
         self.setup_cores()
-        self.setup_types()
         self.rng = np.random.default_rng(seed)
         if box_length <= 600:
             self.box_length = box_length * 1e-10
@@ -128,7 +153,8 @@ class System:
             )
         self.timestep_length = timestep_length
         self.particles: np.ndarray = np.zeros(self.number_of_particles, dtype=particle_dt())
-        self.particles["types"] = self.types
+        self.particles["types"] = np.arange(self.number_of_particles) % len(self.species)
+        self.masses = pairwise.particle_masses(self.particles, self.species)
         if init_conf == "square":
             self.square()
         elif init_conf == "random":
@@ -174,7 +200,7 @@ class System:
     def restart(self) -> Self:
         """Return a new system that continues from the current configuration.
 
-        The new system keeps the box, forcefield, constants, mass, timestep
+        The new system keeps the box, species, pair potentials, timestep
         and cut-off, copies the state of the random number generator so the
         new system's draws do not depend on what the current system does
         next, and copies the particle positions, velocities
@@ -199,7 +225,7 @@ class System:
         Returns:
             The new system.
         """
-        # A shallow copy shares the box, forcefield and constants, which never
+        # A shallow copy shares the box, species and pair potentials, which never
         # change, and keeps the accepted energy; the state that belongs to one
         # run is copied or reset below.
         new = copy.copy(self)
@@ -264,7 +290,7 @@ class System:
         candidate position for a particle is accepted only if, for every
         already placed particle, the minimum-image distance between them is
         at least the two particles' repulsive core, ``self.cores``, one per
-        set of constants. Two particles of different types are kept at least
+        species. Two particles of different species are kept at least
         the mean of their two cores apart.
 
         Rejection sampling reaches area fractions of roughly 0.4 to 0.5;
@@ -307,7 +333,7 @@ class System:
         types = self.particles["types"]
         type_i = int(types[index])
         cores = np.asarray(self.cores)
-        thresholds = (cores[type_i] + cores[[int(t) for t in types[:index]]]) / 2
+        thresholds = (cores[type_i] + cores[types[:index]]) / 2
         for _attempt in range(PLACEMENT_ATTEMPTS):
             x = self.rng.uniform(0, box_length)
             y = self.rng.uniform(0, box_length)
@@ -337,119 +363,42 @@ class System:
             "densely than random placement and may still fit."
         )
 
-    def setup_types(self):
-        """Sets the long constants and types arrays of the particles
-        """
-        long_const = []
-        types = []
-        particle_list = []
-        for i in range(self.number_of_particles):
-            # Get set of constants and index
-            constants_type = self.constants[i%len(self.constants)]
-            particle_type = f'{i%len(self.constants)}'
-            # Append to lists
-            long_const.append(constants_type)
-            types.append(particle_type)
-            particle = Particle(constants_type, i, self.mass, particle_type)
-            particle.add(particle_list)
-        self.particle_list = particle_list
-        self.long_const = long_const
-        self.types = types
-
-    def setup_diameters(self, diameter: float | Iterable[float] | None) -> None:
-        """Set the drawn diameter of each particle type, in metres.
-
-        Args:
-            diameter: Diameter in Angstrom. ``None`` takes the separation at
-                the pair-potential minimum from the forcefield for each set
-                of constants. A single number applies to every type; an
-                iterable gives one value per set of constants.
-
-        Raises:
-            ValueError: If an iterable is given whose length differs from the
-                number of sets of constants, if any diameter is not finite
-                or not positive, if any diameter looks like a value in
-                metres rather than Angstrom, or if ``None`` is given and the
-                forcefield has no ``diameter`` property.
-        """
-        if diameter is None:
-            self.diameters = []
-            for c in self.constants:
-                forcefield = self.forcefield(c)
-                try:
-                    value = forcefield.diameter
-                except AttributeError as error:
-                    raise ValueError(
-                        f"{type(forcefield).__name__} has no diameter property. A "
-                        "forcefield must provide a diameter property giving the "
-                        "separation at the pair-potential minimum in metres, or the "
-                        "caller must pass diameter= to initialise. See the bring "
-                        "your own forcefield documentation."
-                    ) from error
-                if not np.isfinite(value) or value <= 0:
-                    raise ValueError(
-                        f"{type(forcefield).__name__}.diameter must be a positive, "
-                        f"finite value in metres, but got {value}"
-                    )
-                self.diameters.append(value)
-            return
-        if isinstance(diameter, Iterable):
-            values = [float(d) for d in diameter]
-        else:
-            values = [float(diameter)] * len(self.constants)
-        if len(values) != len(self.constants):
-            raise ValueError(
-                f"Expected {len(self.constants)} diameters, one per set of "
-                f"constants, but got {len(values)}"
-            )
-        for value in values:
-            if not np.isfinite(value):
-                raise ValueError(f"Every diameter must be finite, but got {value}")
-            if value <= 0:
-                raise ValueError(f"Every diameter must be positive, but got {value}")
-            if value < 0.01:
-                raise ValueError(
-                    f"The diameter is in Angstrom, and {value} looks like a value in "
-                    "metres. An Angstrom is 1e-10 metres."
-                )
-        self.diameters = [value * 1e-10 for value in values]
-
     def setup_cores(self) -> None:
-        """Set the separation at which each forcefield's pair energy falls
-        to zero, in metres, one per set of constants. Particles closer than
-        this sit inside each other's repulsive core, so the initial
-        configurations keep them at least this far apart.
+        """Set the separation at which each species' pair energy falls to
+        zero, in metres, one per species. Particles closer than this sit
+        inside each other's repulsive core, so the initial configurations
+        keep them at least this far apart.
 
         Raises:
-            ValueError: If a forcefield's ``energy`` does not return one
+            ValueError: If a potential's ``energies`` does not return one
                 value per separation, if its pair energy is positive at
                 every grid point between 0.1 and 50 Angstrom (suggesting its
-                constants are in the wrong units), or if its pair energy
+                parameters are in the wrong units), or if its pair energy
                 never falls from positive to non-positive on that range, so
                 it has no repulsive core there.
         """
         r = np.logspace(-11, np.log10(5e-9), 4000)
         self.cores = []
-        for c in self.constants:
-            forcefield = self.forcefield(c)
-            energy = np.asarray(forcefield.energy(r), dtype=float)
+        for one in self.species:
+            potential = pairwise.pair_potential(self.pair_potentials, one, one)
+            name = type(potential).__name__
+            energy = np.asarray(potential.energies(r), dtype=float)
             if energy.shape != r.shape:
                 raise ValueError(
-                    f"{type(forcefield).__name__}.energy must return one value per "
-                    f"separation; got shape {energy.shape} for {r.shape[0]} separations"
+                    f"{name}.energies must return one value per separation; got "
+                    f"shape {energy.shape} for {r.shape[0]} separations"
                 )
             positive = energy > 0
             crossings = np.flatnonzero(positive[:-1] & ~positive[1:])
             if crossings.size == 0:
                 if positive.all():
                     raise ValueError(
-                        f"{type(forcefield).__name__}: the pair energy is still "
-                        "positive at 50 Angstrom; check the units of the constants"
+                        f"{name}: the pair energy is still positive at 50 Angstrom; "
+                        "check the units of the parameters"
                     )
                 raise ValueError(
-                    f"{type(forcefield).__name__} has no repulsive core: its pair "
-                    "energy never falls from positive to zero between 0.1 and 50 "
-                    "Angstrom"
+                    f"{name} has no repulsive core: its pair energy never falls from "
+                    "positive to zero between 0.1 and 50 Angstrom"
                 )
             i = int(crossings[-1])
             r0, r1 = r[i], r[i + 1]
@@ -465,26 +414,23 @@ class System:
             self.cores.append(float(core))
 
     def compute_force(self):
-        """Maps to the md.compute_force function, storing what it returns."""
-        part, dist, forces, energies = md.compute_force(
-            self.particles,
-            self.box_length,
-            self.cut_off,
-            self.constants,
-            self.forcefield,
-            self.mass,
+        """Compute the pair forces and the accelerations of the current
+        configuration, storing the pair distances, forces and energies."""
+        self.particles, self.distances, self.forces, self.energies = pairwise.compute_force(
+            self.particles, self.box_length, self.cut_off, self.pair_potentials, self.species
         )
-        self.particles = part
-        self.distances = dist
-        self.forces = forces
-        self.energies = energies
 
     def compute_energy(self):
-        """Compute the pair energies of the current configuration.
+        """Compute the pair energies of the current configuration, storing
+        the pair distances and energies.
 
-        The forces, distances and accelerations are updated at the same time.
+        Only the energies are evaluated, so the accelerations and stored
+        forces are untouched and a potential with no finite force can be
+        used.
         """
-        self.compute_force()
+        self.distances, self.energies = pairwise.compute_energy(
+            self.particles, self.box_length, self.cut_off, self.pair_potentials, self.species
+        )
 
     def integrate(self, method):
         """Maps the chosen integration method.
@@ -498,9 +444,8 @@ class System:
             self.timestep_length,
             self.box_length,
             self.cut_off,
-            self.constants,
-            self.forcefield,
-            self.mass
+            self.pair_potentials,
+            self.species,
         )
 
     def md_sample(self):
@@ -518,7 +463,7 @@ class System:
             ValueError: If the bath temperature is not positive, or the
                 particles are at rest or the simulation has diverged.
         """
-        self.particles = md.heat_bath(self.particles, self.mass, bath_temperature)
+        self.particles = md.heat_bath(self.particles, self.masses, bath_temperature)
 
     def mc_sample(self):
         """Maps to the mc.sample function, recording the current accepted energy."""
@@ -562,21 +507,6 @@ class System:
             self.position_store, self.particles, self.random_particle
         )
 
-class Particle:
-    def __init__(self,
-               constants,
-               index,
-               mass,
-               particle_type
-               ):
-        self.constants = constants
-        self.index = index
-        self.mass = mass
-        self.type = particle_type
-
-    def add(self, particles):
-        particles.append(self)
-        return particles
 
 def __cite__():  # pragma: no cover
     """This function will launch the website for the JOSE publication on
