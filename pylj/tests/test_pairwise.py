@@ -146,6 +146,35 @@ class TestPairwise(unittest.TestCase):
         assert_almost_equal(particles["xacceleration"][0] / 1e14, 4.4171073)
         assert_almost_equal(particles["xacceleration"][1] / 1e14, -4.7771462)
 
+    def test_compute_force_zeroes_pairs_beyond_the_cut_off(self):
+        # cut_off is compared against the pair distances directly, so it is in
+        # the same units as the positions (metres here). At 6e-10 m it sits
+        # between the (1, 2) pair at 5e-10 and the (0, 2) pair at 8e-10, so one
+        # pair is inside the cut-off and one is outside.
+        part_dt = util.particle_dt()
+        particles = np.zeros(3, dtype=part_dt)
+        particles["xposition"] = [0.0, 3e-10, 8e-10]
+        particles["types"] = ["0", "0", "0"]
+        constants = [[1.363e-134, 9.273e-78]]
+        particles, distances, forces, energies = pairwise.compute_force(
+            particles,
+            30,
+            6e-10,
+            constants=constants,
+            forcefield=ff.lennard_jones,
+            mass=39.948,
+        )
+        assert_almost_equal(distances, [3e-10, 8e-10, 5e-10])
+        # The pair beyond the cut-off is zeroed; the two inside keep the values
+        # the forcefield gives, so the mask is neither dropped nor inverted.
+        lj = ff.lennard_jones(np.array(constants[0]))
+        self.assertEqual(energies[1], 0.0)
+        self.assertEqual(forces[1], 0.0)
+        assert_almost_equal(energies[0] * 1e20, lj.energy(distances[0]) * 1e20)
+        assert_almost_equal(energies[2] * 1e20, lj.energy(distances[2]) * 1e20)
+        assert_almost_equal(forces[0] * 1e12, lj.force(distances[0]) * 1e12)
+        assert_almost_equal(forces[2] * 1e12, lj.force(distances[2]) * 1e12)
+
     def test_compute_force_does_not_warn_on_a_two_type_system(self):
         part_dt = util.particle_dt()
         particles = np.zeros(3, dtype=part_dt)
