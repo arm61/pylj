@@ -1,3 +1,4 @@
+import copy
 import webbrowser
 from collections.abc import Iterable
 from typing import Literal
@@ -160,6 +161,49 @@ class System:
             Number of pairwise interactions in the system.
         """
         return int((self.number_of_particles - 1) * self.number_of_particles / 2)
+
+    def restart(self) -> "System":
+        """Return a new system that continues from the current configuration.
+
+        The new system keeps the box, forcefield, constants, mass, timestep
+        and cut-off, and copies the particle positions, velocities and
+        accelerations and the pair forces. Its step and time are zero, its
+        sample arrays are empty, and the mean squared displacement is
+        measured from the copied positions. The current system is not
+        changed. Use it to start a production run after equilibration::
+
+            system = md.initialise(100, 300, 40, "random")
+            for _ in range(1000):
+                system.integrate(md.velocity_verlet)
+                system.heat_bath(300)
+            production = system.restart()
+            for _ in range(5000):
+                production.integrate(md.velocity_verlet)
+                production.step += 1
+                production.md_sample()
+
+        Returns:
+            The new system.
+        """
+        new = copy.copy(self)
+        new.particles = self.particles.copy()
+        new.particles["xunwrapped"] = new.particles["xposition"]
+        new.particles["yunwrapped"] = new.particles["yposition"]
+        new.initial_particles = new.particles.copy()
+        new.distances = self.distances.copy()
+        new.forces = self.forces.copy()
+        new.energies = self.energies.copy()
+        new.step = 0
+        new.time = 0.0
+        new.temperature_sample = np.array([])
+        new.pressure_sample = np.array([])
+        new.force_sample = np.array([])
+        new.msd_sample = np.array([])
+        new.energy_sample = np.array([])
+        new.step_sample = np.array([])
+        new.position_store = [0, 0]
+        new.random_particle = 0
+        return new
 
     def square(self) -> None:
         """Places the particles on a square lattice.
