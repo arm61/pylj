@@ -188,9 +188,22 @@ class TestUtil(unittest.TestCase):
                 simulation="md",
             )
 
+    def test_system_rejects_a_cross_pair_given_in_both_orders(self):
+        both_orders = dict(MIXTURE_MODEL["pair_potentials"])
+        both_orders[(LARGER, ARGON)] = LJ_ARGON
+        with self.assertRaisesRegex(ValueError, "in both orders"):
+            util.System(
+                2, 300, 12, species=[ARGON, LARGER], pair_potentials=both_orders, simulation="md"
+            )
+
     def test_system_rejects_no_species(self):
         with self.assertRaisesRegex(ValueError, "at least one Species"):
             util.System(2, 300, 8, species=[], pair_potentials={}, simulation="md")
+
+    def test_system_rejects_a_non_positive_or_infinite_temperature(self):
+        for temperature in (0, -10, np.inf):
+            with self.assertRaisesRegex(ValueError, "temperature must be positive"):
+                util.System(2, temperature, 8, simulation="md", **ARGON_MODEL)
 
     def test_restart_shares_the_model(self):
         system = md.initialise(4, 300, 12, "square", **ARGON_MODEL)

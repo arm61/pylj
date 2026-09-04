@@ -12,18 +12,26 @@ class Species:
     Args:
         mass: The particle mass, in atomic mass units.
         name: A label for the species, such as "argon".
+
+    Raises:
+        ValueError: If the mass is not positive and finite.
     """
 
     mass: float
     name: str = ""
 
+    def __post_init__(self) -> None:
+        if not (np.isfinite(self.mass) and self.mass > 0):
+            raise ValueError(f"mass must be positive and finite, not {self.mass}")
+
 
 class PairPotential(ABC):
     """The interface every pair potential implements.
 
-    A pair potential is central: the pair energy depends only on the
-    separation magnitude, so both quantities are functions of an array of
-    separations.
+    A pair potential is central: the pair energy, and the radial force
+    derived from it, depend only on the separation magnitude. Both
+    ``energies`` and ``forces`` take an array of separations ``dr``, in
+    metres, and return an array of the same shape.
     """
 
     @abstractmethod
@@ -47,7 +55,7 @@ class LennardJones(PairPotential):
         E = 4 \epsilon \left[ (\sigma / r)^{12} - (\sigma / r)^{6} \right]
 
     Args:
-        epsilon: The well depth, in Joules.
+        epsilon: The well depth, in joules.
         sigma: The separation at which the pair energy is zero, in metres.
     """
 
@@ -71,9 +79,9 @@ class Buckingham(PairPotential):
         E = A e^{-B r} - C / r^{6}
 
     Args:
-        a: The A parameter, an energy scale, in Joules.
+        a: The A parameter, an energy scale, in joules.
         b: The B parameter, an inverse length, in reciprocal metres.
-        c: The C parameter, the dispersion coefficient, in Joule metre^6.
+        c: The C parameter, the dispersion coefficient, in joule metre^6.
     """
 
     def __init__(self, *, a: float, b: float, c: float):
@@ -98,9 +106,9 @@ class SquareWell(PairPotential):
     is impulsive at the two walls, so the potential drives Monte Carlo only.
 
     Args:
-        epsilon: The well depth, in Joules.
+        epsilon: The well depth, in joules.
         sigma: The hard-core diameter, in metres.
-        lambda_: The well width, in units of sigma.
+        lambda_: The outer edge of the well, in units of sigma.
         max_val: The value used in place of the infinite hard core.
     """
 

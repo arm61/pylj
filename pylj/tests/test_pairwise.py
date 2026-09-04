@@ -82,6 +82,25 @@ class TestPairwise(unittest.TestCase):
         ideal = 2 * 1.380649e-23 * 300 / (30e-10) ** 2
         assert_almost_equal(p, virial + ideal)
 
+    def test_calculate_pressure_ideal_gas_limit(self):
+        # With no pair forces the virial vanishes and the two-dimensional
+        # pressure is the ideal-gas value N k_B T / L^2. Hand-computed:
+        # 50 * 1.380649e-23 * 200 / (25e-10)^2.
+        box_length = 25e-10
+        p = pairwise.calculate_pressure(np.zeros(3), np.zeros(3), box_length, 50, 200)
+        expected = 50 * 1.380649e-23 * 200 / box_length**2
+        assert_almost_equal(p * 1e3, expected * 1e3)
+
+    def test_calculate_pressure_adds_one_virial_term(self):
+        # A single repulsive pair (positive force) 4 Angstrom apart adds a
+        # positive virial f * r / (2 L^2) on top of the ideal term.
+        box_length = 20e-10
+        force, separation = np.array([2e-12]), np.array([4e-10])
+        p = pairwise.calculate_pressure(separation, force, box_length, 2, 100)
+        ideal = 2 * 1.380649e-23 * 100 / box_length**2
+        virial = 2e-12 * 4e-10 / (2 * box_length**2)
+        assert_almost_equal(p, ideal + virial)
+
     def test_dist_applies_the_minimum_image(self):
         # Pairs 1 Angstrom apart across the periodic boundary of a 10 Angstrom
         # box: the minimum image is 1 Angstrom, not the 9 Angstrom raw

@@ -71,8 +71,6 @@ def initialise(
             "Molecular dynamics needs at least two particles: with one particle "
             "there is no thermal motion once the centre-of-mass velocity is removed."
         )
-    if not (np.isfinite(temperature) and temperature > 0):
-        raise ValueError(f"temperature must be positive and finite, not {temperature}")
     system = util.System(
         number_of_particles,
         temperature,

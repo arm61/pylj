@@ -140,10 +140,12 @@ def _potential_minimum(potential: PairPotential) -> float:
     """Return the separation at the minimum of a pair potential, in metres.
 
     The minimum is located on a logarithmic grid between 0.1 and 50
-    Angstrom. The highest energy on the grid is the repulsive barrier
-    separating any collapse at short range from the well, and the minimum
-    is the lowest energy beyond it. For a Lennard-Jones potential this is
-    2^(1/6) sigma; for a square well it is the hard-core diameter.
+    Angstrom, as the lowest energy beyond the grid's highest point. For a
+    Lennard-Jones potential the minimum is at 2^(1/6) sigma and for a square
+    well at the hard-core diameter. For a Buckingham potential the highest
+    point is the repulsive barrier that separates the well from the
+    unphysical collapse at short range, and the minimum is the well beyond
+    it.
 
     Args:
         potential: The pair potential.

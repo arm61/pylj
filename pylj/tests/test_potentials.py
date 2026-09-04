@@ -26,6 +26,11 @@ class TestSpecies:
         interactions = {(argon, argon): 1, (argon, xenon): 2}
         assert interactions[(argon, argon)] == 1
 
+    def test_rejects_a_non_positive_or_non_finite_mass(self):
+        for mass in (0.0, -1.0, np.inf, np.nan):
+            with pytest.raises(ValueError, match="mass must be positive"):
+                Species(mass=mass)
+
 
 class TestPairPotential:
     def test_cannot_be_instantiated_directly(self):

@@ -33,6 +33,12 @@ def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPote
     for one, other in itertools.combinations_with_replacement(species, 2):
         if (one, other) not in pair_potentials and (other, one) not in pair_potentials:
             raise ValueError(f"pair_potentials has no entry for the pair {one} and {other}")
+    for one, other in itertools.combinations(species, 2):
+        if (one, other) in pair_potentials and (other, one) in pair_potentials:
+            raise ValueError(
+                f"pair_potentials has the pair {one} and {other} in both orders; "
+                "give each unordered pair once"
+            )
     for pair, potential in pair_potentials.items():
         if not isinstance(potential, PairPotential):
             raise TypeError(
@@ -104,7 +110,8 @@ class System:
     Raises
     ------
     ValueError
-        If ``species`` is empty or a pair of species has no potential.
+        If the temperature is not positive and finite, ``species`` is empty,
+        or a pair of species has no potential or one given in both orders.
     TypeError
         If a pair potential is not a ``PairPotential`` instance.
     """
@@ -127,6 +134,8 @@ class System:
             raise ValueError(f"simulation must be 'md' or 'mc', not {simulation!r}")
         self.simulation = simulation
         self.number_of_particles = number_of_particles
+        if not (np.isfinite(temperature) and temperature > 0):
+            raise ValueError(f"temperature must be positive and finite, not {temperature}")
         self.init_temp = temperature
         self.species = list(species)
         self.pair_potentials = dict(pair_potentials)
