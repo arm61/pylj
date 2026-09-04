@@ -45,7 +45,7 @@ class System:
     """Simulation system.
     This class is designed to store all of the information about the job that
     is being run. This includes the particles
-    object, as will as sampling objects such as the temperature, pressure, etc.
+    object, as well as sampling objects such as the temperature, pressure, etc.
     arrays.
 
     Parameters
@@ -77,8 +77,8 @@ class System:
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     cut_off: float (optional)
-        The distance apart that the particles must be to consider there
-        interaction to be negliable.
+        The distance apart that the particles must be to consider their
+        interaction to be negligible.
     seed: int (optional)
         Seed for the random number generator used to place a random initial
         configuration, draw the initial velocities and make Monte Carlo
