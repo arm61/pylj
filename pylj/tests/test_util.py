@@ -566,3 +566,8 @@ class TestUtil(unittest.TestCase):
         np.random.seed(99)
         second = build()
         assert_equal(first.particles["xposition"], second.particles["xposition"])
+
+    def test_restart_shares_the_generator(self):
+        system = md.initialise(4, 300, 12, "square", seed=1)
+        production = system.restart()
+        self.assertIs(production.rng, system.rng)

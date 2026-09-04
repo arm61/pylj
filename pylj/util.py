@@ -174,14 +174,15 @@ class System:
     def restart(self) -> Self:
         """Return a new system that continues from the current configuration.
 
-        The new system keeps the box, forcefield, constants, mass, timestep
-        and cut-off, and copies the particle positions, velocities and
-        accelerations and the pair distances, forces and energies. A Monte
-        Carlo system also keeps its accepted energy. Step and time are zero,
-        the sample arrays are empty, and initial_particles is replaced by the
-        copied particles, so the mean squared displacement is measured from
-        the restarted configuration. The current system is not changed. Use
-        it to start a production run after equilibration::
+        The new system keeps the box, forcefield, constants, mass, timestep,
+        cut-off and random number generator, and copies the particle
+        positions, velocities and accelerations and the pair distances,
+        forces and energies. A Monte Carlo system also keeps its accepted
+        energy. Step and time are zero, the sample arrays are empty, and
+        initial_particles is replaced by the copied particles, so the mean
+        squared displacement is measured from the restarted configuration.
+        The current system is not changed. Use it to start a production run
+        after equilibration::
 
             system = md.initialise(100, 300, 40, "random")
             for _ in range(1000):
