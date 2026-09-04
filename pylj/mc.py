@@ -214,11 +214,13 @@ def metropolis(temperature, old_energy, new_energy, n=None, rng=None):
     bool
         True if the move should be accepted.
     """
+    energy_difference = new_energy - old_energy
+    if energy_difference <= 0:
+        return True
     if n is None:
         if rng is None:
             rng = np.random.default_rng()
         n = rng.random()
     beta = 1 / (BOLTZMANN * temperature)
-    energy_difference = new_energy - old_energy
     metropolis_factor = np.exp(-beta * energy_difference)
     return bool(n < metropolis_factor)
