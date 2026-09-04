@@ -15,8 +15,8 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     box_length: float
         Length of a single dimension of the simulation square, in metres.
     cut_off: float
-        The distance greater than which the forces between particles is taken
-        as zero.
+        The distance beyond which the force between two particles is taken
+        to be zero.
     constants: float, array_like (optional)
         The constants associated with the particular forcefield used, e.g. for
         the function forcefields.lennard_jones, theses are [A, B]
