@@ -353,9 +353,9 @@ def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np
     r"""Rescale the velocities so the instantaneous temperature equals the
     bath temperature.
 
-    This is a velocity-rescaling thermostat: it holds the instantaneous
-    temperature at the bath temperature whenever it is called, rather than
-    sampling the canonical ensemble. The velocities are rescaled according to
+    This is a velocity-rescaling thermostat: each call sets the
+    instantaneous temperature to the bath temperature. The velocities are
+    rescaled according to
 
     .. math::
         v_{\text{new}} = v_{\text{old}} \times
