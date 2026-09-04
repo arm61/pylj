@@ -33,7 +33,7 @@ class TestMc(unittest.TestCase):
         assert_almost_equal(a.diameters, [3e-10])
 
     def test_initialize_passes_keyword_arguments_through(self):
-        constants = [[1.0, 0.25]]
+        constants = [[3.4e-10, 1.65e-21]]
         a = mc.initialize(
             2,
             300,

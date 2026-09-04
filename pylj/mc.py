@@ -25,10 +25,12 @@ def initialise(
         Initial temperature of the particles, in Kelvin.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
-    init_conf: string, optional
+    init_conf: string
         The way that the particles are initially positioned. Should be one of:
         - 'square'
         - 'random'
+        Both raise ``ValueError`` if the particles cannot be placed without
+        their repulsive cores overlapping.
     mass: float (optional)
         The mass of the particles being simulated.
     constants: float, array_like (optional)
