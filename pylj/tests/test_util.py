@@ -310,14 +310,16 @@ class TestUtil(unittest.TestCase):
     def test_system_single_diameter_applies_to_every_type(self):
         constants = [ARGON, LARGER]
         a = util.System(
-            2, 300, 12, constants, ff.lennard_jones_sigma_epsilon, 39.948, simulation="md", diameter=3.0
+            2, 300, 12, constants, ff.lennard_jones_sigma_epsilon, 39.948,
+            simulation="md", diameter=3.0,
         )
         assert_almost_equal(a.diameters, [3e-10, 3e-10])
 
     def test_system_diameter_list_is_per_type(self):
         constants = [ARGON, LARGER]
         a = util.System(
-            2, 300, 12, constants, ff.lennard_jones_sigma_epsilon, 39.948, simulation="md", diameter=[3.0, 5.0]
+            2, 300, 12, constants, ff.lennard_jones_sigma_epsilon, 39.948,
+            simulation="md", diameter=[3.0, 5.0],
         )
         assert_almost_equal(a.diameters, [3e-10, 5e-10])
 
