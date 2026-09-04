@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pylj.potentials import PairPotential, Species, lennard_jones
+from pylj.potentials import PairPotential, Species, buckingham, lennard_jones
 
 
 class TestSpecies:
@@ -69,3 +69,22 @@ class TestLennardJones:
         lj = lennard_jones(epsilon=1.65e-21, sigma=3.4e-10)
         assert lj.energies(np.array([3e-10, 4e-10])).shape == (2,)
         assert lj.forces(np.array([3e-10, 4e-10])).shape == (2,)
+
+
+class TestBuckingham:
+    def test_constructor_is_keyword_only(self):
+        with pytest.raises(TypeError):
+            buckingham(1e-16, 3e10, 1e-77)
+
+    def test_energy_matches_the_formula(self):
+        bk = buckingham(a=1e-16, b=3e10, c=1e-77)
+        r = np.array([3e-10, 4e-10])
+        expected = 1e-16 * np.exp(-3e10 * r) - 1e-77 / r**6
+        np.testing.assert_allclose(bk.energies(r), expected, rtol=1e-12)
+
+    def test_force_is_the_negative_energy_gradient(self):
+        bk = buckingham(a=1e-16, b=3e10, c=1e-77)
+        r = np.array([3.0e-10, 4.0e-10, 5.0e-10])
+        h = r * 1e-6
+        numerical = -(bk.energies(r + h) - bk.energies(r - h)) / (2 * h)
+        np.testing.assert_allclose(bk.forces(r), numerical, rtol=1e-4)

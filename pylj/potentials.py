@@ -62,3 +62,29 @@ class lennard_jones(PairPotential):
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
         return 4 * self.epsilon * (12 * self.sigma**12 / dr**13 - 6 * self.sigma**6 / dr**7)
+
+
+class buckingham(PairPotential):
+    r"""The Buckingham pair potential.
+
+    .. math::
+        E = A e^{-B r} - C / r^{6}
+
+    Args:
+        a: The A parameter, an energy scale, in Joules.
+        b: The B parameter, an inverse length, in reciprocal metres.
+        c: The C parameter, the dispersion coefficient, in Joule metre^6.
+    """
+
+    def __init__(self, *, a: float, b: float, c: float):
+        self.a = a
+        self.b = b
+        self.c = c
+
+    def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
+        dr = np.asarray(dr, dtype=float)
+        return self.a * np.exp(-self.b * dr) - self.c / dr**6
+
+    def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
+        dr = np.asarray(dr, dtype=float)
+        return self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
