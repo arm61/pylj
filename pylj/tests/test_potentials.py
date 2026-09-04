@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pylj.potentials import PairPotential, Species, buckingham, lennard_jones
+from pylj.potentials import PairPotential, Species, buckingham, lennard_jones, square_well
 
 
 class TestSpecies:
@@ -15,7 +15,7 @@ class TestSpecies:
 
     def test_is_frozen(self):
         argon = Species(mass=39.948, name="argon")
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             argon.mass = 1.0
 
     def test_is_hashable_so_it_can_key_a_mapping(self):
@@ -88,3 +88,20 @@ class TestBuckingham:
         h = r * 1e-6
         numerical = -(bk.energies(r + h) - bk.energies(r - h)) / (2 * h)
         np.testing.assert_allclose(bk.forces(r), numerical, rtol=1e-4)
+
+
+class TestSquareWell:
+    def test_constructor_is_keyword_only(self):
+        with pytest.raises(TypeError):
+            square_well(1.65e-21, 3.4e-10, 1.5)
+
+    def test_energy_is_a_step(self):
+        sw = square_well(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5, max_val=1e5)
+        # inside the core, in the well, and beyond the well
+        energies = sw.energies(np.array([3.0e-10, 4.0e-10, 6.0e-10]))
+        np.testing.assert_allclose(energies, [1e5, -1.65e-21, 0.0])
+
+    def test_force_raises(self):
+        sw = square_well(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5)
+        with pytest.raises(ValueError, match="Monte Carlo"):
+            sw.forces(np.array([4.0e-10]))

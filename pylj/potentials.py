@@ -88,3 +88,37 @@ class buckingham(PairPotential):
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
         return self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
+
+
+class square_well(PairPotential):
+    r"""The square-well pair potential.
+
+    The energy is ``max_val`` inside the hard core of diameter sigma, minus
+    epsilon in the well out to lambda times sigma, and zero beyond. The force
+    is impulsive at the two walls, so the potential drives Monte Carlo only.
+
+    Args:
+        epsilon: The well depth, in Joules.
+        sigma: The hard-core diameter, in metres.
+        lambda_: The well width, in units of sigma.
+        max_val: The value used in place of the infinite hard core.
+    """
+
+    def __init__(self, *, epsilon: float, sigma: float, lambda_: float, max_val: float = np.inf):
+        self.epsilon = epsilon
+        self.sigma = sigma
+        self.lambda_ = lambda_
+        self.max_val = max_val
+
+    def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
+        dr = np.atleast_1d(np.asarray(dr, dtype=float))
+        e = np.zeros_like(dr)
+        e[dr < self.sigma] = self.max_val
+        e[(dr >= self.sigma) & (dr < self.lambda_ * self.sigma)] = -self.epsilon
+        return e
+
+    def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
+        raise ValueError(
+            "The square-well force is impulsive and cannot drive molecular "
+            "dynamics; use a Monte Carlo simulation."
+        )
