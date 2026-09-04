@@ -1,6 +1,25 @@
+from dataclasses import dataclass
+
 import numpy as np
+from numpy.typing import NDArray
 
 from pylj.constants import BOLTZMANN
+
+
+@dataclass(frozen=True)
+class Proposal:
+    """A proposed configuration for a Monte Carlo move.
+
+    Args:
+        xposition: The proposed x position of every particle, in metres.
+        yposition: The proposed y position of every particle, in metres.
+        energy_change: The energy of the proposed configuration minus that
+            of the current one, in joules.
+    """
+
+    xposition: NDArray[np.float64]
+    yposition: NDArray[np.float64]
+    energy_change: float
 
 
 def initialise(
@@ -14,14 +33,14 @@ def initialise(
     seed=None,
 ):
     """Initialise the particle positions (square or random arrangement) and
-    calculate the initial pair energies.
+    calculate the initial pair energies and their total.
 
     Parameters
     ----------
     number_of_particles: int
         Number of particles to simulate.
     temperature: float
-        Initial temperature of the particles, in kelvin.
+        Temperature of the simulation, in kelvin.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string
@@ -46,7 +65,7 @@ def initialise(
     Returns
     -------
     System
-        System information.
+        System information, with ``energy`` set to the total pair energy.
     """
     from pylj import util
 
@@ -61,11 +80,46 @@ def initialise(
         seed=seed,
     )
     system.compute_energy()
-    system.old_energy = system.energies.sum()
+    system.energy = float(system.energies.sum())
     return system
 
 
 initialize = initialise  # US spelling
+
+
+def accept(delta_energy, temperature, *, n=None, rng=None):
+    """Apply the Metropolis criterion to an energy change.
+
+    A change that does not raise the energy is always accepted, without
+    drawing a random number. A change that raises it by ``delta_energy`` is
+    accepted with probability ``exp(-delta_energy / (k_B temperature))``.
+
+    Parameters
+    ----------
+    delta_energy: float
+        The energy of the proposed configuration minus that of the current
+        one, in joules.
+    temperature: float
+        Temperature of the simulation, in kelvin.
+    n: float, optional
+        The random number against which the acceptance probability is
+        tested. By default one is drawn from ``rng``.
+    rng: numpy.random.Generator, optional
+        The random number generator to draw ``n`` from. By default an
+        unseeded generator is used, so each call draws afresh.
+
+    Returns
+    -------
+    bool
+        True if the proposed configuration should be accepted.
+    """
+    if delta_energy <= 0:
+        return True
+    if n is None:
+        if rng is None:
+            rng = np.random.default_rng()
+        n = rng.random()
+    return bool(n < np.exp(-delta_energy / (BOLTZMANN * temperature)))
 
 
 def sample(total_energy, system):
@@ -87,131 +141,3 @@ def sample(total_energy, system):
     system.energy_sample = np.append(system.energy_sample, total_energy)
     system.step_sample = np.append(system.step_sample, system.step)
     return system
-
-
-def select_random_particle(particles, rng):
-    """Selects a random particle from the system and return its index and
-    current position.
-
-    Parameters
-    ----------
-    particles: util.particle.dt, array_like
-        Information about the particles.
-    rng: numpy.random.Generator
-        The random number generator to draw the particle from.
-
-    Returns
-    -------
-    int:
-        Index of the random particle that is selected.
-    float, array_like:
-        The current position of the chosen particle.
-    """
-    random_particle = int(rng.integers(particles.size))
-    position_store = [
-        particles["xposition"][random_particle],
-        particles["yposition"][random_particle],
-    ]
-    return random_particle, position_store
-
-
-def get_new_particle(particles, random_particle, box_length, rng):
-    """Generates a new position for the particle.
-
-    Parameters
-    ----------
-    particles: util.particle.dt, array_like
-        Information about the particles.
-    random_particle: int
-        Index of the random particle that is selected.
-    box_length: float
-        Length of a single dimension of the simulation square, in metres.
-    rng: numpy.random.Generator
-        The random number generator to draw the position from.
-
-    Returns
-    -------
-    util.particle.dt, array_like
-        Information about the particles, updated to account for the change of
-        selected particle position.
-    """
-    particles["xposition"][random_particle] = rng.uniform(0, box_length)
-    particles["yposition"][random_particle] = rng.uniform(0, box_length)
-    return particles
-
-
-def accept(new_energy):
-    """Accept the move.
-
-    Parameters
-    ----------
-    new_energy: float
-        A new total energy for the system.
-
-    Returns
-    -------
-    float:
-        A new total energy for the system.
-    """
-    return new_energy
-
-
-def reject(position_store, particles, random_particle):
-    """Reject the move and return the particle to the original place.
-
-    Parameters
-    ----------
-    position_store: float, array_like
-        The x and y positions previously held by the particle that has moved.
-    particles: util.particle.dt, array_like
-        Information about the particles.
-    random_particle: int
-        Index of the random particle that is selected.
-
-    Returns
-    -------
-    util.particle.dt, array_like
-        Information about the particles, with the particle returned to the
-        original position
-    """
-    particles["xposition"][random_particle] = position_store[0]
-    particles["yposition"][random_particle] = position_store[1]
-    return particles
-
-
-def metropolis(temperature, old_energy, new_energy, n=None, rng=None):
-    """Determines if the move is accepted or rejected based on the metropolis
-    condition. A move that does not raise the energy is always accepted
-    without drawing a random number; ``n`` and ``rng`` apply only to moves
-    that raise it.
-
-    Parameters
-    ----------
-    temperature: float
-        Simulation temperature, in kelvin.
-    old_energy: float
-        The total energy of the simulation in the previous configuration.
-    new_energy: float
-        The total energy of the simulation in the current configuration.
-    n: float, optional
-        The random number against which the Metropolis condition is tested.
-        By default one is drawn from ``rng``.
-    rng: numpy.random.Generator, optional
-        The random number generator to draw ``n`` from. By default an
-        unseeded generator is used, so each call draws afresh.
-
-    Returns
-    -------
-    bool
-        True if the move should be accepted.
-    """
-    energy_difference = new_energy - old_energy
-    if energy_difference <= 0:
-        return True
-    if n is None:
-        if rng is None:
-            rng = np.random.default_rng()
-        n = rng.random()
-    beta = 1 / (BOLTZMANN * temperature)
-    metropolis_factor = np.exp(-beta * energy_difference)
-    return bool(n < metropolis_factor)
