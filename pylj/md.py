@@ -189,7 +189,7 @@ def sample(particles, box_length, initial_particles, system):
 def calculate_msd(particles, initial_particles):
     """Determines the mean squared displacement of the particles from their
     positions in initial_particles, using the unwrapped positions so that
-    crossings of the periodic boundary are counted at any sampling cadence.
+    crossings of the periodic boundary are included.
 
     Parameters
     ----------
