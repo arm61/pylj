@@ -11,7 +11,7 @@ All notable changes to pylj are recorded here. The format follows
 - `System.simulation`, `'md'` or `'mc'`, set by the initialisers.
 - `step_sample` on `System`, recorded by `md.sample` and `mc.sample`, so viewers work at any sampling cadence.
 - A `diameter` property on every forcefield (the separation at the pair-potential minimum) and a `diameter` argument on `md.initialise` and `mc.initialise` to override it, in Angstrom. Particles are drawn to scale.
-- `System.cores`, the separation at which each forcefield's pair energy falls to zero, found numerically from its `energy` method. Initial configurations keep particles at least this far apart; the `diameter` override does not affect it.
+- `System.cores`, the separation at which each forcefield's pair energy falls to zero, found numerically from its `energy` method. Initial configurations keep particles at least this far apart.
 - `pylj.constants`, taking the Boltzmann constant and the atomic mass unit from `scipy.constants`.
 - ruff and mypy configuration in `pyproject.toml`, a `dev` extra, and continuous integration on Python 3.11 to 3.14.
 
@@ -37,7 +37,8 @@ All notable changes to pylj are recorded here. The format follows
 - The square-well hard core tested epsilon rather than sigma (part of #80), and `square_well.energy` failed on integer input.
 - A custom forcefield without a `diameter` property, a diameter given in metres, or a non-positive or non-finite diameter (whether from the forcefield or passed by the caller) is refused with a clear message.
 - Random initial configurations no longer overlap: particles are placed at least their repulsive-core separation apart (#82).
-- The square lattice refuses a spacing below the repulsive core, with the largest count or smallest box that fits in the message (#82).
+- The square lattice refuses a spacing below the repulsive core, with the largest count or the smallest box that fits, rounded up so the suggested box is accepted, in the message (#82).
+- A forcefield whose `energy` does not return one value per separation, whose pair energy is positive at every grid point (suggesting its constants are in the wrong units), or whose diameter is non-finite, is refused with a clear message.
 
 ### Removed
 

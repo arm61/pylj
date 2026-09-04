@@ -211,7 +211,7 @@ def test_rdf_pane_normalisation_is_unity_for_random_positions():
     state = np.random.get_state()
     try:
         np.random.seed(1)
-        system = md.initialise(200, 100, 100, "random")
+        system = md.initialise(400, 100, 100, "random")
     finally:
         np.random.set_state(state)
     fig, ax = environment(1)

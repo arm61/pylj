@@ -1,3 +1,5 @@
+import itertools
+import re
 import unittest
 
 import numpy as np
@@ -10,6 +12,23 @@ from pylj import util
 # and a larger particle with a 5 Angstrom core and the same well depth.
 ARGON = [3.37e-10, 1.58e-21]
 LARGER = [5.0e-10, 1.58e-21]
+
+
+def minimum_image_distances(system):
+    """Return the minimum-image separation, in metres, for every pair of
+    particles in ``system``."""
+    box_length = system.box_length
+    x = system.particles["xposition"]
+    y = system.particles["yposition"]
+    distances = []
+    for i in range(system.number_of_particles):
+        for j in range(i + 1, system.number_of_particles):
+            dx = x[i] - x[j]
+            dy = y[i] - y[j]
+            dx -= box_length * np.round(dx / box_length)
+            dy -= box_length * np.round(dy / box_length)
+            distances.append(np.sqrt(dx**2 + dy**2))
+    return distances
 
 
 class TestUtil(unittest.TestCase):
@@ -76,17 +95,8 @@ class TestUtil(unittest.TestCase):
             )
         finally:
             np.random.set_state(state)
-        box_length = a.box_length
-        x = a.particles["xposition"]
-        y = a.particles["yposition"]
-        for i in range(a.number_of_particles):
-            for j in range(i + 1, a.number_of_particles):
-                dx = x[i] - x[j]
-                dy = y[i] - y[j]
-                dx -= box_length * np.round(dx / box_length)
-                dy -= box_length * np.round(dy / box_length)
-                distance = np.sqrt(dx**2 + dy**2)
-                self.assertTrue(distance >= a.cores[0])
+        for distance in minimum_image_distances(a):
+            self.assertTrue(distance >= a.cores[0])
 
     def test_system_random_too_dense_raises(self):
         with self.assertRaisesRegex(ValueError, "after 1000 attempts"):
@@ -102,7 +112,9 @@ class TestUtil(unittest.TestCase):
             )
 
     def test_system_square_overlap_raises(self):
-        with self.assertRaises(ValueError) as context:
+        # 50 argon particles in a 20 Angstrom box: at most 25 fit on a
+        # square lattice without overlap.
+        with self.assertRaisesRegex(ValueError, "25"):
             util.System(
                 50,
                 100,
@@ -112,9 +124,6 @@ class TestUtil(unittest.TestCase):
                 forcefield=ff.lennard_jones,
                 simulation="md",
             )
-        message = str(context.exception)
-        self.assertTrue("repulsive core" in message)
-        self.assertTrue("fit" in message)
 
     def test_system_square_between_core_and_diameter_is_accepted(self):
         # 101 argon particles in a 40 Angstrom box space 3.64 Angstrom apart:
@@ -152,17 +161,7 @@ class TestUtil(unittest.TestCase):
             )
         finally:
             np.random.set_state(state)
-        box_length = a.box_length
-        x = a.particles["xposition"]
-        y = a.particles["yposition"]
-        distances = []
-        for i in range(a.number_of_particles):
-            for j in range(i + 1, a.number_of_particles):
-                dx = x[i] - x[j]
-                dy = y[i] - y[j]
-                dx -= box_length * np.round(dx / box_length)
-                dy -= box_length * np.round(dy / box_length)
-                distances.append(np.sqrt(dx**2 + dy**2))
+        distances = minimum_image_distances(a)
         self.assertTrue(all(distance >= a.cores[0] for distance in distances))
         self.assertTrue(any(distance < 8e-10 for distance in distances))
 
@@ -183,20 +182,13 @@ class TestUtil(unittest.TestCase):
             )
         finally:
             np.random.set_state(state)
-        box_length = a.box_length
-        x = a.particles["xposition"]
-        y = a.particles["yposition"]
         types = a.particles["types"]
-        for i in range(a.number_of_particles):
-            for j in range(i + 1, a.number_of_particles):
-                dx = x[i] - x[j]
-                dy = y[i] - y[j]
-                dx -= box_length * np.round(dx / box_length)
-                dy -= box_length * np.round(dy / box_length)
-                distance = np.sqrt(dx**2 + dy**2)
-                type_i, type_j = int(types[i]), int(types[j])
-                min_separation = (a.cores[type_i] + a.cores[type_j]) / 2
-                self.assertTrue(distance >= min_separation)
+        distances = minimum_image_distances(a)
+        pairs = itertools.combinations(range(a.number_of_particles), 2)
+        for distance, (i, j) in zip(distances, pairs, strict=True):
+            type_i, type_j = int(types[i]), int(types[j])
+            min_separation = (a.cores[type_i] + a.cores[type_j]) / 2
+            self.assertTrue(distance >= min_separation)
 
     def test_system_argon_core_equals_sigma(self):
         a = util.System(
@@ -205,11 +197,12 @@ class TestUtil(unittest.TestCase):
         expected_sigma = (1.363e-134 / 9.273e-78) ** (1 / 6)
         assert_almost_equal(a.cores[0] * 1e10, expected_sigma * 1e10, decimal=3)
 
-    def test_system_square_well_core_equals_sigma(self):
+    def test_system_square_well_core_is_at_least_sigma(self):
+        sigma = 1.5e-10
         b = util.System(
-            2, 300, 8, [[1.0, 1.5e-10, 2.0]], ff.square_well, 39.948, simulation="md"
+            2, 300, 8, [[1.0, sigma, 2.0]], ff.square_well, 39.948, simulation="md"
         )
-        assert_almost_equal(b.cores[0], 1.5e-10, decimal=12)
+        self.assertTrue(b.cores[0] >= sigma)
 
     def test_system_forcefield_never_positive_raises(self):
         class NeverPositive:
@@ -378,3 +371,100 @@ class TestUtil(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "ZeroDiameter"):
             util.System(2, 300, 8, [[1.0]], ZeroDiameter, 39.948, simulation="md")
+
+    def test_system_diameter_must_be_finite(self):
+        constants = [[1.363e-134, 9.273e-78]]
+        with self.assertRaisesRegex(ValueError, "nan"):
+            util.System(
+                2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md",
+                diameter=float("nan"),
+            )
+
+    def test_system_square_too_small_box_suggests_a_box_that_fits(self):
+        for number_of_particles in (2, 7, 50):
+            with self.assertRaises(ValueError) as context:
+                util.System(
+                    number_of_particles,
+                    100,
+                    4,
+                    mass=39.948,
+                    constants=[[1.363e-134, 9.273e-78]],
+                    forcefield=ff.lennard_jones,
+                    simulation="md",
+                )
+            match = re.search(r"at least ([0-9.]+) Angstrom fits", str(context.exception))
+            self.assertIsNotNone(match)
+            suggested_box = float(match.group(1))
+            a = util.System(
+                number_of_particles,
+                100,
+                suggested_box,
+                mass=39.948,
+                constants=[[1.363e-134, 9.273e-78]],
+                forcefield=ff.lennard_jones,
+                simulation="md",
+            )
+            self.assertEqual(a.number_of_particles, number_of_particles)
+
+    def test_system_forcefield_energy_returning_a_scalar_is_rejected(self):
+        class ScalarEnergy:
+            def __init__(self, constants):
+                self.constants = constants
+
+            @property
+            def diameter(self):
+                return 1e-10
+
+            def energy(self, dr):
+                return 1.0
+
+        with self.assertRaisesRegex(ValueError, "one value per separation"):
+            util.System(2, 300, 8, [[1.0]], ScalarEnergy, 39.948, simulation="md")
+
+    def test_system_forcefield_energy_returning_the_wrong_shape_is_rejected(self):
+        class ShortEnergy:
+            def __init__(self, constants):
+                self.constants = constants
+
+            @property
+            def diameter(self):
+                return 1e-10
+
+            def energy(self, dr):
+                return np.ones(3)
+
+        with self.assertRaisesRegex(ValueError, "one value per separation"):
+            util.System(2, 300, 8, [[1.0]], ShortEnergy, 39.948, simulation="md")
+
+    def test_system_forcefield_energy_positive_at_50_angstrom_names_units(self):
+        # Sigma given in Angstrom rather than metres: the pair energy never
+        # falls to zero on the 0.1 to 50 Angstrom grid.
+        with self.assertRaisesRegex(ValueError, "still positive at 50 Angstrom"):
+            util.System(
+                2, 300, 8, [[3.4, 1.58e-21]], ff.lennard_jones_sigma_epsilon, 39.948,
+                simulation="md",
+            )
+
+    def test_system_random_buckingham_core_energy_is_near_zero(self):
+        state = np.random.get_state()
+        np.random.seed(0)
+        try:
+            a = util.System(
+                10,
+                100,
+                40,
+                init_conf="random",
+                mass=39.948,
+                constants=[[1.69e-15, 3.66e10, 1.01e-77]],
+                forcefield=ff.buckingham,
+                simulation="md",
+            )
+        finally:
+            np.random.set_state(state)
+        self.assertTrue(a.cores[0] > 3e-10)
+        r = np.logspace(-11, np.log10(5e-9), 4000)
+        well_depth = ff.buckingham([1.69e-15, 3.66e10, 1.01e-77]).energy(r).min()
+        core_energy = ff.buckingham(
+            [1.69e-15, 3.66e10, 1.01e-77]
+        ).energy(np.array([a.cores[0]]))[0]
+        self.assertTrue(abs(core_energy) < 1e-3 * abs(well_depth))

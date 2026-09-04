@@ -55,9 +55,8 @@ class System:
         values below that are metres mistaken for Angstrom. Defaults to the
         separation at the pair-potential minimum of the forcefield, which the
         forcefield must then provide as its ``diameter`` property. Stored in
-        metres as ``diameters``. This does not affect the separation kept
-        between particles when placing the initial configuration; see the
-        Attributes section below.
+        metres as ``diameters``. This sets how the particles are drawn;
+        placement uses ``cores``.
 
     Attributes
     ----------
@@ -65,8 +64,8 @@ class System:
         Drawn diameter of each particle type, in metres.
     cores: list of float
         Separation at which each type's pair energy falls to zero, in
-        metres; initial configurations keep particles at least this far
-        apart.
+        metres. Particles of one type are placed at least this far apart,
+        and particles of two types at least the mean of their cores apart.
     """
 
     def __init__(
@@ -175,12 +174,14 @@ class System:
         if d < core:
             n_max = int(np.floor(self.box_length / core)) ** 2
             l_min = np.ceil(np.sqrt(self.number_of_particles)) * core
+            l_min_angstrom = np.ceil(l_min * 1e10 * 10) / 10
+            particle_noun = "particle" if n_max == 1 else "particles"
             raise ValueError(
                 f"A square lattice of {self.number_of_particles} particles in a "
                 f"{self.box_length * 1e10:.1f} Angstrom box spaces them {d * 1e10:.2f} "
                 f"Angstrom apart, less than the largest repulsive core of "
-                f"{core * 1e10:.2f} Angstrom; at most {n_max} particles fit in this "
-                f"box, or a box of at least {l_min * 1e10:.1f} Angstrom fits "
+                f"{core * 1e10:.2f} Angstrom; at most {n_max} {particle_noun} fit in this "
+                f"box, or a box of at least {l_min_angstrom:.1f} Angstrom fits "
                 f"{self.number_of_particles}."
             )
         n = 0
@@ -198,7 +199,9 @@ class System:
         candidate position for a particle is accepted only if, for every
         already placed particle, the minimum-image distance between them is
         at least the mean of the two particles' repulsive cores
-        (``self.cores``, indexed by ``self.particles["types"]``).
+        (``self.cores``, indexed by ``self.particles["types"]``). Two
+        particles of different types are kept at least the mean of their two
+        cores apart.
 
         Rejection sampling reaches area fractions of roughly 0.4 to 0.5;
         near that limit the same call may succeed or raise depending on
@@ -265,7 +268,7 @@ class System:
             f"(repulsive core {core_angstrom:.2f} Angstrom, largest "
             f"{largest_core_angstrom:.2f} Angstrom) without overlap in a "
             f"{box_angstrom:.1f} Angstrom box after {PLACEMENT_ATTEMPTS} attempts "
-            f"(area fraction {area_fraction:.2f}); reduce the number of particles or "
+            f"(requested area fraction {area_fraction:.2f}); reduce the number of particles or "
             "use a larger box; a square lattice (init_conf='square') packs more "
             "densely than random placement and may still fit."
         )
@@ -300,10 +303,10 @@ class System:
 
         Raises:
             ValueError: If an iterable is given whose length differs from the
-                number of sets of constants, if any diameter is not positive,
-                if any diameter looks like a value in metres rather than
-                Angstrom, or if ``None`` is given and the forcefield has no
-                ``diameter`` property.
+                number of sets of constants, if any diameter is not finite
+                or not positive, if any diameter looks like a value in
+                metres rather than Angstrom, or if ``None`` is given and the
+                forcefield has no ``diameter`` property.
         """
         if diameter is None:
             self.diameters = []
@@ -336,6 +339,8 @@ class System:
                 f"constants, but got {len(values)}"
             )
         for value in values:
+            if not np.isfinite(value):
+                raise ValueError(f"Every diameter must be finite, but got {value}")
             if value <= 0:
                 raise ValueError(f"Every diameter must be positive, but got {value}")
             if value < 0.01:
@@ -346,24 +351,37 @@ class System:
         self.diameters = [value * 1e-10 for value in values]
 
     def setup_cores(self) -> None:
-        """Separation at which the pair energy falls to zero, in metres, one
-        per set of constants. Particles closer than this sit inside each
-        other's repulsive core, so the initial configurations keep them at
-        least this far apart. The ``diameter=`` override does not affect it.
+        """Set the separation at which each forcefield's pair energy falls
+        to zero, in metres, one per set of constants. Particles closer than
+        this sit inside each other's repulsive core, so the initial
+        configurations keep them at least this far apart.
 
         Raises:
-            ValueError: If a forcefield's pair energy never falls from
-                positive to non-positive between 0.1 and 50 Angstrom, so it
-                has no repulsive core on that range.
+            ValueError: If a forcefield's ``energy`` does not return one
+                value per separation, if its pair energy is positive at
+                every grid point between 0.1 and 50 Angstrom (suggesting its
+                constants are in the wrong units), or if its pair energy
+                never falls from positive to non-positive on that range, so
+                it has no repulsive core there.
         """
         r = np.logspace(-11, np.log10(5e-9), 4000)
         self.cores = []
         for c in self.constants:
             forcefield = self.forcefield(c)
             energy = np.asarray(forcefield.energy(r), dtype=float)
+            if energy.shape != r.shape:
+                raise ValueError(
+                    f"{type(forcefield).__name__}.energy must return one value per "
+                    f"separation; got shape {energy.shape} for {r.shape[0]} separations"
+                )
             positive = energy > 0
             crossings = np.flatnonzero(positive[:-1] & ~positive[1:])
             if crossings.size == 0:
+                if positive.all():
+                    raise ValueError(
+                        f"{type(forcefield).__name__}: the pair energy is still "
+                        "positive at 50 Angstrom; check the units of the constants"
+                    )
                 raise ValueError(
                     f"{type(forcefield).__name__} has no repulsive core: its pair "
                     "energy never falls from positive to zero between 0.1 and 50 "
