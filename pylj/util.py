@@ -525,15 +525,27 @@ class System:
         """Maps to the mc.select_random_particle function.
         """
         self.random_particle, self.position_store = mc.select_random_particle(
-            self.particles
+            self.particles, self.rng
         )
 
     def new_random_position(self):
         """Maps to the mc.get_new_particle function.
         """
         self.particles = mc.get_new_particle(
-            self.particles, self.random_particle, self.box_length
+            self.particles, self.random_particle, self.box_length, self.rng
         )
+
+    def metropolis(self) -> bool:
+        """Decide whether to accept the current trial move.
+
+        Applies the Metropolis condition at the system's temperature to the
+        stored energies before and after the move, drawing from the system's
+        random number generator.
+
+        Returns:
+            True if the move should be accepted.
+        """
+        return mc.metropolis(self.init_temp, self.old_energy, self.new_energy, rng=self.rng)
 
     def accept(self):
         """Maps to the mc.accept function.

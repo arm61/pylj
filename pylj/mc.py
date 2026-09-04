@@ -12,7 +12,8 @@ def initialise(
     mass=39.948,
     constants=None,
     forcefield=ff.lennard_jones,
-    diameter=None
+    diameter=None,
+    seed=None,
 ):
     """Initialise the particle positions (square or random arrangement), zero
     the velocities, and calculate the initial pair energies.
@@ -42,6 +43,10 @@ def initialise(
         Drawn diameter of the particles in Angstrom, one value or one per
         set of constants. Defaults to the separation at the pair-potential
         minimum of the forcefield.
+    seed: int (optional)
+        Seed for the random number generator used to place a random initial
+        configuration and make the Monte Carlo moves. The same seed
+        reproduces the same run.
 
     Returns
     -------
@@ -61,7 +66,8 @@ def initialise(
         mass,
         simulation="mc",
         init_conf=init_conf,
-        diameter=diameter
+        diameter=diameter,
+        seed=seed,
     )
     system.particles["xvelocity"] = 0
     system.particles["yvelocity"] = 0
@@ -94,7 +100,7 @@ def sample(total_energy, system):
     return system
 
 
-def select_random_particle(particles):
+def select_random_particle(particles, rng):
     """Selects a random particle from the system and return its index and
     current position.
 
@@ -102,6 +108,8 @@ def select_random_particle(particles):
     ----------
     particles: util.particle.dt, array_like
         Information about the particles.
+    rng: numpy.random.Generator
+        The random number generator to draw the particle from.
 
     Returns
     -------
@@ -110,7 +118,7 @@ def select_random_particle(particles):
     float, array_like:
         The current position of the chosen particle.
     """
-    random_particle = np.random.randint(0, particles.size)
+    random_particle = int(rng.integers(particles.size))
     position_store = [
         particles["xposition"][random_particle],
         particles["yposition"][random_particle],
@@ -118,7 +126,7 @@ def select_random_particle(particles):
     return random_particle, position_store
 
 
-def get_new_particle(particles, random_particle, box_length):
+def get_new_particle(particles, random_particle, box_length, rng):
     """Generates a new position for the particle.
 
     Parameters
@@ -128,7 +136,9 @@ def get_new_particle(particles, random_particle, box_length):
     random_particle: int
         Index of the random particle that is selected.
     box_length: float
-        Length of a single dimension of the simulation square.
+        Length of a single dimension of the simulation square, in metres.
+    rng: numpy.random.Generator
+        The random number generator to draw the position from.
 
     Returns
     -------
@@ -136,8 +146,8 @@ def get_new_particle(particles, random_particle, box_length):
         Information about the particles, updated to account for the change of
         selected particle position.
     """
-    particles["xposition"][random_particle] = np.random.uniform(0, box_length)
-    particles["yposition"][random_particle] = np.random.uniform(0, box_length)
+    particles["xposition"][random_particle] = rng.uniform(0, box_length)
+    particles["yposition"][random_particle] = rng.uniform(0, box_length)
     return particles
 
 
@@ -180,22 +190,24 @@ def reject(position_store, particles, random_particle):
     return particles
 
 
-def metropolis(temperature, old_energy, new_energy, n=None):
+def metropolis(temperature, old_energy, new_energy, n=None, rng=None):
     """Determines if the move is accepted or rejected based on the metropolis
     condition.
 
     Parameters
     ----------
     temperature: float
-        Simulation temperature.
+        Simulation temperature, in kelvin.
     old_energy: float
         The total energy of the simulation in the previous configuration.
     new_energy: float
         The total energy of the simulation in the current configuration.
     n: float, optional
-        The random number against which the Metropolis condition is tested. By
-        default a fresh number is drawn from a numpy uniform distribution on
-        every call.
+        The random number against which the Metropolis condition is tested.
+        By default one is drawn from ``rng``.
+    rng: numpy.random.Generator, optional
+        The random number generator to draw ``n`` from. By default an
+        unseeded generator is used, so each call draws afresh.
 
     Returns
     -------
@@ -203,11 +215,10 @@ def metropolis(temperature, old_energy, new_energy, n=None):
         True if the move should be accepted.
     """
     if n is None:
-        n = np.random.rand()
+        if rng is None:
+            rng = np.random.default_rng()
+        n = rng.random()
     beta = 1 / (BOLTZMANN * temperature)
     energy_difference = new_energy - old_energy
     metropolis_factor = np.exp(-beta * energy_difference)
-    if n < metropolis_factor:
-        return True
-    else:
-        return False
+    return bool(n < metropolis_factor)

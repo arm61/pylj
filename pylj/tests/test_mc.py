@@ -66,15 +66,16 @@ class TestMc(unittest.TestCase):
 
     def test_select_random_particle(self):
         a = mc.initialise(2, 300, 8, "square")
-        b, c = mc.select_random_particle(a.particles)
+        b, c = mc.select_random_particle(a.particles, np.random.default_rng(0))
         self.assertTrue(0 <= b < 2)
         self.assertTrue(0 <= c[0] <= 8e-10)
         self.assertTrue(0 <= c[1] <= 8e-10)
 
     def test_get_new_particle(self):
         a = mc.initialise(2, 300, 8, "square")
-        b, c = mc.select_random_particle(a.particles)
-        d = mc.get_new_particle(a.particles, b, a.box_length)
+        rng = np.random.default_rng(0)
+        b, c = mc.select_random_particle(a.particles, rng)
+        d = mc.get_new_particle(a.particles, b, a.box_length, rng)
         self.assertTrue(0 <= d["xposition"][b] <= 8e-10)
         self.assertTrue(0 <= d["yposition"][b] <= 8e-10)
 
@@ -103,14 +104,39 @@ class TestMc(unittest.TestCase):
 
     def test_metropolis_draws_a_new_random_number_on_every_call(self):
         # An uphill move whose acceptance probability is exactly one half, so
-        # ten calls that each draw afresh give both outcomes; ten calls that
-        # share one draw give ten of the same.
+        # ten calls that each draw afresh give both outcomes.
         energy_difference = BOLTZMANN * 300 * np.log(2)
-        state = np.random.get_state()
-        try:
-            np.random.seed(0)
-            outcomes = [mc.metropolis(300, 0.0, energy_difference) for _ in range(10)]
-        finally:
-            np.random.set_state(state)
+        rng = np.random.default_rng(0)
+        outcomes = [mc.metropolis(300, 0.0, energy_difference, rng=rng) for _ in range(10)]
         self.assertIn(True, outcomes)
         self.assertIn(False, outcomes)
+
+    def test_metropolis_draws_from_the_supplied_generator(self):
+        energy_difference = BOLTZMANN * 300 * np.log(2)
+        n = np.random.default_rng(5).random()
+        decision = mc.metropolis(300, 0.0, energy_difference, rng=np.random.default_rng(5))
+        self.assertEqual(decision, mc.metropolis(300, 0.0, energy_difference, n=n))
+
+    def test_seeded_runs_are_identical(self):
+        def run(seed):
+            system = mc.initialise(16, 300, 30, "random", seed=seed)
+            for _ in range(200):
+                system.select_random_particle()
+                system.new_random_position()
+                system.compute_energy()
+                system.new_energy = system.energies.sum()
+                if system.metropolis():
+                    system.accept()
+                else:
+                    system.reject()
+            return system
+
+        first = run(7)
+        second = run(7)
+        other = run(8)
+        assert_equal(first.particles["xposition"], second.particles["xposition"])
+        assert_equal(first.particles["yposition"], second.particles["yposition"])
+        assert_equal(first.old_energy, second.old_energy)
+        self.assertFalse(
+            np.array_equal(first.particles["xposition"], other.particles["xposition"])
+        )
