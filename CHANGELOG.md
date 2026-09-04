@@ -26,7 +26,7 @@ All notable changes to pylj are recorded here. The format follows
 - `md.initialize` and `mc.initialize` pass every argument through.
 - `JustCell` no longer takes a `scale` argument. `Viewer.average()` raises on a viewer whose panes keep no history. `CellPlus.update` rejects half-supplied custom data.
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.
-- `energy` and `force` on the forcefields return a Python float for scalar input, rather than `np.float64`; a one-element list, such as to `square_well.energy`, returns a one-element array rather than a float. `square_well`'s return rule is unified with the other forcefields this way; it still has no `force(dr)` and so cannot drive the molecular dynamics engine (#80).
+- `energy` and `force` on the forcefields return a Python float for scalar input, rather than `np.float64`; a one-element list, such as to `square_well.energy`, returns a one-element array rather than a float.
 - `pairwise.compute_force` evaluates each forcefield only on the pairs of its own types, instead of passing every forcefield the full distance array with the other types' entries zeroed.
 
 ### Fixed

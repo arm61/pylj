@@ -150,7 +150,7 @@ FORCE_AND_ENERGY_FACTORIES = {
     "lennard_jones_sigma_epsilon": lambda: forcefields.lennard_jones_sigma_epsilon([1.0, 0.25]),
     "buckingham": lambda: forcefields.buckingham([1.0, 1.0, 1.0]),
 }
-ENERGY_ONLY_FACTORIES = {
+ENERGY_FACTORIES = {
     **FORCE_AND_ENERGY_FACTORIES,
     "square_well": lambda: forcefields.square_well([1.0, 1.5, 2.0]),
 }
@@ -167,20 +167,20 @@ SEQUENCE_KINDS = {
 }
 
 
-@pytest.mark.parametrize("forcefield_name", ENERGY_ONLY_FACTORIES)
+@pytest.mark.parametrize("forcefield_name", ENERGY_FACTORIES)
 @pytest.mark.parametrize("kind_name", SCALAR_KINDS)
 def test_energy_scalar_input_returns_a_float(forcefield_name, kind_name):
-    a = ENERGY_ONLY_FACTORIES[forcefield_name]()
+    a = ENERGY_FACTORIES[forcefield_name]()
     dr = SCALAR_KINDS[kind_name](2.0)
     result = a.energy(dr)
     assert type(result) is float
     assert_almost_equal(result, a.energy(2.0))
 
 
-@pytest.mark.parametrize("forcefield_name", ENERGY_ONLY_FACTORIES)
+@pytest.mark.parametrize("forcefield_name", ENERGY_FACTORIES)
 @pytest.mark.parametrize("kind_name", SEQUENCE_KINDS)
 def test_energy_sequence_input_returns_shape_one(forcefield_name, kind_name):
-    a = ENERGY_ONLY_FACTORIES[forcefield_name]()
+    a = ENERGY_FACTORIES[forcefield_name]()
     dr = SEQUENCE_KINDS[kind_name](2.0)
     result = a.energy(dr)
     assert np.shape(result) == (1,)

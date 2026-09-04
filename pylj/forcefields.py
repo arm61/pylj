@@ -251,10 +251,10 @@ class square_well:
     r'''Calculate the energy or force for a pair of particles using a
     square well model.
 
-    The return rule is the same as the other forcefields: a scalar
-    separation gives a scalar energy and an array gives an array. There is
-    no ``force(dr)`` for this potential, so it cannot drive the molecular
-    dynamics engine (#80).
+    The energy is infinite inside the hard core of diameter sigma, minus
+    epsilon in the well out to lambda times sigma, and zero beyond. The
+    force is infinite at the two steps and zero elsewhere, so the model is
+    for Monte Carlo only.
 
     Parameters
     ----------

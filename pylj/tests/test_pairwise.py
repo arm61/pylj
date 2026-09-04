@@ -185,9 +185,12 @@ class TestPairwise(unittest.TestCase):
             mass=39.948,
         )
         expected_energies = []
+        expected_forces = []
         for distance, pair in zip(distances, [(0, 1), (0, 0), (1, 0)], strict=True):
             forcefield = gaussian_core(constants[pair[0]])
             if pair[0] != pair[1]:
                 forcefield.mixing(constants[pair[1]])
             expected_energies.append(forcefield.energy(distance))
+            expected_forces.append(forcefield.force(distance))
         assert_almost_equal(energies, expected_energies)
+        assert_almost_equal(forces, expected_forces)
