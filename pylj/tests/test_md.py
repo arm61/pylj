@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields as ff
-from pylj import mc, md, pairwise
+from pylj import md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
@@ -155,14 +155,14 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(b[1][1] * 1e10, 2.5)
 
     def test_calculate_temperature(self):
-        a = mc.initialise(1, 300, 8, "square")
-        a.particles["xvelocity"] = [1e-10]
-        a.particles["yvelocity"] = [1e-10]
-        a.particles["xacceleration"] = [1e4]
-        a.particles["yacceleration"] = [1e4]
+        # Two particles with equal and opposite velocities of 1e-10 m/s in x
+        # and y: kinetic energy m (vx^2 + vy^2), divided by (N - 1) k_B with
+        # N - 1 = 1 for the two particles.
+        a = md.initialise(2, 300, 8, "square")
+        a.particles["xvelocity"] = [1e-10, -1e-10]
+        a.particles["yvelocity"] = [1e-10, -1e-10]
         b = md.calculate_temperature(a.particles, mass=39.948)
-        # T = m (vx^2 + vy^2) / (2 N k_B) for the one particle in the cell.
-        expected = 0.5 * 39.948 * ATOMIC_MASS_UNIT * 2e-20 / BOLTZMANN
+        expected = 39.948 * ATOMIC_MASS_UNIT * 2e-20 / BOLTZMANN
         assert_almost_equal(b * 1e23, expected * 1e23)
 
     def test_calculate_msd(self):

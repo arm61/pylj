@@ -237,7 +237,7 @@ class EnergyPane(Pane):
     def update(self, ax: Axes, system: System) -> None:
         if system.simulation == "md":
             x = system.step_sample * system.timestep_length
-            kinetic = system.number_of_particles * BOLTZMANN * system.temperature_sample
+            kinetic = (system.number_of_particles - 1) * BOLTZMANN * system.temperature_sample
             y = system.energy_sample + kinetic
         else:
             x = system.step_sample

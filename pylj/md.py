@@ -307,24 +307,28 @@ def update_velocities(
 def calculate_temperature(particles, mass):
     """Determine the instantaneous temperature of the system.
 
+    The centre-of-mass velocity is zero at initialisation and conserved by
+    the pair forces, so 2N - 2 velocity components carry thermal energy and
+    the temperature is the kinetic energy divided by (N - 1) k_B.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
+    mass: float
+        The mass of the particles being simulated, in atomic mass units.
 
     Returns
     -------
     float:
-        Calculated instantaneous simulation temperature.
+        Calculated instantaneous simulation temperature, in kelvin.
     """
-    mass_kg = mass * ATOMIC_MASS_UNIT  # kilograms
-    v = np.sqrt(
-        (particles["xvelocity"] * particles["xvelocity"])
-        + (particles["yvelocity"] * particles["yvelocity"])
+    mass_kg = mass * ATOMIC_MASS_UNIT
+    kinetic = 0.5 * mass_kg * np.sum(
+        particles["xvelocity"] * particles["xvelocity"]
+        + particles["yvelocity"] * particles["yvelocity"]
     )
-    k = 0.5 * np.sum(mass_kg * v * v)
-    t = k / (particles.size * BOLTZMANN)
-    return t
+    return kinetic / ((particles.size - 1) * BOLTZMANN)
 
 
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):

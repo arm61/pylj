@@ -189,7 +189,8 @@ def test_energy_pane_md_includes_kinetic_energy():
     assert_allclose(ax.lines[0].get_ydata()[-1], system.energy_sample[-1] + kinetic)
     assert_allclose(
         ax.lines[0].get_ydata(),
-        system.energy_sample + system.number_of_particles * BOLTZMANN * system.temperature_sample
+        system.energy_sample
+        + (system.number_of_particles - 1) * BOLTZMANN * system.temperature_sample
     )
     assert ax.get_xlabel() == "Time/s"
     plt.close(fig)
