@@ -58,6 +58,11 @@ class TestMd(unittest.TestCase):
     def test_sample_pressure_uses_the_stored_pair_forces(self):
         system = md.initialise(20, 300, 20, "square")
         system.integrate(md.velocity_verlet)
+        # Sentinels the force loop would never produce: the sampled pressure
+        # reflects them only if sample reuses the stored data instead of
+        # recomputing it from the particle positions.
+        system.distances = np.full_like(system.distances, 3e-10)
+        system.forces = np.full_like(system.forces, 1e-12)
         system.md_sample()
         temperature = md.calculate_temperature(system.particles, system.mass)
         expected = pairwise.calculate_pressure(

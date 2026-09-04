@@ -177,7 +177,8 @@ def calculate_pressure(
     Returns
     -------
     float:
-        Instantaneous pressure of the simulation.
+        Instantaneous pressure of the simulation, in N / m (a two-dimensional
+        pressure).
     """
     virial = np.sum(forces * distances) / (2 * box_length * box_length)
     ideal = number_of_particles * BOLTZMANN * temperature / (box_length * box_length)
