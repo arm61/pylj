@@ -98,7 +98,7 @@ def velocity_verlet(
     timestep_length: float
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
 
     Returns
     -------
@@ -235,7 +235,7 @@ def update_positions(
     timestep_length: float
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
 
     Returns
     -------
@@ -318,7 +318,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     particles: util.particle_dt, array_like
         Information about the particles.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
     cut_off: float
         The distance greater than which the forces between particles is taken
         as zero.
