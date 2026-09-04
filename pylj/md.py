@@ -177,7 +177,7 @@ def sample(particles, box_length, initial_particles, system):
         particles.size,
         temperature_new,
     )
-    msd_new = calculate_msd(particles, initial_particles, box_length)
+    msd_new = calculate_msd(particles, initial_particles)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.force_sample = np.append(system.force_sample, np.sum(system.forces))
     system.energy_sample = np.append(system.energy_sample, np.sum(system.energies))
@@ -186,44 +186,26 @@ def sample(particles, box_length, initial_particles, system):
     return system
 
 
-def calculate_msd(particles, initial_particles, box_length):
-    """Determines the mean squared displacement of the particles in the system.
+def calculate_msd(particles, initial_particles):
+    """Determines the mean squared displacement of the particles from their
+    positions in initial_particles, using the unwrapped positions so that
+    crossings of the periodic boundary are counted at any sampling cadence.
 
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
     initial_particles: util.particle_dt, array_like
-        Information about the initial state of the particles.
-    box_length: float
-        Size of the cell vector.
+        Information about the particles at the origin of the displacement.
 
     Returns
     -------
     float:
-        Mean squared deviation for the particles at the given timestep.
+        Mean squared displacement of the particles, in metres squared.
     """
-    xpos = np.array(particles["xposition"])
-    ypos = np.array(particles["yposition"])
-    dxinst = xpos - particles["xprevious_position"]
-    dyinst = ypos - particles["yprevious_position"]
-    for i in range(0, particles["xposition"].size):
-        if np.abs(dxinst[i]) > 0.5 * box_length:
-            if xpos[i] <= 0.5 * box_length:
-                particles["xpbccount"][i] += 1
-            if xpos[i] > 0.5 * box_length:
-                particles["xpbccount"][i] -= 1
-        xpos[i] += box_length * particles["xpbccount"][i]
-        if np.abs(dyinst[i]) > 0.5 * box_length:
-            if ypos[i] <= 0.5 * box_length:
-                particles["ypbccount"][i] += 1
-            if ypos[i] > 0.5 * box_length:
-                particles["ypbccount"][i] -= 1
-        ypos[i] += box_length * particles["ypbccount"][i]
-    dx = xpos - initial_particles["xposition"]
-    dy = ypos - initial_particles["yposition"]
-    dr = np.sqrt(dx * dx + dy * dy)
-    return np.average(dr ** 2)
+    dx = particles["xunwrapped"] - initial_particles["xunwrapped"]
+    dy = particles["yunwrapped"] - initial_particles["yunwrapped"]
+    return np.mean(dx * dx + dy * dy)
 
 
 def update_positions(

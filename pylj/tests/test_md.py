@@ -141,18 +141,45 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(b * 1e23, expected * 1e23)
 
     def test_calculate_msd(self):
+        # Displacements of (1, 1) and (5, 1) Angstrom from the origin
+        # positions give (2 + 26) / 2 = 14 Angstrom^2.
         a = md.initialise(2, 300, 8, "square")
-        a.particles["xposition"] = [3e-10, 3e-10]
-        a.particles["yposition"] = [3e-10, 7e-10]
-        b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
-        assert_almost_equal(b, 2e-20)
+        a.particles["xunwrapped"] = a.initial_particles["xunwrapped"] + [1e-10, 5e-10]
+        a.particles["yunwrapped"] = a.initial_particles["yunwrapped"] + [1e-10, 1e-10]
+        msd = md.calculate_msd(a.particles, a.initial_particles)
+        assert_almost_equal(msd * 1e20, 14)
 
-    def test_calculate_msd_large(self):
+    def test_calculate_msd_is_zero_before_the_first_step(self):
+        # A 4 x 4 lattice in a 20 Angstrom box has particles either side of
+        # the box midpoint.
+        a = md.initialise(16, 300, 20, "square")
+        self.assertEqual(md.calculate_msd(a.particles, a.initial_particles), 0.0)
+
+    def test_calculate_msd_with_sparse_sampling(self):
+        # Both particles are driven in -x at 1e4 m/s, 0.1 Angstrom per step,
+        # so each crosses the periodic boundary around step 20 of 60 with no
+        # sampling in between. Moving together keeps their separation, and
+        # so the pair force, constant. The oracle accumulates the
+        # minimum-image displacement between consecutive steps, which is
+        # exact while a particle moves less than half a box per step.
         a = md.initialise(2, 300, 8, "square")
-        a.particles["xposition"] = [7e-10, 3e-10]
-        a.particles["yposition"] = [7e-10, 7e-10]
-        b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
-        assert_almost_equal(b, 10e-20)
+        a.particles["xvelocity"] = -1e4
+        a.particles["yvelocity"] = 0.0
+        box = a.box_length
+        total_dx = np.zeros(2)
+        total_dy = np.zeros(2)
+        for _ in range(60):
+            x_before = a.particles["xposition"].copy()
+            y_before = a.particles["yposition"].copy()
+            a.integrate(md.velocity_verlet)
+            dx = a.particles["xposition"] - x_before
+            dy = a.particles["yposition"] - y_before
+            total_dx += dx - box * np.round(dx / box)
+            total_dy += dy - box * np.round(dy / box)
+        self.assertTrue(np.all(total_dx < -5e-10))
+        expected = np.mean(total_dx**2 + total_dy**2)
+        msd = md.calculate_msd(a.particles, a.initial_particles)
+        assert_almost_equal(msd * 1e20, expected * 1e20)
 
     def test_initialise_accepts_diameter(self):
         a = md.initialise(2, 300, 8, "square", diameter=3.0)
