@@ -141,7 +141,7 @@ def sample(particles, box_length, initial_particles, system):
     particles: util.particle_dt, array_like
         Information about the particles.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
     initial_particles: util.particle_dt, array-like
         Information about the initial particle conformation.
     system: System
