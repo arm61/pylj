@@ -66,7 +66,8 @@ def initialise(
     Raises
     ------
     ValueError
-        If fewer than two particles are requested.
+        If fewer than two particles are requested, or the temperature is not
+        positive.
     """
     from pylj import util
 
@@ -75,6 +76,8 @@ def initialise(
             "Molecular dynamics needs at least two particles: with one particle "
             "there is no thermal motion once the centre-of-mass velocity is removed."
         )
+    if not temperature > 0:
+        raise ValueError(f"temperature must be positive, not {temperature}")
     if constants is None:
         constants = [[1.363e-134, 9.273e-78]]
     system = util.System(

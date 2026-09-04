@@ -112,10 +112,15 @@ class TestMc(unittest.TestCase):
         self.assertIn(False, outcomes)
 
     def test_metropolis_draws_from_the_supplied_generator(self):
-        energy_difference = BOLTZMANN * 300 * np.log(2)
+        # With n the generator's first draw, an uphill move whose acceptance
+        # probability is (1 + n) / 2 is accepted and one whose probability is
+        # n / 2 is rejected; a draw from any other generator would give the
+        # wrong answer for one of the two on average half the time.
         n = np.random.default_rng(5).random()
-        decision = mc.metropolis(300, 0.0, energy_difference, rng=np.random.default_rng(5))
-        self.assertEqual(decision, mc.metropolis(300, 0.0, energy_difference, n=n))
+        accepted = -BOLTZMANN * 300 * np.log((1 + n) / 2)
+        rejected = -BOLTZMANN * 300 * np.log(n / 2)
+        self.assertTrue(mc.metropolis(300, 0.0, accepted, rng=np.random.default_rng(5)))
+        self.assertFalse(mc.metropolis(300, 0.0, rejected, rng=np.random.default_rng(5)))
 
     def test_seeded_runs_are_identical(self):
         def run(seed):

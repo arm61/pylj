@@ -48,6 +48,10 @@ class TestMd(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at least two particles"):
             md.initialise(1, 300, 8, "square")
 
+    def test_initialise_rejects_a_non_positive_temperature(self):
+        with self.assertRaisesRegex(ValueError, "temperature must be positive"):
+            md.initialise(2, 0, 8, "square")
+
     def test_initialize_passes_keyword_arguments_through(self):
         constants = [[3.4e-10, 1.65e-21]]
         a = md.initialize(
