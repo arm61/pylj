@@ -1,7 +1,7 @@
 import copy
 import webbrowser
 from collections.abc import Iterable
-from typing import Literal
+from typing import Literal, Self
 
 import numpy as np
 
@@ -162,14 +162,14 @@ class System:
         """
         return int((self.number_of_particles - 1) * self.number_of_particles / 2)
 
-    def restart(self) -> "System":
+    def restart(self) -> Self:
         """Return a new system that continues from the current configuration.
 
         The new system keeps the box, forcefield, constants, mass, timestep
         and cut-off, and copies the particle positions, velocities and
-        accelerations and the pair distances, forces and energies. Its step
-        and time are zero, its
-        sample arrays are empty, and the mean squared displacement is
+        accelerations and the pair distances, forces and energies. A Monte
+        Carlo system also keeps its accepted energy. Step and time are zero,
+        the sample arrays are empty, and the mean squared displacement is
         measured from the copied positions. The current system is not
         changed. Use it to start a production run after equilibration::
 
@@ -205,6 +205,7 @@ class System:
         new.msd_sample = np.array([])
         new.energy_sample = np.array([])
         new.step_sample = np.array([])
+        new.new_energy = 0
         new.position_store = [0, 0]
         new.random_particle = 0
         return new
