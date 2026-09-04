@@ -97,60 +97,6 @@ def update_accelerations(particles, f, m, dx, dy, dr):
     return particles
 
 
-def lennard_jones_energy(A, B, dr):
-    """pairwise.lennard_jones_energy has been deprecated, please use
-    forcefields.lennard_jones instead
-
-    Calculate the energy of a pair of particles at a given distance.
-
-    Parameters
-    ----------
-    A: float
-        The value of the A parameter for the Lennard-Jones potential.
-    B: float
-        The value of the B parameter for the Lennard-Jones potential.
-    dr: float
-        The distance between the two particles.
-
-    Returns
-    -------
-    float:
-        The potential energy between the two particles.
-    """
-    print(
-        "pairwise.lennard_jones_energy has been deprecated, please use "
-        "forcefields.lennard_jones instead"
-    )
-    return A * np.power(dr, -12) - B * np.power(dr, -6)
-
-
-def lennard_jones_force(A, B, dr):
-    """pairwise.lennard_jones_energy has been deprecated, please use
-    forcefields.lennard_jones with force=True instead
-
-    Calculate the force between a pair of particles at a given distance.
-
-    Parameters
-    ----------
-    A: float
-        The value of the A parameter for the Lennard-Jones potential.
-    B: float
-        The value of the B parameter for the Lennard-Jones potential.
-    dr: float
-        The distance between the two particles.
-
-    Returns
-    -------
-    float:
-        The force between the two particles.
-    """
-    print(
-        "pairwise.lennard_jones_energy has been deprecated, please use "
-        "forcefields.lennard_jones with force=True instead"
-    )
-    return 12 * A * np.power(dr, -13) - 6 * B * np.power(dr, -7)
-
-
 def calculate_pressure(
     distances, forces, box_length, number_of_particles, temperature
 ):
