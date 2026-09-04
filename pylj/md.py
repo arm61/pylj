@@ -136,6 +136,10 @@ def velocity_verlet(
 def sample(particles, box_length, initial_particles, system):
     """Sample parameters of interest in the simulation.
 
+    The pressure is calculated from the pair distances and forces stored on
+    the system by the last force evaluation, not from the current particle
+    positions.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
