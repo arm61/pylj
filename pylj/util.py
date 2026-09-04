@@ -167,7 +167,8 @@ class System:
 
         The new system keeps the box, forcefield, constants, mass, timestep
         and cut-off, and copies the particle positions, velocities and
-        accelerations and the pair forces. Its step and time are zero, its
+        accelerations and the pair distances, forces and energies. Its step
+        and time are zero, its
         sample arrays are empty, and the mean squared displacement is
         measured from the copied positions. The current system is not
         changed. Use it to start a production run after equilibration::
@@ -180,11 +181,14 @@ class System:
             for _ in range(5000):
                 production.integrate(md.velocity_verlet)
                 production.step += 1
+                production.time += production.timestep_length
                 production.md_sample()
 
         Returns:
             The new system.
         """
+        # A shallow copy shares the box, forcefield and constants, which never
+        # change; the arrays that a run changes are copied below.
         new = copy.copy(self)
         new.particles = self.particles.copy()
         new.particles["xunwrapped"] = new.particles["xposition"]

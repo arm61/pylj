@@ -505,6 +505,10 @@ class TestUtil(unittest.TestCase):
             md.calculate_msd(production.particles, production.initial_particles), 0.0
         )
         self.assertEqual(production.simulation, "md")
+        # The origin stays where the run restarted while the particles move on.
+        production.integrate(md.velocity_verlet)
+        production.md_sample()
+        self.assertGreater(production.msd_sample[0], 0.0)
 
     def test_restart_leaves_the_source_alone(self):
         system = md.initialise(4, 300, 12, "square")
