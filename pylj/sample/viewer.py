@@ -1,5 +1,7 @@
 """Viewers compose panes into one live figure."""
 
+from collections.abc import Iterable
+
 import matplotlib.pyplot as plt
 import numpy.typing as npt
 from matplotlib.axes import Axes
@@ -79,31 +81,83 @@ class Viewer:
 
 
 class JustCell(Viewer):
-    """The particle positions only."""
+    """The particle positions only.
 
-    def __init__(self, system: System, size: str = "medium") -> None:
-        super().__init__(system, [CellPane()], size)
+    Args:
+        system: The simulation to visualise.
+        size: Figure size: 'small', 'medium' or 'large'.
+        diameter: Drawn diameter of the particles, in Angstrom, one value or
+            one per species; by default the separation at the minimum of
+            each species' own pair energy.
+    """
+
+    def __init__(
+        self,
+        system: System,
+        size: str = "medium",
+        diameter: float | Iterable[float] | None = None,
+    ) -> None:
+        super().__init__(system, [CellPane(diameter)], size)
 
 
 class Energy(Viewer):
-    """The particle positions and the total energy."""
+    """The particle positions and the total energy.
 
-    def __init__(self, system: System, size: str = "medium") -> None:
-        super().__init__(system, [CellPane(), EnergyPane()], size)
+    Args:
+        system: The simulation to visualise.
+        size: Figure size: 'small', 'medium' or 'large'.
+        diameter: Drawn diameter of the particles, in Angstrom, one value or
+            one per species; by default the separation at the minimum of
+            each species' own pair energy.
+    """
+
+    def __init__(
+        self,
+        system: System,
+        size: str = "medium",
+        diameter: float | Iterable[float] | None = None,
+    ) -> None:
+        super().__init__(system, [CellPane(diameter), EnergyPane()], size)
 
 
 class MaxBolt(Viewer):
-    """The particle positions and a histogram of particle speeds."""
+    """The particle positions and a histogram of particle speeds.
 
-    def __init__(self, system: System, size: str = "medium") -> None:
-        super().__init__(system, [CellPane(), MaxwellBoltzmannPane()], size)
+    Args:
+        system: The simulation to visualise.
+        size: Figure size: 'small', 'medium' or 'large'.
+        diameter: Drawn diameter of the particles, in Angstrom, one value or
+            one per species; by default the separation at the minimum of
+            each species' own pair energy.
+    """
+
+    def __init__(
+        self,
+        system: System,
+        size: str = "medium",
+        diameter: float | Iterable[float] | None = None,
+    ) -> None:
+        super().__init__(system, [CellPane(diameter), MaxwellBoltzmannPane()], size)
 
 
 class RDF(Viewer):
-    """The particle positions and the radial distribution function."""
+    """The particle positions and the radial distribution function.
 
-    def __init__(self, system: System, size: str = "medium") -> None:
-        super().__init__(system, [CellPane(), RDFPane()], size)
+    Args:
+        system: The simulation to visualise.
+        size: Figure size: 'small', 'medium' or 'large'.
+        diameter: Drawn diameter of the particles, in Angstrom, one value or
+            one per species; by default the separation at the minimum of
+            each species' own pair energy.
+    """
+
+    def __init__(
+        self,
+        system: System,
+        size: str = "medium",
+        diameter: float | Iterable[float] | None = None,
+    ) -> None:
+        super().__init__(system, [CellPane(diameter), RDFPane()], size)
 
 
 class CellPlus(Viewer):
@@ -114,11 +168,21 @@ class CellPlus(Viewer):
         xlabel: Label of the custom plot's x axis.
         ylabel: Label of the custom plot's y axis.
         size: Figure size: 'small', 'medium' or 'large'.
+        diameter: Drawn diameter of the particles, in Angstrom, one value or
+            one per species; by default the separation at the minimum of
+            each species' own pair energy.
     """
 
-    def __init__(self, system: System, xlabel: str, ylabel: str, size: str = "medium") -> None:
+    def __init__(
+        self,
+        system: System,
+        xlabel: str,
+        ylabel: str,
+        size: str = "medium",
+        diameter: float | Iterable[float] | None = None,
+    ) -> None:
         self.custom = CustomPane(xlabel, ylabel)
-        super().__init__(system, [CellPane(), self.custom], size)
+        super().__init__(system, [CellPane(diameter), self.custom], size)
 
     def update(
         self,
@@ -144,24 +208,63 @@ class CellPlus(Viewer):
 
 
 class Interactions(Viewer):
-    """Positions, temperature, pressure and total force against time."""
+    """Positions, temperature, pressure and total force against time.
 
-    def __init__(self, system: System, size: str = "medium") -> None:
-        panes = [CellPane(), TemperaturePane(), PressurePane(), ForcePane()]
+    Args:
+        system: The simulation to visualise.
+        size: Figure size: 'small', 'medium' or 'large'.
+        diameter: Drawn diameter of the particles, in Angstrom, one value or
+            one per species; by default the separation at the minimum of
+            each species' own pair energy.
+    """
+
+    def __init__(
+        self,
+        system: System,
+        size: str = "medium",
+        diameter: float | Iterable[float] | None = None,
+    ) -> None:
+        panes = [CellPane(diameter), TemperaturePane(), PressurePane(), ForcePane()]
         super().__init__(system, panes, size)
 
 
 class Phase(Viewer):
-    """Positions, total energy, mean squared displacement and g(r)."""
+    """Positions, total energy, mean squared displacement and g(r).
 
-    def __init__(self, system: System, size: str = "medium") -> None:
-        panes = [CellPane(), EnergyPane(), MSDPane(), RDFPane()]
+    Args:
+        system: The simulation to visualise.
+        size: Figure size: 'small', 'medium' or 'large'.
+        diameter: Drawn diameter of the particles, in Angstrom, one value or
+            one per species; by default the separation at the minimum of
+            each species' own pair energy.
+    """
+
+    def __init__(
+        self,
+        system: System,
+        size: str = "medium",
+        diameter: float | Iterable[float] | None = None,
+    ) -> None:
+        panes = [CellPane(diameter), EnergyPane(), MSDPane(), RDFPane()]
         super().__init__(system, panes, size)
 
 
 class Scattering(Viewer):
-    """Positions, g(r), mean squared displacement and the scattering profile."""
+    """Positions, g(r), mean squared displacement and the scattering profile.
 
-    def __init__(self, system: System, size: str = "medium") -> None:
-        panes = [CellPane(), RDFPane(), MSDPane(), ScatteringPane()]
+    Args:
+        system: The simulation to visualise.
+        size: Figure size: 'small', 'medium' or 'large'.
+        diameter: Drawn diameter of the particles, in Angstrom, one value or
+            one per species; by default the separation at the minimum of
+            each species' own pair energy.
+    """
+
+    def __init__(
+        self,
+        system: System,
+        size: str = "medium",
+        diameter: float | Iterable[float] | None = None,
+    ) -> None:
+        panes = [CellPane(diameter), RDFPane(), MSDPane(), ScatteringPane()]
         super().__init__(system, panes, size)

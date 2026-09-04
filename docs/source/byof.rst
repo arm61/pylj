@@ -1,42 +1,48 @@
-bring your own forcefield
-=========================
+bring your own potential
+========================
 
-pylj takes the pair potential as a class passed to :code:`md.initialise` or :code:`mc.initialise` as :code:`forcefield`, with its parameters passed as :code:`constants`. The Lennard-Jones, Buckingham and square-well potentials in the :doc:`forcefields` module are written this way, and a custom potential follows the same form.
-
-Writing your own forcefield and passing it to the pylj engine is very simple. Firstly, the forcefield should have the following form:
+A pylj system is built from the species it contains and the pair potential acting between each pair of species:
 
 .. code-block:: python
 
-    class forcefield(object):
+    from pylj import md
+    from pylj.potentials import Species, LennardJones
 
-        def __init__(self, constants):
-            # Define constants
-            # For instance:
-            self.a = constants[0]
-            self.b = constants[1]
+    argon = Species(mass=39.948, name="argon")
+    lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
 
-        @property
-        def diameter(self):
-            # The separation at the potential minimum, in metres
-            return some_function_of(self.a, self.b)
+    system = md.initialise(
+        100, 300, 40, "square",
+        species=[argon],
+        pair_potentials={(argon, argon): lj},
+    )
 
-        def energy(self, dr):
-            return func(dr, self.a, self.b)
+The Lennard-Jones, Buckingham and square-well potentials in the :doc:`potentials` module are subclasses of :code:`PairPotential`, and a custom potential follows the same form:
 
-        def force(self, dr):
-            return other_func(dr, self.a, self.b)
+.. code-block:: python
 
-        def mixing(self, constants2):
-            a2 = constants2[0]
-            b2 = constants2[1]
+    import numpy as np
+    from pylj.potentials import PairPotential
 
-            self.a = mixing_func(self.a, a2)
-            self.b = other_mixing_func(self.b, b2)
+    class SoftSphere(PairPotential):
 
-The four members do the following.
+        def __init__(self, *, epsilon, sigma):
+            self.epsilon = epsilon
+            self.sigma = sigma
 
-- :code:`diameter` is the separation at the minimum of the pair potential, in metres. The particles are drawn with this diameter, so the picture of the cell is to scale. It can be overridden with the :code:`diameter` argument to :code:`md.initialise` or :code:`mc.initialise`, which is given in Angstrom.
-- :code:`energy` and :code:`force` return the pair energy and the pair force, negative where the interaction is attractive, for an array of separations :code:`dr`, in metres. When particles are placed for an initial configuration, pylj locates the separation at which :code:`energy` falls from positive to zero or negative, between 0.1 and 50 Angstrom, and keeps particles at least this far apart. A forcefield whose energy never falls from positive within that range is refused when the system is constructed.
-- :code:`mixing` combines this forcefield's constants with those of a second particle type, and is called when a simulation has more than one set of constants. Geometric or arithmetic means of the two sets are the usual choices.
+        def energies(self, dr):
+            dr = np.asarray(dr, dtype=float)
+            return self.epsilon * (self.sigma / dr) ** 12
 
-The Lennard-Jones forcefield in the :doc:`forcefields` module is a complete example.
+        def forces(self, dr):
+            dr = np.asarray(dr, dtype=float)
+            return 12 * self.epsilon * (self.sigma / dr) ** 12 / dr
+
+The two methods take an array of pair separations :code:`dr`, in metres, and return an array of the same shape.
+
+- :code:`energies` returns the pair energy at each separation, in joules.
+- :code:`forces` returns the radial force at each separation, in newtons: minus the derivative of the energy with respect to the separation, so it is positive where the interaction is repulsive and negative where it is attractive. A potential with no finite force, such as the square well, raises :code:`ValueError` here; it can still drive Monte Carlo, which evaluates the energies only.
+
+The constructor is yours to define. Keyword-only parameters named after the physical quantities, as above, mean a swapped pair of numbers is an error rather than a silently wrong model.
+
+A mixture is more species and more entries in :code:`pair_potentials`: one for each species with itself and one for each pair of different species, in either order.

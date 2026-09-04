@@ -1,7 +1,7 @@
 import numpy as np
+from numpy.typing import NDArray
 
-from pylj import forcefields as ff
-from pylj import pairwise as heavy
+from pylj import pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
@@ -10,11 +10,10 @@ def initialise(
     temperature,
     box_length,
     init_conf,
+    *,
+    species,
+    pair_potentials,
     timestep_length=1e-14,
-    mass=39.948,
-    constants=None,
-    forcefield=ff.lennard_jones,
-    diameter=None,
     seed=None,
 ):
     """Initialise the particle positions (this can be either as a square or
@@ -22,10 +21,10 @@ def initialise(
     calculate the initial forces/accelerations.
 
     Each velocity component is drawn from a normal (Gaussian) distribution
-    with the thermal width at the requested temperature, the centre-of-mass
-    velocity is removed, and the result is rescaled so that the instantaneous
-    temperature is exactly the requested one. Molecular dynamics needs at
-    least two particles.
+    with the thermal width for the particle's mass at the requested
+    temperature, the centre-of-mass velocity is removed, and the result is
+    rescaled so that the instantaneous temperature is exactly the requested
+    one. Molecular dynamics needs at least two particles.
 
     Parameters
     ----------
@@ -41,19 +40,14 @@ def initialise(
         - 'random'
         Both raise ``ValueError`` if the particles cannot be placed without
         their repulsive cores overlapping.
+    species: sequence of Species
+        Required, keyword only. The species in the system; particles are
+        assigned to them in turn.
+    pair_potentials: mapping of (Species, Species) to PairPotential
+        Required, keyword only. The potential acting between each pair of
+        species, including each species with itself.
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
-    mass: float (optional)
-        The mass of the particles being simulated.
-    constants: float, array_like (optional)
-        The values of the constants for the forcefield used. Defaults to the
-        argon Lennard-Jones constants, ``[[1.363e-134, 9.273e-78]]``.
-    forcefield: class (optional)
-        The particular forcefield to be used to find the energy and forces.
-    diameter: float or iterable of float (optional)
-        Drawn diameter of the particles in Angstrom, one value or one per
-        set of constants. Defaults to the separation at the pair-potential
-        minimum of the forcefield.
     seed: int (optional)
         Seed for the random number generator used to place a random initial
         configuration and draw the initial velocities. The same seed
@@ -77,30 +71,24 @@ def initialise(
             "Molecular dynamics needs at least two particles: with one particle "
             "there is no thermal motion once the centre-of-mass velocity is removed."
         )
-    if not (np.isfinite(temperature) and temperature > 0):
-        raise ValueError(f"temperature must be positive and finite, not {temperature}")
-    if constants is None:
-        constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
         number_of_particles,
         temperature,
         box_length,
-        constants,
-        forcefield,
-        mass,
+        species=species,
+        pair_potentials=pair_potentials,
         simulation="md",
         init_conf=init_conf,
         timestep_length=timestep_length,
-        diameter=diameter,
         seed=seed,
     )
-    mass_kg = mass * ATOMIC_MASS_UNIT
-    thermal_speed = np.sqrt(BOLTZMANN * temperature / mass_kg)
-    v = system.rng.normal(0.0, thermal_speed, size=(number_of_particles, 2))
-    v -= v.mean(axis=0)
+    masses_kg = system.masses * ATOMIC_MASS_UNIT
+    thermal_speed = np.sqrt(BOLTZMANN * temperature / masses_kg)
+    v = system.rng.normal(0.0, thermal_speed[:, None], size=(number_of_particles, 2))
+    v -= (masses_kg[:, None] * v).sum(axis=0) / masses_kg.sum()
     system.particles["xvelocity"] = v[:, 0]
     system.particles["yvelocity"] = v[:, 1]
-    system.particles = heat_bath(system.particles, mass, temperature)
+    system.particles = heat_bath(system.particles, system.masses, temperature)
     system.compute_force()
     return system
 
@@ -108,9 +96,7 @@ def initialise(
 initialize = initialise  # US spelling
 
 
-def velocity_verlet(
-    particles, timestep_length, box_length, cut_off, constants, forcefield, mass
-):
+def velocity_verlet(particles, timestep_length, box_length, cut_off, pair_potentials, species):
     """Move the particles forward one step with the Velocity-Verlet
     integrator: update the positions, recompute the forces, then update the
     velocities from the mean of the old and new accelerations.
@@ -126,12 +112,10 @@ def velocity_verlet(
     cut_off: float
         The separation beyond which the pair energy and force are taken to be
         zero, in metres.
-    constants: float, array_like
-        The constants associated with the particular forcefield used.
-    forcefield: class
-        The particular forcefield to be used to find the energy and forces.
-    mass: float
-        The mass of the particle being simulated (units of atomic mass units).
+    pair_potentials: mapping of (Species, Species) to PairPotential
+        The potential acting between each pair of species.
+    species: sequence of Species
+        The species, in the order the particles' ``types`` field indexes.
 
     Returns
     -------
@@ -157,8 +141,8 @@ def velocity_verlet(
     [particles["xunwrapped"], particles["yunwrapped"]] = unwrapped
     xacceleration_store = list(particles["xacceleration"])
     yacceleration_store = list(particles["yacceleration"])
-    particles, distances, forces, energies = heavy.compute_force(
-        particles, box_length, cut_off, constants, forcefield, mass
+    particles, distances, forces, energies = pairwise.compute_force(
+        particles, box_length, cut_off, pair_potentials, species
     )
     [particles["xvelocity"], particles["yvelocity"]] = update_velocities(
         [particles["xvelocity"], particles["yvelocity"]],
@@ -194,9 +178,9 @@ def sample(particles, box_length, initial_particles, system):
         pressure, energy, msd, and force appended to the appropriate
         arrays.
     """
-    temperature_new = calculate_temperature(particles, system.mass)
+    temperature_new = calculate_temperature(particles, system.masses)
     system.temperature_sample = np.append(system.temperature_sample, temperature_new)
-    pressure_new = heavy.calculate_pressure(
+    pressure_new = pairwise.calculate_pressure(
         system.distances,
         system.forces,
         box_length,
@@ -319,8 +303,9 @@ def calculate_temperature(particles, mass):
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
-    mass: float
-        The mass of the particles being simulated, in atomic mass units.
+    mass: float or array_like
+        The mass of the particles, in atomic mass units: one value per
+        particle, or a single value for all of them.
 
     Returns
     -------
@@ -337,53 +322,20 @@ def calculate_temperature(particles, mass):
             "The temperature needs at least two particles: with one particle there "
             "is no thermal motion once the centre-of-mass velocity is removed."
         )
-    mass_kg = mass * ATOMIC_MASS_UNIT
-    kinetic = 0.5 * mass_kg * np.sum(
-        particles["xvelocity"] * particles["xvelocity"]
-        + particles["yvelocity"] * particles["yvelocity"]
+    mass_kg = np.asarray(mass, dtype=float) * ATOMIC_MASS_UNIT
+    kinetic = 0.5 * np.sum(
+        mass_kg
+        * (
+            particles["xvelocity"] * particles["xvelocity"]
+            + particles["yvelocity"] * particles["yvelocity"]
+        )
     )
     return kinetic / ((particles.size - 1) * BOLTZMANN)
 
 
-def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
-    r"""Calculates the forces and therefore the accelerations on each of the
-    particles in the simulation.
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    box_length: float
-        Length of a single dimension of the simulation square, in metres.
-    cut_off: float
-        The distance beyond which the force between two particles is taken
-        to be zero.
-    constants: float, array_like (optional)
-        The constants associated with the particular forcefield used, e.g. for
-        the function forcefields.lennard_jones, theses are [A, B]
-    forcefield: class (optional)
-        The particular forcefield to be used to find the energy and forces.
-    mass: float (optional)
-        The mass of the particle being simulated (units of atomic mass units).
-
-    Returns
-    -------
-    util.particle_dt, array_like
-        Information about particles, with updated accelerations and forces.
-    float, array_like
-        Current distances between pairs of particles in the simulation.
-    float, array_like
-        Current forces between pairs of particles in the simulation.
-    float, array_like
-        Current energies between pairs of particles in the simulation.
-    """
-    part, dist, forces, energies = heavy.compute_force(
-        particles, box_length, cut_off, constants, forcefield, mass=mass
-    )
-    return part, dist, forces, energies
-
-
-def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np.ndarray:
+def heat_bath(
+    particles: np.ndarray, mass: float | NDArray[np.float64], bath_temperature: float
+) -> np.ndarray:
     r"""Rescale the velocities so the instantaneous temperature equals the
     bath temperature.
 
@@ -400,8 +352,8 @@ def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np
 
     Args:
         particles: Information about the particles.
-        mass: The mass of the particles being simulated, in atomic mass
-            units.
+        mass: The mass of the particles, in atomic mass units: one value per
+            particle, or a single value for all of them.
         bath_temperature: The desired temperature of the simulation, in
             kelvin.
 
