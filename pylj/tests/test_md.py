@@ -216,6 +216,47 @@ class TestMd(unittest.TestCase):
         msd = md.calculate_msd(a.particles, a.initial_particles)
         assert_almost_equal(msd * 1e20, expected * 1e20)
 
+    def test_velocity_verlet_conserves_energy_to_second_order(self):
+        # The cut-off is moved beyond every minimum-image separation so that
+        # truncation adds no energy jumps, leaving only the integrator's
+        # error, which is second order in the timestep: halving the
+        # timestep over the same simulated time cuts the drift by about
+        # four. Measured: 1.6e-4 at 1e-14 s, 3.9e-5 at 5e-15 s.
+        def worst_drift(timestep_length, steps):
+            system = md.initialise(
+                25, 100, 20, "square", timestep_length=timestep_length, seed=0
+            )
+            system.cut_off = 1e-8
+            system.compute_force()
+
+            def total_energy():
+                kinetic = 0.5 * system.mass * ATOMIC_MASS_UNIT * np.sum(
+                    system.particles["xvelocity"] ** 2 + system.particles["yvelocity"] ** 2
+                )
+                return kinetic + np.sum(system.energies)
+
+            initial = total_energy()
+            drift = 0.0
+            for _ in range(steps):
+                system.integrate(md.velocity_verlet)
+                drift = max(drift, abs(total_energy() - initial) / abs(initial))
+            return drift
+
+        coarse = worst_drift(1e-14, 200)
+        fine = worst_drift(5e-15, 400)
+        self.assertLess(coarse, 5e-4)
+        self.assertLess(fine, coarse / 3)
+
+    def test_velocity_verlet_conserves_momentum(self):
+        # The pair forces are equal and opposite, so the total momentum,
+        # zero after initialisation, stays zero to rounding.
+        system = md.initialise(25, 100, 20, "square", seed=0)
+        thermal_speed = np.sqrt(BOLTZMANN * 100 / (system.mass * ATOMIC_MASS_UNIT))
+        for _ in range(200):
+            system.integrate(md.velocity_verlet)
+        self.assertLess(abs(system.particles["xvelocity"].sum()), 1e-12 * thermal_speed)
+        self.assertLess(abs(system.particles["yvelocity"].sum()), 1e-12 * thermal_speed)
+
     def test_initialise_accepts_diameter(self):
         a = md.initialise(2, 300, 8, "square", diameter=3.0)
         assert_almost_equal(a.diameters, [3e-10])
