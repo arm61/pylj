@@ -74,7 +74,7 @@ def update_accelerations(particles, f, m, dx, dy, dr):
     particles: util.particle_dt, array_like
         Information about the particles.
     f: float, array_like
-        The force on each pair of particles, in Newtons.
+        The force on each pair of particles, in newtons.
     m: float
         Mass of the particles, in kilograms.
     dx: float, array_like
@@ -117,13 +117,13 @@ def calculate_pressure(
     distances: float, array_like
         The distance between each pair of particles, in metres.
     forces: float, array_like
-        The force between each pair of particles, in Newtons.
+        The force between each pair of particles, in newtons.
     box_length: float
         Length of a single dimension of the simulation square, in metres.
     number_of_particles: int
         The number of particles in the simulation.
     temperature: float
-        Instantaneous temperature of the simulation, in Kelvin.
+        Instantaneous temperature of the simulation, in kelvin.
 
     Returns
     -------

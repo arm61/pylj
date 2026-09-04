@@ -25,7 +25,7 @@ def initialise(
     number_of_particles: int
         Number of particles to simulate.
     temperature: float
-        Initial temperature of the particles, in Kelvin.
+        Initial temperature of the particles, in kelvin.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string
@@ -371,7 +371,7 @@ def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np
         mass: The mass of the particles being simulated, in atomic mass
             units.
         bath_temperature: The desired temperature of the simulation, in
-            Kelvin.
+            kelvin.
 
     Returns:
         The particles with velocities rescaled in place; the same array is
