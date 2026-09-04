@@ -38,103 +38,63 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     """
     particles["xacceleration"] = np.zeros(particles["xacceleration"].size)
     particles["yacceleration"] = np.zeros(particles["yacceleration"].size)
-    mass_amu = mass  # amu
-    mass_kg = mass_amu * ATOMIC_MASS_UNIT  # kilograms
-    distances, dx, dy, pair_types = heavy.dist(
-        particles["xposition"], particles["yposition"], box_length, particles['types']
+    mass_kg = mass * ATOMIC_MASS_UNIT
+    distances, dx, dy = heavy.dist(
+        particles["xposition"], particles["yposition"], box_length
     )
-    forces = np.zeros(len(distances))
-    energies = np.zeros(len(distances))
+    i, j = np.triu_indices(particles.size, 1)
+    types = np.array(particles["types"], dtype=int)
+    lower = np.minimum(types[i], types[j])
+    upper = np.maximum(types[i], types[j])
+    forces = np.zeros(distances.size)
+    energies = np.zeros(distances.size)
     # '0,1' and '1,0' are the same pair of types, so evaluate each unordered
     # pair once, on only the distances belonging to it.
-    canonical_pairs = np.array(
-        [",".join(sorted(pair.split(","), key=int)) for pair in pair_types]
-    )
-    for pair in sorted(set(canonical_pairs)):
-        mask = canonical_pairs == pair
-        type_1, type_2 = pair.split(",")
-        ff = forcefield(np.array(constants[int(type_1)]))
+    for type_1, type_2 in sorted(set(zip(lower.tolist(), upper.tolist(), strict=True))):
+        mask = (lower == type_1) & (upper == type_2)
+        ff = forcefield(np.array(constants[type_1]))
         if type_1 != type_2:
-            ff.mixing(np.array(constants[int(type_2)]))
+            ff.mixing(np.array(constants[type_2]))
         forces[mask] = ff.force(distances[mask])
         energies[mask] = ff.energy(distances[mask])
-    forces[np.where(distances > cut_off)] = 0.0
-    energies[np.where(distances > cut_off)] = 0.0
+    forces[distances > cut_off] = 0.0
+    energies[distances > cut_off] = 0.0
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
     return particles, distances, forces, energies
 
-def separation(dx, dy):
-    """Calculate the distance in 2D space.
-
-    Parameters
-    ----------
-    dx: float
-        Vector in the x dimension
-    dy: float
-        Vector in the y dimension
-    Returns
-    float:
-        Magnitude of the 2D vector.
-    """
-    return np.sqrt(dx * dx + dy * dy)
-
 
 def update_accelerations(particles, f, m, dx, dy, dr):
-    """Update the acceleration arrays of particles.
+    """Set the accelerations on each particle from the pair forces.
 
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
-    f: float
-        The force on the pair of particles.
+    f: float, array_like
+        The force on each pair of particles.
     m: float
-        Mass of the particles.
-    dx: float
-        Distance between the particles in the x dimension.
-    dy: float
-        Distance between the particles in the y dimension.
-    dr: float
-        Distance between the particles.
+        Mass of the particles, in kilograms.
+    dx: float, array_like
+        The x-dimension component of each pair separation.
+    dy: float, array_like
+        The y-dimension component of each pair separation.
+    dr: float, array_like
+        The distance between each pair of particles.
+
     Returns
     -------
     util.particle_dt, array_like
-        Information about the particles with updated accelerations.
+        The particles with their accelerations accumulated from the pairs.
     """
-    k = 0
-    for i in range(0, particles.size - 1):
-        for j in range(i + 1, particles.size):
-
-            particles["xacceleration"][i] += second_law(f[k], m, dx[k], dr[k]) if f[k]!=0 else 0
-            particles["yacceleration"][i] += second_law(f[k], m, dy[k], dr[k]) if f[k]!=0 else 0
-            
-            particles["xacceleration"][j] -= second_law(f[k], m, dx[k], dr[k]) if f[k]!=0 else 0
-            particles["yacceleration"][j] -= second_law(f[k], m, dy[k], dr[k]) if f[k]!=0 else 0
-            k += 1
-        
+    i, j = np.triu_indices(particles.size, 1)
+    ax = f * dx / dr / m
+    ay = f * dy / dr / m
+    # each pair accelerates particle i one way and particle j the other.
+    np.add.at(particles["xacceleration"], i, ax)
+    np.add.at(particles["xacceleration"], j, -ax)
+    np.add.at(particles["yacceleration"], i, ay)
+    np.add.at(particles["yacceleration"], j, -ay)
     return particles
-
-
-def second_law(f, m, d1, d2):
-    """Newton's second law of motion to get the acceleration of the particle
-    in a given dimension.
-
-    Parameters
-    ----------
-    f: float
-        The force on the pair of particles.
-    m: float
-        Mass of the particle.
-    d1: float
-        Distance between the particles in a single dimension.
-    d2: float
-        Distance between the particles across all dimensions.
-    Returns
-    -------
-    float:
-        Acceleration of the particle in a given dimension.
-    """
-    return (f * d1 / d2) / m
 
 
 def lennard_jones_energy(A, B, dr):
@@ -237,69 +197,31 @@ def calculate_pressure(
     return pres
 
 
-def dist(xposition, yposition, box_length, types):
-    """Returns the distance array for the set of particles.
+def dist(xposition, yposition, box_length):
+    """Return the minimum-image distances between every pair of particles.
 
     Parameters
     ----------
-    xpos: float, array_like (N)
-        Array of length N, where N is the number of particles, providing the
-        x-dimension positions of the particles.
-    ypos: float, array_like (N)
-        Array of length N, where N is the number of particles, providing the
-        y-dimension positions of the particles.
+    xposition: float, array_like (N)
+        The x-dimension positions of the N particles.
+    yposition: float, array_like (N)
+        The y-dimension positions of the N particles.
     box_length: float
         The box length of the simulation cell.
-    types: str, array_like (N)
-        Array of length N, where N is the number of particles, providing the
-        type of each particle.
 
     Returns
     -------
-    drr: float, array_like ((N - 1) * N / 2))
-        The pairs of distances between the particles.
-    dxr: float, array_like ((N - 1) * N / 2))
-        The pairs of distances between the particles, in only the x-dimension.
-    dyr: float, array_like ((N - 1) * N / 2))
-        The pairs of distances between the particles, in only the y-dimension.
-    pair_types: str, array_like ((N - 1) * N / 2))
-        The types of the two particles in each interaction, saved as 
-        'type1,type2' for each
+    dr: float, array_like (N (N - 1) / 2)
+        The distance between each pair of particles, in i < j pair order.
+    dx: float, array_like (N (N - 1) / 2)
+        The x-dimension component of each pair separation.
+    dy: float, array_like (N (N - 1) / 2)
+        The y-dimension component of each pair separation.
     """
-    drr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
-    dxr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
-    dyr = np.zeros(int((xposition.size - 1) * xposition.size / 2))
-    pair_types = []
-    k = 0
-    for i in range(0, xposition.size - 1):
-        for j in range(i + 1, xposition.size):
-            dx = xposition[i] - xposition[j]
-            dy = yposition[i] - yposition[j]
-            dx = pbc_correction(dx, box_length)
-            dy = pbc_correction(dy, box_length)
-            dr = separation(dx, dy)
-            drr[k] = dr
-            dxr[k] = dx
-            dyr[k] = dy
-            pair_types.append(types[i] + ',' + types[j])
-            k += 1
-    return drr, dxr, dyr, pair_types
-
-
-def pbc_correction(position, cell):
-    """Correct for the periodic boundary condition.
-
-    Parameters
-    ----------
-    position: float
-        Particle position.
-    cell: float
-        Cell vector.
-
-    Returns
-    -------
-    float:
-        Corrected particle position."""
-    if np.abs(position) > 0.5 * cell:
-        position *= 1 - cell / np.abs(position)
-    return position
+    i, j = np.triu_indices(xposition.size, 1)
+    dx = xposition[i] - xposition[j]
+    dy = yposition[i] - yposition[j]
+    dx -= box_length * np.round(dx / box_length)
+    dy -= box_length * np.round(dy / box_length)
+    dr = np.hypot(dx, dy)
+    return dr, dx, dy

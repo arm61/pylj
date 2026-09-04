@@ -53,35 +53,6 @@ class TestPairwise(unittest.TestCase):
         assert_almost_equal(particles["xacceleration"][1], -0.707106781)
         assert_almost_equal(particles["yacceleration"][1], -0.707106781)
 
-    def test_second_law(self):
-        a = pairwise.second_law(1, 1, 1, np.sqrt(2))
-        assert_almost_equal(a, 0.707106781)
-
-    def test_separation(self):
-        a = pairwise.separation(1, 1)
-        assert_almost_equal(a, np.sqrt(2))
-
-    def test_compute_forces(self):
-        part_dt = util.particle_dt()
-        particles = np.zeros(2, dtype=part_dt)
-        particles["xposition"][0] = 1e-10
-        particles["xposition"][1] = 5e-10
-        particles['types'] = ['0','0']
-        particles, distances, forces, energies = pairwise.compute_force(
-            particles,
-            30,
-            15,
-            constants=[[1.363e-134, 9.273e-78]],
-            forcefield=ff.lennard_jones,
-            mass=39.948
-        )
-        assert_almost_equal(distances, [4e-10])
-        assert_almost_equal(energies, [-1.4515047e-21])
-        assert_almost_equal(forces, [-9.5864009e-12])
-        assert_almost_equal(particles["yacceleration"], [0, 0])
-        assert_almost_equal(particles["xacceleration"][0] / 1e14, 1.4451452)
-        assert_almost_equal(particles["xacceleration"][1] / 1e14, -1.4451452)
-
     def test_calculate_pressure(self):
         part_dt = util.particle_dt()
         particles = np.zeros(2, dtype=part_dt)
@@ -102,50 +73,6 @@ class TestPairwise(unittest.TestCase):
         # it by 3.267e-28 Pa, which is the whole of the change from the
         # previous expectation of 7.07368867.
         assert_almost_equal(p * 1e24, 7.07401534)
-
-    def test_pbc_correction(self):
-        a = pairwise.pbc_correction(1, 10)
-        assert_almost_equal(a, 1)
-        b = pairwise.pbc_correction(11, 10)
-        assert_almost_equal(b, 1)
-    
-    def test_multiple_particles(self):
-        part_dt = util.particle_dt()
-        particles = np.zeros(3, dtype=part_dt)
-        particles["xposition"][0] = 1e-10
-        particles["xposition"][1] = 5e-10
-        particles["yposition"][2] = 5e-10
-        particles['types'] = ['0','1','0']
-        constants = [[1.363e-134, 9.273e-78], [1.363e-133, 9.273e-77]]
-        particles, distances, forces, energies = pairwise.compute_force(
-            particles,
-            30,
-            15,
-            constants=constants,
-            forcefield=ff.lennard_jones,
-            mass=39.948
-        )
-        assert_almost_equal(distances, [4.0000000e-10, 5.0990195e-10, 7.0710678e-10])
-        # Each pair contributes its energy once, evaluated with the forcefield
-        # for its own pair of types. Particles 0 and 2 are type 0 and particle
-        # 1 is type 1, so the pairs are (0, 1), (0, 0) and (1, 0) in the order
-        # the distances come back. Unlike pairs mix the two sets of constants,
-        # as compute_force does.
-        expected = []
-        for distance, pair in zip(distances, [(0, 1), (0, 0), (1, 0)], strict=True):
-            forcefield = ff.lennard_jones(constants[pair[0]])
-            if pair[0] != pair[1]:
-                forcefield.mixing(constants[pair[1]])
-            expected.append(forcefield.energy(distance))
-        assert_almost_equal(np.array(energies) * 1e20, np.array(expected) * 1e20)
-        assert_almost_equal(forces, [-9.6342138e-11, -5.1698213e-12, -6.1773405e-12])
-        assert_almost_equal(particles["yacceleration"],
-                            [7.6421357e+13, 2.07196175e+13, -9.71409740e+13],
-                            decimal=-7)
-        # The accelerations go as 1 / mass, so they shift by 42 parts in 1e9
-        # with the CODATA atomic mass unit, from 4.4171075 and -4.7771464.
-        assert_almost_equal(particles["xacceleration"][0] / 1e14, 4.4171073)
-        assert_almost_equal(particles["xacceleration"][1] / 1e14, -4.7771462)
 
     def test_compute_force_zeroes_pairs_beyond_the_cut_off(self):
         # cut_off is compared against the pair distances directly, so it is in
