@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields
@@ -140,73 +141,70 @@ class TestForcefields(unittest.TestCase):
         a = forcefields.square_well([1.0, 1.5, 2.0])
         assert_equal(a.energy(2.0), a.energy(2.0))
 
-    def _assert_energy_accepts_float_numpy_scalar_list_and_array(self, a):
-        # int, np.float32 and a 0-d array all raised on master (#83): a
-        # Python int hit "Integers to negative integer powers are not
-        # allowed" for the LJ variants, and np.float32/a 0-d array took
-        # buckingham's array branch, where np.where on a 0-d array raises
-        # under NumPy 2.
-        e_int = a.energy(2)
-        e_float = a.energy(2.0)
-        e_np_scalar = a.energy(np.float64(2.0))
-        e_np_float32 = a.energy(np.float32(2.0))
-        e_0d_array = a.energy(np.array(2.0))
-        e_list = a.energy([2.0])
-        e_array = a.energy(np.array([2.0]))
-        self.assertIs(type(e_int), float)
-        self.assertIs(type(e_float), float)
-        self.assertIs(type(e_np_scalar), float)
-        self.assertIs(type(e_np_float32), float)
-        self.assertIs(type(e_0d_array), float)
-        self.assertEqual(np.shape(e_list), (1,))
-        self.assertEqual(np.shape(e_array), (1,))
-        assert_almost_equal(e_float, e_int)
-        assert_almost_equal(e_float, e_np_scalar)
-        assert_almost_equal(e_float, e_np_float32)
-        assert_almost_equal(e_float, e_0d_array)
-        assert_almost_equal(e_float, e_list[0])
-        assert_almost_equal(e_float, e_array[0])
 
-    def _assert_force_accepts_float_numpy_scalar_list_and_array(self, a):
-        f_int = a.force(2)
-        f_float = a.force(2.0)
-        f_np_scalar = a.force(np.float64(2.0))
-        f_np_float32 = a.force(np.float32(2.0))
-        f_0d_array = a.force(np.array(2.0))
-        f_list = a.force([2.0])
-        f_array = a.force(np.array([2.0]))
-        self.assertIs(type(f_int), float)
-        self.assertIs(type(f_float), float)
-        self.assertIs(type(f_np_scalar), float)
-        self.assertIs(type(f_np_float32), float)
-        self.assertIs(type(f_0d_array), float)
-        self.assertEqual(np.shape(f_list), (1,))
-        self.assertEqual(np.shape(f_array), (1,))
-        assert_almost_equal(f_float, f_int)
-        assert_almost_equal(f_float, f_np_scalar)
-        assert_almost_equal(f_float, f_np_float32)
-        assert_almost_equal(f_float, f_0d_array)
-        assert_almost_equal(f_float, f_list[0])
-        assert_almost_equal(f_float, f_array[0])
+# Contract: whatever shape a separation arrives in, energy() and force()
+# return a plain float for a scalar-shaped separation and a length-1 array
+# for a sequence, both equal to evaluating the same separation as a float.
+FORCE_AND_ENERGY_FACTORIES = {
+    "lennard_jones": lambda: forcefields.lennard_jones([1.0, 1.0]),
+    "lennard_jones_sigma_epsilon": lambda: forcefields.lennard_jones_sigma_epsilon([1.0, 0.25]),
+    "buckingham": lambda: forcefields.buckingham([1.0, 1.0, 1.0]),
+}
+ENERGY_ONLY_FACTORIES = {
+    **FORCE_AND_ENERGY_FACTORIES,
+    "square_well": lambda: forcefields.square_well([1.0, 1.5, 2.0]),
+}
+SCALAR_KINDS = {
+    "float": lambda v: v,
+    "int": int,
+    "np.float32": np.float32,
+    "np.float64": np.float64,
+    "0-d array": np.array,
+}
+SEQUENCE_KINDS = {
+    "list": lambda v: [v],
+    "array": lambda v: np.array([v]),
+}
 
-    def test_lennard_jones_accepts_float_numpy_scalar_list_and_array(self):
-        a = forcefields.lennard_jones([1.0, 1.0])
-        self._assert_energy_accepts_float_numpy_scalar_list_and_array(a)
-        self._assert_force_accepts_float_numpy_scalar_list_and_array(a)
 
-    def test_lennard_jones_sigma_epsilon_accepts_float_numpy_scalar_list_and_array(self):
-        a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])
-        self._assert_energy_accepts_float_numpy_scalar_list_and_array(a)
-        self._assert_force_accepts_float_numpy_scalar_list_and_array(a)
+@pytest.mark.parametrize("forcefield_name", ENERGY_ONLY_FACTORIES)
+@pytest.mark.parametrize("kind_name", SCALAR_KINDS)
+def test_energy_scalar_input_returns_a_float(forcefield_name, kind_name):
+    a = ENERGY_ONLY_FACTORIES[forcefield_name]()
+    dr = SCALAR_KINDS[kind_name](2.0)
+    result = a.energy(dr)
+    assert type(result) is float
+    assert_almost_equal(result, a.energy(2.0))
 
-    def test_buckingham_accepts_float_numpy_scalar_list_and_array(self):
-        a = forcefields.buckingham([1.0, 1.0, 1.0])
-        self._assert_energy_accepts_float_numpy_scalar_list_and_array(a)
-        self._assert_force_accepts_float_numpy_scalar_list_and_array(a)
 
-    def test_square_well_energy_accepts_float_numpy_scalar_list_and_array(self):
-        a = forcefields.square_well([1.0, 1.5, 2.0])
-        self._assert_energy_accepts_float_numpy_scalar_list_and_array(a)
+@pytest.mark.parametrize("forcefield_name", ENERGY_ONLY_FACTORIES)
+@pytest.mark.parametrize("kind_name", SEQUENCE_KINDS)
+def test_energy_sequence_input_returns_shape_one(forcefield_name, kind_name):
+    a = ENERGY_ONLY_FACTORIES[forcefield_name]()
+    dr = SEQUENCE_KINDS[kind_name](2.0)
+    result = a.energy(dr)
+    assert np.shape(result) == (1,)
+    assert_almost_equal(result[0], a.energy(2.0))
+
+
+@pytest.mark.parametrize("forcefield_name", FORCE_AND_ENERGY_FACTORIES)
+@pytest.mark.parametrize("kind_name", SCALAR_KINDS)
+def test_force_scalar_input_returns_a_float(forcefield_name, kind_name):
+    a = FORCE_AND_ENERGY_FACTORIES[forcefield_name]()
+    dr = SCALAR_KINDS[kind_name](2.0)
+    result = a.force(dr)
+    assert type(result) is float
+    assert_almost_equal(result, a.force(2.0))
+
+
+@pytest.mark.parametrize("forcefield_name", FORCE_AND_ENERGY_FACTORIES)
+@pytest.mark.parametrize("kind_name", SEQUENCE_KINDS)
+def test_force_sequence_input_returns_shape_one(forcefield_name, kind_name):
+    a = FORCE_AND_ENERGY_FACTORIES[forcefield_name]()
+    dr = SEQUENCE_KINDS[kind_name](2.0)
+    result = a.force(dr)
+    assert np.shape(result) == (1,)
+    assert_almost_equal(result[0], a.force(2.0))
 
 
 if __name__ == '__main__':

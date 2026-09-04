@@ -38,35 +38,26 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     """
     particles["xacceleration"] = np.zeros(particles["xacceleration"].size)
     particles["yacceleration"] = np.zeros(particles["yacceleration"].size)
-    pairs = int(
-        (particles["xacceleration"].size - 1) * particles["xacceleration"].size / 2
-    )
-    forces = np.zeros(pairs)
-    energies = np.zeros(pairs)
     mass_amu = mass  # amu
     mass_kg = mass_amu * ATOMIC_MASS_UNIT  # kilograms
     distances, dx, dy, pair_types = heavy.dist(
         particles["xposition"], particles["yposition"], box_length, particles['types']
     )
-    unique_pairs = list(set(pair_types))
-    for pair in unique_pairs:
-        type_distances = distances.copy()
-        for i in range(len(distances)):
-            if pair != pair_types[i]:
-                type_distances[i] = 0
-        type_1 = pair.split(',')[0]
-        type_2 = pair.split(',')[1]
-        constants_1 = np.array(constants[int(pair.split(',')[0])])
-        ff = forcefield(constants_1)
+    forces = np.zeros(len(distances))
+    energies = np.zeros(len(distances))
+    # '0,1' and '1,0' are the same pair of types, so evaluate each unordered
+    # pair once, on only the distances belonging to it.
+    canonical_pairs = np.array(
+        [",".join(sorted(pair.split(","), key=int)) for pair in pair_types]
+    )
+    for pair in sorted(set(canonical_pairs)):
+        mask = canonical_pairs == pair
+        type_1, type_2 = pair.split(",")
+        ff = forcefield(np.array(constants[int(type_1)]))
         if type_1 != type_2:
-            constants_2 = np.array(constants[int(pair.split(',')[1])])
-            ff.mixing(constants_2)
-        type_forces = ff.force(type_distances)
-        type_energies = ff.energy(type_distances)
-        type_forces = np.nan_to_num(type_forces)
-        type_energies = np.nan_to_num(type_energies)
-        forces+=type_forces
-        energies+=type_energies
+            ff.mixing(np.array(constants[int(type_2)]))
+        forces[mask] = ff.force(distances[mask])
+        energies[mask] = ff.energy(distances[mask])
     forces[np.where(distances > cut_off)] = 0.0
     energies[np.where(distances > cut_off)] = 0.0
     particles = update_accelerations(particles, forces, mass_kg, dx, dy, distances)
