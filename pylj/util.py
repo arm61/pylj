@@ -56,8 +56,17 @@ class System:
         separation at the pair-potential minimum of the forcefield, which the
         forcefield must then provide as its ``diameter`` property. Stored in
         metres as ``diameters``. This does not affect the separation kept
-        between particles when placing the initial configuration; see
-        ``cores``.
+        between particles when placing the initial configuration; see the
+        Attributes section below.
+
+    Attributes
+    ----------
+    diameters: list of float
+        Drawn diameter of each particle type, in metres.
+    cores: list of float
+        Separation at which each type's pair energy falls to zero, in
+        metres; initial configurations keep particles at least this far
+        apart.
     """
 
     def __init__(
@@ -191,9 +200,9 @@ class System:
         at least the mean of the two particles' repulsive cores
         (``self.cores``, indexed by ``self.particles["types"]``).
 
-        With the default constants, rejection sampling reaches area
-        fractions of roughly 0.4 to 0.5; near that limit the same call may
-        succeed or raise depending on the random draw.
+        Rejection sampling reaches area fractions of roughly 0.4 to 0.5;
+        near that limit the same call may succeed or raise depending on
+        the random draw.
 
         Raises:
             ValueError: If :data:`PLACEMENT_ATTEMPTS` candidate positions are
@@ -230,29 +239,31 @@ class System:
         box_length = self.box_length
         types = self.particles["types"]
         type_i = int(types[index])
+        cores = np.asarray(self.cores)
+        thresholds = (cores[type_i] + cores[[int(t) for t in types[:index]]]) / 2
         for _attempt in range(PLACEMENT_ATTEMPTS):
             x = np.random.uniform(0, box_length)
             y = np.random.uniform(0, box_length)
-            for j in range(index):
-                min_separation = (self.cores[type_i] + self.cores[int(types[j])]) / 2
-                dx = x - placed_x[j]
-                dy = y - placed_y[j]
-                # minimum-image convention: wrap the separation to the
-                # nearest periodic copy of particle j
-                dx -= box_length * np.round(dx / box_length)
-                dy -= box_length * np.round(dy / box_length)
-                if np.sqrt(dx**2 + dy**2) < min_separation:
-                    break
-            else:
+            dx = x - placed_x[:index]
+            dy = y - placed_y[:index]
+            # minimum-image convention: wrap the separation to the
+            # nearest periodic copy of each already-placed particle
+            dx -= box_length * np.round(dx / box_length)
+            dy -= box_length * np.round(dy / box_length)
+            separations = np.sqrt(dx**2 + dy**2)
+            if np.all(separations >= thresholds):
                 return x, y
         core_angstrom = self.cores[type_i] * 1e10
         box_angstrom = box_length * 1e10
+        largest_core_angstrom = max(self.cores) * 1e10
         area_fraction = (
-            self.number_of_particles * np.pi * (max(self.cores) / 2) ** 2 / box_length**2
+            sum(np.pi * (self.cores[int(t)] / 2) ** 2 for t in self.particles["types"])
+            / box_length**2
         )
         raise ValueError(
             f"Could not place particle {index + 1} of {self.number_of_particles} "
-            f"(repulsive core {core_angstrom:.2f} Angstrom) without overlap in a "
+            f"(repulsive core {core_angstrom:.2f} Angstrom, largest "
+            f"{largest_core_angstrom:.2f} Angstrom) without overlap in a "
             f"{box_angstrom:.1f} Angstrom box after {PLACEMENT_ATTEMPTS} attempts "
             f"(area fraction {area_fraction:.2f}); reduce the number of particles or "
             "use a larger box; a square lattice (init_conf='square') packs more "
@@ -369,12 +380,6 @@ class System:
                 # first non-positive grid point is a safe, slightly
                 # conservative estimate
                 core = r1
-            if not np.isfinite(core) or core <= 0:
-                raise ValueError(
-                    f"{type(forcefield).__name__} has no repulsive core: its pair "
-                    "energy never falls from positive to zero between 0.1 and 50 "
-                    "Angstrom"
-                )
             self.cores.append(float(core))
 
     def compute_force(self):

@@ -117,11 +117,11 @@ class TestUtil(unittest.TestCase):
         self.assertTrue("fit" in message)
 
     def test_system_square_between_core_and_diameter_is_accepted(self):
-        # 100 argon particles in a 40 Angstrom box space 4.0 Angstrom apart:
-        # above the 3.4 Angstrom repulsive core, but below the 3.78 Angstrom
+        # 101 argon particles in a 40 Angstrom box space 3.64 Angstrom apart:
+        # above the 3.37 Angstrom repulsive core, but below the 3.78 Angstrom
         # drawn diameter, which used to be the (overly strict) threshold.
         a = util.System(
-            100,
+            101,
             100,
             40,
             mass=39.948,
@@ -129,7 +129,7 @@ class TestUtil(unittest.TestCase):
             forcefield=ff.lennard_jones,
             simulation="md",
         )
-        assert_equal(a.number_of_particles, 100)
+        assert_equal(a.number_of_particles, 101)
 
     def test_system_random_threshold_is_the_core_not_the_drawn_diameter(self):
         # A diameter=8.0 override only changes how particles are drawn, not
@@ -167,9 +167,9 @@ class TestUtil(unittest.TestCase):
         self.assertTrue(any(distance < 8e-10 for distance in distances))
 
     def test_system_random_two_types_uses_the_mean_of_the_pair_cores(self):
-        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        constants = [ARGON, LARGER]
         state = np.random.get_state()
-        np.random.seed(0)
+        np.random.seed(5)
         try:
             a = util.System(
                 12,
@@ -178,7 +178,7 @@ class TestUtil(unittest.TestCase):
                 init_conf="random",
                 mass=39.948,
                 constants=constants,
-                forcefield=ff.lennard_jones,
+                forcefield=ff.lennard_jones_sigma_epsilon,
                 simulation="md",
             )
         finally:
@@ -198,18 +198,20 @@ class TestUtil(unittest.TestCase):
                 min_separation = (a.cores[type_i] + a.cores[type_j]) / 2
                 self.assertTrue(distance >= min_separation)
 
-    def test_system_cores_default_to_the_energy_zero(self):
+    def test_system_argon_core_equals_sigma(self):
         a = util.System(
             2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="md"
         )
         expected_sigma = (1.363e-134 / 9.273e-78) ** (1 / 6)
         assert_almost_equal(a.cores[0] * 1e10, expected_sigma * 1e10, decimal=3)
 
+    def test_system_square_well_core_equals_sigma(self):
         b = util.System(
             2, 300, 8, [[1.0, 1.5e-10, 2.0]], ff.square_well, 39.948, simulation="md"
         )
         assert_almost_equal(b.cores[0], 1.5e-10, decimal=12)
 
+    def test_system_forcefield_never_positive_raises(self):
         class NeverPositive:
             def __init__(self, constants):
                 self.constants = constants
@@ -223,20 +225,6 @@ class TestUtil(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "repulsive core"):
             util.System(2, 300, 8, [[1.0]], NeverPositive, 39.948, simulation="md")
-
-        class ZeroDiameter:
-            def __init__(self, constants):
-                self.constants = constants
-
-            @property
-            def diameter(self):
-                return 0.0
-
-            def energy(self, dr):
-                return np.ones_like(np.asarray(dr, dtype=float))
-
-        with self.assertRaisesRegex(ValueError, "ZeroDiameter"):
-            util.System(2, 300, 8, [[1.0]], ZeroDiameter, 39.948, simulation="md")
 
     def test_system_too_big(self):
         with self.assertRaises(AttributeError) as context:
@@ -332,10 +320,11 @@ class TestUtil(unittest.TestCase):
         assert_almost_equal(a.diameters, [3e-10, 5e-10])
 
     def test_system_diameter_list_must_match_types(self):
-        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        constants = [ARGON, LARGER]
         with self.assertRaises(ValueError):
             util.System(
-                2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0]
+                2, 300, 8, constants, ff.lennard_jones_sigma_epsilon, 39.948,
+                simulation="md", diameter=[3.0],
             )
 
     def test_system_diameter_must_be_positive(self):
@@ -374,3 +363,18 @@ class TestUtil(unittest.TestCase):
         constants = [[1.363e-134, 9.273e-78]]
         with self.assertRaisesRegex(ValueError, "diameter"):
             util.System(2, 300, 8, constants, NoDiameter, 39.948, simulation="md")
+
+    def test_system_forcefield_with_a_zero_diameter_is_rejected(self):
+        class ZeroDiameter:
+            def __init__(self, constants):
+                self.constants = constants
+
+            @property
+            def diameter(self):
+                return 0.0
+
+            def energy(self, dr):
+                return np.ones_like(np.asarray(dr, dtype=float))
+
+        with self.assertRaisesRegex(ValueError, "ZeroDiameter"):
+            util.System(2, 300, 8, [[1.0]], ZeroDiameter, 39.948, simulation="md")
