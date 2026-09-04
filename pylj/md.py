@@ -14,11 +14,17 @@ def initialise(
     mass=39.948,
     constants=None,
     forcefield=ff.lennard_jones,
-    diameter=None
+    diameter=None,
+    seed=None,
 ):
     """Initialise the particle positions (this can be either as a square or
     random arrangement) and velocities (based on the temperature defined), and
     calculate the initial forces/accelerations.
+
+    The velocities are drawn from the Maxwell-Boltzmann distribution at the
+    requested temperature, the centre-of-mass velocity is removed, and the
+    result is rescaled so that the instantaneous temperature is exactly the
+    requested one. Molecular dynamics needs at least two particles.
 
     Parameters
     ----------
@@ -47,14 +53,28 @@ def initialise(
         Drawn diameter of the particles in Angstrom, one value or one per
         set of constants. Defaults to the separation at the pair-potential
         minimum of the forcefield.
+    seed: int (optional)
+        Seed for the random number generator used to place a random initial
+        configuration and draw the initial velocities. The same seed
+        reproduces the same run.
 
     Returns
     -------
     System
         System information.
+
+    Raises
+    ------
+    ValueError
+        If fewer than two particles are requested.
     """
     from pylj import util
 
+    if number_of_particles < 2:
+        raise ValueError(
+            "Molecular dynamics needs at least two particles: with one particle "
+            "there is no thermal motion once the centre-of-mass velocity is removed."
+        )
     if constants is None:
         constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
@@ -67,15 +87,16 @@ def initialise(
         simulation="md",
         init_conf=init_conf,
         timestep_length=timestep_length,
-        diameter=diameter
+        diameter=diameter,
+        seed=seed,
     )
-    v = np.random.rand(system.particles.size, 2, 12)
-    v = np.sum(v, axis=2) - 6.0
     mass_kg = mass * ATOMIC_MASS_UNIT
-    v = v * np.sqrt(BOLTZMANN * system.init_temp / mass_kg)
-    v = v - np.average(v)
+    thermal_speed = np.sqrt(BOLTZMANN * temperature / mass_kg)
+    v = system.rng.normal(0.0, thermal_speed, size=(number_of_particles, 2))
+    v -= v.mean(axis=0)
     system.particles["xvelocity"] = v[:, 0]
     system.particles["yvelocity"] = v[:, 1]
+    system.particles = heat_bath(system.particles, mass, temperature)
     system.compute_force()
     return system
 

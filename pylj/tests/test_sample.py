@@ -208,12 +208,7 @@ def test_energy_pane_mc_plots_against_step():
 
 
 def test_rdf_pane_normalisation_is_unity_for_random_positions():
-    state = np.random.get_state()
-    try:
-        np.random.seed(1)
-        system = md.initialise(400, 100, 100, "random")
-    finally:
-        np.random.set_state(state)
+    system = md.initialise(400, 100, 100, "random", seed=1)
     fig, ax = environment(1)
     pane = RDFPane()
     pane.setup(ax, system)
@@ -449,7 +444,7 @@ def test_cell_pane_tolerates_extra_artists_on_its_axes(drawing_display):
 
 
 def test_rdf_pane_on_a_single_particle_draws_nothing(drawing_display):
-    system = md.initialise(1, 100, 20, "square")
+    system = mc.initialise(1, 100, 20, "square")
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         viewer = RDF(system)
@@ -458,7 +453,7 @@ def test_rdf_pane_on_a_single_particle_draws_nothing(drawing_display):
 
 
 def test_average_with_no_history_leaves_the_line_alone(drawing_display):
-    system = md.initialise(1, 100, 20, "square")
+    system = mc.initialise(1, 100, 20, "square")
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         viewer = RDF(system)

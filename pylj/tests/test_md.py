@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields as ff
-from pylj import md, pairwise
+from pylj import mc, md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
@@ -22,6 +22,31 @@ class TestMd(unittest.TestCase):
         a = md.initialise(2, 300, 8, "square")
         assert_almost_equal(a.distances * 1e10, [4.0])
         self.assertTrue(np.any(a.particles["yacceleration"] != 0))
+
+    def test_initialise_velocities_have_no_net_momentum(self):
+        a = md.initialise(25, 100, 40, "square")
+        thermal_speed = np.sqrt(BOLTZMANN * 100 / (a.mass * ATOMIC_MASS_UNIT))
+        self.assertLess(abs(a.particles["xvelocity"].sum()), 1e-12 * thermal_speed)
+        self.assertLess(abs(a.particles["yvelocity"].sum()), 1e-12 * thermal_speed)
+
+    def test_initialise_velocities_match_the_requested_temperature(self):
+        a = md.initialise(25, 100, 40, "square")
+        assert_almost_equal(md.calculate_temperature(a.particles, a.mass), 100)
+
+    def test_initialise_is_reproducible_with_a_seed(self):
+        first = md.initialise(10, 100, 40, "random", seed=3)
+        second = md.initialise(10, 100, 40, "random", seed=3)
+        other = md.initialise(10, 100, 40, "random", seed=4)
+        assert_equal(first.particles["xposition"], second.particles["xposition"])
+        assert_equal(first.particles["xvelocity"], second.particles["xvelocity"])
+        assert_equal(first.particles["yvelocity"], second.particles["yvelocity"])
+        self.assertFalse(
+            np.array_equal(first.particles["xvelocity"], other.particles["xvelocity"])
+        )
+
+    def test_initialise_one_particle_raises(self):
+        with self.assertRaisesRegex(ValueError, "at least two particles"):
+            md.initialise(1, 300, 8, "square")
 
     def test_initialize_passes_keyword_arguments_through(self):
         constants = [[3.4e-10, 1.65e-21]]
@@ -130,7 +155,7 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(b[1][1] * 1e10, 2.5)
 
     def test_calculate_temperature(self):
-        a = md.initialise(1, 300, 8, "square")
+        a = mc.initialise(1, 300, 8, "square")
         a.particles["xvelocity"] = [1e-10]
         a.particles["yvelocity"] = [1e-10]
         a.particles["xacceleration"] = [1e4]
