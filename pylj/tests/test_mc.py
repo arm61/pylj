@@ -6,7 +6,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 from pylj import mc, pairwise
 from pylj.constants import BOLTZMANN
 from pylj.potentials import SquareWell
-from pylj.tests.argon import ARGON, ARGON_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL
 
 
 def run_moves(system, steps):
@@ -60,7 +60,17 @@ class TestMc(unittest.TestCase):
         model = {"species": [ARGON], "pair_potentials": {(ARGON, ARGON): well}}
         system = mc.initialise(9, 300, 12, "square", seed=2, **model)
         assert_almost_equal(system.energy * 1e21, -27.0)
-        run_moves(system, 50)
+        overlaps = 0
+        for _ in range(50):
+            proposal = system.propose()
+            accepted = mc.accept(proposal.energy_change, system.temperature, rng=system.rng)
+            if np.isinf(proposal.energy_change):
+                # A trial inside a hard core is always rejected.
+                overlaps += 1
+                self.assertFalse(accepted)
+            if accepted:
+                system.apply(proposal)
+        self.assertGreater(overlaps, 0)
         self.assertTrue(np.isfinite(system.energy))
         self.assertTrue(np.all(system.particles["xacceleration"] == 0.0))
 
@@ -130,19 +140,21 @@ class TestMc(unittest.TestCase):
 
     def test_propose_energy_change_matches_a_full_recompute(self):
         # The oracle: apply the proposal to a copy and recompute every pair.
-        system = mc.initialise(16, 300, 30, "square", seed=1, **ARGON_MODEL)
-        for _ in range(5):
-            proposal = system.propose()
-            trial = system.particles.copy()
-            trial["xposition"] = proposal.xposition
-            trial["yposition"] = proposal.yposition
-            _, energies = pairwise.compute_energy(
-                trial, system.box_length, system.cut_off, system.pair_potentials, system.species
-            )
-            np.testing.assert_allclose(
-                proposal.energy_change, energies.sum() - system.energy, rtol=1e-9, atol=1e-33
-            )
-            system.apply(proposal)
+        # The mixture checks the moving particle's own species is used.
+        for model in (ARGON_MODEL, MIXTURE_MODEL):
+            system = mc.initialise(16, 300, 40, "square", seed=1, **model)
+            for _ in range(5):
+                proposal = system.propose()
+                trial = system.particles.copy()
+                trial["xposition"] = proposal.xposition
+                trial["yposition"] = proposal.yposition
+                _, energies = pairwise.compute_energy(
+                    trial, system.box_length, system.cut_off, system.pair_potentials, system.species
+                )
+                np.testing.assert_allclose(
+                    proposal.energy_change, energies.sum() - system.energy, rtol=1e-9, atol=1e-33
+                )
+                system.apply(proposal)
 
     def test_apply_updates_the_positions_and_the_energy(self):
         system = mc.initialise(16, 300, 30, "square", seed=1, **ARGON_MODEL)

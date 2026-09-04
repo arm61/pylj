@@ -508,13 +508,15 @@ class System:
         current = (self.particles["xposition"][particle], self.particles["yposition"][particle])
         species_index = int(self.particles["types"][particle])
         others = np.delete(self.particles, particle)
-        energy_change = pairwise.particle_energy(
+        trial_energy = pairwise.particle_energy(
             trial, species_index, others,
             self.box_length, self.cut_off, self.pair_potentials, self.species,
-        ) - pairwise.particle_energy(
+        )
+        current_energy = pairwise.particle_energy(
             current, species_index, others,
             self.box_length, self.cut_off, self.pair_potentials, self.species,
         )
+        energy_change = trial_energy - current_energy
         xposition = self.particles["xposition"].copy()
         yposition = self.particles["yposition"].copy()
         xposition[particle], yposition[particle] = trial
