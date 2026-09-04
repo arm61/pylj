@@ -111,6 +111,13 @@ class TestUtil(unittest.TestCase):
                 simulation="md",
             )
 
+    def test_system_square_overlap_message_for_one_particle(self):
+        with self.assertRaisesRegex(ValueError, "1 particle fits"):
+            util.System(
+                5, 100, 4, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948,
+                simulation="md",
+            )
+
     def test_system_square_overlap_raises(self):
         # 50 argon particles in a 20 Angstrom box: at most 25 fit on a
         # square lattice without overlap.

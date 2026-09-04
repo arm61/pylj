@@ -175,12 +175,12 @@ class System:
             n_max = int(np.floor(self.box_length / core)) ** 2
             l_min = np.ceil(np.sqrt(self.number_of_particles)) * core
             l_min_angstrom = np.ceil(l_min * 1e10 * 10) / 10
-            particle_noun = "particle" if n_max == 1 else "particles"
+            fits = "1 particle fits" if n_max == 1 else f"{n_max} particles fit"
             raise ValueError(
                 f"A square lattice of {self.number_of_particles} particles in a "
                 f"{self.box_length * 1e10:.1f} Angstrom box spaces them {d * 1e10:.2f} "
                 f"Angstrom apart, less than the largest repulsive core of "
-                f"{core * 1e10:.2f} Angstrom; at most {n_max} {particle_noun} fit in this "
+                f"{core * 1e10:.2f} Angstrom; at most {fits} in this "
                 f"box, or a box of at least {l_min_angstrom:.1f} Angstrom fits "
                 f"{self.number_of_particles}."
             )
@@ -198,10 +198,9 @@ class System:
         Particles are placed one at a time by rejection sampling: a
         candidate position for a particle is accepted only if, for every
         already placed particle, the minimum-image distance between them is
-        at least the mean of the two particles' repulsive cores
-        (``self.cores``, indexed by ``self.particles["types"]``). Two
-        particles of different types are kept at least the mean of their two
-        cores apart.
+        at least the two particles' repulsive core, ``self.cores``, one per
+        set of constants. Two particles of different types are kept at least
+        the mean of their two cores apart.
 
         Rejection sampling reaches area fractions of roughly 0.4 to 0.5;
         near that limit the same call may succeed or raise depending on
