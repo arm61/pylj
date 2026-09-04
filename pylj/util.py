@@ -415,7 +415,9 @@ class System:
         self.energies = energies
 
     def compute_energy(self):
-        """Maps to the compute_force function, as this also calculates energy
+        """Compute the pair energies of the current configuration.
+
+        The forces, distances and accelerations are updated at the same time.
         """
         self.compute_force()
 

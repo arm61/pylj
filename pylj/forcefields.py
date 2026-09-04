@@ -1,4 +1,19 @@
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+
+def _scalar_or_array(x: NDArray[np.float64]) -> float | NDArray[np.float64]:
+    """Return a Python float for a 0-d array, otherwise the array itself.
+
+    Args:
+        x: The array to convert.
+
+    Returns:
+        A float when `x` is 0-d, otherwise `x` unchanged.
+    """
+    if x.ndim == 0:
+        return float(x)
+    return x
 
 
 class lennard_jones_sigma_epsilon:
@@ -19,58 +34,57 @@ class lennard_jones_sigma_epsilon:
         self.sigma = constants[0]
         self.epsilon = constants[1]
 
-    def energy(self, dr):
+    def energy(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r"""Calculate the energy for a pair of particles using the
         Lennard-Jones (sigma/epsilon variant) forcefield.
 
         .. math::
             E = \frac{4 \epsilon \sigma^{12}}{r^{12}} - \frac{4 \epsilon \sigma^{6}}{r^{6}}
 
-        Parameters
-        ----------
-        dr (float): The distance between particles.
- 
-        Returns
-        -------
-        float: array_like
-        The potential energy between the particles.
+        Args:
+            dr: Separation between the particles, in metres; a float or an
+                array.
+
+        Returns:
+            float or ndarray: The pair energy, as a float for scalar input
+            and an array otherwise.
         """
-        self.energy = 4 * self.epsilon * np.power(self.sigma, 12) * np.power(dr, -12) - (
-                        4 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -6)) 
-        return self.energy 
-    
-    def force(self, dr):
+        dr = np.asarray(dr, dtype=float)
+        energy = 4 * self.epsilon * np.power(self.sigma, 12) * np.power(dr, -12) - (
+                        4 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -6))
+        return _scalar_or_array(energy)
+
+    def force(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r"""Calculate the force for a pair of particles using the
         Lennard-Jones (sigma/epsilon variant) forcefield.
 
         .. math::
             f = \frac{48 \epsilon \sigma^{12}}{r^{13}} - \frac{24 \epsilon \sigma^{6}}{r^{7}}
 
-        Parameters
-        ----------
-        dr (float): The distance between particles.
- 
-        Returns
-        -------
-        float: array_like
-        The force between the particles.
+        Args:
+            dr: Separation between the particles, in metres; a float or an
+                array.
+
+        Returns:
+            float or ndarray: The pair force, negative where the interaction
+            is attractive, as a float for scalar input and an array
+            otherwise.
         """
-        self.force = 48 * self.epsilon * np.power(self.sigma, 12) * np.power(
+        dr = np.asarray(dr, dtype=float)
+        force = 48 * self.epsilon * np.power(self.sigma, 12) * np.power(
             dr, -13) - (24 * self.epsilon * np.power(self.sigma, 6) * np.power(dr, -7))
-        return self.force
-    
+        return _scalar_or_array(force)
+
     def mixing(self, constants_2):
-        r""" Calculates mixing for two sets of constants
-        
+        r"""Calculate mixing for two sets of constants.
+
         .. math::
             \sigma_{12} = \frac{\sigma_1 + \sigma_2}{2}
 
             \epsilon_{12} = \sqrt{\epsilon_1 \epsilon_2}
-        
-        Parameters:
-        ----------
-        constants_2: float, array_like
-            The second set of constantss
+
+        Args:
+            constants_2: The second set of constants.
         """
         sigma2 = constants_2[0]
         epsilon2 = constants_2[1]
@@ -120,10 +134,8 @@ class lennard_jones(lennard_jones_sigma_epsilon):
 
             B = 4 \epsilon \sigma^{6}
 
-        Parameters
-        ----------
-        constants_2: float, array_like
-            The second set of constantss
+        Args:
+            constants_2: The second set of constants.
         """
         a2 = constants_2[0]
         b2 = constants_2[1]
@@ -152,70 +164,57 @@ class buckingham:
         self.b = constants[1]
         self.c = constants[2]
 
-    def energy(self, dr):
+    def energy(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r"""Calculate the energy for a pair of particles using the
         Buckingham forcefield.
 
         .. math::
             E = A e^{-Br} - \frac{C}{r^{6}}
 
-        Parameters
-        ----------
-        dr (float): The distance between particles.
- 
-        Returns
-        -------
-        float: array_like
-        The potential energy between the particles.
+        Args:
+            dr: Separation between the particles, in metres; a float or an
+                array.
+
+        Returns:
+            float or ndarray: The pair energy, as a float for scalar input
+            and an array otherwise.
         """
+        dr = np.asarray(dr, dtype=float)
         energy = self.a * np.exp(- np.multiply(self.b, dr)) - self.c / np.power(dr, 6)
-        # Cut out infinite values where r = 0
-        if not isinstance(dr, float):
-            energy = np.array(energy)
-            energy[np.where(energy > 10e300)] = 0
-            energy[np.where(energy < -10e300)] = 0
-        self.energy = energy
-        return self.energy
-    
-    def force(self, dr):
+        return _scalar_or_array(energy)
+
+    def force(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r"""Calculate the force for a pair of particles using the
         Buckingham forcefield.
 
         .. math::
             f = A B e^{-Br} - \frac{6C}{r^{7}}
 
-        Parameters
-        ----------
-        dr (float): The distance between particles.
- 
-        Returns
-        -------
-        float: array_like
-        The force between the particles.
+        Args:
+            dr: Separation between the particles, in metres; a float or an
+                array.
+
+        Returns:
+            float or ndarray: The pair force, negative where the interaction
+            is attractive, as a float for scalar input and an array
+            otherwise.
         """
+        dr = np.asarray(dr, dtype=float)
         force = self.a * self.b * np.exp(- np.multiply(self.b, dr)) - 6 * self.c / np.power(dr, 7)
-        # Cut out infinite values where r = 0
-        if not isinstance(dr, float):
-            force = np.array(force)
-            force[np.where(force > 10e300)] = 0
-            force[np.where(force < -10e300)] = 0
-        self.force = force
-        return self.force
+        return _scalar_or_array(force)
 
     def mixing(self, constants2):
-        r""" Calculates mixing for two sets of constants
-        
+        r"""Calculate mixing for two sets of constants.
+
         .. math::
             A_{12} = \sqrt{A_1 A_2}
 
             B_{12} = \sqrt{B_1 B_2}
 
             C_{12} = \sqrt{C_1 C_2}
-        
-        Parameters
-        ----------
-        constants_2: float, array_like
-            The second set of constantss
+
+        Args:
+            constants2: The second set of constants.
         """
         self.a = np.sqrt(self.a*constants2[0])
         self.b = np.sqrt(self.b*constants2[1])
@@ -252,6 +251,11 @@ class square_well:
     r'''Calculate the energy or force for a pair of particles using a
     square well model.
 
+    The energy is infinite inside the hard core of diameter sigma, minus
+    epsilon in the well out to lambda times sigma, and zero beyond. The
+    force is infinite at the two steps and zero elsewhere, so the model is
+    for Monte Carlo only.
+
     Parameters
     ----------
     constants: float, array_like
@@ -259,7 +263,7 @@ class square_well:
         parameters for the square well model.
     max_val: int (optional)
         Upper bound for values in square well - replaces usual infinite values
-        
+
     '''
     def __init__(self, constants, max_val=np.inf):
         if len(constants) != 3:
@@ -270,7 +274,7 @@ class square_well:
         self.lamda = constants[2]
         self.max_val = max_val
 
-    def energy(self, dr):
+    def energy(self, dr: ArrayLike) -> float | NDArray[np.float64]:
         r'''Calculate the energy for a pair of particles using a
         square well model.
 
@@ -281,33 +285,30 @@ class square_well:
                 0 & r \ge \lambda \sigma
             \end{cases}
 
-        Parameters
-        ----------
-        dr (float): The distance between particles.
- 
-        Returns
-        -------
-        float: array_like
-            The potential energy between the particles.
+        Args:
+            dr: Separation between the particles, in metres; a float or an
+                array.
+
+        Returns:
+            float or ndarray: The pair energy, as a float for scalar input
+            and an array otherwise.
         '''
 
-        dr = np.atleast_1d(np.asarray(dr, dtype=float))
+        dr = np.asarray(dr, dtype=float)
+        dr_1d = np.atleast_1d(dr)
 
-        E = np.zeros_like(dr, dtype=float)
-        E[np.where(dr < self.sigma)] = self.max_val
-        E[np.where(dr >= self.lamda * self.sigma)] = 0
+        E = np.zeros_like(dr_1d, dtype=float)
+        E[np.where(dr_1d < self.sigma)] = self.max_val
+        E[np.where(dr_1d >= self.lamda * self.sigma)] = 0
 
         # apply mask for sigma <= dr < lambda * sigma
-        a = self.sigma <= dr
-        b = dr < self.lamda * self.sigma
+        a = self.sigma <= dr_1d
+        b = dr_1d < self.lamda * self.sigma
         E[np.where(a & b)] = -self.epsilon
 
-        if len(E) == 1:
-            self.energy = float(E[0])
-        else:
-            self.energy = np.array(E, dtype='float')
-
-        return self.energy
+        if dr.ndim == 0:
+            return float(E[0])
+        return E
 
     @property
     def diameter(self) -> float:
@@ -325,5 +326,9 @@ class square_well:
 
         The force is infinite at the steps and zero elsewhere, so the model
         cannot be integrated and is for Monte Carlo only.
+
+        Raises:
+            ValueError: Always; the force is infinite at the steps of the
+                well and cannot be returned as a finite value.
         '''
         raise ValueError("Force is infinite at sigma <= dr < lambda * sigma")

@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+import pytest
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields
@@ -120,6 +121,91 @@ class TestForcefields(unittest.TestCase):
         a = forcefields.buckingham([1.0, 1.0, 1.0])
         with self.assertRaises(ValueError):
             _ = a.diameter
+
+    def test_lennard_jones_energy_and_force_are_repeatable(self):
+        a = forcefields.lennard_jones([1.0, 1.0])
+        assert_almost_equal(a.energy(2.0), a.energy(2.0))
+        assert_almost_equal(a.force(2.0), a.force(2.0))
+
+    def test_lennard_jones_sigma_epsilon_energy_and_force_are_repeatable(self):
+        a = forcefields.lennard_jones_sigma_epsilon([1.0, 0.25])
+        assert_almost_equal(a.energy(2.0), a.energy(2.0))
+        assert_almost_equal(a.force(2.0), a.force(2.0))
+
+    def test_buckingham_energy_and_force_are_repeatable(self):
+        a = forcefields.buckingham([1.0, 1.0, 1.0])
+        assert_almost_equal(a.energy(2.0), a.energy(2.0))
+        assert_almost_equal(a.force(2.0), a.force(2.0))
+
+    def test_square_well_energy_is_repeatable(self):
+        a = forcefields.square_well([1.0, 1.5, 2.0])
+        assert_equal(a.energy(2.0), a.energy(2.0))
+
+
+# Contract: whatever shape a separation arrives in, energy() and force()
+# return a plain float for a scalar-shaped separation and a length-1 array
+# for a sequence, both equal to evaluating the same separation as a float.
+FORCE_AND_ENERGY_FACTORIES = {
+    "lennard_jones": lambda: forcefields.lennard_jones([1.0, 1.0]),
+    "lennard_jones_sigma_epsilon": lambda: forcefields.lennard_jones_sigma_epsilon([1.0, 0.25]),
+    "buckingham": lambda: forcefields.buckingham([1.0, 1.0, 1.0]),
+}
+ENERGY_FACTORIES = {
+    **FORCE_AND_ENERGY_FACTORIES,
+    "square_well": lambda: forcefields.square_well([1.0, 1.5, 2.0]),
+}
+SCALAR_KINDS = {
+    "float": lambda v: v,
+    "int": int,
+    "np.float32": np.float32,
+    "np.float64": np.float64,
+    "0-d array": np.array,
+}
+SEQUENCE_KINDS = {
+    "list": lambda v: [v],
+    "array": lambda v: np.array([v]),
+}
+
+
+@pytest.mark.parametrize("forcefield_name", ENERGY_FACTORIES)
+@pytest.mark.parametrize("kind_name", SCALAR_KINDS)
+def test_energy_scalar_input_returns_a_float(forcefield_name, kind_name):
+    a = ENERGY_FACTORIES[forcefield_name]()
+    dr = SCALAR_KINDS[kind_name](2.0)
+    result = a.energy(dr)
+    assert type(result) is float
+    assert_almost_equal(result, a.energy(2.0))
+
+
+@pytest.mark.parametrize("forcefield_name", ENERGY_FACTORIES)
+@pytest.mark.parametrize("kind_name", SEQUENCE_KINDS)
+def test_energy_sequence_input_returns_shape_one(forcefield_name, kind_name):
+    a = ENERGY_FACTORIES[forcefield_name]()
+    dr = SEQUENCE_KINDS[kind_name](2.0)
+    result = a.energy(dr)
+    assert np.shape(result) == (1,)
+    assert_almost_equal(result[0], a.energy(2.0))
+
+
+@pytest.mark.parametrize("forcefield_name", FORCE_AND_ENERGY_FACTORIES)
+@pytest.mark.parametrize("kind_name", SCALAR_KINDS)
+def test_force_scalar_input_returns_a_float(forcefield_name, kind_name):
+    a = FORCE_AND_ENERGY_FACTORIES[forcefield_name]()
+    dr = SCALAR_KINDS[kind_name](2.0)
+    result = a.force(dr)
+    assert type(result) is float
+    assert_almost_equal(result, a.force(2.0))
+
+
+@pytest.mark.parametrize("forcefield_name", FORCE_AND_ENERGY_FACTORIES)
+@pytest.mark.parametrize("kind_name", SEQUENCE_KINDS)
+def test_force_sequence_input_returns_shape_one(forcefield_name, kind_name):
+    a = FORCE_AND_ENERGY_FACTORIES[forcefield_name]()
+    dr = SEQUENCE_KINDS[kind_name](2.0)
+    result = a.force(dr)
+    assert np.shape(result) == (1,)
+    assert_almost_equal(result[0], a.force(2.0))
+
 
 if __name__ == '__main__':
     unittest.main(exit=False)

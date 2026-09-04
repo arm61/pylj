@@ -26,6 +26,8 @@ All notable changes to pylj are recorded here. The format follows
 - `md.initialize` and `mc.initialize` pass every argument through.
 - `JustCell` no longer takes a `scale` argument. `Viewer.average()` raises on a viewer whose panes keep no history. `CellPlus.update` rejects half-supplied custom data.
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.
+- `energy` and `force` on the forcefields return a Python float for scalar input, rather than `np.float64`; a one-element list, such as to `square_well.energy`, returns a one-element array rather than a float.
+- `pairwise.compute_force` evaluates each forcefield only on the pairs of its own types, instead of passing every forcefield the full distance array with the other types' entries zeroed.
 
 ### Fixed
 
@@ -39,6 +41,8 @@ All notable changes to pylj are recorded here. The format follows
 - Random initial configurations no longer overlap: particles are placed at least their repulsive-core separation apart (#82).
 - The square lattice refuses a spacing below the repulsive core, with the largest count or the smallest box that fits, rounded up so the suggested box is accepted, in the message (#82).
 - A forcefield whose `energy` does not return one value per separation, whose pair energy is positive at every grid point (suggesting its constants are in the wrong units) is refused with a clear message.
+- `energy` and `force` on the forcefields no longer store their result on `self`, overwriting the bound method and breaking a second call on the same instance (#79).
+- `buckingham.energy` and `buckingham.force` raised under NumPy 2.1 or later when the separation was an integer, a 0-d array, or a NumPy scalar that is not a float subclass (#83). `lennard_jones` and `lennard_jones_sigma_epsilon` also failed on integer input.
 
 ### Removed
 
