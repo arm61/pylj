@@ -14,11 +14,18 @@ def initialise(
     mass=39.948,
     constants=None,
     forcefield=ff.lennard_jones,
-    diameter=None
+    diameter=None,
+    seed=None,
 ):
     """Initialise the particle positions (this can be either as a square or
     random arrangement) and velocities (based on the temperature defined), and
     calculate the initial forces/accelerations.
+
+    Each velocity component is drawn from a normal (Gaussian) distribution
+    with the thermal width at the requested temperature, the centre-of-mass
+    velocity is removed, and the result is rescaled so that the instantaneous
+    temperature is exactly the requested one. Molecular dynamics needs at
+    least two particles.
 
     Parameters
     ----------
@@ -47,14 +54,31 @@ def initialise(
         Drawn diameter of the particles in Angstrom, one value or one per
         set of constants. Defaults to the separation at the pair-potential
         minimum of the forcefield.
+    seed: int (optional)
+        Seed for the random number generator used to place a random initial
+        configuration and draw the initial velocities. The same seed
+        reproduces the same run.
 
     Returns
     -------
     System
         System information.
+
+    Raises
+    ------
+    ValueError
+        If fewer than two particles are requested, or the temperature is not
+        positive.
     """
     from pylj import util
 
+    if number_of_particles < 2:
+        raise ValueError(
+            "Molecular dynamics needs at least two particles: with one particle "
+            "there is no thermal motion once the centre-of-mass velocity is removed."
+        )
+    if not (np.isfinite(temperature) and temperature > 0):
+        raise ValueError(f"temperature must be positive and finite, not {temperature}")
     if constants is None:
         constants = [[1.363e-134, 9.273e-78]]
     system = util.System(
@@ -67,15 +91,16 @@ def initialise(
         simulation="md",
         init_conf=init_conf,
         timestep_length=timestep_length,
-        diameter=diameter
+        diameter=diameter,
+        seed=seed,
     )
-    v = np.random.rand(system.particles.size, 2, 12)
-    v = np.sum(v, axis=2) - 6.0
     mass_kg = mass * ATOMIC_MASS_UNIT
-    v = v * np.sqrt(BOLTZMANN * system.init_temp / mass_kg)
-    v = v - np.average(v)
+    thermal_speed = np.sqrt(BOLTZMANN * temperature / mass_kg)
+    v = system.rng.normal(0.0, thermal_speed, size=(number_of_particles, 2))
+    v -= v.mean(axis=0)
     system.particles["xvelocity"] = v[:, 0]
     system.particles["yvelocity"] = v[:, 1]
+    system.particles = heat_bath(system.particles, mass, temperature)
     system.compute_force()
     return system
 
@@ -286,24 +311,38 @@ def update_velocities(
 def calculate_temperature(particles, mass):
     """Determine the instantaneous temperature of the system.
 
+    The centre-of-mass velocity is zero at initialisation and conserved by
+    the pair forces, so 2N - 2 velocity components carry thermal energy and
+    the temperature is the kinetic energy divided by (N - 1) k_B.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
+    mass: float
+        The mass of the particles being simulated, in atomic mass units.
 
     Returns
     -------
     float:
-        Calculated instantaneous simulation temperature.
+        Calculated instantaneous simulation temperature, in kelvin.
+
+    Raises
+    ------
+    ValueError
+        If there are fewer than two particles.
     """
-    mass_kg = mass * ATOMIC_MASS_UNIT  # kilograms
-    v = np.sqrt(
-        (particles["xvelocity"] * particles["xvelocity"])
-        + (particles["yvelocity"] * particles["yvelocity"])
+    if particles.size < 2:
+        raise ValueError(
+            "The temperature needs at least two particles: with one particle there "
+            "is no thermal motion once the centre-of-mass velocity is removed."
+        )
+    mass_kg = mass * ATOMIC_MASS_UNIT
+    kinetic = 0.5 * mass_kg * np.sum(
+        particles["xvelocity"] * particles["xvelocity"]
+        + particles["yvelocity"] * particles["yvelocity"]
     )
-    k = 0.5 * np.sum(mass_kg * v * v)
-    t = k / (particles.size * BOLTZMANN)
-    return t
+    return kinetic / ((particles.size - 1) * BOLTZMANN)
 
 
 def compute_force(particles, box_length, cut_off, constants, forcefield, mass):

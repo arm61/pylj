@@ -58,6 +58,11 @@ class System:
         forcefield must then provide as its ``diameter`` property. Stored in
         metres as ``diameters``. This sets how the particles are drawn;
         placement uses ``cores``.
+    seed: int (optional)
+        Seed for the random number generator used to place a random initial
+        configuration, draw the initial velocities and make Monte Carlo
+        moves. The same seed reproduces the same run. Without one the run
+        differs each time.
 
     Attributes
     ----------
@@ -67,6 +72,8 @@ class System:
         Separation at which each type's pair energy falls to zero, in
         metres. Particles of one type are placed at least this far apart,
         and particles of two types at least the mean of their cores apart.
+    rng: numpy.random.Generator
+        The random number generator for this system.
     """
 
     def __init__(
@@ -83,6 +90,7 @@ class System:
         timestep_length: float = 1e-14,
         cut_off: float = 15,
         diameter: float | Iterable[float] | None = None,
+        seed: int | None = None,
     ):
         if simulation not in ("md", "mc"):
             raise ValueError(f"simulation must be 'md' or 'mc', not {simulation!r}")
@@ -100,6 +108,7 @@ class System:
         self.cores: list[float] = []
         self.setup_cores()
         self.setup_types()
+        self.rng = np.random.default_rng(seed)
         if box_length <= 600:
             self.box_length = box_length * 1e-10
         else:
@@ -166,13 +175,15 @@ class System:
         """Return a new system that continues from the current configuration.
 
         The new system keeps the box, forcefield, constants, mass, timestep
-        and cut-off, and copies the particle positions, velocities and
-        accelerations and the pair distances, forces and energies. A Monte
-        Carlo system also keeps its accepted energy. Step and time are zero,
-        the sample arrays are empty, and initial_particles is replaced by the
-        copied particles, so the mean squared displacement is measured from
-        the restarted configuration. The current system is not changed. Use
-        it to start a production run after equilibration::
+        and cut-off, copies the state of the random number generator so the
+        new system's draws do not depend on what the current system does
+        next, and copies the particle positions, velocities
+        and accelerations and the pair distances, forces and energies. A
+        Monte Carlo system also keeps its accepted energy. Step and time are
+        zero, the sample arrays are empty, and initial_particles is replaced
+        by the copied particles, so the mean squared displacement is measured
+        from the restarted configuration. The current system is not changed.
+        Use it to start a production run after equilibration::
 
             system = md.initialise(100, 300, 40, "random")
             for _ in range(1000):
@@ -192,6 +203,7 @@ class System:
         # change, and keeps the accepted energy; the state that belongs to one
         # run is copied or reset below.
         new = copy.copy(self)
+        new.rng = copy.deepcopy(self.rng)
         new.particles = self.particles.copy()
         new.particles["xunwrapped"] = new.particles["xposition"]
         new.particles["yunwrapped"] = new.particles["yposition"]
@@ -297,8 +309,8 @@ class System:
         cores = np.asarray(self.cores)
         thresholds = (cores[type_i] + cores[[int(t) for t in types[:index]]]) / 2
         for _attempt in range(PLACEMENT_ATTEMPTS):
-            x = np.random.uniform(0, box_length)
-            y = np.random.uniform(0, box_length)
+            x = self.rng.uniform(0, box_length)
+            y = self.rng.uniform(0, box_length)
             dx = x - placed_x[:index]
             dy = y - placed_y[:index]
             # minimum-image convention: wrap the separation to the
@@ -516,15 +528,27 @@ class System:
         """Maps to the mc.select_random_particle function.
         """
         self.random_particle, self.position_store = mc.select_random_particle(
-            self.particles
+            self.particles, self.rng
         )
 
     def new_random_position(self):
         """Maps to the mc.get_new_particle function.
         """
         self.particles = mc.get_new_particle(
-            self.particles, self.random_particle, self.box_length
+            self.particles, self.random_particle, self.box_length, self.rng
         )
+
+    def metropolis(self) -> bool:
+        """Decide whether to accept the current trial move.
+
+        Applies the Metropolis condition at the system's temperature to the
+        stored energies before and after the move, drawing from the system's
+        random number generator.
+
+        Returns:
+            True if the move should be accepted.
+        """
+        return mc.metropolis(self.init_temp, self.old_energy, self.new_energy, rng=self.rng)
 
     def accept(self):
         """Maps to the mc.accept function.

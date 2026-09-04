@@ -15,6 +15,8 @@ All notable changes to pylj are recorded here. The format follows
 - `pylj.constants`, taking the Boltzmann constant and the atomic mass unit from `scipy.constants`.
 - ruff and mypy configuration in `pyproject.toml`, a `dev` extra, and continuous integration on Python 3.11 to 3.14.
 - `System.restart()` returns a new system that continues from the current configuration with step and time at zero, empty sample arrays and the mean squared displacement measured from the copied positions, for starting a production run after equilibration.
+- `seed` on `md.initialise`, `mc.initialise` and `System`, and `System.rng`, the `numpy.random.Generator` that places a random configuration, draws the initial velocities and makes Monte Carlo moves. The same seed reproduces the same run.
+- `System.metropolis()`, which applies the Metropolis condition to the stored energies at the system's temperature using its generator.
 
 ### Changed
 
@@ -23,7 +25,7 @@ All notable changes to pylj are recorded here. The format follows
 - `System.__init__` takes keyword-only arguments after `mass`, including the required `simulation`.
 - The initialisers compute the initial forces, so the first integration step uses real accelerations.
 - Viewers are built before their display is opened, and a viewer whose panes need molecular dynamics samples refuses a Monte Carlo system.
-- The energy pane plots potential plus N k_B T; the radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in N m^-1.
+- The energy pane plots potential plus kinetic energy, (N - 1) k_B T; the radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in N m^-1.
 - `md.initialize` and `mc.initialize` pass every argument through.
 - `JustCell` no longer takes a `scale` argument. `Viewer.average()` raises on a viewer whose panes keep no history. `CellPlus.update` rejects half-supplied custom data.
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.
@@ -31,6 +33,8 @@ All notable changes to pylj are recorded here. The format follows
 - `pairwise.compute_force` evaluates each forcefield only on the pairs of its own types, instead of passing every forcefield the full distance array with the other types' entries zeroed.
 - Pair distances and accelerations are computed with vectorised NumPy. `pairwise.dist` returns `(dr, dx, dy)` and no longer takes or returns particle types; `pairwise.calculate_pressure` takes the pair distances and forces directly, `(distances, forces, box_length, number_of_particles, temperature)`, and `md.sample` feeds it the forces stored by the last force evaluation rather than recomputing them.
 - The particle dtype carries `xunwrapped` and `yunwrapped`, positions without periodic wrapping, advanced by `md.velocity_verlet`; `xprevious_position`, `yprevious_position`, `xpbccount` and `ypbccount` are gone. `md.calculate_msd(particles, initial_particles)` reads the unwrapped positions and no longer takes `box_length`; `md.update_positions` takes and returns the unwrapped positions in place of the previous positions.
+- `md.calculate_temperature` divides the kinetic energy by (N - 1) k_B, since the 2N - 2 velocity components left once the centre-of-mass motion is removed carry k_B T / 2 each; the energy pane's kinetic term follows. Initial velocities are drawn from a normal distribution. `md.initialise` requires at least two particles.
+- `mc.select_random_particle` and `mc.get_new_particle` take a `numpy.random.Generator`; `mc.metropolis` takes an optional `rng` and accepts downhill moves without drawing a random number.
 
 ### Fixed
 
@@ -47,6 +51,7 @@ All notable changes to pylj are recorded here. The format follows
 - `energy` and `force` on the forcefields no longer store their result on `self`, overwriting the bound method and breaking a second call on the same instance (#79).
 - `buckingham.energy` and `buckingham.force` raised under NumPy 2.1 or later when the separation was an integer, a 0-d array, or a NumPy scalar that is not a float subclass (#83). `lennard_jones` and `lennard_jones_sigma_epsilon` also failed on integer input.
 - The mean squared displacement was wrong unless sampled on every integration step, and non-zero before the first step (#74).
+- Initial velocities carried a centre-of-mass drift that never decayed and added a ballistic term to the mean squared displacement, and were not at the requested temperature (#75).
 
 ### Removed
 
