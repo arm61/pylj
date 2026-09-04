@@ -49,6 +49,48 @@ def particle_masses(particles: np.ndarray, species: Sequence[Species]) -> NDArra
     return np.array([one.mass for one in species], dtype=float)[particles["types"]]
 
 
+def particle_energy(
+    position, species_index, others, box_length, cut_off, pair_potentials, species
+) -> float:
+    """Return the interaction energy of one particle with a set of others.
+
+    The particle is described by its position and species; ``others`` are
+    the particles it interacts with. Each pair is evaluated on the potential
+    for the two species, at the minimum-image separation, and pairs beyond
+    the cut-off contribute nothing. Only ``energies`` is called on the
+    potentials.
+
+    Args:
+        position: The particle's ``(x, y)`` position, in metres.
+        species_index: The index of the particle's species in ``species``.
+        others: The particles it interacts with, as a ``util.particle_dt``
+            array whose ``types`` field indexes ``species``. May be empty.
+        box_length: Length of a single dimension of the simulation square,
+            in metres.
+        cut_off: The separation beyond which the pair energy is taken to be
+            zero, in metres.
+        pair_potentials: The potential between each pair of species.
+        species: The species, in the order ``types`` indexes.
+
+    Returns:
+        The sum of the pair energies, in joules; zero for no others.
+    """
+    dx = position[0] - others["xposition"]
+    dy = position[1] - others["yposition"]
+    dx -= box_length * np.round(dx / box_length)
+    dy -= box_length * np.round(dy / box_length)
+    dr = np.hypot(dx, dy)
+    energies = np.zeros(dr.size)
+    for other_species in np.unique(others["types"]):
+        mask = others["types"] == other_species
+        potential = pair_potential(
+            pair_potentials, species[species_index], species[int(other_species)]
+        )
+        energies[mask] = potential.energies(dr[mask])
+    energies[dr > cut_off] = 0.0
+    return float(energies.sum())
+
+
 def _species_pairs(
     types: NDArray[np.int64],
 ) -> Iterator[tuple[NDArray[np.bool_], int, int]]:

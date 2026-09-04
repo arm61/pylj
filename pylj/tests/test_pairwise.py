@@ -225,6 +225,53 @@ class TestPairwise(unittest.TestCase):
         with pytest.raises(ValueError, match="Monte Carlo"):
             pairwise.compute_force(particles, 30, 15, {(ARGON, ARGON): well}, [ARGON])
 
+    def test_particle_energy_sums_the_pairs(self):
+        # Neighbours 4 and 5 Angstrom from the origin, both argon.
+        others = np.zeros(2, dtype=util.particle_dt())
+        others["xposition"] = [4e-10, 0.0]
+        others["yposition"] = [0.0, 5e-10]
+        energy = pairwise.particle_energy(
+            (0.0, 0.0), 0, others, 30, 15, ARGON_MODEL["pair_potentials"], ARGON_MODEL["species"]
+        )
+        expected = LJ_ARGON.energies(np.array([4e-10, 5e-10])).sum()
+        np.testing.assert_allclose(energy, expected, rtol=1e-12)
+
+    def test_particle_energy_uses_the_neighbours_species(self):
+        # An argon particle with a larger neighbour at 4 Angstrom and an argon
+        # one at 5: the cross potential for the first, the self potential for
+        # the second.
+        others = np.zeros(2, dtype=util.particle_dt())
+        others["xposition"] = [4e-10, 0.0]
+        others["yposition"] = [0.0, 5e-10]
+        others["types"] = [1, 0]
+        energy = pairwise.particle_energy(
+            (0.0, 0.0), 0, others, 30, 15,
+            MIXTURE_MODEL["pair_potentials"], MIXTURE_MODEL["species"],
+        )
+        expected = (
+            LJ_ARGON_LARGER.energies(np.array([4e-10]))[0]
+            + LJ_ARGON.energies(np.array([5e-10]))[0]
+        )
+        np.testing.assert_allclose(energy, expected, rtol=1e-12)
+
+    def test_particle_energy_drops_pairs_beyond_the_cut_off(self):
+        others = np.zeros(2, dtype=util.particle_dt())
+        others["xposition"] = [4e-10, 8e-10]
+        energy = pairwise.particle_energy(
+            (0.0, 0.0), 0, others, 30, 6e-10, ARGON_MODEL["pair_potentials"], ARGON_MODEL["species"]
+        )
+        np.testing.assert_allclose(energy, LJ_ARGON.energies(np.array([4e-10]))[0], rtol=1e-12)
+
+    def test_particle_energy_with_no_neighbours_is_zero(self):
+        none = np.zeros(0, dtype=util.particle_dt())
+        self.assertEqual(
+            pairwise.particle_energy(
+                (1e-10, 1e-10), 0, none, 30, 15,
+                ARGON_MODEL["pair_potentials"], ARGON_MODEL["species"],
+            ),
+            0.0,
+        )
+
     def test_compute_force_matches_a_reference_loop(self):
         # An independent double loop over pairs is the oracle for the pairwise
         # distances, energies, forces and accelerations. Full-box positions
