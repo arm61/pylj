@@ -7,12 +7,15 @@ updates.
 """
 
 import warnings
+from collections.abc import Iterable
 
 import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
 
 from pylj.constants import BOLTZMANN
+from pylj.pairwise import pair_potential
+from pylj.potentials import PairPotential
 from pylj.util import System
 
 LINE_COLOUR = "#34a5daff"
@@ -133,11 +136,104 @@ class _HistoryPane(Pane):
         raise NotImplementedError
 
 
+def _potential_minimum(potential: PairPotential) -> float:
+    """Return the separation at the minimum of a pair potential, in metres.
+
+    The minimum is located on a logarithmic grid between 0.1 and 50
+    Angstrom. The highest energy on the grid is the repulsive barrier
+    separating any collapse at short range from the well, and the minimum
+    is the lowest energy beyond it. For a Lennard-Jones potential this is
+    2^(1/6) sigma; for a square well it is the hard-core diameter.
+
+    Args:
+        potential: The pair potential.
+
+    Returns:
+        The separation at the energy minimum, in metres.
+
+    Raises:
+        ValueError: If the energy has no minimum between the barrier and 50
+            Angstrom, as for a purely repulsive potential.
+    """
+    r = np.logspace(-11, np.log10(5e-9), 4000)
+    energy = np.asarray(potential.energies(r), dtype=float)
+    barrier = int(np.argmax(energy))
+    well = barrier + int(np.argmin(energy[barrier:]))
+    if well == r.size - 1:
+        raise ValueError(
+            f"{type(potential).__name__} has no minimum between 0.1 and 50 Angstrom to "
+            "size the particles by; pass diameter= to the pane or the viewer."
+        )
+    return float(r[well])
+
+
+def _drawn_diameters(system: System, diameter: float | Iterable[float] | None) -> list[float]:
+    """Return the drawn diameter of each species, in metres.
+
+    Args:
+        system: The simulation being visualised.
+        diameter: Diameter in Angstrom: one value for every species, one
+            per species, or ``None`` for the separation at the minimum of
+            each species' own pair energy.
+
+    Returns:
+        One diameter per species, in the order of ``system.species``.
+
+    Raises:
+        ValueError: If the number of diameters differs from the number of
+            species, a diameter is not positive and finite, or a diameter
+            is below 0.01, which is a value in metres mistaken for Angstrom.
+    """
+    if diameter is None:
+        return [
+            _potential_minimum(pair_potential(system.pair_potentials, one, one))
+            for one in system.species
+        ]
+    if isinstance(diameter, Iterable):
+        values = [float(d) for d in diameter]
+    else:
+        values = [float(diameter)] * len(system.species)
+    if len(values) != len(system.species):
+        raise ValueError(
+            f"Expected {len(system.species)} diameters, one per species, but got {len(values)}"
+        )
+    for value in values:
+        if not (np.isfinite(value) and value > 0):
+            raise ValueError(f"Every diameter must be positive and finite, but got {value}")
+        if value < 0.01:
+            raise ValueError(
+                f"The diameter is in Angstrom, and {value} looks like a value in metres. "
+                "An Angstrom is 1e-10 metres."
+            )
+    return [value * 1e-10 for value in values]
+
+
 class CellPane(Pane):
-    """The particles drawn to scale inside the simulation cell."""
+    """The particles drawn to scale inside the simulation cell.
+
+    Each species is drawn with its own marker. The drawn diameter is a
+    display choice; by default it is the separation at the minimum of the
+    species' own pair energy, which for a Lennard-Jones potential is
+    2^(1/6) sigma.
+
+    Args:
+        diameter: Drawn diameter of the particles, in Angstrom: one value
+            for every species, or one per species in the order of
+            ``System.species``. Each value must be positive and at least
+            0.01, as smaller values are metres mistaken for Angstrom.
+
+    Attributes:
+        diameters: The drawn diameter of each species, in metres, set by
+            ``setup``.
+    """
+
+    def __init__(self, diameter: float | Iterable[float] | None = None) -> None:
+        self.diameter = diameter
+        self.diameters: list[float] = []
 
     def setup(self, ax: Axes, system: System) -> None:
-        for _ in system.diameters:
+        self.diameters = _drawn_diameters(system, self.diameter)
+        for _ in self.diameters:
             ax.plot([], [], "o", markeredgecolor="black")
         ax.set_xlim(0, system.box_length)
         ax.set_ylim(0, system.box_length)
@@ -146,14 +242,14 @@ class CellPane(Pane):
         ax.set_aspect("equal")
 
     def update(self, ax: Axes, system: System) -> None:
-        types = np.asarray(system.particles["types"])
+        types = system.particles["types"]
         # Settle the axes box to the equal aspect before its width is read.
         ax.apply_aspect()
         # Marker sizes are in points, and there are 72 points to the inch.
         axes_width_points = ax.get_window_extent().width / ax.figure.dpi * 72
-        for index, diameter in enumerate(system.diameters):
+        for index, diameter in enumerate(self.diameters):
             line = ax.lines[index]
-            mask = types == str(index)
+            mask = types == index
             line.set_data(
                 system.particles["xposition"][mask], system.particles["yposition"][mask]
             )
