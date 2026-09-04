@@ -28,6 +28,7 @@ All notable changes to pylj are recorded here. The format follows
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.
 - `energy` and `force` on the forcefields return a Python float for scalar input, rather than `np.float64`; a one-element list, such as to `square_well.energy`, returns a one-element array rather than a float.
 - `pairwise.compute_force` evaluates each forcefield only on the pairs of its own types, instead of passing every forcefield the full distance array with the other types' entries zeroed.
+- Pair distances and accelerations are computed with vectorised NumPy. `pairwise.dist` returns `(dr, dx, dy)` and no longer takes or returns particle types; `pairwise.calculate_pressure` takes the pair distances and forces directly, `(distances, forces, box_length, number_of_particles, temperature)`, and `md.sample` feeds it the forces stored by the last force evaluation rather than recomputing them.
 
 ### Fixed
 
@@ -48,3 +49,4 @@ All notable changes to pylj are recorded here. The format follows
 
 - `pairwise.heat_bath`; `md.heat_bath` is the implementation (#76).
 - `pylj/sample.py`, `point_size` on forcefields, `System.type_identifiers`, `pairwise.create_dist_identifiers`, `MANIFEST.in`, and the Code Climate upload from CI.
+- `pairwise.separation`, `pairwise.pbc_correction`, `pairwise.second_law`, and the deprecated `pairwise.lennard_jones_energy` and `pairwise.lennard_jones_force` wrappers.

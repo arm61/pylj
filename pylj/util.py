@@ -23,7 +23,7 @@ class System:
     number_of_particles: int
         Number of particles to simulate.
     temperature: float
-        Initial temperature of the particles, in Kelvin.
+        Initial temperature of the particles, in kelvin.
     box_length: float
         Length of a single dimension of the simulation square, in
         Angstrom.
@@ -447,7 +447,7 @@ class System:
         """Rescale the particle velocities to the bath temperature.
 
         Args:
-            bath_temperature: The desired temperature, in Kelvin.
+            bath_temperature: The desired temperature, in kelvin.
 
         Raises:
             ValueError: If the bath temperature is not positive, or the

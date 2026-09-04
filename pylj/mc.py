@@ -22,7 +22,7 @@ def initialise(
     number_of_particles: int
         Number of particles to simulate.
     temperature: float
-        Initial temperature of the particles, in Kelvin.
+        Initial temperature of the particles, in kelvin.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string

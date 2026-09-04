@@ -25,7 +25,7 @@ def initialise(
     number_of_particles: int
         Number of particles to simulate.
     temperature: float
-        Initial temperature of the particles, in Kelvin.
+        Initial temperature of the particles, in kelvin.
     box_length: float
         Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string
@@ -98,7 +98,7 @@ def velocity_verlet(
     timestep_length: float
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
 
     Returns
     -------
@@ -136,12 +136,16 @@ def velocity_verlet(
 def sample(particles, box_length, initial_particles, system):
     """Sample parameters of interest in the simulation.
 
+    The pressure is calculated from the pair distances and forces stored on
+    the system by the last force evaluation, not from the current particle
+    positions.
+
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
     initial_particles: util.particle_dt, array-like
         Information about the initial particle conformation.
     system: System
@@ -157,13 +161,11 @@ def sample(particles, box_length, initial_particles, system):
     temperature_new = calculate_temperature(particles, system.mass)
     system.temperature_sample = np.append(system.temperature_sample, temperature_new)
     pressure_new = heavy.calculate_pressure(
-        particles,
+        system.distances,
+        system.forces,
         box_length,
+        particles.size,
         temperature_new,
-        system.cut_off,
-        system.constants,
-        system.forcefield,
-        system.mass
     )
     msd_new = calculate_msd(particles, initial_particles, box_length)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
@@ -237,7 +239,7 @@ def update_positions(
     timestep_length: float
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
 
     Returns
     -------
@@ -320,10 +322,10 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     particles: util.particle_dt, array_like
         Information about the particles.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
     cut_off: float
-        The distance greater than which the forces between particles is taken
-        as zero.
+        The distance beyond which the force between two particles is taken
+        to be zero.
     constants: float, array_like (optional)
         The constants associated with the particular forcefield used, e.g. for
         the function forcefields.lennard_jones, theses are [A, B]
@@ -369,7 +371,7 @@ def heat_bath(particles: np.ndarray, mass: float, bath_temperature: float) -> np
         mass: The mass of the particles being simulated, in atomic mass
             units.
         bath_temperature: The desired temperature of the simulation, in
-            Kelvin.
+            kelvin.
 
     Returns:
         The particles with velocities rescaled in place; the same array is
