@@ -43,19 +43,21 @@ class gaussian_core:
 
 class TestPairwise(unittest.TestCase):
     def test_update_accelerations(self):
+        # Three particles, so particle 0 receives two contributions and the
+        # per-pair contributions must be accumulated, not assigned.
         part_dt = util.particle_dt()
-        particles = np.zeros(2, dtype=part_dt)
-        ones = np.array([1])
-        dist = np.array([np.sqrt(2)])
-        particles = pairwise.update_accelerations(particles, ones, 1, ones, ones, dist)
-        assert_almost_equal(particles["xacceleration"][0], 0.707106781)
-        assert_almost_equal(particles["yacceleration"][0], 0.707106781)
-        assert_almost_equal(particles["xacceleration"][1], -0.707106781)
-        assert_almost_equal(particles["yacceleration"][1], -0.707106781)
+        particles = np.zeros(3, dtype=part_dt)
+        # pairs (0, 1), (0, 2), (1, 2)
+        forces = np.array([1.0, 2.0, 3.0])
+        dx = np.array([1.0, 0.0, 1.0])
+        dy = np.array([0.0, 1.0, 0.0])
+        dr = np.array([1.0, 1.0, 1.0])
+        particles = pairwise.update_accelerations(particles, forces, 2.0, dx, dy, dr)
+        assert_almost_equal(particles["xacceleration"], [0.5, -0.5 + 1.5, -1.5])
+        assert_almost_equal(particles["yacceleration"], [1.0, 0.0, -1.0])
 
     def test_calculate_pressure(self):
-        # The virial sum(f r) / (2 L^2) plus the ideal term N k_B T / L^2, from
-        # pair data passed in directly.
+        # The virial sum(f r) / (2 L^2) plus the ideal term N k_B T / L^2.
         distances = np.array([4e-10])
         forces = np.array([-9.5864009e-12])
         p = pairwise.calculate_pressure(
@@ -70,15 +72,16 @@ class TestPairwise(unittest.TestCase):
         assert_almost_equal(p, virial + ideal)
 
     def test_dist_applies_the_minimum_image(self):
-        # Two particles 1 Angstrom apart across the periodic boundary of a
-        # 10 Angstrom box: the minimum image is 1 Angstrom, not the 9 Angstrom
-        # raw separation.
-        xposition = np.array([0.5e-10, 9.5e-10])
-        yposition = np.array([0.0, 0.0])
+        # Pairs 1 Angstrom apart across the periodic boundary of a 10 Angstrom
+        # box: the minimum image is 1 Angstrom, not the 9 Angstrom raw
+        # separation, on either axis and in either direction. Pairs are
+        # (0, 1), (0, 2), (1, 2) and components are x_i - x_j.
+        xposition = np.array([0.5e-10, 9.5e-10, 0.5e-10])
+        yposition = np.array([9.5e-10, 9.5e-10, 0.5e-10])
         dr, dx, dy = pairwise.dist(xposition, yposition, 10e-10)
-        assert_almost_equal(dr * 1e10, [1.0])
-        assert_almost_equal(dx * 1e10, [1.0])
-        assert_almost_equal(dy * 1e10, [0.0])
+        assert_almost_equal(dr * 1e10, [1.0, 1.0, np.sqrt(2)])
+        assert_almost_equal(dx * 1e10, [1.0, 0.0, -1.0])
+        assert_almost_equal(dy * 1e10, [0.0, -1.0, -1.0])
 
     def test_compute_force_zeroes_pairs_beyond_the_cut_off(self):
         # cut_off is compared against the pair distances directly, so it is in
@@ -161,8 +164,7 @@ class TestPairwise(unittest.TestCase):
     def test_compute_force_matches_a_reference_loop(self):
         # An independent double loop over pairs is the oracle for the pairwise
         # distances, energies, forces and accelerations. Full-box positions
-        # exercise the minimum image. cut_off is large so no pair is zeroed,
-        # keeping the oracle to the pair maths that the other tests do not pin.
+        # exercise the minimum image. cut_off is large so no pair is zeroed.
         rng = np.random.default_rng(0)
         n = 8
         box_length = 30e-10
