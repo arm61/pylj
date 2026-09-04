@@ -24,7 +24,7 @@ class TestMd(unittest.TestCase):
         self.assertTrue(np.any(a.particles["yacceleration"] != 0))
 
     def test_initialize_passes_keyword_arguments_through(self):
-        constants = [[1.0, 0.25]]
+        constants = [[3.4e-10, 1.65e-21]]
         a = md.initialize(
             2,
             300,

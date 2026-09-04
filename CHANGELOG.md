@@ -11,6 +11,7 @@ All notable changes to pylj are recorded here. The format follows
 - `System.simulation`, `'md'` or `'mc'`, set by the initialisers.
 - `step_sample` on `System`, recorded by `md.sample` and `mc.sample`, so viewers work at any sampling cadence.
 - A `diameter` property on every forcefield (the separation at the pair-potential minimum) and a `diameter` argument on `md.initialise` and `mc.initialise` to override it, in Angstrom. Particles are drawn to scale.
+- `System.cores`, the separation at which each forcefield's pair energy falls to zero, found numerically from its `energy` method. Initial configurations keep particles at least this far apart; the `diameter` override does not affect it.
 - `pylj.constants`, taking the Boltzmann constant and the atomic mass unit from `scipy.constants`.
 - ruff and mypy configuration in `pyproject.toml`, a `dev` extra, and continuous integration on Python 3.11 to 3.14.
 
@@ -34,9 +35,9 @@ All notable changes to pylj are recorded here. The format follows
 - Pair energies in multi-type systems were counted once per type pair (#81).
 - `mc.metropolis` reused one random number for the life of the process (#78).
 - The square-well hard core tested epsilon rather than sigma (part of #80), and `square_well.energy` failed on integer input.
-- A custom forcefield without a `diameter` property, a diameter given in metres, or a non-positive diameter is refused with a clear message.
-- `System.random` placed particles uniformly with no separation check, so a first step could give overlapping particles and unphysical accelerations; it now places each particle by rejection sampling, keeping every pair at least the mean of their diameters apart, and raises `ValueError` if a placement cannot be found after 1000 attempts (#82).
-- `System.square` had the same defect at higher density: it spaced particles by `box_length / ceil(sqrt(n))` with no check, silently overlapping them above a threshold particle count. It now raises `ValueError` if that spacing is less than the largest drawn diameter (#82).
+- A custom forcefield without a `diameter` property, a diameter given in metres, or a non-positive or non-finite diameter (whether from the forcefield or passed by the caller) is refused with a clear message.
+- Random initial configurations no longer overlap: particles are placed at least their repulsive-core separation apart (#82).
+- The square lattice refuses a spacing below the repulsive core, with the largest count or smallest box that fits in the message (#82).
 
 ### Removed
 

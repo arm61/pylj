@@ -6,6 +6,10 @@ import numpy as np
 
 from pylj import mc, md
 
+#: Number of rejection-sampling attempts made for a single particle in
+#: :meth:`System.random` before it gives up and raises ``ValueError``.
+PLACEMENT_ATTEMPTS = 1000
+
 
 class System:
     """Simulation system.
@@ -38,6 +42,8 @@ class System:
         The way that the particles are initially positioned. Should be one of:
         - 'square'
         - 'random'
+        Both raise ``ValueError`` if the particles cannot be placed without
+        their repulsive cores overlapping.
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     cut_off: float (optional)
@@ -49,7 +55,9 @@ class System:
         values below that are metres mistaken for Angstrom. Defaults to the
         separation at the pair-potential minimum of the forcefield, which the
         forcefield must then provide as its ``diameter`` property. Stored in
-        metres as ``diameters``.
+        metres as ``diameters``. This does not affect the separation kept
+        between particles when placing the initial configuration; see
+        ``cores``.
     """
 
     def __init__(
@@ -80,6 +88,8 @@ class System:
         self.types = None
         self.diameters: list[float] = []
         self.setup_diameters(diameter)
+        self.cores: list[float] = []
+        self.setup_cores()
         self.setup_types()
         if box_length <= 600:
             self.box_length = box_length * 1e-10
@@ -147,18 +157,22 @@ class System:
         Raises:
             ValueError: If the lattice spacing, ``box_length`` divided by
                 ``ceil(sqrt(number_of_particles))``, is less than the
-                largest drawn diameter. Reduce the number of particles or
-                use a larger box.
+                largest repulsive core (``self.cores``). Reduce the number
+                of particles or use a larger box.
         """
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
-        if d < max(self.diameters):
+        core = max(self.cores)
+        if d < core:
+            n_max = int(np.floor(self.box_length / core)) ** 2
+            l_min = np.ceil(np.sqrt(self.number_of_particles)) * core
             raise ValueError(
                 f"A square lattice of {self.number_of_particles} particles in a "
                 f"{self.box_length * 1e10:.1f} Angstrom box spaces them {d * 1e10:.2f} "
-                f"Angstrom apart, less than the particle diameter of "
-                f"{max(self.diameters) * 1e10:.2f} Angstrom; reduce the number of "
-                "particles or use a larger box."
+                f"Angstrom apart, less than the largest repulsive core of "
+                f"{core * 1e10:.2f} Angstrom; at most {n_max} particles fit in this "
+                f"box, or a box of at least {l_min * 1e10:.1f} Angstrom fits "
+                f"{self.number_of_particles}."
             )
         n = 0
         for i in range(0, m):
@@ -174,55 +188,76 @@ class System:
         Particles are placed one at a time by rejection sampling: a
         candidate position for a particle is accepted only if, for every
         already placed particle, the minimum-image distance between them is
-        at least the mean of the two particles' diameters (``self.diameters``,
-        indexed by ``self.particles["types"]``).
+        at least the mean of the two particles' repulsive cores
+        (``self.cores``, indexed by ``self.particles["types"]``).
 
-        Rejection sampling of non-overlapping circles reaches area fractions
-        of only around 0.4 to 0.5 (a reduced density N sigma^2 / L^2 of
-        about 0.5 for argon-like particles), well below liquid densities.
-        Near that limit, whether a given call succeeds or raises depends on
-        the random draw, so the same arguments may not always behave the
-        same way.
+        With the default constants, rejection sampling reaches area
+        fractions of roughly 0.4 to 0.5; near that limit the same call may
+        succeed or raise depending on the random draw.
 
         Raises:
-            ValueError: If 1000 candidate positions are rejected for a
-                single particle, which suggests the particles are too large,
-                or too many, for the box. Reduce the number of particles or
-                use a larger box.
+            ValueError: If :data:`PLACEMENT_ATTEMPTS` candidate positions are
+                rejected for a single particle, which suggests the particles
+                are too large, or too many, for the box. Reduce the number
+                of particles or use a larger box.
         """
-        num_part = self.number_of_particles
+        x = self.particles["xposition"]
+        y = self.particles["yposition"]
+        for i in range(self.number_of_particles):
+            x[i], y[i] = self._place_particle(i, x, y)
+
+    def _place_particle(
+        self, index: int, placed_x: np.ndarray, placed_y: np.ndarray
+    ) -> tuple[float, float]:
+        """Find a non-overlapping position for one particle by rejection sampling.
+
+        Args:
+            index: Index of the particle being placed into
+                ``self.particles["types"]``.
+            placed_x: x positions of the particles already placed, indexed
+                0 to ``index - 1``.
+            placed_y: y positions of the particles already placed, indexed
+                0 to ``index - 1``.
+
+        Returns:
+            An (x, y) position, in metres, at least the mean of the two
+            particles' repulsive cores from every already-placed particle.
+
+        Raises:
+            ValueError: If :data:`PLACEMENT_ATTEMPTS` candidate positions are
+                rejected.
+        """
         box_length = self.box_length
         types = self.particles["types"]
-        max_attempts = 1000
-        for i in range(num_part):
-            type_i = int(types[i])
-            for _attempt in range(max_attempts):
-                x = np.random.uniform(0, box_length)
-                y = np.random.uniform(0, box_length)
-                placed = True
-                for j in range(i):
-                    type_j = int(types[j])
-                    min_separation = (self.diameters[type_i] + self.diameters[type_j]) / 2
-                    dx = x - self.particles[j]["xposition"]
-                    dy = y - self.particles[j]["yposition"]
-                    dx -= box_length * np.round(dx / box_length)
-                    dy -= box_length * np.round(dy / box_length)
-                    if np.sqrt(dx**2 + dy**2) < min_separation:
-                        placed = False
-                        break
-                if placed:
-                    self.particles[i]["xposition"] = x
-                    self.particles[i]["yposition"] = y
+        type_i = int(types[index])
+        for _attempt in range(PLACEMENT_ATTEMPTS):
+            x = np.random.uniform(0, box_length)
+            y = np.random.uniform(0, box_length)
+            for j in range(index):
+                min_separation = (self.cores[type_i] + self.cores[int(types[j])]) / 2
+                dx = x - placed_x[j]
+                dy = y - placed_y[j]
+                # minimum-image convention: wrap the separation to the
+                # nearest periodic copy of particle j
+                dx -= box_length * np.round(dx / box_length)
+                dy -= box_length * np.round(dy / box_length)
+                if np.sqrt(dx**2 + dy**2) < min_separation:
                     break
             else:
-                diameter_angstrom = self.diameters[type_i] * 1e10
-                box_angstrom = box_length * 1e10
-                raise ValueError(
-                    f"Could not place particle {i + 1} of {num_part} (diameter "
-                    f"{diameter_angstrom:.2f} Angstrom) without overlap in a "
-                    f"{box_angstrom:.1f} Angstrom box after {max_attempts} "
-                    "attempts; reduce the number of particles or use a larger box."
-                )
+                return x, y
+        core_angstrom = self.cores[type_i] * 1e10
+        box_angstrom = box_length * 1e10
+        area_fraction = (
+            self.number_of_particles * np.pi * (max(self.cores) / 2) ** 2 / box_length**2
+        )
+        raise ValueError(
+            f"Could not place particle {index + 1} of {self.number_of_particles} "
+            f"(repulsive core {core_angstrom:.2f} Angstrom) without overlap in a "
+            f"{box_angstrom:.1f} Angstrom box after {PLACEMENT_ATTEMPTS} attempts "
+            f"(area fraction {area_fraction:.2f}); reduce the number of particles or "
+            "use a larger box; a square lattice (init_conf='square') packs more "
+            "densely than random placement and may still fit."
+        )
 
     def setup_types(self):
         """Sets the long constants and types arrays of the particles
@@ -273,6 +308,11 @@ class System:
                         "caller must pass diameter= to initialise. See the bring "
                         "your own forcefield documentation."
                     ) from error
+                if not np.isfinite(value) or value <= 0:
+                    raise ValueError(
+                        f"{type(forcefield).__name__}.diameter must be a positive, "
+                        f"finite value in metres, but got {value}"
+                    )
                 self.diameters.append(value)
             return
         if isinstance(diameter, Iterable):
@@ -293,6 +333,49 @@ class System:
                     "metres. An Angstrom is 1e-10 metres."
                 )
         self.diameters = [value * 1e-10 for value in values]
+
+    def setup_cores(self) -> None:
+        """Separation at which the pair energy falls to zero, in metres, one
+        per set of constants. Particles closer than this sit inside each
+        other's repulsive core, so the initial configurations keep them at
+        least this far apart. The ``diameter=`` override does not affect it.
+
+        Raises:
+            ValueError: If a forcefield's pair energy never falls from
+                positive to non-positive between 0.1 and 50 Angstrom, so it
+                has no repulsive core on that range.
+        """
+        r = np.logspace(-11, np.log10(5e-9), 4000)
+        self.cores = []
+        for c in self.constants:
+            forcefield = self.forcefield(c)
+            energy = np.asarray(forcefield.energy(r), dtype=float)
+            positive = energy > 0
+            crossings = np.flatnonzero(positive[:-1] & ~positive[1:])
+            if crossings.size == 0:
+                raise ValueError(
+                    f"{type(forcefield).__name__} has no repulsive core: its pair "
+                    "energy never falls from positive to zero between 0.1 and 50 "
+                    "Angstrom"
+                )
+            i = int(crossings[-1])
+            r0, r1 = r[i], r[i + 1]
+            e0, e1 = energy[i], energy[i + 1]
+            if np.isfinite(e0) and np.isfinite(e1):
+                # linear interpolation to the point where the energy is zero
+                core = r0 + (r1 - r0) * (-e0) / (e1 - e0)
+            else:
+                # a discontinuous step (e.g. an infinite repulsive wall): the
+                # first non-positive grid point is a safe, slightly
+                # conservative estimate
+                core = r1
+            if not np.isfinite(core) or core <= 0:
+                raise ValueError(
+                    f"{type(forcefield).__name__} has no repulsive core: its pair "
+                    "energy never falls from positive to zero between 0.1 and 50 "
+                    "Angstrom"
+                )
+            self.cores.append(float(core))
 
     def compute_force(self):
         """Maps to the md.compute_force function, storing what it returns."""

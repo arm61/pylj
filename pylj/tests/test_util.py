@@ -6,6 +6,10 @@ from numpy.testing import assert_almost_equal, assert_equal
 from pylj import forcefields as ff
 from pylj import util
 
+# A second Lennard-Jones type with a repulsive core of 5 Angstrom (sigma) and
+# the same epsilon as argon, chosen for a modest lattice spacing.
+FIVE_ANGSTROM_CORE = [1.5402269415180226e-132, 9.857452425715339e-77]
+
 
 class TestUtil(unittest.TestCase):
     def test_system_square(self):
@@ -81,10 +85,10 @@ class TestUtil(unittest.TestCase):
                 dx -= box_length * np.round(dx / box_length)
                 dy -= box_length * np.round(dy / box_length)
                 distance = np.sqrt(dx**2 + dy**2)
-                self.assertTrue(distance >= a.diameters[0])
+                self.assertTrue(distance >= a.cores[0])
 
     def test_system_random_too_dense_raises(self):
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaisesRegex(ValueError, "after 1000 attempts"):
             util.System(
                 200,
                 100,
@@ -95,9 +99,6 @@ class TestUtil(unittest.TestCase):
                 forcefield=ff.lennard_jones,
                 simulation="md",
             )
-        message = str(context.exception)
-        self.assertTrue("particle" in message)
-        self.assertFalse("square" in message)
 
     def test_system_square_overlap_raises(self):
         with self.assertRaises(ValueError) as context:
@@ -110,23 +111,81 @@ class TestUtil(unittest.TestCase):
                 forcefield=ff.lennard_jones,
                 simulation="md",
             )
-        self.assertTrue("diameter" in str(context.exception))
+        message = str(context.exception)
+        self.assertTrue("repulsive core" in message)
+        self.assertTrue("fit" in message)
 
-    def test_system_random_diameter_override(self):
+    def test_system_square_between_core_and_diameter_is_accepted(self):
+        # 100 argon particles in a 40 Angstrom box space 4.0 Angstrom apart:
+        # above the 3.4 Angstrom repulsive core, but below the 3.78 Angstrom
+        # drawn diameter, which used to be the (overly strict) threshold.
         a = util.System(
-            10,
+            100,
             100,
             40,
-            init_conf="random",
             mass=39.948,
             constants=[[1.363e-134, 9.273e-78]],
             forcefield=ff.lennard_jones,
             simulation="md",
-            diameter=8.0,
         )
+        assert_equal(a.number_of_particles, 100)
+
+    def test_system_random_threshold_is_the_core_not_the_drawn_diameter(self):
+        # A diameter=8.0 override only changes how particles are drawn, not
+        # how far apart random() places them: with seed 4, particles land
+        # closer together than 8 Angstrom but still respect the 3.37
+        # Angstrom repulsive core.
+        state = np.random.get_state()
+        np.random.seed(4)
+        try:
+            a = util.System(
+                10,
+                100,
+                30,
+                init_conf="random",
+                mass=39.948,
+                constants=[[1.363e-134, 9.273e-78]],
+                forcefield=ff.lennard_jones,
+                simulation="md",
+                diameter=8.0,
+            )
+        finally:
+            np.random.set_state(state)
         box_length = a.box_length
         x = a.particles["xposition"]
         y = a.particles["yposition"]
+        distances = []
+        for i in range(a.number_of_particles):
+            for j in range(i + 1, a.number_of_particles):
+                dx = x[i] - x[j]
+                dy = y[i] - y[j]
+                dx -= box_length * np.round(dx / box_length)
+                dy -= box_length * np.round(dy / box_length)
+                distances.append(np.sqrt(dx**2 + dy**2))
+        self.assertTrue(all(distance >= a.cores[0] for distance in distances))
+        self.assertTrue(any(distance < 8e-10 for distance in distances))
+
+    def test_system_random_two_types_uses_the_mean_of_the_pair_cores(self):
+        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        state = np.random.get_state()
+        np.random.seed(0)
+        try:
+            a = util.System(
+                12,
+                100,
+                60,
+                init_conf="random",
+                mass=39.948,
+                constants=constants,
+                forcefield=ff.lennard_jones,
+                simulation="md",
+            )
+        finally:
+            np.random.set_state(state)
+        box_length = a.box_length
+        x = a.particles["xposition"]
+        y = a.particles["yposition"]
+        types = a.particles["types"]
         for i in range(a.number_of_particles):
             for j in range(i + 1, a.number_of_particles):
                 dx = x[i] - x[j]
@@ -134,7 +193,49 @@ class TestUtil(unittest.TestCase):
                 dx -= box_length * np.round(dx / box_length)
                 dy -= box_length * np.round(dy / box_length)
                 distance = np.sqrt(dx**2 + dy**2)
-                self.assertTrue(distance >= 8e-10)
+                type_i, type_j = int(types[i]), int(types[j])
+                min_separation = (a.cores[type_i] + a.cores[type_j]) / 2
+                self.assertTrue(distance >= min_separation)
+
+    def test_system_cores_default_to_the_energy_zero(self):
+        a = util.System(
+            2, 300, 8, [[1.363e-134, 9.273e-78]], ff.lennard_jones, 39.948, simulation="md"
+        )
+        expected_sigma = (1.363e-134 / 9.273e-78) ** (1 / 6)
+        assert_almost_equal(a.cores[0] * 1e10, expected_sigma * 1e10, decimal=3)
+
+        b = util.System(
+            2, 300, 8, [[1.0, 1.5e-10, 2.0]], ff.square_well, 39.948, simulation="md"
+        )
+        assert_almost_equal(b.cores[0], 1.5e-10, decimal=12)
+
+        class NeverPositive:
+            def __init__(self, constants):
+                self.constants = constants
+
+            @property
+            def diameter(self):
+                return 1e-10
+
+            def energy(self, dr):
+                return -np.ones_like(np.asarray(dr, dtype=float))
+
+        with self.assertRaisesRegex(ValueError, "repulsive core"):
+            util.System(2, 300, 8, [[1.0]], NeverPositive, 39.948, simulation="md")
+
+        class ZeroDiameter:
+            def __init__(self, constants):
+                self.constants = constants
+
+            @property
+            def diameter(self):
+                return 0.0
+
+            def energy(self, dr):
+                return np.ones_like(np.asarray(dr, dtype=float))
+
+        with self.assertRaisesRegex(ValueError, "ZeroDiameter"):
+            util.System(2, 300, 8, [[1.0]], ZeroDiameter, 39.948, simulation="md")
 
     def test_system_too_big(self):
         with self.assertRaises(AttributeError) as context:
@@ -206,23 +307,23 @@ class TestUtil(unittest.TestCase):
         assert_almost_equal(a.diameters[0] * 1e10, 3.78, decimal=2)
 
     def test_system_single_diameter_applies_to_every_type(self):
-        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        constants = [[1.363e-134, 9.273e-78], FIVE_ANGSTROM_CORE]
         a = util.System(
-            2, 300, 8, constants, ff.lennard_jones, 39.948, simulation="md", diameter=3.0
+            2, 300, 12, constants, ff.lennard_jones, 39.948, simulation="md", diameter=3.0
         )
         assert_almost_equal(a.diameters, [3e-10, 3e-10])
 
     def test_system_diameter_list_is_per_type(self):
-        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        constants = [[1.363e-134, 9.273e-78], FIVE_ANGSTROM_CORE]
         a = util.System(
-            2, 300, 10, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0, 5.0]
+            2, 300, 12, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0, 5.0]
         )
         assert_almost_equal(a.diameters, [3e-10, 5e-10])
 
     def test_system_diameter_array_is_per_type(self):
-        constants = [[1.363e-134, 9.273e-78], [1.365e-130, 9.278e-77]]
+        constants = [[1.363e-134, 9.273e-78], FIVE_ANGSTROM_CORE]
         a = util.System(
-            2, 300, 10, constants, ff.lennard_jones, 39.948, simulation="md",
+            2, 300, 12, constants, ff.lennard_jones, 39.948, simulation="md",
             diameter=np.array([3.0, 5.0]),
         )
         assert_almost_equal(a.diameters, [3e-10, 5e-10])

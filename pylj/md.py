@@ -32,6 +32,8 @@ def initialise(
         The way that the particles are initially positioned. Should be one of:
         - 'square'
         - 'random'
+        Both raise ``ValueError`` if the particles cannot be placed without
+        their repulsive cores overlapping.
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     mass: float (optional)
