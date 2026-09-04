@@ -6,6 +6,7 @@ from numpy.testing import assert_almost_equal
 
 from pylj import forcefields as ff
 from pylj import pairwise, util
+from pylj.constants import ATOMIC_MASS_UNIT
 
 
 class gaussian_core:
@@ -223,3 +224,61 @@ class TestPairwise(unittest.TestCase):
             expected_forces.append(forcefield.force(distance))
         assert_almost_equal(energies, expected_energies)
         assert_almost_equal(forces, expected_forces)
+
+    def test_compute_force_matches_a_reference_loop(self):
+        # An independent double loop over pairs is the oracle for the pairwise
+        # distances, energies, forces and accelerations. Full-box positions
+        # exercise the minimum image. cut_off is large so no pair is zeroed,
+        # keeping the oracle to the pair maths that the other tests do not pin.
+        rng = np.random.default_rng(0)
+        n = 8
+        box_length = 30e-10
+        part_dt = util.particle_dt()
+        particles = np.zeros(n, dtype=part_dt)
+        particles["xposition"] = rng.uniform(0, box_length, n)
+        particles["yposition"] = rng.uniform(0, box_length, n)
+        types = ["0", "0", "1", "1", "0", "1", "0", "1"]
+        particles["types"] = types
+        constants = [[1.363e-134, 9.273e-78], [1.5e-134, 1.1e-77]]
+        mass = 39.948
+        cut_off = 1e-8
+        mass_kg = mass * ATOMIC_MASS_UNIT
+
+        ref_dr, ref_energy, ref_force = [], [], []
+        ref_ax = np.zeros(n)
+        ref_ay = np.zeros(n)
+        for a in range(n - 1):
+            for b in range(a + 1, n):
+                dx = particles["xposition"][a] - particles["xposition"][b]
+                dy = particles["yposition"][a] - particles["yposition"][b]
+                dx -= box_length * np.round(dx / box_length)
+                dy -= box_length * np.round(dy / box_length)
+                dr = np.hypot(dx, dy)
+                low, high = sorted((int(types[a]), int(types[b])))
+                pair = ff.lennard_jones(np.array(constants[low]))
+                if low != high:
+                    pair.mixing(np.array(constants[high]))
+                force = pair.force(dr)
+                ref_dr.append(dr)
+                ref_energy.append(pair.energy(dr))
+                ref_force.append(force)
+                ax = force * dx / dr / mass_kg
+                ay = force * dy / dr / mass_kg
+                ref_ax[a] += ax
+                ref_ax[b] -= ax
+                ref_ay[a] += ay
+                ref_ay[b] -= ay
+
+        particles, distances, forces, energies = pairwise.compute_force(
+            particles,
+            box_length,
+            cut_off,
+            constants=constants,
+            forcefield=ff.lennard_jones,
+            mass=mass,
+        )
+        np.testing.assert_allclose(distances, ref_dr, rtol=1e-12)
+        np.testing.assert_allclose(energies, ref_energy, rtol=1e-12)
+        np.testing.assert_allclose(forces, ref_force, rtol=1e-12)
+        np.testing.assert_allclose(particles["xacceleration"], ref_ax, rtol=1e-12)
+        np.testing.assert_allclose(particles["yacceleration"], ref_ay, rtol=1e-12)
