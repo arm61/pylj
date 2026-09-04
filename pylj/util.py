@@ -37,7 +37,7 @@ def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPote
         if not isinstance(potential, PairPotential):
             raise TypeError(
                 f"pair_potentials[{pair}] must be a PairPotential instance, such as "
-                f"lennard_jones(epsilon=..., sigma=...), not {potential!r}"
+                f"LennardJones(epsilon=..., sigma=...), not {potential!r}"
             )
 
 

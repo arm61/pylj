@@ -6,7 +6,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, md, util
-from pylj.potentials import PairPotential, buckingham, lennard_jones, square_well
+from pylj.potentials import Buckingham, LennardJones, PairPotential, SquareWell
 from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL
 
 
@@ -107,7 +107,7 @@ class TestUtil(unittest.TestCase):
 
     def test_system_square_well_core_is_at_least_sigma(self):
         sigma = 1.5e-10
-        well = square_well(epsilon=1.0, sigma=sigma, lambda_=2.0)
+        well = SquareWell(epsilon=1.0, sigma=sigma, lambda_=2.0)
         b = util.System(
             2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): well}, simulation="md"
         )
@@ -184,7 +184,7 @@ class TestUtil(unittest.TestCase):
     def test_system_rejects_a_potential_class_in_place_of_an_instance(self):
         with self.assertRaisesRegex(TypeError, "PairPotential instance"):
             util.System(
-                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): lennard_jones},
+                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): LennardJones},
                 simulation="md",
             )
 
@@ -242,7 +242,7 @@ class TestUtil(unittest.TestCase):
     def test_system_potential_positive_at_50_angstrom_names_units(self):
         # Sigma given in Angstrom rather than metres: the pair energy never
         # falls to zero on the 0.1 to 50 Angstrom grid.
-        in_angstrom = lennard_jones(epsilon=1.58e-21, sigma=3.4)
+        in_angstrom = LennardJones(epsilon=1.58e-21, sigma=3.4)
         with self.assertRaisesRegex(ValueError, "still positive at 50 Angstrom"):
             util.System(
                 2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): in_angstrom},
@@ -250,7 +250,7 @@ class TestUtil(unittest.TestCase):
             )
 
     def test_system_random_buckingham_core_energy_is_near_zero(self):
-        potential = buckingham(a=1.69e-15, b=3.66e10, c=1.01e-77)
+        potential = Buckingham(a=1.69e-15, b=3.66e10, c=1.01e-77)
         a = util.System(
             10, 100, 40, init_conf="random", species=[ARGON],
             pair_potentials={(ARGON, ARGON): potential}, simulation="md", seed=0,

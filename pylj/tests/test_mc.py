@@ -5,7 +5,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc
 from pylj.constants import BOLTZMANN
-from pylj.potentials import square_well
+from pylj.potentials import SquareWell
 from pylj.tests.argon import ARGON, ARGON_MODEL
 
 
@@ -34,7 +34,7 @@ class TestMc(unittest.TestCase):
         # four lattice neighbours 4 Angstrom away, inside the well, and four
         # diagonal ones 5.66 Angstrom away, beyond it, so 18 pairs sit at
         # -epsilon. The cut-off, half the box, is 6 Angstrom.
-        well = square_well(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
+        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
         model = {"species": [ARGON], "pair_potentials": {(ARGON, ARGON): well}}
         system = mc.initialise(9, 300, 12, "square", seed=2, **model)
         assert_almost_equal(system.old_energy * 1e21, -27.0)

@@ -6,10 +6,10 @@ A pylj system is built from the species it contains and the pair potential actin
 .. code-block:: python
 
     from pylj import md
-    from pylj.potentials import Species, lennard_jones
+    from pylj.potentials import Species, LennardJones
 
     argon = Species(mass=39.948, name="argon")
-    lj = lennard_jones(epsilon=1.577e-21, sigma=3.372e-10)
+    lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
 
     system = md.initialise(
         100, 300, 40, "square",
@@ -24,7 +24,7 @@ The Lennard-Jones, Buckingham and square-well potentials in the :doc:`potentials
     import numpy as np
     from pylj.potentials import PairPotential
 
-    class soft_sphere(PairPotential):
+    class SoftSphere(PairPotential):
 
         def __init__(self, *, epsilon, sigma):
             self.epsilon = epsilon

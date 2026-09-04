@@ -5,7 +5,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-from pylj.potentials import square_well
+from pylj.potentials import SquareWell
 from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL
 
 
@@ -45,7 +45,7 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(md.calculate_temperature(a.particles, a.masses), 100)
 
     def test_initialise_refuses_a_potential_with_no_force(self):
-        well = square_well(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
+        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
             md.initialise(
                 2, 300, 8, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): well}

@@ -7,7 +7,7 @@ from numpy.testing import assert_almost_equal
 
 from pylj import pairwise, util
 from pylj.constants import ATOMIC_MASS_UNIT
-from pylj.potentials import PairPotential, Species, square_well
+from pylj.potentials import PairPotential, Species, SquareWell
 from pylj.tests.argon import (
     ARGON,
     ARGON_MODEL,
@@ -197,7 +197,7 @@ class TestPairwise(unittest.TestCase):
     def test_compute_energy_needs_no_force_from_the_potential(self):
         # The square well has no finite force, so it drives the energy path
         # only.
-        well = square_well(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
+        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
         particles = three_particles([0, 0, 0])
         _, energies = pairwise.compute_energy(particles, 30, 15, {(ARGON, ARGON): well}, [ARGON])
         # (0, 1) at 4 Angstrom is in the well; (0, 2) at 5.1 and (1, 2) at

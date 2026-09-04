@@ -40,7 +40,7 @@ class PairPotential(ABC):
         """
 
 
-class lennard_jones(PairPotential):
+class LennardJones(PairPotential):
     r"""The 12-6 Lennard-Jones pair potential.
 
     .. math::
@@ -64,7 +64,7 @@ class lennard_jones(PairPotential):
         return 4 * self.epsilon * (12 * self.sigma**12 / dr**13 - 6 * self.sigma**6 / dr**7)
 
 
-class buckingham(PairPotential):
+class Buckingham(PairPotential):
     r"""The Buckingham pair potential.
 
     .. math::
@@ -90,7 +90,7 @@ class buckingham(PairPotential):
         return self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
 
 
-class square_well(PairPotential):
+class SquareWell(PairPotential):
     r"""The square-well pair potential.
 
     The energy is ``max_val`` inside the hard core of diameter sigma, minus
