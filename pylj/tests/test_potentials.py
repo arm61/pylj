@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pylj.potentials import PairPotential, Species
+from pylj.potentials import PairPotential, Species, lennard_jones
 
 
 class TestSpecies:
@@ -36,3 +36,36 @@ class TestPairPotential:
 
         with pytest.raises(TypeError):
             Incomplete()
+
+
+class TestLennardJones:
+    def test_constructor_is_keyword_only(self):
+        with pytest.raises(TypeError):
+            lennard_jones(1.65e-21, 3.4e-10)
+
+    def test_energy_zero_at_sigma(self):
+        lj = lennard_jones(epsilon=1.65e-21, sigma=3.4e-10)
+        np.testing.assert_allclose(lj.energies(np.array([3.4e-10])), [0.0], atol=1e-30)
+
+    def test_energy_minimum_is_minus_epsilon(self):
+        lj = lennard_jones(epsilon=1.65e-21, sigma=3.4e-10)
+        r_min = 2 ** (1 / 6) * 3.4e-10
+        np.testing.assert_allclose(lj.energies(np.array([r_min])), [-1.65e-21], rtol=1e-6)
+
+    def test_force_is_the_negative_energy_gradient(self):
+        lj = lennard_jones(epsilon=1.65e-21, sigma=3.4e-10)
+        r = np.array([3.0e-10, 4.0e-10, 5.0e-10])
+        h = r * 1e-6
+        numerical = -(lj.energies(r + h) - lj.energies(r - h)) / (2 * h)
+        np.testing.assert_allclose(lj.forces(r), numerical, rtol=1e-4)
+
+    def test_force_sign_is_repulsive_then_attractive(self):
+        lj = lennard_jones(epsilon=1.65e-21, sigma=3.4e-10)
+        r_min = 2 ** (1 / 6) * 3.4e-10
+        assert lj.forces(np.array([0.9 * r_min]))[0] > 0
+        assert lj.forces(np.array([1.5 * r_min]))[0] < 0
+
+    def test_returns_an_array_for_an_array(self):
+        lj = lennard_jones(epsilon=1.65e-21, sigma=3.4e-10)
+        assert lj.energies(np.array([3e-10, 4e-10])).shape == (2,)
+        assert lj.forces(np.array([3e-10, 4e-10])).shape == (2,)

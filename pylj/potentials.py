@@ -38,3 +38,27 @@ class PairPotential(ABC):
         separation, so it is positive where the interaction is repulsive and
         negative where it is attractive.
         """
+
+
+class lennard_jones(PairPotential):
+    r"""The 12-6 Lennard-Jones pair potential.
+
+    .. math::
+        E = 4 \epsilon \left[ (\sigma / r)^{12} - (\sigma / r)^{6} \right]
+
+    Args:
+        epsilon: The well depth, in Joules.
+        sigma: The separation at which the pair energy is zero, in metres.
+    """
+
+    def __init__(self, *, epsilon: float, sigma: float):
+        self.epsilon = epsilon
+        self.sigma = sigma
+
+    def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
+        dr = np.asarray(dr, dtype=float)
+        return 4 * self.epsilon * (self.sigma**12 / dr**12 - self.sigma**6 / dr**6)
+
+    def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
+        dr = np.asarray(dr, dtype=float)
+        return 4 * self.epsilon * (12 * self.sigma**12 / dr**13 - 6 * self.sigma**6 / dr**7)
