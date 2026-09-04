@@ -6,9 +6,10 @@ from numpy.testing import assert_almost_equal, assert_equal
 from pylj import forcefields as ff
 from pylj import util
 
-# A second Lennard-Jones type with a repulsive core of 5 Angstrom (sigma) and
-# the same epsilon as argon, chosen for a modest lattice spacing.
-FIVE_ANGSTROM_CORE = [1.5402269415180226e-132, 9.857452425715339e-77]
+# Sigma and epsilon in metres and joules for two Lennard-Jones species: argon,
+# and a larger particle with a 5 Angstrom core and the same well depth.
+ARGON = [3.37e-10, 1.58e-21]
+LARGER = [5.0e-10, 1.58e-21]
 
 
 class TestUtil(unittest.TestCase):
@@ -307,23 +308,23 @@ class TestUtil(unittest.TestCase):
         assert_almost_equal(a.diameters[0] * 1e10, 3.78, decimal=2)
 
     def test_system_single_diameter_applies_to_every_type(self):
-        constants = [[1.363e-134, 9.273e-78], FIVE_ANGSTROM_CORE]
+        constants = [ARGON, LARGER]
         a = util.System(
-            2, 300, 12, constants, ff.lennard_jones, 39.948, simulation="md", diameter=3.0
+            2, 300, 12, constants, ff.lennard_jones_sigma_epsilon, 39.948, simulation="md", diameter=3.0
         )
         assert_almost_equal(a.diameters, [3e-10, 3e-10])
 
     def test_system_diameter_list_is_per_type(self):
-        constants = [[1.363e-134, 9.273e-78], FIVE_ANGSTROM_CORE]
+        constants = [ARGON, LARGER]
         a = util.System(
-            2, 300, 12, constants, ff.lennard_jones, 39.948, simulation="md", diameter=[3.0, 5.0]
+            2, 300, 12, constants, ff.lennard_jones_sigma_epsilon, 39.948, simulation="md", diameter=[3.0, 5.0]
         )
         assert_almost_equal(a.diameters, [3e-10, 5e-10])
 
     def test_system_diameter_array_is_per_type(self):
-        constants = [[1.363e-134, 9.273e-78], FIVE_ANGSTROM_CORE]
+        constants = [ARGON, LARGER]
         a = util.System(
-            2, 300, 12, constants, ff.lennard_jones, 39.948, simulation="md",
+            2, 300, 12, constants, ff.lennard_jones_sigma_epsilon, 39.948, simulation="md",
             diameter=np.array([3.0, 5.0]),
         )
         assert_almost_equal(a.diameters, [3e-10, 5e-10])
