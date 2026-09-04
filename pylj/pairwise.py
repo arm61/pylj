@@ -152,49 +152,36 @@ def lennard_jones_force(A, B, dr):
 
 
 def calculate_pressure(
-    particles, box_length, temperature, cut_off, constants, forcefield, mass
+    distances, forces, box_length, number_of_particles, temperature
 ):
-    r"""Calculates the instantaneous pressure of the simulation cell, found
-    with the following relationship:
+    r"""Calculate the instantaneous pressure of the simulation cell in two
+    dimensions, from the pair forces already computed for the configuration:
+
     .. math::
-        p = \langle \rho k_b T \rangle + \bigg\langle \frac{1}{3V}\sum_{i}
-        \sum_{j<i} \mathbf{r}_{ij}\mathbf{f}_{ij} \bigg\rangle
+        p = \frac{N k_B T}{L^2} + \frac{1}{2 L^2} \sum_{i} \sum_{j < i}
+        r_{ij} f_{ij}
 
     Parameters
     ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
+    distances: float, array_like
+        The distance between each pair of particles, in metres.
+    forces: float, array_like
+        The force between each pair of particles, in Newtons.
     box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
+        Length of a single dimension of the simulation square, in metres.
+    number_of_particles: int
+        The number of particles in the simulation.
     temperature: float
-        Instantaneous temperature of the simulation.
-    cut_off: float
-        The distance greater than which the forces between particles is taken
-        as zero.
-    constants: float, array_like (optional)
-        The constants associated with the particular forcefield used, e.g. for
-        the function forcefields.lennard_jones, theses are [A, B]
-    forcefield: function (optional)
-        The particular forcefield to be used to find the energy and forces.
-    mass: float (optional)
-        The mass of the particle being simulated (units of atomic mass units).
+        Instantaneous temperature of the simulation, in Kelvin.
 
     Returns
     -------
     float:
         Instantaneous pressure of the simulation.
     """
-    particles, distances, forces, energies = heavy.compute_force(
-        particles, box_length, cut_off, constants, forcefield, mass
-        )
-    pres = np.sum(forces * distances)
-    pres = 1.0 / (2 * box_length * box_length) * pres + (
-        particles["xposition"].size
-        / (box_length * box_length)
-        * BOLTZMANN
-        * temperature
-    )
-    return pres
+    virial = np.sum(forces * distances) / (2 * box_length * box_length)
+    ideal = number_of_particles * BOLTZMANN * temperature / (box_length * box_length)
+    return virial + ideal
 
 
 def dist(xposition, yposition, box_length):

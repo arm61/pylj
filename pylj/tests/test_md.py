@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields as ff
-from pylj import md
+from pylj import md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
@@ -54,6 +54,20 @@ class TestMd(unittest.TestCase):
         a.md_sample()
         assert_equal(a.step_sample, [3, 7])
         assert_equal(a.energy_sample.size, 2)
+
+    def test_sample_pressure_uses_the_stored_pair_forces(self):
+        system = md.initialise(20, 300, 20, "square")
+        system.integrate(md.velocity_verlet)
+        system.md_sample()
+        temperature = md.calculate_temperature(system.particles, system.mass)
+        expected = pairwise.calculate_pressure(
+            system.distances,
+            system.forces,
+            system.box_length,
+            system.particles.size,
+            temperature,
+        )
+        assert_almost_equal(system.pressure_sample[-1], expected)
 
     def test_velocity_verlet(self):
         a = md.initialise(2, 300, 8, "square")

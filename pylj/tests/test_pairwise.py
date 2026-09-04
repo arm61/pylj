@@ -54,25 +54,20 @@ class TestPairwise(unittest.TestCase):
         assert_almost_equal(particles["yacceleration"][1], -0.707106781)
 
     def test_calculate_pressure(self):
-        part_dt = util.particle_dt()
-        particles = np.zeros(2, dtype=part_dt)
-        particles["xposition"][0] = 1e-10
-        particles["xposition"][1] = 5e-10
-        particles['types'] = ['0','0']
+        # The virial sum(f r) / (2 L^2) plus the ideal term N k_B T / L^2, from
+        # pair data passed in directly.
+        distances = np.array([4e-10])
+        forces = np.array([-9.5864009e-12])
         p = pairwise.calculate_pressure(
-            particles,
-            30,
+            distances,
+            forces,
+            30e-10,
+            2,
             300,
-            15,
-            constants=[[1.363e-134, 9.273e-78]],
-            forcefield=ff.lennard_jones,
-            mass = 39.948
         )
-        # Only the ideal-gas term N k_B T / L^2 depends on the Boltzmann
-        # constant. Moving from 1.3806e-23 to the CODATA 1.380649e-23 raises
-        # it by 3.267e-28 Pa, which is the whole of the change from the
-        # previous expectation of 7.07368867.
-        assert_almost_equal(p * 1e24, 7.07401534)
+        virial = np.sum(forces * distances) / (2 * (30e-10) ** 2)
+        ideal = 2 * 1.380649e-23 * 300 / (30e-10) ** 2
+        assert_almost_equal(p, virial + ideal)
 
     def test_dist_applies_the_minimum_image(self):
         # Two particles 1 Angstrom apart across the periodic boundary of a
