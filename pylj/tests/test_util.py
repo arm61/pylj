@@ -485,6 +485,7 @@ class TestUtil(unittest.TestCase):
             system.md_sample()
         production = system.restart()
         self.assertIsNot(production, system)
+        self.assertEqual(production.simulation, "md")
         self.assertEqual(production.step, 0)
         self.assertEqual(production.time, 0.0)
         for name in (
@@ -496,19 +497,22 @@ class TestUtil(unittest.TestCase):
             "step_sample",
         ):
             self.assertEqual(getattr(production, name).size, 0)
-        assert_equal(production.particles["xposition"], system.particles["xposition"])
-        assert_equal(production.particles["yposition"], system.particles["yposition"])
-        assert_equal(production.particles["xvelocity"], system.particles["xvelocity"])
-        assert_equal(production.particles["yvelocity"], system.particles["yvelocity"])
-        assert_equal(production.forces, system.forces)
         self.assertEqual(
             md.calculate_msd(production.particles, production.initial_particles), 0.0
         )
-        self.assertEqual(production.simulation, "md")
-        # The origin stays where the run restarted while the particles move on.
-        production.integrate(md.velocity_verlet)
+        # Sampling straight after the restart uses the copied pair arrays.
+        system.md_sample()
         production.md_sample()
-        self.assertGreater(production.msd_sample[0], 0.0)
+        self.assertEqual(production.pressure_sample[0], system.pressure_sample[-1])
+        self.assertEqual(production.energy_sample[0], system.energy_sample[-1])
+        # The restarted system follows the same trajectory as the source
+        # while its displacement is measured from the restart.
+        system.integrate(md.velocity_verlet)
+        production.integrate(md.velocity_verlet)
+        assert_equal(production.particles["xposition"], system.particles["xposition"])
+        assert_equal(production.particles["yposition"], system.particles["yposition"])
+        production.md_sample()
+        self.assertGreater(production.msd_sample[-1], 0.0)
 
     def test_restart_leaves_the_source_alone(self):
         system = md.initialise(4, 300, 12, "square")
@@ -516,13 +520,15 @@ class TestUtil(unittest.TestCase):
             system.integrate(md.velocity_verlet)
             system.step += 1
             system.md_sample()
+        positions = system.particles["xposition"].copy()
+        origin = system.initial_particles["xunwrapped"].copy()
         production = system.restart()
         production.particles["xposition"] = 0.0
         production.initial_particles["xunwrapped"] = 0.0
         self.assertEqual(system.step, 3)
         self.assertEqual(system.msd_sample.size, 3)
-        self.assertTrue(np.all(system.particles["xposition"] > 0.0))
-        self.assertTrue(np.all(system.initial_particles["xunwrapped"] > 0.0))
+        assert_equal(system.particles["xposition"], positions)
+        assert_equal(system.initial_particles["xunwrapped"], origin)
 
     def test_restart_carries_the_accepted_energy_for_monte_carlo(self):
         system = mc.initialise(4, 300, 12, "square")

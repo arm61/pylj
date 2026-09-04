@@ -41,7 +41,7 @@ def initialise(
     constants: float, array_like (optional)
         The values of the constants for the forcefield used. Defaults to the
         argon Lennard-Jones constants, ``[[1.363e-134, 9.273e-78]]``.
-    forcefield: function (optional)
+    forcefield: class (optional)
         The particular forcefield to be used to find the energy and forces.
     diameter: float or iterable of float (optional)
         Drawn diameter of the particles in Angstrom, one value or one per
@@ -111,7 +111,8 @@ def velocity_verlet(
     Returns
     -------
     util.particle_dt, array_like:
-        Information about the particles, with new positions and velocities.
+        Information about the particles, with new positions, velocities and
+        accelerations.
     float, array_like
         Current distances between pairs of particles in the simulation.
     float, array_like
@@ -189,7 +190,10 @@ def sample(particles, box_length, initial_particles, system):
 def calculate_msd(particles, initial_particles):
     """Determines the mean squared displacement of the particles from their
     positions in initial_particles, using the unwrapped positions so that
-    crossings of the periodic boundary are included.
+    crossings of the periodic boundary are included. The unwrapped positions
+    are maintained by md.velocity_verlet only, so the displacement is
+    meaningful for a molecular dynamics system and not after Monte Carlo
+    moves.
 
     Parameters
     ----------

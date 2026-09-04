@@ -169,9 +169,10 @@ class System:
         and cut-off, and copies the particle positions, velocities and
         accelerations and the pair distances, forces and energies. A Monte
         Carlo system also keeps its accepted energy. Step and time are zero,
-        the sample arrays are empty, and the mean squared displacement is
-        measured from the copied positions. The current system is not
-        changed. Use it to start a production run after equilibration::
+        the sample arrays are empty, and initial_particles is replaced by the
+        copied particles, so the mean squared displacement is measured from
+        the restarted configuration. The current system is not changed. Use
+        it to start a production run after equilibration::
 
             system = md.initialise(100, 300, 40, "random")
             for _ in range(1000):
@@ -188,7 +189,7 @@ class System:
             The new system.
         """
         # A shallow copy shares the box, forcefield and constants, which never
-        # change; the arrays that a run changes are copied below.
+        # change; everything a run changes is copied or reset below.
         new = copy.copy(self)
         new.particles = self.particles.copy()
         new.particles["xunwrapped"] = new.particles["xposition"]
@@ -571,8 +572,8 @@ def particle_dt():
 
     - xposition and yposition, wrapped into the simulation cell
     - xunwrapped and yunwrapped, the positions without periodic wrapping,
-      advanced by md.velocity_verlet and used for the mean squared
-      displacement
+      advanced by md.velocity_verlet only and used for the mean squared
+      displacement; Monte Carlo moves leave them unchanged
     - xvelocity and yvelocity
     - xacceleration and yacceleration
     - energy
