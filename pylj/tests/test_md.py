@@ -150,18 +150,18 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(msd * 1e20, 14)
 
     def test_calculate_msd_is_zero_before_the_first_step(self):
-        # A 4 x 4 lattice in a 20 Angstrom box has particles either side of
-        # the box midpoint.
+        # The unwrapped positions start equal to the initial positions.
         a = md.initialise(16, 300, 20, "square")
         self.assertEqual(md.calculate_msd(a.particles, a.initial_particles), 0.0)
 
     def test_calculate_msd_with_sparse_sampling(self):
-        # Both particles are driven in -x at 1e4 m/s, 0.1 Angstrom per step,
-        # so each crosses the periodic boundary around step 20 of 60 with no
-        # sampling in between. Moving together keeps their separation, and
-        # so the pair force, constant. The oracle accumulates the
-        # minimum-image displacement between consecutive steps, which is
-        # exact while a particle moves less than half a box per step.
+        # Both particles are driven in -x at 1e4 m/s, 1 Angstrom per step, so
+        # each crosses the periodic boundary of the 8 Angstrom box several
+        # times in 60 steps with no sampling in between. Both share the same
+        # x, so the pair force acts only along y and the x motion is the
+        # imposed drift. The oracle accumulates the minimum-image
+        # displacement between consecutive steps, which is exact while a
+        # particle moves less than half a box per step.
         a = md.initialise(2, 300, 8, "square")
         a.particles["xvelocity"] = -1e4
         a.particles["yvelocity"] = 0.0
