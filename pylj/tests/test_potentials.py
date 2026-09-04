@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from pylj.potentials import Species
+from pylj.potentials import PairPotential, Species
 
 
 class TestSpecies:
@@ -23,3 +23,16 @@ class TestSpecies:
         xenon = Species(mass=131.29, name="xenon")
         interactions = {(argon, argon): 1, (argon, xenon): 2}
         assert interactions[(argon, argon)] == 1
+
+
+class TestPairPotential:
+    def test_cannot_be_instantiated_directly(self):
+        with pytest.raises(TypeError):
+            PairPotential()
+
+    def test_a_subclass_must_define_energies_and_forces(self):
+        class Incomplete(PairPotential):
+            pass
+
+        with pytest.raises(TypeError):
+            Incomplete()

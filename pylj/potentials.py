@@ -16,3 +16,25 @@ class Species:
 
     mass: float
     name: str = ""
+
+
+class PairPotential(ABC):
+    """The interface every pair potential implements.
+
+    A pair potential is central: the pair energy depends only on the
+    separation magnitude, so both quantities are functions of an array of
+    separations.
+    """
+
+    @abstractmethod
+    def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
+        """Return the pair energy for each separation in ``dr``."""
+
+    @abstractmethod
+    def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
+        """Return the signed radial force for each separation in ``dr``.
+
+        The value is minus the derivative of the energy with respect to the
+        separation, so it is positive where the interaction is repulsive and
+        negative where it is attractive.
+        """
