@@ -74,6 +74,17 @@ class TestPairwise(unittest.TestCase):
         # previous expectation of 7.07368867.
         assert_almost_equal(p * 1e24, 7.07401534)
 
+    def test_dist_applies_the_minimum_image(self):
+        # Two particles 1 Angstrom apart across the periodic boundary of a
+        # 10 Angstrom box: the minimum image is 1 Angstrom, not the 9 Angstrom
+        # raw separation.
+        xposition = np.array([0.5e-10, 9.5e-10])
+        yposition = np.array([0.0, 0.0])
+        dr, dx, dy = pairwise.dist(xposition, yposition, 10e-10)
+        assert_almost_equal(dr * 1e10, [1.0])
+        assert_almost_equal(dx * 1e10, [1.0])
+        assert_almost_equal(dy * 1e10, [0.0])
+
     def test_compute_force_zeroes_pairs_beyond_the_cut_off(self):
         # cut_off is compared against the pair distances directly, so it is in
         # the same units as the positions (metres here). At 6e-10 m it sits
