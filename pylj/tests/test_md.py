@@ -74,32 +74,41 @@ class TestMd(unittest.TestCase):
         )
         assert_almost_equal(system.pressure_sample[-1], expected)
 
-    def test_velocity_verlet(self):
+    def test_velocity_verlet_advances_the_unwrapped_positions(self):
+        # Two particles at (2, 2) and (2, 6) Angstrom in an 8 Angstrom box.
+        # A y velocity of 3e4 m/s moves each by 3 Angstrom in one 1e-14 s
+        # step, so the second particle crosses the boundary: its wrapped
+        # position comes back into the box and its unwrapped one does not.
         a = md.initialise(2, 300, 8, "square")
+        a.particles["xvelocity"] = 0.0
+        a.particles["yvelocity"] = 3e4
+        a.particles["xacceleration"] = 0.0
+        a.particles["yacceleration"] = 0.0
         a.particles, a.distances, a.forces, a.energies = md.velocity_verlet(
-            a.particles, 1, a.box_length, a.cut_off, a.constants, a.forcefield, a.mass
+            a.particles, 1e-14, a.box_length, a.cut_off, a.constants, a.forcefield, a.mass
         )
-        assert_almost_equal(a.particles["xprevious_position"] * 1e10, [2, 2])
-        assert_almost_equal(a.particles["yprevious_position"] * 1e10, [2, 6])
+        assert_almost_equal(a.particles["xunwrapped"] * 1e10, [2, 2])
+        assert_almost_equal(a.particles["yunwrapped"] * 1e10, [5, 9])
+        assert_almost_equal(a.particles["yposition"] * 1e10, [5, 1])
 
-    def test_update_positions(self):
+    def test_update_positions_wraps_the_position_and_not_the_unwrapped_one(self):
         a = md.initialise(2, 300, 8, "square")
         a.particles["xvelocity"] = 1e4
-        a.particles["yvelocity"] = 1e4
-        a.particles["xacceleration"] = 1e4
-        a.particles["yacceleration"] = 1e4
-        b, c = md.update_positions(
+        a.particles["yvelocity"] = 3e4
+        a.particles["xacceleration"] = 0.0
+        a.particles["yacceleration"] = 0.0
+        positions, unwrapped = md.update_positions(
             [a.particles["xposition"], a.particles["yposition"]],
-            [a.particles["xprevious_position"], a.particles["yprevious_position"]],
+            [a.particles["xunwrapped"], a.particles["yunwrapped"]],
             [a.particles["xvelocity"], a.particles["yvelocity"]],
             [a.particles["xacceleration"], a.particles["yacceleration"]],
-            a.timestep_length,
+            1e-14,
             a.box_length,
         )
-        assert_almost_equal(b[0][0] * 1e10, 3)
-        assert_almost_equal(b[1][0] * 1e10, 3)
-        assert_almost_equal(b[0][1] * 1e10, 3)
-        assert_almost_equal(b[1][1] * 1e10, 7)
+        assert_almost_equal(positions[0] * 1e10, [3, 3])
+        assert_almost_equal(positions[1] * 1e10, [5, 1])
+        assert_almost_equal(unwrapped[0] * 1e10, [3, 3])
+        assert_almost_equal(unwrapped[1] * 1e10, [5, 9])
 
     def test_update_velocities(self):
         a = md.initialise(2, 300, 8, "square")
@@ -132,18 +141,45 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(b * 1e23, expected * 1e23)
 
     def test_calculate_msd(self):
+        # Displacements of (1, 1) and (5, 1) Angstrom from the origin
+        # positions give (2 + 26) / 2 = 14 Angstrom^2.
         a = md.initialise(2, 300, 8, "square")
-        a.particles["xposition"] = [3e-10, 3e-10]
-        a.particles["yposition"] = [3e-10, 7e-10]
-        b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
-        assert_almost_equal(b, 2e-20)
+        a.particles["xunwrapped"] = a.initial_particles["xunwrapped"] + [1e-10, 5e-10]
+        a.particles["yunwrapped"] = a.initial_particles["yunwrapped"] + [1e-10, 1e-10]
+        msd = md.calculate_msd(a.particles, a.initial_particles)
+        assert_almost_equal(msd * 1e20, 14)
 
-    def test_calculate_msd_large(self):
+    def test_calculate_msd_is_zero_before_the_first_step(self):
+        # The unwrapped positions start equal to the initial positions.
+        a = md.initialise(16, 300, 20, "square")
+        self.assertEqual(md.calculate_msd(a.particles, a.initial_particles), 0.0)
+
+    def test_calculate_msd_with_sparse_sampling(self):
+        # Both particles are driven in -x at 1e4 m/s, 1 Angstrom per step, so
+        # each crosses the periodic boundary of the 8 Angstrom box several
+        # times in 60 steps with no sampling in between. Both share the same
+        # x, so the pair force acts only along y and the x motion is the
+        # imposed drift. The oracle accumulates the minimum-image
+        # displacement between consecutive steps, which is exact while a
+        # particle moves less than half a box per step.
         a = md.initialise(2, 300, 8, "square")
-        a.particles["xposition"] = [7e-10, 3e-10]
-        a.particles["yposition"] = [7e-10, 7e-10]
-        b = md.calculate_msd(a.particles, a.initial_particles, a.box_length)
-        assert_almost_equal(b, 10e-20)
+        a.particles["xvelocity"] = -1e4
+        a.particles["yvelocity"] = 0.0
+        box = a.box_length
+        total_dx = np.zeros(2)
+        total_dy = np.zeros(2)
+        for _ in range(60):
+            x_before = a.particles["xposition"].copy()
+            y_before = a.particles["yposition"].copy()
+            a.integrate(md.velocity_verlet)
+            dx = a.particles["xposition"] - x_before
+            dy = a.particles["yposition"] - y_before
+            total_dx += dx - box * np.round(dx / box)
+            total_dy += dy - box * np.round(dy / box)
+        self.assertTrue(np.all(total_dx < -5e-10))
+        expected = np.mean(total_dx**2 + total_dy**2)
+        msd = md.calculate_msd(a.particles, a.initial_particles)
+        assert_almost_equal(msd * 1e20, expected * 1e20)
 
     def test_initialise_accepts_diameter(self):
         a = md.initialise(2, 300, 8, "square", diameter=3.0)

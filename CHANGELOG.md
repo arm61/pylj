@@ -14,6 +14,7 @@ All notable changes to pylj are recorded here. The format follows
 - `System.cores`, the separation at which each forcefield's pair energy falls to zero, found numerically from its `energy` method. Initial configurations keep particles at least this far apart.
 - `pylj.constants`, taking the Boltzmann constant and the atomic mass unit from `scipy.constants`.
 - ruff and mypy configuration in `pyproject.toml`, a `dev` extra, and continuous integration on Python 3.11 to 3.14.
+- `System.restart()` returns a new system that continues from the current configuration with step and time at zero, empty sample arrays and the mean squared displacement measured from the copied positions, for starting a production run after equilibration.
 
 ### Changed
 
@@ -29,6 +30,7 @@ All notable changes to pylj are recorded here. The format follows
 - `energy` and `force` on the forcefields return a Python float for scalar input, rather than `np.float64`; a one-element list, such as to `square_well.energy`, returns a one-element array rather than a float.
 - `pairwise.compute_force` evaluates each forcefield only on the pairs of its own types, instead of passing every forcefield the full distance array with the other types' entries zeroed.
 - Pair distances and accelerations are computed with vectorised NumPy. `pairwise.dist` returns `(dr, dx, dy)` and no longer takes or returns particle types; `pairwise.calculate_pressure` takes the pair distances and forces directly, `(distances, forces, box_length, number_of_particles, temperature)`, and `md.sample` feeds it the forces stored by the last force evaluation rather than recomputing them.
+- The particle dtype carries `xunwrapped` and `yunwrapped`, positions without periodic wrapping, advanced by `md.velocity_verlet`; `xprevious_position`, `yprevious_position`, `xpbccount` and `ypbccount` are gone. `md.calculate_msd(particles, initial_particles)` reads the unwrapped positions and no longer takes `box_length`; `md.update_positions` takes and returns the unwrapped positions in place of the previous positions.
 
 ### Fixed
 
@@ -44,6 +46,7 @@ All notable changes to pylj are recorded here. The format follows
 - A forcefield whose `energy` does not return one value per separation, whose pair energy is positive at every grid point (suggesting its constants are in the wrong units) is refused with a clear message.
 - `energy` and `force` on the forcefields no longer store their result on `self`, overwriting the bound method and breaking a second call on the same instance (#79).
 - `buckingham.energy` and `buckingham.force` raised under NumPy 2.1 or later when the separation was an integer, a 0-d array, or a NumPy scalar that is not a float subclass (#83). `lennard_jones` and `lennard_jones_sigma_epsilon` also failed on integer input.
+- The mean squared displacement was wrong unless sampled on every integration step, and non-zero before the first step (#74).
 
 ### Removed
 

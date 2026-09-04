@@ -36,7 +36,7 @@ def initialise(
     constants: float, array_like (optional)
         The values of the constants for the forcefield used. Defaults to the
         argon Lennard-Jones constants, ``[[1.363e-134, 9.273e-78]]``.
-    forcefield: function (optional)
+    forcefield: class (optional)
         The particular forcefield to be used to find the energy and forces.
     diameter: float or iterable of float (optional)
         Drawn diameter of the particles in Angstrom, one value or one per

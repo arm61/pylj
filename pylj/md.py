@@ -41,7 +41,7 @@ def initialise(
     constants: float, array_like (optional)
         The values of the constants for the forcefield used. Defaults to the
         argon Lennard-Jones constants, ``[[1.363e-134, 9.273e-78]]``.
-    forcefield: function (optional)
+    forcefield: class (optional)
         The particular forcefield to be used to find the energy and forces.
     diameter: float or iterable of float (optional)
         Drawn diameter of the particles in Angstrom, one value or one per
@@ -86,10 +86,9 @@ initialize = initialise  # US spelling
 def velocity_verlet(
     particles, timestep_length, box_length, cut_off, constants, forcefield, mass
 ):
-    """Uses the Velocity-Verlet integrator to move forward in time. The
-    Updates the particles positions and velocities in terms of the Velocity
-    Verlet algorithm. Also calculates the instanteous temperature, pressure,
-    and force and appends these to the appropriate system array.
+    """Move the particles forward one step with the Velocity-Verlet
+    integrator: update the positions, recompute the forces, then update the
+    velocities from the mean of the old and new accelerations.
 
     Parameters
     ----------
@@ -99,24 +98,38 @@ def velocity_verlet(
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
         Length of a single dimension of the simulation square, in metres.
+    cut_off: float
+        The separation beyond which the pair energy and force are taken to be
+        zero, in metres.
+    constants: float, array_like
+        The constants associated with the particular forcefield used.
+    forcefield: class
+        The particular forcefield to be used to find the energy and forces.
+    mass: float
+        The mass of the particle being simulated (units of atomic mass units).
 
     Returns
     -------
     util.particle_dt, array_like:
-        Information about the particles, with new positions and velocities.
+        Information about the particles, with new positions, velocities and
+        accelerations.
+    float, array_like
+        Current distances between pairs of particles in the simulation.
+    float, array_like
+        Current forces between pairs of particles in the simulation.
+    float, array_like
+        Current energies between pairs of particles in the simulation.
     """
-    xposition_store = list(particles["xposition"])
-    yposition_store = list(particles["yposition"])
-    pos, prev_pos = update_positions(
+    positions, unwrapped = update_positions(
         [particles["xposition"], particles["yposition"]],
-        [particles["xprevious_position"], particles["yprevious_position"]],
+        [particles["xunwrapped"], particles["yunwrapped"]],
         [particles["xvelocity"], particles["yvelocity"]],
         [particles["xacceleration"], particles["yacceleration"]],
         timestep_length,
         box_length,
     )
-    [particles["xposition"], particles["yposition"]] = pos
-    [particles["xprevious_position"], particles["yprevious_position"]] = pos
+    [particles["xposition"], particles["yposition"]] = positions
+    [particles["xunwrapped"], particles["yunwrapped"]] = unwrapped
     xacceleration_store = list(particles["xacceleration"])
     yacceleration_store = list(particles["yacceleration"])
     particles, distances, forces, energies = heavy.compute_force(
@@ -128,8 +141,6 @@ def velocity_verlet(
         [particles["xacceleration"], particles["yacceleration"]],
         timestep_length,
     )
-    particles["xprevious_position"] = xposition_store
-    particles["yprevious_position"] = yposition_store
     return particles, distances, forces, energies
 
 
@@ -167,7 +178,7 @@ def sample(particles, box_length, initial_particles, system):
         particles.size,
         temperature_new,
     )
-    msd_new = calculate_msd(particles, initial_particles, box_length)
+    msd_new = calculate_msd(particles, initial_particles)
     system.pressure_sample = np.append(system.pressure_sample, pressure_new)
     system.force_sample = np.append(system.force_sample, np.sum(system.forces))
     system.energy_sample = np.append(system.energy_sample, np.sum(system.energies))
@@ -176,48 +187,33 @@ def sample(particles, box_length, initial_particles, system):
     return system
 
 
-def calculate_msd(particles, initial_particles, box_length):
-    """Determines the mean squared displacement of the particles in the system.
+def calculate_msd(particles, initial_particles):
+    """Determines the mean squared displacement of the particles from their
+    positions in initial_particles, using the unwrapped positions so that
+    crossings of the periodic boundary are included. The unwrapped positions
+    are maintained by md.velocity_verlet only, so the displacement is
+    meaningful for a molecular dynamics system and not after Monte Carlo
+    moves.
 
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
     initial_particles: util.particle_dt, array_like
-        Information about the initial state of the particles.
-    box_length: float
-        Size of the cell vector.
+        Information about the particles at the origin of the displacement.
 
     Returns
     -------
     float:
-        Mean squared deviation for the particles at the given timestep.
+        Mean squared displacement of the particles, in metres squared.
     """
-    xpos = np.array(particles["xposition"])
-    ypos = np.array(particles["yposition"])
-    dxinst = xpos - particles["xprevious_position"]
-    dyinst = ypos - particles["yprevious_position"]
-    for i in range(0, particles["xposition"].size):
-        if np.abs(dxinst[i]) > 0.5 * box_length:
-            if xpos[i] <= 0.5 * box_length:
-                particles["xpbccount"][i] += 1
-            if xpos[i] > 0.5 * box_length:
-                particles["xpbccount"][i] -= 1
-        xpos[i] += box_length * particles["xpbccount"][i]
-        if np.abs(dyinst[i]) > 0.5 * box_length:
-            if ypos[i] <= 0.5 * box_length:
-                particles["ypbccount"][i] += 1
-            if ypos[i] > 0.5 * box_length:
-                particles["ypbccount"][i] -= 1
-        ypos[i] += box_length * particles["ypbccount"][i]
-    dx = xpos - initial_particles["xposition"]
-    dy = ypos - initial_particles["yposition"]
-    dr = np.sqrt(dx * dx + dy * dy)
-    return np.average(dr ** 2)
+    dx = particles["xunwrapped"] - initial_particles["xunwrapped"]
+    dy = particles["yunwrapped"] - initial_particles["yunwrapped"]
+    return np.mean(dx * dx + dy * dy)
 
 
 def update_positions(
-    positions, old_positions, velocities, accelerations, timestep_length, box_length
+    positions, unwrapped, velocities, accelerations, timestep_length, box_length
 ):
     """Update the particle positions using the Velocity-Verlet integrator.
 
@@ -225,17 +221,16 @@ def update_positions(
     ----------
     positions: (2, N) array_like
         Where N is the number of particles, and the first row are the x
-        positions and the second row the y positions.
-    old_positions: (2, N) array_like
-        Where N is the number of particles, and the first row are the
-        previous x positions and the second row are the y positions.
+        positions and the second row the y positions, wrapped into the
+        simulation cell.
+    unwrapped: (2, N) array_like
+        The same positions without periodic wrapping.
     velocities: (2, N) array_like
         Where N is the number of particles, and the first row are the x
         velocities and the second row the y velocities.
     accelerations: (2, N) array_like
         Where N is the number of particles, and the first row are the x
-        accelerations and the second row the y
-        accelerations.
+        accelerations and the second row the y accelerations.
     timestep_length: float
         Length for each Velocity-Verlet integration step, in seconds.
     box_length: float
@@ -244,19 +239,17 @@ def update_positions(
     Returns
     -------
     (2, N) array_like:
-        Updated positions.
+        Updated positions, wrapped into the simulation cell.
+    (2, N) array_like:
+        Updated unwrapped positions.
     """
-    old_positions[0] = np.array(positions[0])
-    old_positions[1] = np.array(positions[1])
-    positions[0] += (velocities[0] * timestep_length) + (
-        0.5 * accelerations[0] * timestep_length * timestep_length
-    )
-    positions[1] += (velocities[1] * timestep_length) + (
-        0.5 * accelerations[1] * timestep_length * timestep_length
-    )
-    positions[0] = positions[0] % box_length
-    positions[1] = positions[1] % box_length
-    return [positions[0], positions[1]], [old_positions[0], old_positions[1]]
+    for axis in (0, 1):
+        displacement = velocities[axis] * timestep_length + (
+            0.5 * accelerations[axis] * timestep_length * timestep_length
+        )
+        positions[axis] = (positions[axis] + displacement) % box_length
+        unwrapped[axis] = unwrapped[axis] + displacement
+    return [positions[0], positions[1]], [unwrapped[0], unwrapped[1]]
 
 
 def update_velocities(
@@ -329,7 +322,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     constants: float, array_like (optional)
         The constants associated with the particular forcefield used, e.g. for
         the function forcefields.lennard_jones, theses are [A, B]
-    forcefield: function (optional)
+    forcefield: class (optional)
         The particular forcefield to be used to find the energy and forces.
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).

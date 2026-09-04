@@ -6,7 +6,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import forcefields as ff
-from pylj import util
+from pylj import mc, md, util
 
 # Sigma and epsilon in metres and joules for two Lennard-Jones species: argon,
 # and a larger particle with a 5 Angstrom core and the same well depth.
@@ -475,3 +475,66 @@ class TestUtil(unittest.TestCase):
             [1.69e-15, 3.66e10, 1.01e-77]
         ).energy(np.array([a.cores[0]]))[0]
         self.assertTrue(abs(core_energy) < 1e-3 * abs(well_depth))
+
+    def test_restart_starts_a_fresh_record_from_the_current_state(self):
+        system = md.initialise(4, 300, 12, "square")
+        for _ in range(5):
+            system.integrate(md.velocity_verlet)
+            system.step += 1
+            system.time += system.timestep_length
+            system.md_sample()
+        production = system.restart()
+        self.assertIsNot(production, system)
+        self.assertEqual(production.simulation, "md")
+        self.assertEqual(production.step, 0)
+        self.assertEqual(production.time, 0.0)
+        for name in (
+            "temperature_sample",
+            "pressure_sample",
+            "force_sample",
+            "msd_sample",
+            "energy_sample",
+            "step_sample",
+        ):
+            self.assertEqual(getattr(production, name).size, 0)
+        self.assertEqual(
+            md.calculate_msd(production.particles, production.initial_particles), 0.0
+        )
+        # Sampling straight after the restart uses the copied pair arrays.
+        system.md_sample()
+        production.md_sample()
+        self.assertEqual(production.pressure_sample[0], system.pressure_sample[-1])
+        self.assertEqual(production.energy_sample[0], system.energy_sample[-1])
+        # The restarted system follows the same trajectory as the source
+        # while its displacement is measured from the restart.
+        system.integrate(md.velocity_verlet)
+        production.integrate(md.velocity_verlet)
+        assert_equal(production.particles["xposition"], system.particles["xposition"])
+        assert_equal(production.particles["yposition"], system.particles["yposition"])
+        production.md_sample()
+        self.assertGreater(production.msd_sample[-1], 0.0)
+
+    def test_restart_leaves_the_source_alone(self):
+        system = md.initialise(4, 300, 12, "square")
+        for _ in range(3):
+            system.integrate(md.velocity_verlet)
+            system.step += 1
+            system.md_sample()
+        positions = system.particles["xposition"].copy()
+        origin = system.initial_particles["xunwrapped"].copy()
+        production = system.restart()
+        production.particles["xposition"] = 0.0
+        production.initial_particles["xunwrapped"] = 0.0
+        self.assertEqual(system.step, 3)
+        self.assertEqual(system.msd_sample.size, 3)
+        assert_equal(system.particles["xposition"], positions)
+        assert_equal(system.initial_particles["xunwrapped"], origin)
+
+    def test_restart_carries_the_accepted_energy_for_monte_carlo(self):
+        system = mc.initialise(4, 300, 12, "square")
+        system.mc_sample()
+        production = system.restart()
+        self.assertEqual(production.simulation, "mc")
+        self.assertEqual(production.old_energy, system.old_energy)
+        self.assertEqual(production.energy_sample.size, 0)
+        self.assertEqual(system.energy_sample.size, 1)
