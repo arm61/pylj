@@ -602,7 +602,7 @@ def particle_dt():
     - xvelocity and yvelocity
     - xacceleration and yacceleration
     - energy
-    - types
+    - types, the index of each particle's species in ``System.species``
     """
     return np.dtype(
         [
@@ -615,6 +615,6 @@ def particle_dt():
             ("xacceleration", np.float64),
             ("yacceleration", np.float64),
             ("energy", np.float64),
-            ("types", list),
+            ("types", np.int64),
         ]
     )
