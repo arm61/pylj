@@ -322,7 +322,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     constants: float, array_like (optional)
         The constants associated with the particular forcefield used, e.g. for
         the function forcefields.lennard_jones, theses are [A, B]
-    forcefield: function (optional)
+    forcefield: class (optional)
         The particular forcefield to be used to find the energy and forces.
     mass: float (optional)
         The mass of the particle being simulated (units of atomic mass units).

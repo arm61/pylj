@@ -189,7 +189,8 @@ class System:
             The new system.
         """
         # A shallow copy shares the box, forcefield and constants, which never
-        # change; everything a run changes is copied or reset below.
+        # change, and keeps the accepted energy; the state that belongs to one
+        # run is copied or reset below.
         new = copy.copy(self)
         new.particles = self.particles.copy()
         new.particles["xunwrapped"] = new.particles["xposition"]
