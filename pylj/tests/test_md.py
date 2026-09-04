@@ -14,7 +14,7 @@ class TestMd(unittest.TestCase):
         a = md.initialise(2, 300, 8, "square", **ARGON_MODEL)
         assert_equal(a.number_of_particles, 2)
         assert_almost_equal(a.box_length, 8e-10)
-        assert_almost_equal(a.init_temp, 300)
+        assert_almost_equal(a.temperature, 300)
         assert_almost_equal(a.particles["xposition"] * 1e10, [2, 2])
         assert_almost_equal(a.particles["yposition"] * 1e10, [2, 6])
         assert_equal(a.simulation, "md")

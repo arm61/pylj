@@ -484,9 +484,9 @@ class System:
         """Record the current energy and step.
 
         The pair distances and energies are recomputed first, so the stored
-        pair arrays match the configuration and ``energy`` is the exact total
-        rather than the running one kept by ``apply``. A viewer updated
-        between samples reads the pair arrays of the last sample.
+        pair arrays match the configuration and ``energy`` is the exact
+        total; between samples ``apply`` keeps a running total. A viewer
+        updated between samples reads the pair arrays of the last sample.
         """
         self.compute_energy()
         self.energy = float(self.energies.sum())

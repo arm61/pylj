@@ -21,6 +21,7 @@ All notable changes to pylj are recorded here. The format follows
 - `pairwise.compute_energy`, which evaluates the pair distances and energies without calling `forces`, so a potential with no finite force drives Monte Carlo; `System.compute_energy` uses it.
 - `pairwise.pair_potential` and `pairwise.particle_masses`.
 - `CellPane(diameter=...)` and a `diameter` keyword on every named viewer, in Angstrom, one value or one per species; by default particles are drawn at the separation of the minimum of their species' own pair energy.
+- `mc.accept`, the Metropolis criterion on an energy change; `mc.Proposal`, a proposed configuration with its energy change; `pairwise.particle_energy`, one particle's interaction energy with a set of others; `System.propose`, `System.apply` and `System.energy`, the total pair energy of the current configuration.
 
 ### Changed
 
@@ -43,6 +44,7 @@ All notable changes to pylj are recorded here. The format follows
 - The particle dtype's `types` field is the integer index of each particle's species.
 - `pairwise.compute_force(particles, box_length, cut_off, pair_potentials, species)` resolves each pair of species to its potential and divides each pair force by the receiving particle's own mass; `pairwise.update_accelerations` takes the mass of each particle. `md.velocity_verlet` takes `pair_potentials` and `species`. `md.calculate_temperature` and `md.heat_bath` accept one mass per particle.
 - Initial velocities are drawn with each particle's own thermal width and the mass-weighted centre-of-mass velocity is removed.
+- The Monte Carlo loop proposes a configuration and applies it on acceptance, leaving the configuration untouched otherwise; a trial move costs O(N). `System.mc_sample` recomputes the pair distances and energies and sets `energy` to the exact total before recording. `System.init_temp` is `System.temperature`.
 
 ### Fixed
 
@@ -67,4 +69,5 @@ All notable changes to pylj are recorded here. The format follows
 - `pairwise.heat_bath`; `md.heat_bath` is the implementation (#76).
 - `pylj/sample.py`, `point_size` on forcefields, `System.type_identifiers`, `pairwise.create_dist_identifiers`, `MANIFEST.in`, and the Code Climate upload from CI.
 - `pairwise.separation`, `pairwise.pbc_correction`, `pairwise.second_law`, and the deprecated `pairwise.lennard_jones_energy` and `pairwise.lennard_jones_force` wrappers.
+- `System.select_random_particle`, `new_random_position`, `metropolis`, `accept` and `reject`, with `old_energy`, `new_energy`, `position_store` and `random_particle`; `mc.select_random_particle`, `mc.get_new_particle`, `mc.reject`, `mc.metropolis`, and the identity `mc.accept(new_energy)`.
 - `pylj.forcefields` and its `mixing` and `diameter` members; cross-species potentials are entries in `pair_potentials`. `md.compute_force` (a wrapper of `pairwise.compute_force`), `util.Particle`, `System.setup_types`, `System.setup_diameters` and `System.diameters`.

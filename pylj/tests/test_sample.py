@@ -69,14 +69,9 @@ def sampled_mc_system(steps: int):
     system.mc_sample()
     for _ in range(steps):
         system.step += 1
-        system.select_random_particle()
-        system.new_random_position()
-        system.compute_energy()
-        system.new_energy = system.energies.sum()
-        if mc.metropolis(100, system.old_energy, system.new_energy, n=0.5):
-            system.accept()
-        else:
-            system.reject()
+        proposal = system.propose()
+        if mc.accept(proposal.energy_change, 100, n=0.5):
+            system.apply(proposal)
         system.mc_sample()
     return system
 
