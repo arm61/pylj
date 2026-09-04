@@ -121,7 +121,7 @@ class TestUtil(unittest.TestCase):
     def test_system_square_overlap_raises(self):
         # 50 argon particles in a 20 Angstrom box: at most 25 fit on a
         # square lattice without overlap.
-        with self.assertRaisesRegex(ValueError, "25"):
+        with self.assertRaisesRegex(ValueError, "at most 25 particles"):
             util.System(
                 50,
                 100,
@@ -209,7 +209,7 @@ class TestUtil(unittest.TestCase):
         b = util.System(
             2, 300, 8, [[1.0, sigma, 2.0]], ff.square_well, 39.948, simulation="md"
         )
-        self.assertTrue(b.cores[0] >= sigma)
+        self.assertTrue(sigma <= b.cores[0] <= sigma * 1.002)
 
     def test_system_forcefield_never_positive_raises(self):
         class NeverPositive:

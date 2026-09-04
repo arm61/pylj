@@ -38,7 +38,7 @@ All notable changes to pylj are recorded here. The format follows
 - A custom forcefield without a `diameter` property, a diameter given in metres, or a non-positive or non-finite diameter (whether from the forcefield or passed by the caller) is refused with a clear message.
 - Random initial configurations no longer overlap: particles are placed at least their repulsive-core separation apart (#82).
 - The square lattice refuses a spacing below the repulsive core, with the largest count or the smallest box that fits, rounded up so the suggested box is accepted, in the message (#82).
-- A forcefield whose `energy` does not return one value per separation, whose pair energy is positive at every grid point (suggesting its constants are in the wrong units), or whose diameter is non-finite, is refused with a clear message.
+- A forcefield whose `energy` does not return one value per separation, whose pair energy is positive at every grid point (suggesting its constants are in the wrong units) is refused with a clear message.
 
 ### Removed
 
