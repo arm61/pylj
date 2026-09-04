@@ -1,6 +1,5 @@
 import numpy as np
 
-from pylj import pairwise as heavy
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 
 
@@ -15,20 +14,20 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     box_length: float
         Length of a single dimension of the simulation square, in metres.
     cut_off: float
-        The distance beyond which the force between two particles is taken
-        to be zero.
-    constants: float, array_like (optional)
+        The separation beyond which the pair energy and force are taken to be
+        zero, in metres.
+    constants: float, array_like
         The constants associated with the particular forcefield used, e.g. for
-        the function forcefields.lennard_jones, theses are [A, B]
-    forcefield: function (optional)
+        the class forcefields.lennard_jones, these are [A, B]
+    forcefield: class
         The particular forcefield to be used to find the energy and forces.
-    mass: float (optional)
+    mass: float
         The mass of the particle being simulated (units of atomic mass units).
 
     Returns
     -------
     util.particle_dt, array_like
-        Information about particles, with updated accelerations and forces.
+        Information about particles, with updated accelerations.
     float, array_like
         Current distances between pairs of particles in the simulation.
     float, array_like
@@ -39,7 +38,7 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     particles["xacceleration"] = np.zeros(particles["xacceleration"].size)
     particles["yacceleration"] = np.zeros(particles["yacceleration"].size)
     mass_kg = mass * ATOMIC_MASS_UNIT
-    distances, dx, dy = heavy.dist(
+    distances, dx, dy = dist(
         particles["xposition"], particles["yposition"], box_length
     )
     i, j = np.triu_indices(particles.size, 1)
@@ -48,8 +47,8 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
     upper = np.maximum(types[i], types[j])
     forces = np.zeros(distances.size)
     energies = np.zeros(distances.size)
-    # '0,1' and '1,0' are the same pair of types, so evaluate each unordered
-    # pair once, on only the distances belonging to it.
+    # A pair of types 0 and 1 is the same pair as 1 and 0, so evaluate each
+    # unordered pair once, on only the distances belonging to it.
     for type_1, type_2 in sorted(set(zip(lower.tolist(), upper.tolist(), strict=True))):
         mask = (lower == type_1) & (upper == type_2)
         ff = forcefield(np.array(constants[type_1]))
@@ -64,22 +63,28 @@ def compute_force(particles, box_length, cut_off, constants, forcefield, mass):
 
 
 def update_accelerations(particles, f, m, dx, dy, dr):
-    """Set the accelerations on each particle from the pair forces.
+    """Add the accelerations from the pair forces to each particle.
+
+    The accelerations already on the particles are added to, so the caller
+    zeroes them first. The pair arrays are in i < j order, as returned by
+    dist.
 
     Parameters
     ----------
     particles: util.particle_dt, array_like
         Information about the particles.
     f: float, array_like
-        The force on each pair of particles.
+        The force on each pair of particles, in Newtons.
     m: float
         Mass of the particles, in kilograms.
     dx: float, array_like
-        The x-dimension component of each pair separation.
+        The x-dimension component of each pair separation, x_i - x_j, in
+        metres.
     dy: float, array_like
-        The y-dimension component of each pair separation.
+        The y-dimension component of each pair separation, y_i - y_j, in
+        metres.
     dr: float, array_like
-        The distance between each pair of particles.
+        The distance between each pair of particles, in metres.
 
     Returns
     -------
@@ -101,10 +106,10 @@ def calculate_pressure(
     distances, forces, box_length, number_of_particles, temperature
 ):
     r"""Calculate the instantaneous pressure of the simulation cell in two
-    dimensions, from the pair forces already computed for the configuration:
+    dimensions, from the pair distances and forces of the configuration:
 
     .. math::
-        p = \frac{N k_B T}{L^2} + \frac{1}{2 L^2} \sum_{i} \sum_{j < i}
+        p = \frac{N k_B T}{L^2} + \frac{1}{2 L^2} \sum_{i} \sum_{j > i}
         r_{ij} f_{ij}
 
     Parameters
@@ -137,20 +142,23 @@ def dist(xposition, yposition, box_length):
     Parameters
     ----------
     xposition: float, array_like (N)
-        The x-dimension positions of the N particles.
+        The x-dimension positions of the N particles, in metres.
     yposition: float, array_like (N)
-        The y-dimension positions of the N particles.
+        The y-dimension positions of the N particles, in metres.
     box_length: float
-        The box length of the simulation cell.
+        The box length of the simulation cell, in metres.
 
     Returns
     -------
     dr: float, array_like (N (N - 1) / 2)
-        The distance between each pair of particles, in i < j pair order.
+        The distance between each pair of particles, in metres, in i < j pair
+        order.
     dx: float, array_like (N (N - 1) / 2)
-        The x-dimension component of each pair separation.
+        The x-dimension component of each pair separation, x_i - x_j, in
+        metres.
     dy: float, array_like (N (N - 1) / 2)
-        The y-dimension component of each pair separation.
+        The y-dimension component of each pair separation, y_i - y_j, in
+        metres.
     """
     i, j = np.triu_indices(xposition.size, 1)
     dx = xposition[i] - xposition[j]
