@@ -31,7 +31,7 @@ class TestUtil(unittest.TestCase):
     def test_system_square(self):
         a = util.System(2, 300, 8, simulation="md", **ARGON_MODEL)
         assert_equal(a.number_of_particles, 2)
-        assert_equal(a.init_temp, 300)
+        assert_equal(a.temperature, 300)
         assert_almost_equal(a.box_length * 1e10, 8)
         assert_almost_equal(a.timestep_length, 1e-14)
         assert_almost_equal(a.particles["xposition"] * 1e10, [2, 2])
@@ -46,7 +46,7 @@ class TestUtil(unittest.TestCase):
     def test_system_random(self):
         a = util.System(2, 300, 8, init_conf="random", simulation="md", **ARGON_MODEL)
         assert_equal(a.number_of_particles, 2)
-        assert_equal(a.init_temp, 300)
+        assert_equal(a.temperature, 300)
         assert_almost_equal(a.box_length * 1e10, 8)
         assert_almost_equal(a.timestep_length, 1e-14)
         self.assertTrue(0 <= a.particles["xposition"][0] * 1e10 <= 8)
@@ -328,12 +328,12 @@ class TestUtil(unittest.TestCase):
         assert_equal(system.particles["xposition"], positions)
         assert_equal(system.initial_particles["xunwrapped"], origin)
 
-    def test_restart_carries_the_accepted_energy_for_monte_carlo(self):
+    def test_restart_carries_the_energy_for_monte_carlo(self):
         system = mc.initialise(4, 300, 12, "square", **ARGON_MODEL)
         system.mc_sample()
         production = system.restart()
         self.assertEqual(production.simulation, "mc")
-        self.assertEqual(production.old_energy, system.old_energy)
+        self.assertEqual(production.energy, system.energy)
         self.assertEqual(production.energy_sample.size, 0)
         self.assertEqual(system.energy_sample.size, 1)
 

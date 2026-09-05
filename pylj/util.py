@@ -59,7 +59,9 @@ class System:
     number_of_particles: int
         Number of particles to simulate.
     temperature: float
-        Initial temperature of the particles, in kelvin.
+        Temperature of the simulation, in kelvin: the initial velocities for
+        molecular dynamics, the temperature to pass to :func:`mc.accept` for
+        Monte Carlo.
     box_length: float
         Length of a single dimension of the simulation square, in
         Angstrom.
@@ -104,6 +106,13 @@ class System:
         Separation at which each species' pair energy falls to zero, in
         metres. Particles of one species are placed at least this far apart,
         and particles of two species at least the mean of their cores apart.
+    temperature: float
+        The temperature given at construction, in kelvin.
+    energy: float
+        The total pair energy of the current configuration, in joules, for a
+        Monte Carlo system: computed at construction, kept current by
+        ``apply`` and set exactly on each sample. Zero for a molecular
+        dynamics system.
     rng: numpy.random.Generator
         The random number generator for this system.
 
@@ -136,7 +145,7 @@ class System:
         self.number_of_particles = number_of_particles
         if not (np.isfinite(temperature) and temperature > 0):
             raise ValueError(f"temperature must be positive and finite, not {temperature}")
-        self.init_temp = temperature
+        self.temperature = temperature
         self.species = list(species)
         self.pair_potentials = dict(pair_potentials)
         _check_pair_potentials(self.species, self.pair_potentials)
@@ -192,10 +201,10 @@ class System:
         self.energy_sample = np.array([])
         self.step_sample = np.array([])
         self.initial_particles = np.array(self.particles)
-        self.position_store = [0, 0]
-        self.old_energy = 0
-        self.new_energy = 0
-        self.random_particle = 0
+        self.energy = 0.0
+        if simulation == "mc":
+            self.compute_energy()
+            self.energy = float(self.energies.sum())
 
     def number_of_pairs(self):
         """Calculates the number of pairwise interactions in the simulation.
@@ -214,7 +223,7 @@ class System:
         new system's draws do not depend on what the current system does
         next, and copies the particle positions, velocities
         and accelerations and the pair distances, forces and energies. A
-        Monte Carlo system also keeps its accepted energy. Step and time are
+        Monte Carlo system also keeps its energy. Step and time are
         zero, the sample arrays are empty, and initial_particles is replaced
         by the copied particles, so the mean squared displacement is measured
         from the restarted configuration. The current system is not changed.
@@ -240,8 +249,8 @@ class System:
             The new system.
         """
         # A shallow copy shares the box, species and pair potentials, which never
-        # change, and keeps the accepted energy; the state that belongs to one
-        # run is copied or reset below.
+        # change, and keeps the energy; the state that belongs to one run is
+        # copied or reset below.
         new = copy.copy(self)
         new.rng = copy.deepcopy(self.rng)
         new.particles = self.particles.copy()
@@ -259,9 +268,6 @@ class System:
         new.msd_sample = np.array([])
         new.energy_sample = np.array([])
         new.step_sample = np.array([])
-        new.new_energy = 0
-        new.position_store = [0, 0]
-        new.random_particle = 0
         return new
 
     def square(self) -> None:
@@ -480,46 +486,60 @@ class System:
         self.particles = md.heat_bath(self.particles, self.masses, bath_temperature)
 
     def mc_sample(self):
-        """Maps to the mc.sample function, recording the current accepted energy."""
-        mc.sample(self.old_energy, self)
+        """Record the current energy and step.
 
-    def select_random_particle(self):
-        """Maps to the mc.select_random_particle function.
+        The pair distances and energies are recomputed first, so the stored
+        pair arrays match the configuration and ``energy`` is the exact
+        total; between samples ``apply`` keeps a running total. A viewer
+        updated between samples reads the pair arrays of the last sample.
         """
-        self.random_particle, self.position_store = mc.select_random_particle(
-            self.particles, self.rng
-        )
+        self.compute_energy()
+        self.energy = float(self.energies.sum())
+        mc.sample(self.energy, self)
 
-    def new_random_position(self):
-        """Maps to the mc.get_new_particle function.
-        """
-        self.particles = mc.get_new_particle(
-            self.particles, self.random_particle, self.box_length, self.rng
-        )
+    def propose(self) -> mc.Proposal:
+        """Propose a Monte Carlo move: one particle relocated at random.
 
-    def metropolis(self) -> bool:
-        """Decide whether to accept the current trial move.
-
-        Applies the Metropolis condition at the system's temperature to the
-        stored energies before and after the move, drawing from the system's
-        random number generator.
+        A particle is chosen at random and given a uniform trial position in
+        the box. The energy change is that particle's interaction energy at
+        the trial position minus that at its current position, with every
+        other particle. The configuration is not changed.
 
         Returns:
-            True if the move should be accepted.
+            The proposed configuration and its energy change.
         """
-        return mc.metropolis(self.init_temp, self.old_energy, self.new_energy, rng=self.rng)
-
-    def accept(self):
-        """Maps to the mc.accept function.
-        """
-        self.old_energy = mc.accept(self.new_energy)
-
-    def reject(self):
-        """Maps to the mc.reject function.
-        """
-        self.particles = mc.reject(
-            self.position_store, self.particles, self.random_particle
+        particle = int(self.rng.integers(self.number_of_particles))
+        trial = (self.rng.uniform(0, self.box_length), self.rng.uniform(0, self.box_length))
+        current = (self.particles["xposition"][particle], self.particles["yposition"][particle])
+        species_index = int(self.particles["types"][particle])
+        others = np.delete(self.particles, particle)
+        trial_energy = pairwise.particle_energy(
+            trial, species_index, others,
+            self.box_length, self.cut_off, self.pair_potentials, self.species,
         )
+        current_energy = pairwise.particle_energy(
+            current, species_index, others,
+            self.box_length, self.cut_off, self.pair_potentials, self.species,
+        )
+        energy_change = trial_energy - current_energy
+        xposition = self.particles["xposition"].copy()
+        yposition = self.particles["yposition"].copy()
+        xposition[particle], yposition[particle] = trial
+        return mc.Proposal(xposition, yposition, energy_change)
+
+    def apply(self, proposal: mc.Proposal) -> None:
+        """Make a proposed configuration the current one.
+
+        The positions become the proposal's and ``energy`` gains its energy
+        change, which is relative to the configuration the proposal was made
+        from. The unwrapped positions are left as they are.
+
+        Args:
+            proposal: The proposal to apply, from :meth:`propose`.
+        """
+        self.particles["xposition"] = proposal.xposition
+        self.particles["yposition"] = proposal.yposition
+        self.energy += proposal.energy_change
 
 
 def __cite__():  # pragma: no cover
@@ -545,7 +565,6 @@ def particle_dt():
       displacement; Monte Carlo moves leave them unchanged
     - xvelocity and yvelocity
     - xacceleration and yacceleration
-    - energy
     - types, the index of each particle's species in ``System.species``
     """
     return np.dtype(
@@ -558,7 +577,6 @@ def particle_dt():
             ("yvelocity", np.float64),
             ("xacceleration", np.float64),
             ("yacceleration", np.float64),
-            ("energy", np.float64),
             ("types", np.int64),
         ]
     )
