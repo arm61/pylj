@@ -231,8 +231,7 @@ class MCSimulation(Simulation):
         """Make a proposed configuration the current one.
 
         The positions become the proposal's and ``energy`` gains its energy
-        change, which is relative to the configuration the proposal was made
-        from.
+        change.
 
         Args:
             proposal: The proposal to apply, from :meth:`propose`.

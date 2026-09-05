@@ -7,7 +7,8 @@ from pylj import mc
 from pylj.constants import BOLTZMANN
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
-from pylj.tests.argon import ARGON_MODEL, MIXTURE_MODEL, WELL_MODEL
+from pylj.pairwise import minimum_image
+from pylj.tests.argon import ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
 
 
 def total_energy(sim):
@@ -109,12 +110,16 @@ class TestConstructor(unittest.TestCase):
         md_simulation = MDSimulation.initialise(4, 100, 20, **ARGON_MODEL)
         a = MCSimulation(md_simulation.configuration, ARGON_MODEL["pair_potentials"], 100)
         self.assertIs(a.configuration, md_simulation.configuration)
-        a.step()
+        for _ in range(20):
+            a.step()
+        # The velocities are carried, untouched, through the moves.
+        self.assertGreater(a.accepted, 0)
+        assert_equal(a.configuration.velocity, md_simulation.configuration.velocity)
 
     def test_validates_the_temperature_before_the_model(self):
         c = MDSimulation.initialise(4, 100, 20, **ARGON_MODEL).configuration
         with self.assertRaisesRegex(ValueError, "temperature must be positive"):
-            MCSimulation(c, ARGON_MODEL["pair_potentials"], -1)
+            MCSimulation(c, {}, -1)
 
 
 class TestMoves(unittest.TestCase):
@@ -158,15 +163,20 @@ class TestMoves(unittest.TestCase):
 
     def test_propose_energy_change_matches_a_full_recompute(self):
         # The oracle: apply the proposal to a copy and recompute every pair.
-        # The mixture checks the moving particle's own species is used.
+        # The mixture checks the moving particle's own species is used, so
+        # the proposals must move particles of both species.
         for model in (ARGON_MODEL, MIXTURE_MODEL):
             a = MCSimulation.initialise(16, 300, 40, seed=1, **model)
+            moved_species = set()
             for _ in range(5):
                 proposal = a.propose()
                 trial = a.configuration.replace(position=proposal.position)
-                expected = trial.potential_energy(a.pair_potentials, a.cut_off) - a.energy
+                expected = trial.potential_energy(a.pair_potentials, a.cut_off) - total_energy(a)
                 np.testing.assert_allclose(proposal.energy_change, expected, rtol=1e-9, atol=1e-33)
+                moved = np.any(proposal.position != a.configuration.position, axis=1)
+                moved_species.add(int(a.configuration.species_index[moved][0]))
                 a.apply(proposal)
+            self.assertEqual(moved_species, set(range(len(model["species"]))))
 
     def test_apply_updates_the_positions_and_the_energy(self):
         a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
@@ -209,6 +219,31 @@ class TestMoves(unittest.TestCase):
         self.assertEqual(first.energy, second.energy)
         self.assertEqual(first.accepted, second.accepted)
         self.assertFalse(np.array_equal(first.configuration.position, other.configuration.position))
+
+    def test_samples_the_boltzmann_distribution(self):
+        # Two argon particles in a 12 Angstrom box at 300 K. The relative
+        # position of a pair of uniformly placed particles is uniform over
+        # the box, so the mean pair energy is the Boltzmann average of the
+        # minimum-image pair energy over the box, which quadrature gives.
+        box, cut_off, temperature = 12e-10, 6e-10, 300
+        r = np.linspace(-box / 2, box / 2, 601)
+        x, y = np.meshgrid(r, r)
+        separation = minimum_image(np.stack([x, y], axis=-1), box)
+        distance = np.linalg.norm(separation, axis=-1)
+        energy = LJ_ARGON.energies(distance)
+        energy[distance > cut_off] = 0.0
+        weight = np.exp(-energy / (BOLTZMANN * temperature))
+        # Inside the core the weight is zero and the energy infinite: no contribution.
+        contribution = np.zeros_like(weight)
+        inside = weight > 0
+        contribution[inside] = energy[inside] * weight[inside]
+        expected = contribution.sum() / weight.sum()
+        a = MCSimulation.initialise(2, temperature, 12, seed=0, **ARGON_MODEL)
+        energies = []
+        for _ in range(40000):
+            a.step()
+            energies.append(a.energy)
+        np.testing.assert_allclose(np.mean(energies[5000:]), expected, rtol=0.05)
 
     def test_restart_carries_the_energy_and_resets_the_counts(self):
         a = MCSimulation.initialise(4, 300, 12, **ARGON_MODEL)
