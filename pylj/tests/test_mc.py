@@ -180,9 +180,10 @@ class TestMc(unittest.TestCase):
         # A corrupted running total is replaced by the exact one.
         system.energy = 1.0
         system.mc_sample()
-        distances, _, _ = pairwise.dist(
-            system.particles["xposition"], system.particles["yposition"], system.box_length
+        position = np.column_stack(
+            [system.particles["xposition"], system.particles["yposition"]]
         )
+        distances, _ = pairwise.dist(position, system.box_length)
         assert_equal(system.distances, distances)
         self.assertEqual(system.energy, float(system.energies.sum()))
         assert_equal(system.energy_sample, [system.energy])

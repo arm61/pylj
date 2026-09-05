@@ -140,7 +140,8 @@ def compute_energy(particles, box_length, cut_off, pair_potentials, species):
         The distance between each pair of particles, in metres, and the
         energy of each pair, in joules, both in i < j pair order.
     """
-    distances, _, _ = dist(particles["xposition"], particles["yposition"], box_length)
+    position = np.column_stack([particles["xposition"], particles["yposition"]])
+    distances, _ = dist(position, box_length)
     energies = np.zeros(distances.size)
     for mask, type_1, type_2 in _species_pairs(particles["types"]):
         potential = pair_potential(pair_potentials, species[type_1], species[type_2])
@@ -174,7 +175,9 @@ def compute_force(particles, box_length, cut_off, pair_potentials, species):
     """
     particles["xacceleration"] = 0.0
     particles["yacceleration"] = 0.0
-    distances, dx, dy = dist(particles["xposition"], particles["yposition"], box_length)
+    position = np.column_stack([particles["xposition"], particles["yposition"]])
+    distances, separation = dist(position, box_length)
+    dx, dy = separation[:, 0], separation[:, 1]
     forces = np.zeros(distances.size)
     energies = np.zeros(distances.size)
     for mask, type_1, type_2 in _species_pairs(particles["types"]):
@@ -254,34 +257,22 @@ def calculate_pressure(
     return virial + ideal
 
 
-def dist(xposition, yposition, box_length):
-    """Return the minimum-image distances between every pair of particles.
+def dist(
+    position: NDArray[np.float64], box: float
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Return the minimum-image distance and separation of every pair.
 
-    Parameters
-    ----------
-    xposition: float, array_like (N)
-        The x-dimension positions of the N particles, in metres.
-    yposition: float, array_like (N)
-        The y-dimension positions of the N particles, in metres.
-    box_length: float
-        The box length of the simulation cell, in metres.
+    Args:
+        position: The position of each particle, shape ``(N, 2)``, in
+            metres.
+        box: The side length of the square periodic box, in metres.
 
-    Returns
-    -------
-    dr: float, array_like (N (N - 1) / 2)
-        The distance between each pair of particles, in metres, in i < j pair
-        order.
-    dx: float, array_like (N (N - 1) / 2)
-        The x-dimension component of each pair separation, x_i - x_j, in
-        metres.
-    dy: float, array_like (N (N - 1) / 2)
-        The y-dimension component of each pair separation, y_i - y_j, in
-        metres.
+    Returns:
+        The distance between each pair, shape ``(M,)``, and the separation
+        ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in metres and in
+        i < j pair order, where ``M = N (N - 1) / 2``.
     """
-    i, j = np.triu_indices(xposition.size, 1)
-    dx = xposition[i] - xposition[j]
-    dy = yposition[i] - yposition[j]
-    dx -= box_length * np.round(dx / box_length)
-    dy -= box_length * np.round(dy / box_length)
-    dr = np.hypot(dx, dy)
-    return dr, dx, dy
+    i, j = np.triu_indices(position.shape[0], 1)
+    separation = position[i] - position[j]
+    separation -= box * np.round(separation / box)
+    return np.linalg.norm(separation, axis=1), separation

@@ -106,13 +106,13 @@ class TestPairwise(unittest.TestCase):
         # Pairs 1 Angstrom apart across the periodic boundary of a 10 Angstrom
         # box: the minimum image is 1 Angstrom, not the 9 Angstrom raw
         # separation, on either axis and in either direction. Pairs are
-        # (0, 1), (0, 2), (1, 2) and components are x_i - x_j.
-        xposition = np.array([0.5e-10, 9.5e-10, 0.5e-10])
-        yposition = np.array([9.5e-10, 9.5e-10, 0.5e-10])
-        dr, dx, dy = pairwise.dist(xposition, yposition, 10e-10)
+        # (0, 1), (0, 2), (1, 2) and separations are r_i - r_j.
+        position = np.array([[0.5e-10, 9.5e-10], [9.5e-10, 9.5e-10], [0.5e-10, 0.5e-10]])
+        dr, separation = pairwise.dist(position, 10e-10)
         assert_almost_equal(dr * 1e10, [1.0, 1.0, np.sqrt(2)])
-        assert_almost_equal(dx * 1e10, [1.0, 0.0, -1.0])
-        assert_almost_equal(dy * 1e10, [0.0, -1.0, -1.0])
+        assert_almost_equal(separation[:, 0] * 1e10, [1.0, 0.0, -1.0])
+        assert_almost_equal(separation[:, 1] * 1e10, [0.0, -1.0, -1.0])
+        self.assertEqual(separation.shape, (3, 2))
 
     def test_particle_masses_come_from_each_particles_species(self):
         particles = three_particles([0, 1, 0])
