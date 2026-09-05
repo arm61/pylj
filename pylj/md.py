@@ -10,7 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pylj import pairwise
-from pylj.configuration import MDConfiguration, _radial_force
+from pylj.configuration import MDConfiguration
 from pylj.constants import BOLTZMANN
 from pylj.pairwise import PairPotentials
 from pylj.placement import place
@@ -19,6 +19,7 @@ from pylj.simulation import (
     Samples,
     Simulation,
     _check_initial_energy,
+    _check_positive_finite,
     _check_potentials_at_the_cut_off,
     _empty,
 )
@@ -75,7 +76,9 @@ class MDSimulation(Simulation):
 
     Raises:
         TypeError: If ``configuration`` is not an ``MDConfiguration``.
-        ValueError: If the configuration is at rest, a pair potential has
+        ValueError: If the timestep is not positive and finite, the
+            configuration is at rest or has a non-finite temperature, a pair
+            potential has
             not died away at the cut-off at the configuration's
             temperature, the configuration stores more than
             :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
@@ -101,12 +104,18 @@ class MDSimulation(Simulation):
                 "with MDSimulation.initialise(...) or construct an MDConfiguration."
             )
         super().__init__(configuration, pair_potentials, cut_off=cut_off, seed=seed)
+        _check_positive_finite("timestep", timestep)
         self.timestep = timestep
         temperature = configuration.temperature()
         if temperature == 0:
             raise ValueError(
                 "The configuration is at rest: molecular dynamics needs velocities. "
                 "MDSimulation.initialise draws them at a temperature."
+            )
+        if not np.isfinite(temperature):
+            raise ValueError(
+                f"The configuration's temperature is {temperature}: the simulation it came "
+                "from has diverged."
             )
         _check_potentials_at_the_cut_off(
             configuration.species,
@@ -192,10 +201,10 @@ class MDSimulation(Simulation):
             cut_off=cut_off,
             rng=rng,
         )
-        masses_kg = placed.masses
-        thermal_speed = np.sqrt(BOLTZMANN * temperature / masses_kg)
+        masses = placed.masses
+        thermal_speed = np.sqrt(BOLTZMANN * temperature / masses)
         velocity = rng.normal(0.0, thermal_speed[:, None], size=(number_of_particles, 2))
-        velocity -= (masses_kg[:, None] * velocity).sum(axis=0) / masses_kg.sum()
+        velocity -= (masses[:, None] * velocity).sum(axis=0) / masses.sum()
         configuration = heat_bath(
             MDConfiguration(
                 position=placed.position,
@@ -246,18 +255,15 @@ class MDSimulation(Simulation):
     def sample(self) -> None:
         """Measure the configuration: record the step, temperature, pressure,
         potential and kinetic energies and mean squared displacement.
-
-        One pair evaluation serves the pressure and the potential energy.
         """
         configuration = self.configuration
         temperature = configuration.temperature()
         pairs = configuration.pairs(self.pair_potentials, self.cut_off, forces=True)
-        virial = float(np.sum(_radial_force(pairs) * pairs.distance))
         self.samples.add(
             step=self.steps,
             temperature=temperature,
             pressure=pairwise.calculate_pressure(
-                virial, configuration.box, configuration.number_of_particles, temperature
+                pairs.virial, configuration.box, configuration.number_of_particles, temperature
             ),
             potential_energy=float(pairs.energy.sum()),
             kinetic_energy=configuration.kinetic_energy(),
@@ -302,13 +308,14 @@ def velocity_verlet(
     Returns:
         The configuration at time t + dt and the forces at it.
     """
-    masses_kg = configuration.masses[:, None]
-    accelerations = forces / masses_kg
+    masses = configuration.masses[:, None]
+    accelerations = forces / masses
     position, unwrapped = update_positions(configuration, accelerations, timestep)
     moved = configuration.replace(position=position, unwrapped=unwrapped)
     next_forces = moved.forces(pair_potentials, cut_off)
+    next_accelerations = next_forces / masses
     velocity = update_velocities(
-        configuration.velocity, accelerations, next_forces / masses_kg, timestep
+        configuration.velocity, accelerations, next_accelerations, timestep
     )
     return moved.replace(velocity=velocity), next_forces
 

@@ -32,6 +32,11 @@ class PairData:
     energy: NDArray[np.float64]
     radial_force: NDArray[np.float64] | None
 
+    @property
+    def virial(self) -> float:
+        """The sum over pairs of the radial force times the distance, in joules."""
+        return float(np.sum(_radial_force(self) * self.distance))
+
 
 def _radial_force(pairs: PairData) -> NDArray[np.float64]:
     """The radial forces of a pair evaluation made with ``forces=True``."""
@@ -166,8 +171,7 @@ class Configuration:
 
     def virial(self, pair_potentials: PairPotentials, cut_off: float) -> float:
         """The sum over pairs of the radial force times the distance, in joules."""
-        pairs = self.pairs(pair_potentials, cut_off, forces=True)
-        return float(np.sum(_radial_force(pairs) * pairs.distance))
+        return self.pairs(pair_potentials, cut_off, forces=True).virial
 
     def insertion_energy(
         self,

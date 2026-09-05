@@ -128,6 +128,16 @@ class TestConstructor(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "MDConfiguration"):
             MDSimulation(c, ARGON_MODEL["pair_potentials"])
 
+    def test_refuses_a_bad_timestep(self):
+        c = two_argon([[3e2, 0.0], [-3e2, 0.0]])
+        for bad in (0.0, -1e-14, np.nan):
+            with self.assertRaisesRegex(ValueError, "timestep must be positive"):
+                MDSimulation(c, ARGON_MODEL["pair_potentials"], timestep=bad)
+
+    def test_refuses_a_diverged_configuration(self):
+        with self.assertRaisesRegex(ValueError, "diverged"):
+            MDSimulation(two_argon([[np.nan, 0.0], [1.0, 0.0]]), ARGON_MODEL["pair_potentials"])
+
     def test_refuses_a_configuration_at_rest(self):
         with self.assertRaisesRegex(ValueError, "at rest"):
             MDSimulation(two_argon(np.zeros((2, 2))), ARGON_MODEL["pair_potentials"])
@@ -193,8 +203,10 @@ class TestVelocityVerlet(unittest.TestCase):
         assert_allclose(forces, moved.forces(ARGON_MODEL["pair_potentials"], 15e-10))
 
     def test_matches_the_hand_computed_step(self):
-        # One particle drifting in x, the other at rest, no forces: the
-        # velocities are unchanged and the drift is v dt.
+        # A pair 4 Angstrom apart, inside the cut-off, one particle drifting
+        # in x: the attraction acts along y, so the positions advance by
+        # v dt + a dt^2 / 2 and the velocities by the mean acceleration
+        # times dt, with the forces at the new positions evaluated afresh.
         c = two_argon([[1e3, 0.0], [0.0, 0.0]], box=40e-10)
         cut_off = 15e-10
         forces = c.forces(ARGON_MODEL["pair_potentials"], cut_off)
@@ -204,9 +216,14 @@ class TestVelocityVerlet(unittest.TestCase):
         accelerations = forces / c.masses[:, None]
         expected_position = c.position + c.velocity * 1e-14 + 0.5 * accelerations * 1e-28
         assert_allclose(moved.position, expected_position)
-        next_accelerations = next_forces / c.masses[:, None]
+        expected_forces = c.replace(position=expected_position).forces(
+            ARGON_MODEL["pair_potentials"], cut_off
+        )
+        assert_allclose(next_forces, expected_forces)
+        next_accelerations = expected_forces / c.masses[:, None]
         expected_velocity = c.velocity + 0.5 * (accelerations + next_accelerations) * 1e-14
         assert_allclose(moved.velocity, expected_velocity)
+        self.assertNotEqual(moved.velocity[0, 1], 0.0)
 
     def test_update_positions_wraps_the_position_and_not_the_unwrapped_one(self):
         c = two_argon([[1e4, 3e4], [1e4, 3e4]])
