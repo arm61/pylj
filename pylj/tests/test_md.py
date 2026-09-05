@@ -52,9 +52,9 @@ class TestMd(unittest.TestCase):
             )
 
     def test_initialise_is_reproducible_with_a_seed(self):
-        first = md.initialise(10, 100, 40, "random", seed=3, **ARGON_MODEL)
-        second = md.initialise(10, 100, 40, "random", seed=3, **ARGON_MODEL)
-        other = md.initialise(10, 100, 40, "random", seed=4, **ARGON_MODEL)
+        first = md.initialise(10, 100, 40, "metropolis", seed=3, **ARGON_MODEL)
+        second = md.initialise(10, 100, 40, "metropolis", seed=3, **ARGON_MODEL)
+        other = md.initialise(10, 100, 40, "metropolis", seed=4, **ARGON_MODEL)
         assert_equal(first.particles["xposition"], second.particles["xposition"])
         assert_equal(first.particles["xvelocity"], second.particles["xvelocity"])
         assert_equal(first.particles["yvelocity"], second.particles["yvelocity"])

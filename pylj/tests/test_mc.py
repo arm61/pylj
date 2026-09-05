@@ -188,7 +188,8 @@ class TestMc(unittest.TestCase):
 
     def test_seeded_runs_are_identical(self):
         def run(seed):
-            return run_moves(mc.initialise(16, 300, 30, "random", seed=seed, **ARGON_MODEL), 200)
+            system = mc.initialise(16, 300, 30, "metropolis", seed=seed, **ARGON_MODEL)
+            return run_moves(system, 200)
 
         first = run(7)
         second = run(7)

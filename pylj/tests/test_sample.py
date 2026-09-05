@@ -295,8 +295,8 @@ def test_energy_pane_mc_plots_against_step():
     plt.close(fig)
 
 
-def test_rdf_pane_normalisation_is_unity_for_random_positions():
-    system = md.initialise(400, 100, 100, "random", seed=1, **ARGON_MODEL)
+def test_rdf_pane_normalisation_is_unity_for_metropolis_positions():
+    system = md.initialise(400, 100, 100, "metropolis", seed=1, **ARGON_MODEL)
     fig, ax = environment(1)
     pane = RDFPane()
     pane.setup(ax, system)
