@@ -3,6 +3,7 @@ and the base class of the simulations."""
 
 import copy
 import itertools
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Self
@@ -196,7 +197,7 @@ class Samples:
             setattr(self, name, np.append(getattr(self, name), value))
 
 
-class Simulation:
+class Simulation(ABC):
     """A configuration, the interaction law, the numerical choices, and the
     machinery to evolve and measure it.
 
@@ -247,22 +248,24 @@ class Simulation:
         self.steps = 0
         self.samples = Samples()
 
+    @abstractmethod
     def step(self) -> None:
         """Advance the simulation by one step."""
-        raise NotImplementedError
 
+    @abstractmethod
     def sample(self) -> None:
         """Record the quantities of interest at the current step."""
-        raise NotImplementedError
 
     def restart(self) -> Self:
         """A new simulation that continues from the current configuration.
 
-        The new simulation shares the model and the numerical choices,
-        copies the state of the random number generator so its draws do not
-        depend on what this one does next, and starts with ``steps`` at zero
-        and an empty record of samples. This simulation is not changed. Use
-        it to start a production run after equilibration::
+        The new simulation is a shallow copy: it shares the model, the
+        numerical choices and every other attribute, copies the state of
+        the random number generator so its draws do not depend on what this
+        one does next, and starts with ``steps`` at zero and an empty record
+        of samples. A subclass that holds other per-run state extends this
+        method to reset it. This simulation is not changed. Use it to start
+        a production run after equilibration::
 
             for _ in range(1000):
                 simulation.step()

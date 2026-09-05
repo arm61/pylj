@@ -27,8 +27,8 @@ def place_square(
     The lattice has ``ceil(sqrt(number_of_particles))`` sites along each
     side of the box and the particles fill it in order, each assigned to the
     species in turn; on a lattice with an even number of sites per side the
-    species of a mixture therefore form stripes, which the run mixes. No
-    overlap check is made: a lattice too dense for the
+    species of a mixture therefore start in stripes, which diffusion mixes
+    over the run. No overlap check is made: a lattice too dense for the
     potential stores a large, or for a hard core infinite, energy.
 
     Args:

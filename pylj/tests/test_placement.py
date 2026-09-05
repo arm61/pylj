@@ -32,7 +32,7 @@ def place(
     model=ARGON_MODEL,
     **overrides,
 ):
-    """simulation.place with the argon model and a seeded generator."""
+    """placement.place with the argon model and a seeded generator."""
     kwargs = dict(model)
     kwargs.update(overrides)
     return placement.place(

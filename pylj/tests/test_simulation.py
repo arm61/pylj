@@ -5,29 +5,28 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import placement, simulation
 from pylj.tests.argon import ARGON, ARGON_MODEL, WELL_MODEL
-from pylj.tests.test_placement import place
 
 
 class TestInitialEnergyCheck(unittest.TestCase):
     def test_refuses_an_overlapping_lattice(self):
         # 16 argon on a 4 by 4 lattice in a 10 Angstrom box are 2.5 Angstrom
         # apart, inside sigma: about 90 k_B T of potential energy per particle.
-        c, cut_off = place(16, 300, 10)
-        energy = c.potential_energy(ARGON_MODEL["pair_potentials"], cut_off)
+        c = placement.place_square(16, (ARGON,), 10e-10)
+        energy = c.potential_energy(ARGON_MODEL["pair_potentials"], 5e-10)
         with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
             simulation._check_initial_energy(energy, 16, 300)
 
     def test_refuses_a_lattice_inside_a_hard_core(self):
-        c, cut_off = place(16, 300, 10, model=WELL_MODEL)
-        energy = c.potential_energy(WELL_MODEL["pair_potentials"], cut_off)
+        c = placement.place_square(16, (ARGON,), 10e-10)
+        energy = c.potential_energy(WELL_MODEL["pair_potentials"], 5e-10)
         with self.assertRaisesRegex(ValueError, "not finite"):
             simulation._check_initial_energy(energy, 16, 300)
 
     def test_accepts_a_lattice_below_the_limit(self):
         # 16 argon in a 12 Angstrom box store about 5.6 k_B T per particle
         # at 300 K, under the limit of 10.
-        c, cut_off = place(16, 300, 12)
-        energy = c.potential_energy(ARGON_MODEL["pair_potentials"], cut_off)
+        c = placement.place_square(16, (ARGON,), 12e-10)
+        energy = c.potential_energy(ARGON_MODEL["pair_potentials"], 6e-10)
         simulation._check_initial_energy(energy, 16, 300)
 
 
@@ -83,12 +82,13 @@ class TestSimulation(unittest.TestCase):
             Counting(c, {})
 
     def test_step_and_sample_are_abstract(self):
+        class Stepless(simulation.Simulation):
+            def sample(self):
+                pass
+
         c = placement.place_square(4, (ARGON,), 40e-10)
-        s = simulation.Simulation(c, ARGON_MODEL["pair_potentials"])
-        with self.assertRaises(NotImplementedError):
-            s.step()
-        with self.assertRaises(NotImplementedError):
-            s.sample()
+        with self.assertRaisesRegex(TypeError, "step"):
+            Stepless(c, ARGON_MODEL["pair_potentials"])
 
     def test_restart_starts_a_fresh_record_and_shares_the_model(self):
         s = self.build(seed=1)
@@ -105,6 +105,13 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(production.samples.step.size, 0)
         self.assertEqual(s.steps, 3)
         assert_equal(s.samples.step, [1, 2, 3])
+
+    def test_restart_shares_state_a_subclass_adds(self):
+        # A shallow copy: a subclass holding other per-run state extends
+        # restart to reset it.
+        s = self.build()
+        s.sample()
+        self.assertEqual(s.restart().sampled, 1)
 
     def test_restart_copies_the_generator_state(self):
         s = self.build(seed=1)
