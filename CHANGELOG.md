@@ -20,6 +20,7 @@ All notable changes to pylj are recorded here. The format follows
 - `pairwise.pair_potential` and `pairwise.particle_masses`.
 - `CellPane(diameter=...)` and a `diameter` keyword on every named viewer, in Angstrom, one value or one per species; by default particles are drawn at the separation of the minimum of their species' own pair energy.
 - `mc.accept`, the Metropolis criterion on an energy change; `mc.Proposal`, a proposed configuration with its energy change; `pairwise.particle_energy`, one particle's interaction energy with a set of others; `System.propose`, `System.apply` and `System.energy`, the total pair energy of the current configuration.
+- `md.initialise` refuses an initial configuration whose pair energy is not finite or whose forces would move a particle further than the box in one step, as when particles overlap or the potential's parameters are in the wrong units; `mc.initialise` refuses a non-finite initial energy.
 - `placement_temperature` on `md.initialise`, `mc.initialise` and `System`: the temperature of the Metropolis acceptance used to place an initial configuration, by default the run temperature.
 
 ### Changed

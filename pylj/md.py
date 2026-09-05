@@ -66,8 +66,10 @@ def initialise(
     Raises
     ------
     ValueError
-        If fewer than two particles are requested, or the temperature is not
-        positive.
+        If fewer than two particles are requested, the temperature is not
+        positive, the initial pair energy is not finite, or the initial forces
+        would move a particle further than the box in one step, as they do when
+        particles overlap or the potential's parameters are in the wrong units.
     """
     from pylj import util
 
@@ -96,6 +98,19 @@ def initialise(
     system.particles["yvelocity"] = v[:, 1]
     system.particles = heat_bath(system.particles, system.masses, temperature)
     system.compute_force()
+    if not np.all(np.isfinite(system.energies)):
+        raise ValueError(
+            "The initial pair energy is not finite: particles sit inside a hard core. "
+            "Use init_conf='metropolis', fewer particles or a larger box."
+        )
+    acceleration = np.hypot(system.particles["xacceleration"], system.particles["yacceleration"])
+    displacement = 0.5 * acceleration.max() * timestep_length**2
+    if displacement > system.box_length:
+        raise ValueError(
+            f"The initial forces would move a particle {displacement:.3g} m in one step, "
+            f"further than the {system.box_length:.3g} m box. Particles are overlapping, "
+            "or the potential's parameters are in the wrong units (metres and joules)."
+        )
     return system
 
 

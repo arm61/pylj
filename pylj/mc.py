@@ -74,6 +74,12 @@ def initialise(
     -------
     System
         System information; ``energy`` is the total pair energy.
+
+    Raises
+    ------
+    ValueError
+        If the initial pair energy is not finite, as when particles of a
+        hard-core potential sit inside its diameter.
     """
     from pylj import util
 
@@ -88,6 +94,11 @@ def initialise(
         placement_temperature=placement_temperature,
         seed=seed,
     )
+    if not np.isfinite(system.energy):
+        raise ValueError(
+            "The initial pair energy is not finite: particles sit inside a hard core. "
+            "Use init_conf='metropolis', fewer particles or a larger box."
+        )
     return system
 
 
