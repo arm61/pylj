@@ -55,33 +55,51 @@ def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPote
 
 
 def _check_potentials_at_the_cut_off(
-    species: Sequence[Species], pair_potentials: PairPotentials, cut_off: float, temperature: float
+    species: Sequence[Species],
+    pair_potentials: PairPotentials,
+    cut_off: float,
+    temperature: float,
+    cut_off_from_box: bool,
 ) -> None:
-    """Check that every pair potential's energy has died away at the cut-off.
+    """Check that every pair potential has died away at the cut-off.
+
+    Truncating the interaction at the cut-off assumes it is negligible
+    there. The check is that each pair energy at the cut-off is finite and
+    within ``k_B T`` of zero, on either side.
 
     Args:
         species: The species in the system.
         pair_potentials: The potential between each pair of species.
         cut_off: The cut-off, in metres.
         temperature: The temperature, in kelvin.
+        cut_off_from_box: Whether the cut-off is half the box, so a larger
+            box is the remedy.
 
     Raises:
         ValueError: If any pair potential's energy at the cut-off is not
-            finite or exceeds ``k_B T``, which is what a potential whose
-            parameters are in the wrong units looks like.
+            finite or larger in magnitude than ``k_B T``.
     """
+    where = f"the cut-off of {cut_off * 1e10:.1f} Angstrom"
+    if cut_off_from_box:
+        where += " (half the box)"
+    remedy = "Use a larger box" if cut_off_from_box else "Use a larger box or cut-off"
     for one, other in itertools.combinations_with_replacement(species, 2):
         potential = pairwise.pair_potential(pair_potentials, one, other)
         at_cut_off = np.asarray(potential.energies(np.array([cut_off])), dtype=float)
         energy = float(np.ravel(at_cut_off)[0])
-        if not np.isfinite(energy) or energy > BOLTZMANN * temperature:
-            pair = f"{one.name or 'particles'} and {other.name or 'particles'}"
+        pair = f"{type(potential).__name__} between {one.name or 'particles'} and " \
+               f"{other.name or 'particles'}"
+        if not np.isfinite(energy):
             raise ValueError(
-                f"{type(potential).__name__} between {pair} is still "
-                f"{energy / (BOLTZMANN * temperature):.3g} k_B T at the cut-off of "
-                f"{cut_off * 1e10:.1f} Angstrom, where the interaction should have died away. "
-                "Check that its parameters are in metres and joules, or use a larger box or "
-                "cut-off."
+                f"{pair} is infinite at {where}: its hard core is wider than the cut-off. "
+                f"{remedy}."
+            )
+        if abs(energy) > BOLTZMANN * temperature:
+            raise ValueError(
+                f"{pair} is still {energy / (BOLTZMANN * temperature):+.3g} k_B T at {where}; "
+                "the cut-off assumes the interaction has died away there. "
+                f"{remedy}, or a potential that has decayed by the cut-off; parameters given "
+                "in the wrong units (metres and joules are expected) are one cause."
             )
 
 
@@ -95,14 +113,9 @@ def check_initial_energy(system: "System") -> None:
     than thermal energy.
 
     Potential energy stored in an initial configuration is released as
-    motion over the first steps. With the thermal energy already present, a
-    configuration holding ``x`` k_B T per particle can by equipartition
-    heat to as much as roughly ``x + 1`` times its temperature; how much of
-    the stored energy is released depends on where the configuration
-    relaxes to. Overlapping particles store enormous energy.
-
-    The factories validate the configuration they derive; ``System`` itself
-    validates the model and places unconditionally.
+    motion over the first steps and heats the run. A configuration holding
+    more than :data:`INITIAL_ENERGY_LIMIT` k_B T per particle has particles
+    too close together for its temperature.
 
     Args:
         system: The system, after placement and a pair-energy evaluation.
@@ -111,7 +124,11 @@ def check_initial_energy(system: "System") -> None:
         ValueError: If the total pair energy is not finite, or exceeds
             :data:`INITIAL_ENERGY_LIMIT` k_B T per particle.
     """
-    remedy = "Use fewer particles, a larger box, or init_conf='metropolis'."
+    remedy = (
+        "Use fewer particles or a larger box; with init_conf='metropolis', a lower "
+        "placement_temperature keeps particles further apart, and from a lattice, "
+        "init_conf='metropolis' places them by energy."
+    )
     energy = float(system.energies.sum())
     if not np.isfinite(energy):
         raise ValueError(
@@ -121,9 +138,8 @@ def check_initial_energy(system: "System") -> None:
     if per_particle > INITIAL_ENERGY_LIMIT:
         raise ValueError(
             f"The initial configuration stores {per_particle:.3g} k_B T of potential energy per "
-            f"particle, above the limit of {INITIAL_ENERGY_LIMIT:g}; released as motion it "
-            f"could raise the temperature to as much as roughly {per_particle + 1:.3g} times "
-            f"{system.temperature:g} K. Particles overlap. {remedy}"
+            f"particle, above the limit of {INITIAL_ENERGY_LIMIT:g}: its particles are too close "
+            f"together for {system.temperature:g} K. {remedy}"
         )
 
 
@@ -205,12 +221,15 @@ class System:
         If the temperature or placement temperature is not positive and
         finite, ``species`` is empty, a pair of species has no potential or
         one given in both orders, a pair potential's energy at the cut-off
-        is not finite or exceeds k_B T, or Metropolis placement exhausts its
-        trial budget.
+        is not finite or larger in magnitude than k_B T, Metropolis
+        placement exhausts its trial budget, or ``simulation`` is not
+        ``'md'`` or ``'mc'``.
     TypeError
         If a pair potential is not a ``PairPotential`` instance.
     NotImplementedError
         If ``init_conf`` is not ``'square'`` or ``'metropolis'``.
+    AttributeError
+        If the box length is below 4 or above 600 Angstrom.
     """
 
     def __init__(
@@ -268,7 +287,8 @@ class System:
         else:
             self.cut_off = box_length / 2 * 1e-10
         _check_potentials_at_the_cut_off(
-            self.species, self.pair_potentials, self.cut_off, self.temperature
+            self.species, self.pair_potentials, self.cut_off, self.temperature,
+            cut_off_from_box=box_length <= 30,
         )
         if init_conf == "square":
             self.square()
@@ -393,9 +413,9 @@ class System:
         is attractive is always accepted.
 
         Sequential insertion is an initialiser, not an equilibrium sample:
-        the placed configuration is free of hard overlaps, close contacts
-        become likelier as the placement temperature rises, and the run
-        equilibrates it.
+        the placed configuration avoids the close contacts the potential
+        penalises at the placement temperature, closer contacts become
+        likelier as that temperature rises, and the run equilibrates it.
 
         Raises:
             ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are

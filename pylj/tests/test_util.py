@@ -4,8 +4,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, md, util
-from pylj.constants import BOLTZMANN
-from pylj.potentials import LennardJones
+from pylj.potentials import LennardJones, SquareWell
 from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL, WELL, WELL_MODEL
 
 
@@ -39,17 +38,28 @@ class TestUtil(unittest.TestCase):
         self.assertGreaterEqual(a.distances.min(), WELL.sigma)
 
     def test_system_metropolis_places_a_mixture_with_each_pairs_own_potential(self):
-        # Under its own potential no placed pair can sit at a repulsive energy
-        # the acceptance could not have passed: a single pair above 20 k_B T
-        # cannot be offset by a few attractive neighbours. Evaluating every
-        # pair with its own potential catches a placement that used the
-        # wrong one, whatever the seed.
-        for seed in range(5):
+        # Hard cores of three different diameters: no pair may sit inside the
+        # core of its own potential, exactly, at any seed. A placement using
+        # the wrong potential for a pair lets it inside the true core.
+        cores = {(ARGON, ARGON): 3e-10, (LARGER, LARGER): 5e-10, (ARGON, LARGER): 4e-10}
+        wells = {
+            pair: SquareWell(epsilon=1.5e-21, sigma=sigma, lambda_=1.5)
+            for pair, sigma in cores.items()
+        }
+        for seed in range(3):
             a = util.System(
-                20, 100, 60, init_conf="metropolis", simulation="md", seed=seed, **MIXTURE_MODEL
+                30, 300, 40, init_conf="metropolis", simulation="mc", seed=seed,
+                species=[ARGON, LARGER], pair_potentials=wells,
             )
             a.compute_energy()
-            self.assertLess(a.energies.max(), 20 * BOLTZMANN * 100)
+            i, j = np.triu_indices(a.number_of_particles, 1)
+            types = a.particles["types"]
+            for (one, other), sigma in cores.items():
+                index = (a.species.index(one), a.species.index(other))
+                mask = ((types[i] == index[0]) & (types[j] == index[1])) | (
+                    (types[i] == index[1]) & (types[j] == index[0])
+                )
+                self.assertGreaterEqual(a.distances[mask].min(), sigma)
 
     def test_system_refuses_a_potential_still_repulsive_at_the_cut_off(self):
         # Sigma given in Angstrom: the pair energy is astronomically positive
@@ -59,6 +69,23 @@ class TestUtil(unittest.TestCase):
             util.System(
                 2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): in_angstrom},
                 simulation="md",
+            )
+
+    def test_system_refuses_a_potential_still_attractive_at_the_cut_off(self):
+        # Epsilon typed in kJ/mol: a well about 1e17 k_B T deep at the cut-off.
+        deep = LennardJones(epsilon=0.95, sigma=3.372e-10)
+        with self.assertRaisesRegex(ValueError, "at the cut-off"):
+            util.System(
+                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): deep},
+                simulation="md",
+            )
+
+    def test_system_refuses_a_hard_core_wider_than_the_cut_off(self):
+        wide = SquareWell(epsilon=1.5e-21, sigma=8e-10, lambda_=1.5)
+        with self.assertRaisesRegex(ValueError, "hard core is wider than the cut-off"):
+            util.System(
+                2, 300, 10, species=[ARGON], pair_potentials={(ARGON, ARGON): wide},
+                simulation="mc",
             )
 
     def test_system_refuses_a_cross_potential_still_repulsive_at_the_cut_off(self):

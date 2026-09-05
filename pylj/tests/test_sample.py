@@ -214,11 +214,11 @@ def test_cell_pane_default_needs_a_potential_minimum():
     class Unbounded(PairPotential):
         def energies(self, dr):
             dr = np.asarray(dr, dtype=float)
-            return 1e-21 * ((3e-10 / dr) ** 12 - dr / 3e-10)
+            return 1e-21 * ((3e-10 / dr) ** 12 - 1e-3 * dr / 3e-10)
 
         def forces(self, dr):
             dr = np.asarray(dr, dtype=float)
-            return 1e-21 * (12 * (3e-10 / dr) ** 12 / dr + 1 / 3e-10)
+            return 1e-21 * (12 * (3e-10 / dr) ** 12 / dr + 1e-3 / 3e-10)
 
     model = {"species": [ARGON], "pair_potentials": {(ARGON, ARGON): Unbounded()}}
     system = md.initialise(4, 100, 20, "square", **model)

@@ -65,7 +65,8 @@ def initialise(
     Raises
     ------
     ValueError
-        If fewer than two particles are requested, or the initial
+        If fewer than two particles are requested, a pair potential has no
+        finite force (as the square well has not), or the initial
         configuration is not finite or stores more than
         ``util.INITIAL_ENERGY_LIMIT`` k_B T of potential energy per particle;
         and anything :class:`util.System` raises at construction.

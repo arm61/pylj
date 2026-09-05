@@ -21,7 +21,7 @@ All notable changes to pylj are recorded here. The format follows
 - `CellPane(diameter=...)` and a `diameter` keyword on every named viewer, in Angstrom, one value or one per species; by default particles are drawn at the separation of the minimum of their species' own pair energy.
 - `mc.accept`, the Metropolis criterion on an energy change; `mc.Proposal`, a proposed configuration with its energy change; `pairwise.particle_energy`, one particle's interaction energy with a set of others; `System.propose`, `System.apply` and `System.energy`, the total pair energy of the current configuration.
 - `util.check_initial_energy`, used by `md.initialise` and `mc.initialise`, refuses an initial configuration whose pair energy is not finite or stores more than `util.INITIAL_ENERGY_LIMIT` (ten) k_B T per particle, as an overlapping lattice does; the message gives the temperature it could heat to.
-- `System` refuses a pair potential whose energy is still above k_B T at the cut-off, as one with parameters in the wrong units is. `mc.accept` refuses a NaN energy change.
+- `System` refuses a pair potential whose energy at the cut-off is not finite or is larger in magnitude than k_B T, since the cut-off assumes the interaction has died away there; parameters in the wrong units are one way to trip it. `mc.accept` refuses a NaN energy change.
 - `placement_temperature` on `md.initialise`, `mc.initialise` and `System`: the temperature of the Metropolis acceptance used to place an initial configuration, by default the run temperature.
 
 ### Changed
