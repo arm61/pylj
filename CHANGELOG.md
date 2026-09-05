@@ -67,5 +67,5 @@ All notable changes to pylj are recorded here. The format follows
 - `pairwise.heat_bath`; `md.heat_bath` is the implementation (#76).
 - `pylj/sample.py`, `point_size` on forcefields, `System.type_identifiers`, `pairwise.create_dist_identifiers`, `MANIFEST.in`, and the Code Climate upload from CI.
 - `pairwise.separation`, `pairwise.pbc_correction`, `pairwise.second_law`, and the deprecated `pairwise.lennard_jones_energy` and `pairwise.lennard_jones_force` wrappers.
-- `System.select_random_particle`, `new_random_position`, `metropolis`, `accept` and `reject`, with `old_energy`, `new_energy`, `position_store` and `random_particle`; `mc.select_random_particle`, `mc.get_new_particle`, `mc.reject`, `mc.metropolis`, and the identity `mc.accept(new_energy)`.
+- `System.select_random_particle`, `new_random_position`, `metropolis`, `accept` and `reject`, with `old_energy`, `new_energy`, `position_store` and `random_particle`; `mc.select_random_particle`, `mc.get_new_particle`, `mc.reject`, `mc.metropolis`, and the identity `mc.accept(new_energy)`; the unused `energy` field of the particle dtype.
 - `pylj.forcefields` and its `mixing` and `diameter` members; cross-species potentials are entries in `pair_potentials`. `md.compute_force` (a wrapper of `pairwise.compute_force`), `util.Particle`, `System.setup_types`, `System.setup_diameters` and `System.diameters`.
