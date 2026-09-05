@@ -10,11 +10,14 @@ from pylj.constants import BOLTZMANN
 class Proposal:
     """A proposed configuration for a Monte Carlo move.
 
-    Args:
+    The energy change is relative to the configuration that was current when
+    the proposal was made, so a proposal is applied to that configuration.
+
+    Attributes:
         xposition: The proposed x position of every particle, in metres.
         yposition: The proposed y position of every particle, in metres.
         energy_change: The energy of the proposed configuration minus that
-            of the current one, in joules.
+            of the configuration it was proposed from, in joules.
     """
 
     xposition: NDArray[np.float64]
@@ -65,7 +68,7 @@ def initialise(
     Returns
     -------
     System
-        System information, with ``energy`` set to the total pair energy.
+        System information; ``energy`` is the total pair energy.
     """
     from pylj import util
 
@@ -79,47 +82,44 @@ def initialise(
         init_conf=init_conf,
         seed=seed,
     )
-    system.compute_energy()
-    system.energy = float(system.energies.sum())
     return system
 
 
 initialize = initialise  # US spelling
 
 
-def accept(delta_energy, temperature, *, n=None, rng=None):
+def accept(
+    energy_change: float,
+    temperature: float,
+    *,
+    random_number: float | None = None,
+    rng: np.random.Generator | None = None,
+) -> bool:
     """Apply the Metropolis criterion to an energy change.
 
     A change that does not raise the energy is always accepted, without
-    drawing a random number. A change that raises it by ``delta_energy`` is
-    accepted with probability ``exp(-delta_energy / (k_B temperature))``.
+    drawing a random number. A change that raises it by ``energy_change`` is
+    accepted with probability ``exp(-energy_change / (k_B temperature))``.
 
-    Parameters
-    ----------
-    delta_energy: float
-        The energy of the proposed configuration minus that of the current
-        one, in joules.
-    temperature: float
-        Temperature of the simulation, in kelvin.
-    n: float, optional
-        The random number against which the acceptance probability is
-        tested. By default one is drawn from ``rng``.
-    rng: numpy.random.Generator, optional
-        The random number generator to draw ``n`` from. By default an
-        unseeded generator is used, so each call draws afresh.
+    Args:
+        energy_change: The energy of the proposed configuration minus that
+            of the current one, in joules.
+        temperature: Temperature of the simulation, in kelvin.
+        random_number: The uniform random number the acceptance probability
+            is tested against. By default one is drawn from ``rng``.
+        rng: The generator to draw from; pass the system's ``rng`` for a
+            reproducible run. By default an unseeded generator is used.
 
-    Returns
-    -------
-    bool
+    Returns:
         True if the proposed configuration should be accepted.
     """
-    if delta_energy <= 0:
+    if energy_change <= 0:
         return True
-    if n is None:
+    if random_number is None:
         if rng is None:
             rng = np.random.default_rng()
-        n = rng.random()
-    return bool(n < np.exp(-delta_energy / (BOLTZMANN * temperature)))
+        random_number = rng.random()
+    return bool(random_number < np.exp(-energy_change / (BOLTZMANN * temperature)))
 
 
 def sample(total_energy, system):

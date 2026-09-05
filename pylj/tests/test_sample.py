@@ -70,7 +70,7 @@ def sampled_mc_system(steps: int):
     for _ in range(steps):
         system.step += 1
         proposal = system.propose()
-        if mc.accept(proposal.energy_change, 100, n=0.5):
+        if mc.accept(proposal.energy_change, 100, random_number=0.5):
             system.apply(proposal)
         system.mc_sample()
     return system

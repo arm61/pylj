@@ -59,9 +59,9 @@ class System:
     number_of_particles: int
         Number of particles to simulate.
     temperature: float
-        Temperature of the simulation, in kelvin: the initial velocities and
-        the default heat-bath target for molecular dynamics, the ensemble
-        temperature for Monte Carlo.
+        Temperature of the simulation, in kelvin: the initial velocities for
+        molecular dynamics, the temperature to pass to :func:`mc.accept` for
+        Monte Carlo.
     box_length: float
         Length of a single dimension of the simulation square, in
         Angstrom.
@@ -109,8 +109,10 @@ class System:
     temperature: float
         The temperature given at construction, in kelvin.
     energy: float
-        The total pair energy of the current configuration, in joules, kept
-        current by Monte Carlo moves and set exactly on each sample.
+        The total pair energy of the current configuration, in joules, for a
+        Monte Carlo system: computed at construction, kept current by
+        ``apply`` and set exactly on each sample. Zero for a molecular
+        dynamics system.
     rng: numpy.random.Generator
         The random number generator for this system.
 
@@ -200,6 +202,9 @@ class System:
         self.step_sample = np.array([])
         self.initial_particles = np.array(self.particles)
         self.energy = 0.0
+        if simulation == "mc":
+            self.compute_energy()
+            self.energy = float(self.energies.sum())
 
     def number_of_pairs(self):
         """Calculates the number of pairwise interactions in the simulation.
@@ -526,7 +531,8 @@ class System:
         """Make a proposed configuration the current one.
 
         The positions become the proposal's and ``energy`` gains its energy
-        change. The unwrapped positions are left as they are.
+        change, which is relative to the configuration the proposal was made
+        from. The unwrapped positions are left as they are.
 
         Args:
             proposal: The proposal to apply, from :meth:`propose`.
@@ -559,7 +565,6 @@ def particle_dt():
       displacement; Monte Carlo moves leave them unchanged
     - xvelocity and yvelocity
     - xacceleration and yacceleration
-    - energy
     - types, the index of each particle's species in ``System.species``
     """
     return np.dtype(
@@ -572,7 +577,6 @@ def particle_dt():
             ("yvelocity", np.float64),
             ("xacceleration", np.float64),
             ("yacceleration", np.float64),
-            ("energy", np.float64),
             ("types", np.int64),
         ]
     )

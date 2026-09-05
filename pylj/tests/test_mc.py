@@ -71,7 +71,7 @@ class TestMc(unittest.TestCase):
             if accepted:
                 system.apply(proposal)
         self.assertGreater(overlaps, 0)
-        self.assertTrue(np.isfinite(system.energy))
+        np.testing.assert_allclose(system.energy, total_energy(system), rtol=1e-9, atol=1e-33)
         self.assertTrue(np.all(system.particles["xacceleration"] == 0.0))
 
     def test_initialize_passes_keyword_arguments_through(self):
@@ -96,8 +96,8 @@ class TestMc(unittest.TestCase):
 
     def test_accept_tests_an_uphill_change_against_n(self):
         # A rise of 1e-20 J at 300 K has a Boltzmann factor of about 0.09.
-        self.assertTrue(mc.accept(1e-20, 300, n=0.01))
-        self.assertFalse(mc.accept(1e-20, 300, n=0.1))
+        self.assertTrue(mc.accept(1e-20, 300, random_number=0.01))
+        self.assertFalse(mc.accept(1e-20, 300, random_number=0.1))
 
     def test_accept_draws_from_the_supplied_generator(self):
         # With n the generator's first draw, an uphill change whose
@@ -115,6 +115,14 @@ class TestMc(unittest.TestCase):
         change = BOLTZMANN * 300 * np.log(2)
         rng = np.random.default_rng(0)
         outcomes = [mc.accept(change, 300, rng=rng) for _ in range(10)]
+        self.assertIn(True, outcomes)
+        self.assertIn(False, outcomes)
+
+    def test_accept_without_a_generator_draws_its_own(self):
+        # The bare call a student is most likely to type: an uphill change
+        # with acceptance probability one half gives both outcomes.
+        change = BOLTZMANN * 300 * np.log(2)
+        outcomes = [mc.accept(change, 300) for _ in range(40)]
         self.assertIn(True, outcomes)
         self.assertIn(False, outcomes)
 
@@ -168,6 +176,8 @@ class TestMc(unittest.TestCase):
         system = mc.initialise(16, 300, 30, "square", seed=1, **ARGON_MODEL)
         for _ in range(20):
             system.apply(system.propose())
+        # A corrupted running total is replaced by the exact one.
+        system.energy = 1.0
         system.mc_sample()
         distances, _, _ = pairwise.dist(
             system.particles["xposition"], system.particles["yposition"], system.box_length

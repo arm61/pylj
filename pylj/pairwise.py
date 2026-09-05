@@ -50,7 +50,13 @@ def particle_masses(particles: np.ndarray, species: Sequence[Species]) -> NDArra
 
 
 def particle_energy(
-    position, species_index, others, box_length, cut_off, pair_potentials, species
+    position: tuple[float, float],
+    species_index: int,
+    others: np.ndarray,
+    box_length: float,
+    cut_off: float,
+    pair_potentials: PairPotentials,
+    species: Sequence[Species],
 ) -> float:
     """Return the interaction energy of one particle with a set of others.
 
