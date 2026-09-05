@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy.optimize import brentq
 
 
 @dataclass(frozen=True)
@@ -65,13 +66,15 @@ class LennardJones(PairPotential):
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
-        x = (self.sigma / dr) ** 6
+        with np.errstate(divide="ignore"):
+            x = (self.sigma / dr) ** 6
         return 4 * self.epsilon * x * (x - 1)
 
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
-        x = (self.sigma / dr) ** 6
-        return 24 * self.epsilon * x * (2 * x - 1) / dr
+        with np.errstate(divide="ignore"):
+            x = (self.sigma / dr) ** 6
+            return 24 * self.epsilon * x * (2 * x - 1) / dr
 
 
 class Buckingham(PairPotential):
@@ -80,24 +83,53 @@ class Buckingham(PairPotential):
     .. math::
         E = A e^{-B r} - C / r^{6}
 
+    The form has a barrier at short range, inside which the dispersion term
+    wins and the energy falls to minus infinity. Inside the top of that
+    barrier, ``turnover``, the energy and force are taken as infinite: a
+    hard wall in place of the collapse.
+
     Args:
         a: The A parameter, an energy scale, in joules.
         b: The B parameter, an inverse length, in reciprocal metres.
         c: The C parameter, the dispersion coefficient, in joule metre^6.
+
+    Attributes:
+        turnover: The separation of the top of the short-range barrier, in
+            metres; zero when there is no barrier.
     """
 
     def __init__(self, *, a: float, b: float, c: float):
         self.a = a
         self.b = b
         self.c = c
+        self.turnover = self._find_turnover()
+
+    def _form(self, dr: NDArray[np.float64]) -> NDArray[np.float64]:
+        return self.a * np.exp(-self.b * dr) - self.c / dr**6
+
+    def _slope(self, dr: float) -> float:
+        return float(-self.a * self.b * np.exp(-self.b * dr) + 6 * self.c / dr**7)
+
+    def _find_turnover(self) -> float:
+        """Locate the top of the short-range barrier, where the slope is zero
+        between the collapse and the well."""
+        dr = np.geomspace(1e-13, 1e-8, 4000)
+        with np.errstate(over="ignore"):
+            barrier = int(np.argmax(self._form(dr)))
+        if barrier == 0:
+            return 0.0
+        return float(brentq(self._slope, dr[barrier - 1], dr[barrier + 1], xtol=1e-16))
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
-        return self.a * np.exp(-self.b * dr) - self.c / dr**6
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return np.where(dr < self.turnover, np.inf, self._form(dr))
 
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
-        return self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
+        with np.errstate(divide="ignore", invalid="ignore"):
+            force = self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
+        return np.where(dr < self.turnover, np.inf, force)
 
 
 class SquareWell(PairPotential):

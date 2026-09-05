@@ -114,7 +114,7 @@ def accept(
     Args:
         energy_change: The energy of the proposed configuration minus that
             of the current one, in joules.
-        temperature: Temperature of the simulation, in kelvin.
+        temperature: The temperature the acceptance is judged at, in kelvin.
         random_number: The uniform random number the acceptance probability
             is tested against. By default one is drawn from ``rng``.
         rng: The generator to draw from; pass the system's ``rng`` for a

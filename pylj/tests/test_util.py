@@ -8,6 +8,8 @@ from pylj.potentials import LennardJones, SquareWell
 from pylj.tests.argon import (
     ARGON,
     ARGON_MODEL,
+    BUCKINGHAM_ARGON,
+    BUCKINGHAM_MODEL,
     LARGER,
     LJ_ARGON,
     MIXTURE_MODEL,
@@ -57,6 +59,16 @@ class TestUtil(unittest.TestCase):
                 a.pair_potentials, a.species[type_1], a.species[type_2]
             ).sigma
             self.assertGreaterEqual(a.distances[mask].min(), core)
+
+    def test_system_metropolis_places_buckingham_outside_its_turnover(self):
+        # The Buckingham form falls to minus infinity inside its barrier, so
+        # a trial there would be accepted as downhill and the run would
+        # collapse; the wall inside the turnover keeps every pair outside it.
+        a = util.System(
+            30, 300, 40, init_conf="metropolis", simulation="md", seed=0, **BUCKINGHAM_MODEL
+        )
+        self.assertGreater(a.distances.min(), BUCKINGHAM_ARGON.turnover)
+        self.assertTrue(np.isfinite(a.energies).all())
 
     def test_system_refuses_an_overlapping_lattice(self):
         # 16 argon on a 4 by 4 lattice in a 10 Angstrom box are 2.5 Angstrom
@@ -167,17 +179,17 @@ class TestUtil(unittest.TestCase):
                 util.System(2, 300, 8, simulation="md", placement_temperature=bad, **ARGON_MODEL)
 
     def test_system_metropolis_placement_temperature_governs_success(self):
-        # 50 argon particles in a 28 Angstrom box: as near-hard discs of
+        # 50 argon particles in a 27 Angstrom box: as near-hard discs of
         # diameter sigma (placement at 1 K) they exceed the packing that
         # sequential insertion reaches, but at 1000 K closer contacts are
         # tolerated and the configuration is still bound.
         with self.assertRaisesRegex(ValueError, "Could not place"):
             util.System(
-                50, 100, 28, init_conf="metropolis", simulation="md", seed=0,
+                50, 100, 27, init_conf="metropolis", simulation="md", seed=0,
                 placement_temperature=1.0, **ARGON_MODEL,
             )
         hot = util.System(
-            50, 100, 28, init_conf="metropolis", simulation="md", seed=0,
+            50, 100, 27, init_conf="metropolis", simulation="md", seed=0,
             placement_temperature=1000, **ARGON_MODEL,
         )
         assert_equal(hot.number_of_particles, 50)

@@ -65,7 +65,7 @@ def _check_potentials_at_the_cut_off(
 
     Truncating the interaction at the cut-off assumes it is negligible
     there. The check is that each pair energy at the cut-off is finite and
-    within ``k_B T`` of zero, on either side.
+    within ``k_B T`` of zero.
 
     Args:
         species: The species in the system.
@@ -145,8 +145,9 @@ class System:
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     cut_off: float (optional)
-        The distance apart that the particles must be to consider their
-        interaction to be negligible.
+        The separation, in Angstrom, beyond which a pair's interaction is
+        taken as negligible. Ignored for a box of 30 Angstrom or under,
+        where half the box is used.
     placement_temperature: float (optional)
         Temperature, in kelvin, of the Metropolis acceptance used by
         ``init_conf='metropolis'``; by default the run temperature. The

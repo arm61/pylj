@@ -15,19 +15,18 @@ All notable changes to pylj are recorded here. The format follows
 - ruff and mypy configuration in `pyproject.toml`, a `dev` extra, and continuous integration on Python 3.11 to 3.14.
 - `System.restart()` returns a new system that continues from the current configuration with step and time at zero, empty sample arrays and the mean squared displacement measured from the copied positions, for starting a production run after equilibration.
 - `seed` on `md.initialise`, `mc.initialise` and `System`, and `System.rng`, the `numpy.random.Generator` that places an initial configuration, draws the initial velocities and makes Monte Carlo moves. The same seed reproduces the same run.
-- `pylj.potentials`: `Species`, a frozen dataclass of mass and name; the `PairPotential` interface, `energies(dr)` and `forces(dr)` on an array of separations, the force being the signed radial `-dE/dr`; and `LennardJones(*, epsilon, sigma)`, `Buckingham(*, a, b, c)` and `SquareWell(*, epsilon, sigma, lambda_, max_val)`, keyword-only with physical parameters (#57). `Species` rejects a non-positive or non-finite mass.
+- `pylj.potentials`: `Species`, a frozen dataclass of mass and name; the `PairPotential` interface, `energies(dr)` and `forces(dr)` on an array of separations, the force being the signed radial `-dE/dr`; and `LennardJones(*, epsilon, sigma)`, `Buckingham(*, a, b, c)` and `SquareWell(*, epsilon, sigma, lambda_, max_val)`, keyword-only with physical parameters (#57). `Species` rejects a non-positive or non-finite mass. `LennardJones` is infinite at zero separation, and `Buckingham` is infinite inside its short-range barrier, whose separation it exposes as `turnover`, in place of the form's collapse to minus infinity there.
 - `pairwise.compute_energy`, which evaluates the pair distances and energies without calling `forces`, so a potential with no finite force drives Monte Carlo; `System.compute_energy` uses it.
 - `pairwise.pair_potential` and `pairwise.particle_masses`.
 - `CellPane(diameter=...)` and a `diameter` keyword on every named viewer, in Angstrom, one value or one per species; by default particles are drawn at the separation of the minimum of their species' own pair energy.
 - `mc.accept`, the Metropolis criterion on an energy change; `mc.Proposal`, a proposed configuration with its energy change; `pairwise.particle_energy`, one particle's interaction energy with a set of others; `System.propose`, `System.apply` and `System.energy`, the total pair energy of the current configuration.
 - `System` refuses an initial configuration whose pair energy is not finite or stores more than `util.INITIAL_ENERGY_LIMIT` (ten) k_B T per particle, as an overlapping lattice does; the message gives the stored energy per particle in k_B T.
 - `System` refuses a pair potential whose energy at the cut-off is not finite or is larger in magnitude than k_B T, since the cut-off assumes the interaction has died away there; parameters in the wrong units are one way to trip it.
-- `System` raises `ValueError`, not `AttributeError`, for a box length outside 4 to 600 Angstrom.
-- `LennardJones` is `+inf` at zero separation, where it was NaN.
 - `placement_temperature` on `md.initialise`, `mc.initialise` and `System`: the temperature of the Metropolis acceptance used to place an initial configuration, by default the run temperature.
 
 ### Changed
 
+- `System` raises `ValueError`, not `AttributeError`, for a box length outside 4 to 600 Angstrom.
 - `md.heat_bath(particles, mass, bath_temperature)` rescales on the instantaneous temperature; it previously took the temperature sample array and rescaled towards its cumulative mean. `System.heat_bath(bath_temperature)` is unchanged. A non-positive bath temperature, or a system with zero or non-finite temperature, raises `ValueError` (#76).
 - Python 3.11 or later is required. scipy is a dependency; Cython is not.
 - `System.__init__` takes keyword-only arguments after `mass`, including the required `simulation`.

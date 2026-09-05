@@ -6,7 +6,7 @@
 
 from typing import TypedDict
 
-from pylj.potentials import LennardJones, PairPotential, Species, SquareWell
+from pylj.potentials import Buckingham, LennardJones, PairPotential, Species, SquareWell
 
 
 class Model(TypedDict):
@@ -25,6 +25,12 @@ LJ_ARGON_LARGER = LennardJones(epsilon=1.577e-21, sigma=4.186e-10)
 ARGON_MODEL: Model = {
     "species": [ARGON],
     "pair_potentials": {(ARGON, ARGON): LJ_ARGON},
+}
+# A Buckingham form for argon, with its short-range barrier at 0.78 Angstrom.
+BUCKINGHAM_ARGON = Buckingham(a=1.69e-15, b=3.66e10, c=1.02e-77)
+BUCKINGHAM_MODEL: Model = {
+    "species": [ARGON],
+    "pair_potentials": {(ARGON, ARGON): BUCKINGHAM_ARGON},
 }
 # A hard-core square well with a 3 Angstrom core and a well out to 4.5.
 WELL = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)

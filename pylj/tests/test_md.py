@@ -58,6 +58,10 @@ class TestMd(unittest.TestCase):
             np.array_equal(first.particles["xvelocity"], other.particles["xvelocity"])
         )
 
+    def test_initialise_passes_the_placement_temperature_to_the_system(self):
+        a = md.initialise(4, 100, 20, "metropolis", placement_temperature=50, **ARGON_MODEL)
+        self.assertEqual(a.placement_temperature, 50)
+
     def test_initialise_one_particle_raises(self):
         with self.assertRaisesRegex(ValueError, "at least two particles"):
             md.initialise(1, 300, 8, "square", **ARGON_MODEL)

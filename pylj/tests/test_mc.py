@@ -50,6 +50,10 @@ class TestMc(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "temperature must be positive"):
                 mc.initialise(4, temperature, 8, "square", **ARGON_MODEL)
 
+    def test_initialise_passes_the_placement_temperature_to_the_system(self):
+        a = mc.initialise(4, 100, 20, "metropolis", placement_temperature=50, **ARGON_MODEL)
+        self.assertEqual(a.placement_temperature, 50)
+
     def test_square_well_drives_monte_carlo(self):
         # Nine particles on a 3 by 3 lattice in a 12 Angstrom box: each has
         # four lattice neighbours 4 Angstrom away, inside the well, and four
