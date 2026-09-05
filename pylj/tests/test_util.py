@@ -54,7 +54,7 @@ class TestUtil(unittest.TestCase):
         a = util.System(
             30, 300, 40, init_conf="metropolis", simulation="mc", seed=0, **WELL_MIXTURE_MODEL
         )
-        for mask, type_1, type_2 in pairwise._species_pairs(a.particles["types"]):
+        for mask, type_1, type_2 in pairwise.species_pairs(a.particles["types"]):
             core = pairwise.pair_potential(
                 a.pair_potentials, a.species[type_1], a.species[type_2]
             ).sigma

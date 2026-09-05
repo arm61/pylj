@@ -3,7 +3,7 @@ import warnings
 
 import numpy as np
 import pytest
-from numpy.testing import assert_almost_equal
+from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import pairwise, util
 from pylj.constants import ATOMIC_MASS_UNIT
@@ -70,37 +70,26 @@ class TestPairwise(unittest.TestCase):
 
     def test_calculate_pressure(self):
         # The virial sum(f r) / (2 L^2) plus the ideal term N k_B T / L^2.
-        distances = np.array([4e-10])
-        forces = np.array([-9.5864009e-12])
-        p = pairwise.calculate_pressure(
-            distances,
-            forces,
-            30e-10,
-            2,
-            300,
-        )
-        virial = np.sum(forces * distances) / (2 * (30e-10) ** 2)
+        virial = -9.5864009e-12 * 4e-10
+        p = pairwise.calculate_pressure(virial, 30e-10, 2, 300)
         ideal = 2 * 1.380649e-23 * 300 / (30e-10) ** 2
-        assert_almost_equal(p, virial + ideal)
+        assert_almost_equal(p, virial / (2 * (30e-10) ** 2) + ideal)
 
     def test_calculate_pressure_ideal_gas_limit(self):
         # With no pair forces the virial vanishes and the two-dimensional
-        # pressure is the ideal-gas value N k_B T / L^2. Hand-computed:
-        # 50 * 1.380649e-23 * 200 / (25e-10)^2.
-        box_length = 25e-10
-        p = pairwise.calculate_pressure(np.zeros(3), np.zeros(3), box_length, 50, 200)
-        expected = 50 * 1.380649e-23 * 200 / box_length**2
-        assert_almost_equal(p * 1e3, expected * 1e3)
+        # pressure is the ideal-gas value N k_B T / L^2.
+        box = 25e-10
+        p = pairwise.calculate_pressure(0.0, box, 50, 200)
+        assert_almost_equal(p * 1e3, 50 * 1.380649e-23 * 200 / box**2 * 1e3)
 
-    def test_calculate_pressure_adds_one_virial_term(self):
-        # A single repulsive pair (positive force) 4 Angstrom apart adds a
-        # positive virial f * r / (2 L^2) on top of the ideal term.
-        box_length = 20e-10
-        force, separation = np.array([2e-12]), np.array([4e-10])
-        p = pairwise.calculate_pressure(separation, force, box_length, 2, 100)
-        ideal = 2 * 1.380649e-23 * 100 / box_length**2
-        virial = 2e-12 * 4e-10 / (2 * box_length**2)
-        assert_almost_equal(p, ideal + virial)
+    def test_species_pairs_yields_each_unordered_pair_once(self):
+        # Particles of species 0, 1, 0: pairs (0, 1), (0, 2), (1, 2) are
+        # 0-1, 0-0 and 1-0, so the unordered pair (0, 1) covers the first
+        # and the last.
+        pairs = list(pairwise.species_pairs(np.array([0, 1, 0])))
+        self.assertEqual([(a, b) for _, a, b in pairs], [(0, 0), (0, 1)])
+        assert_equal(pairs[0][0], [False, True, False])
+        assert_equal(pairs[1][0], [True, False, True])
 
     def test_dist_applies_the_minimum_image(self):
         # Pairs 1 Angstrom apart across the periodic boundary of a 10 Angstrom

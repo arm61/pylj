@@ -110,8 +110,7 @@ class TestMd(unittest.TestCase):
         system.md_sample()
         temperature = md.calculate_temperature(system.particles, system.masses)
         expected = pairwise.calculate_pressure(
-            system.distances,
-            system.forces,
+            np.sum(system.forces * system.distances),
             system.box_length,
             system.particles.size,
             temperature,

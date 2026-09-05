@@ -187,8 +187,7 @@ def sample(particles, box_length, initial_particles, system):
     temperature_new = calculate_temperature(particles, system.masses)
     system.temperature_sample = np.append(system.temperature_sample, temperature_new)
     pressure_new = pairwise.calculate_pressure(
-        system.distances,
-        system.forces,
+        np.sum(system.forces * system.distances),
         box_length,
         particles.size,
         temperature_new,

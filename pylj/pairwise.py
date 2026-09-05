@@ -97,24 +97,24 @@ def particle_energy(
     return float(energies.sum())
 
 
-def _species_pairs(
-    types: NDArray[np.int64],
+def species_pairs(
+    species_index: NDArray[np.int64],
 ) -> Iterator[tuple[NDArray[np.bool_], int, int]]:
-    """Yield the pairs of each unordered pair of species indices present.
+    """Yield the pairs of each unordered pair of species present.
 
     A pair of species 0 and 1 is the same pair as 1 and 0, so each unordered
     pair is yielded once, with a mask over the i < j pair arrays selecting
     the pairs it covers.
 
     Args:
-        types: The species index of each particle.
+        species_index: The species index of each particle.
 
     Yields:
         The mask, the lower species index and the upper species index.
     """
-    i, j = np.triu_indices(types.size, 1)
-    lower = np.minimum(types[i], types[j])
-    upper = np.maximum(types[i], types[j])
+    i, j = np.triu_indices(species_index.size, 1)
+    lower = np.minimum(species_index[i], species_index[j])
+    upper = np.maximum(species_index[i], species_index[j])
     for type_1, type_2 in sorted(set(zip(lower.tolist(), upper.tolist(), strict=True))):
         yield (lower == type_1) & (upper == type_2), type_1, type_2
 
@@ -143,7 +143,7 @@ def compute_energy(particles, box_length, cut_off, pair_potentials, species):
     position = np.column_stack([particles["xposition"], particles["yposition"]])
     distances, _ = dist(position, box_length)
     energies = np.zeros(distances.size)
-    for mask, type_1, type_2 in _species_pairs(particles["types"]):
+    for mask, type_1, type_2 in species_pairs(particles["types"]):
         potential = pair_potential(pair_potentials, species[type_1], species[type_2])
         energies[mask] = potential.energies(distances[mask])
     energies[distances > cut_off] = 0.0
@@ -180,7 +180,7 @@ def compute_force(particles, box_length, cut_off, pair_potentials, species):
     dx, dy = separation[:, 0], separation[:, 1]
     forces = np.zeros(distances.size)
     energies = np.zeros(distances.size)
-    for mask, type_1, type_2 in _species_pairs(particles["types"]):
+    for mask, type_1, type_2 in species_pairs(particles["types"]):
         potential = pair_potential(pair_potentials, species[type_1], species[type_2])
         energies[mask] = potential.energies(distances[mask])
         forces[mask] = potential.forces(distances[mask])
@@ -224,37 +224,26 @@ def update_accelerations(particles, f, m, dx, dy, dr):
 
 
 def calculate_pressure(
-    distances, forces, box_length, number_of_particles, temperature
-):
-    r"""Calculate the instantaneous pressure of the simulation cell in two
-    dimensions, from the pair distances and forces of the configuration:
+    virial: float, box: float, number_of_particles: int, temperature: float
+) -> float:
+    r"""Return the instantaneous pressure of the cell in two dimensions.
 
     .. math::
         p = \frac{N k_B T}{L^2} + \frac{1}{2 L^2} \sum_{i} \sum_{j > i}
-        r_{ij} f_{ij}
+        f_{ij} r_{ij}
 
-    Parameters
-    ----------
-    distances: float, array_like
-        The distance between each pair of particles, in metres.
-    forces: float, array_like
-        The force between each pair of particles, in newtons.
-    box_length: float
-        Length of a single dimension of the simulation square, in metres.
-    number_of_particles: int
-        The number of particles in the simulation.
-    temperature: float
-        Instantaneous temperature of the simulation, in kelvin.
+    Args:
+        virial: The sum over pairs of the radial force times the distance,
+            in joules.
+        box: The side length of the square periodic box, in metres.
+        number_of_particles: The number of particles.
+        temperature: The instantaneous temperature, in kelvin.
 
-    Returns
-    -------
-    float:
-        Instantaneous pressure of the simulation, in N / m (a two-dimensional
-        pressure).
+    Returns:
+        The pressure, in newtons per metre (a two-dimensional pressure).
     """
-    virial = np.sum(forces * distances) / (2 * box_length * box_length)
-    ideal = number_of_particles * BOLTZMANN * temperature / (box_length * box_length)
-    return virial + ideal
+    area = box * box
+    return virial / (2 * area) + number_of_particles * BOLTZMANN * temperature / area
 
 
 def dist(
