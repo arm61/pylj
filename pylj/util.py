@@ -51,7 +51,7 @@ def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPote
 def _check_potentials_at_the_cut_off(
     species: Sequence[Species], pair_potentials: PairPotentials, cut_off: float, temperature: float
 ) -> None:
-    """Check that each species' own pair energy has died away at the cut-off.
+    """Check that every pair potential's energy has died away at the cut-off.
 
     Args:
         species: The species in the system.
@@ -60,20 +60,22 @@ def _check_potentials_at_the_cut_off(
         temperature: The temperature, in kelvin.
 
     Raises:
-        ValueError: If a species' pair energy with itself at the cut-off is
-            not finite or exceeds ``k_B T``, which is what a potential whose
+        ValueError: If any pair potential's energy at the cut-off is not
+            finite or exceeds ``k_B T``, which is what a potential whose
             parameters are in the wrong units looks like.
     """
-    for one in species:
-        potential = pairwise.pair_potential(pair_potentials, one, one)
+    for one, other in itertools.combinations_with_replacement(species, 2):
+        potential = pairwise.pair_potential(pair_potentials, one, other)
         at_cut_off = np.asarray(potential.energies(np.array([cut_off])), dtype=float).reshape(-1)
         energy = float(at_cut_off[0])
         if not np.isfinite(energy) or energy > BOLTZMANN * temperature:
+            pair = f"{one.name or 'particles'} and {other.name or 'particles'}"
             raise ValueError(
-                f"{type(potential).__name__} between two {one.name or 'particles'} is still "
+                f"{type(potential).__name__} between {pair} is still "
                 f"{energy / (BOLTZMANN * temperature):.3g} k_B T at the cut-off of "
                 f"{cut_off * 1e10:.1f} Angstrom, where the interaction should have died away. "
-                "Check that its parameters are in metres and joules, or use a larger cut-off."
+                "Check that its parameters are in metres and joules, or use a larger box or "
+                "cut-off."
             )
 
 
@@ -87,9 +89,11 @@ def check_initial_energy(system: "System", energy: float) -> None:
     than thermal energy.
 
     Potential energy stored in an initial configuration is released as
-    motion over the first steps, so by equipartition a configuration holding
-    ``x`` k_B T per particle heats to roughly ``x`` times its temperature.
-    Overlapping particles store enormous energy.
+    motion over the first steps. With the thermal energy already present, a
+    configuration holding ``x`` k_B T per particle can by equipartition
+    heat to as much as roughly ``x + 1`` times its temperature; how much of
+    the stored energy is released depends on where the configuration
+    relaxes to. Overlapping particles store enormous energy.
 
     Args:
         system: The system, after placement.
@@ -108,8 +112,8 @@ def check_initial_energy(system: "System", energy: float) -> None:
     if per_particle > INITIAL_ENERGY_LIMIT:
         raise ValueError(
             f"The initial configuration stores {per_particle:.3g} k_B T of potential energy per "
-            f"particle, above the limit of {INITIAL_ENERGY_LIMIT:g}; by equipartition, released "
-            f"as motion it would heat the system to roughly {per_particle:.3g} times "
+            f"particle, above the limit of {INITIAL_ENERGY_LIMIT:g}; released as motion it "
+            f"could raise the temperature to as much as roughly {per_particle + 1:.3g} times "
             f"{system.temperature:g} K. Particles overlap: use fewer particles, a larger box, or "
             "init_conf='metropolis'."
         )
@@ -197,10 +201,13 @@ class System:
     ValueError
         If the temperature or placement temperature is not positive and
         finite, ``species`` is empty, a pair of species has no potential or
-        one given in both orders, or a species' own pair energy at the
-        cut-off is not finite or exceeds k_B T.
+        one given in both orders, a pair potential's energy at the cut-off
+        is not finite or exceeds k_B T, or Metropolis placement exhausts its
+        trial budget or receives NaN from a potential.
     TypeError
         If a pair potential is not a ``PairPotential`` instance.
+    NotImplementedError
+        If ``init_conf`` is not ``'square'`` or ``'metropolis'``.
     """
 
     def __init__(

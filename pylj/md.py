@@ -66,7 +66,7 @@ def initialise(
     ------
     ValueError
         If fewer than two particles are requested, the temperature or the
-        placement temperature is not positive and finite, a species' pair
+        placement temperature is not positive and finite, a pair potential's
         energy has not died away at the cut-off, Metropolis placement
         exhausts its trial budget, or the initial configuration is not finite
         or stores more than ``util.INITIAL_ENERGY_LIMIT`` k_B T of potential
