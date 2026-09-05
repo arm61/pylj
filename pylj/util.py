@@ -98,7 +98,7 @@ class System:
         lowering it packs more tightly and can exhaust the trial budget.
         Ignored by ``'square'``.
     seed: int (optional)
-        Seed for the random number generator used to place a random initial
+        Seed for the random number generator used to place an initial
         configuration, draw the initial velocities and make Monte Carlo
         moves. The same seed reproduces the same run. Without one the run
         differs each time.
@@ -290,8 +290,8 @@ class System:
 
         The lattice has ``ceil(sqrt(number_of_particles))`` sites along each
         side of the box and the particles fill it in order. No overlap check
-        is made: a lattice too dense for the potential gives a large initial
-        energy on the first evaluation.
+        is made: a lattice too dense for the potential gives a large, or for
+        a hard core infinite, initial energy on the first evaluation.
         """
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
@@ -308,15 +308,17 @@ class System:
 
         Each particle in turn is given a uniform trial position in the box,
         accepted by :func:`mc.accept` at ``placement_temperature`` on its
-        interaction energy with the particles already placed, and redrawn on
-        rejection. Inserting from vacuum makes that energy the energy change
-        of the insertion, so an overlapping trial is rejected with
-        probability close to one and an attractive one is always accepted.
+        total interaction energy with the particles already placed, and
+        redrawn on rejection. Inserting from vacuum makes that energy the
+        energy change of the insertion, so a trial that overlaps a core is
+        rejected with probability close to one and one whose net interaction
+        is attractive is always accepted.
         The first particle interacts with nothing and is always accepted.
 
         Sequential insertion is an initialiser, not an equilibrium sample:
-        the placed configuration is free of overlaps at the placement
-        temperature, and the run equilibrates it.
+        the placed configuration is free of hard overlaps, close contacts
+        become likelier as the placement temperature rises, and the run
+        equilibrates it.
 
         Raises:
             ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are
@@ -341,9 +343,9 @@ class System:
                     f"Could not place particle {i + 1} of {self.number_of_particles} in a "
                     f"{self.box_length * 1e10:.1f} Angstrom box at a placement temperature of "
                     f"{self.placement_temperature:g} K after {PLACEMENT_ATTEMPTS} attempts; "
-                    "reduce the number of particles, use a larger box, raise "
-                    "placement_temperature, or start from a square lattice "
-                    "(init_conf='square')."
+                    "reduce the number of particles or use a larger box; for a soft "
+                    "potential, raising placement_temperature tolerates closer contacts; "
+                    "and check the units of the potential's parameters (metres and joules)."
                 )
 
     def compute_force(self):

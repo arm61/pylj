@@ -66,7 +66,7 @@ def initialise(
         parameter of the placement, not a thermodynamic temperature: raising
         it tolerates more overlap, lowering it packs more tightly.
     seed: int (optional)
-        Seed for the random number generator used to place a random initial
+        Seed for the random number generator used to place an initial
         configuration and make the Monte Carlo moves. The same seed
         reproduces the same run.
 

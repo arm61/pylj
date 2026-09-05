@@ -54,7 +54,7 @@ def initialise(
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     seed: int (optional)
-        Seed for the random number generator used to place a random initial
+        Seed for the random number generator used to place an initial
         configuration and draw the initial velocities. The same seed
         reproduces the same run.
 

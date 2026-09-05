@@ -4,8 +4,8 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, md, pairwise, util
-from pylj.potentials import LennardJones
-from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL
+from pylj.potentials import LennardJones, SquareWell
+from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, LJ_LARGER, MIXTURE_MODEL
 
 
 class TestUtil(unittest.TestCase):
@@ -31,6 +31,33 @@ class TestUtil(unittest.TestCase):
             self.assertTrue(np.all((0 <= a.particles[axis]) & (a.particles[axis] < a.box_length)))
         assert_almost_equal(a.cut_off * 1e10, 4.0)
         assert_equal(a.distances.size, 1)
+
+    def test_system_metropolis_places_a_hard_core_outside_its_diameter(self):
+        # A trial inside the square well's core costs infinite energy and is
+        # always rejected, so no pair is closer than sigma.
+        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
+        a = util.System(
+            50, 300, 30, init_conf="metropolis", simulation="mc", seed=1,
+            species=[ARGON], pair_potentials={(ARGON, ARGON): well},
+        )
+        distances, _ = pairwise.compute_energy(
+            a.particles, a.box_length, a.cut_off, a.pair_potentials, a.species
+        )
+        self.assertGreaterEqual(distances.min(), well.sigma)
+
+    def test_system_metropolis_places_a_mixture_with_each_pairs_own_potential(self):
+        # The larger species has a 5 Angstrom core; its pairs must respect
+        # that, not argon's 3.4 Angstrom one.
+        a = util.System(
+            20, 100, 60, init_conf="metropolis", simulation="md", seed=2, **MIXTURE_MODEL
+        )
+        distances, _ = pairwise.compute_energy(
+            a.particles, a.box_length, a.cut_off, a.pair_potentials, a.species
+        )
+        i, j = np.triu_indices(a.number_of_particles, 1)
+        types = a.particles["types"]
+        larger_pairs = (types[i] == 1) & (types[j] == 1)
+        self.assertGreater(distances[larger_pairs].min(), 0.8 * LJ_LARGER.sigma)
 
     def test_system_metropolis_configuration_has_no_overlap(self):
         # At 100 K a pair inside 0.8 sigma costs over 40 well depths and is
