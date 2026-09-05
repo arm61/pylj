@@ -50,7 +50,7 @@ All notable changes to pylj are recorded here. The format follows
 - `Interactions`, `Phase` and `Scattering` crashed if built before the first sample.
 - Two-type systems drew the other type's particles at the origin.
 - Pair energies in multi-type systems were counted once per type pair (#81).
-- The Metropolis criterion, `mc.accept`, draws a fresh random number on every call; one was reused for the life of the process (#78).
+- The Metropolis criterion, `mc.accept`, draws a fresh random number for every uphill change (a downhill change is accepted without a draw); one was reused for the life of the process (#78).
 - The square-well hard core tested epsilon rather than sigma (part of #80), and `square_well.energy` failed on integer input.
 - A custom forcefield without a `diameter` property, a diameter given in metres, or a non-positive or non-finite diameter (whether from the forcefield or passed by the caller) is refused with a clear message.
 - Random initial configurations no longer overlap: particles are placed at least their repulsive-core separation apart (#82).
