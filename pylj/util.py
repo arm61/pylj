@@ -7,6 +7,7 @@ from typing import Literal, Self
 import numpy as np
 
 from pylj import mc, md, pairwise
+from pylj.constants import BOLTZMANN
 from pylj.pairwise import PairPotentials
 from pylj.potentials import PairPotential, Species
 
@@ -45,6 +46,73 @@ def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPote
                 f"pair_potentials[{pair}] must be a PairPotential instance, such as "
                 f"LennardJones(epsilon=..., sigma=...), not {potential!r}"
             )
+
+
+def _check_potentials_at_the_cut_off(
+    species: Sequence[Species], pair_potentials: PairPotentials, cut_off: float, temperature: float
+) -> None:
+    """Check that each species' own pair energy has died away at the cut-off.
+
+    Args:
+        species: The species in the system.
+        pair_potentials: The potential between each pair of species.
+        cut_off: The cut-off, in metres.
+        temperature: The temperature, in kelvin.
+
+    Raises:
+        ValueError: If a species' pair energy with itself at the cut-off is
+            not finite or exceeds ``k_B T``, which is what a potential whose
+            parameters are in the wrong units looks like.
+    """
+    for one in species:
+        potential = pairwise.pair_potential(pair_potentials, one, one)
+        at_cut_off = np.asarray(potential.energies(np.array([cut_off])), dtype=float).reshape(-1)
+        energy = float(at_cut_off[0])
+        if not np.isfinite(energy) or energy > BOLTZMANN * temperature:
+            raise ValueError(
+                f"{type(potential).__name__} between two {one.name or 'particles'} is still "
+                f"{energy / (BOLTZMANN * temperature):.3g} k_B T at the cut-off of "
+                f"{cut_off * 1e10:.1f} Angstrom, where the interaction should have died away. "
+                "Check that its parameters are in metres and joules, or use a larger cut-off."
+            )
+
+
+#: Largest potential energy per particle, in units of k_B T, accepted for an
+#: initial configuration by :func:`md.initialise` and :func:`mc.initialise`.
+INITIAL_ENERGY_LIMIT = 10.0
+
+
+def check_initial_energy(system: "System", energy: float) -> None:
+    """Refuse a starting configuration that stores far more potential energy
+    than thermal energy.
+
+    Potential energy stored in an initial configuration is released as
+    motion over the first steps, so by equipartition a configuration holding
+    ``x`` k_B T per particle heats to roughly ``x`` times its temperature.
+    Overlapping particles store enormous energy.
+
+    Args:
+        system: The system, after placement.
+        energy: The total pair energy of the initial configuration, in joules.
+
+    Raises:
+        ValueError: If ``energy`` is not finite, or exceeds
+            :data:`INITIAL_ENERGY_LIMIT` k_B T per particle.
+    """
+    if not np.isfinite(energy):
+        raise ValueError(
+            "The initial pair energy is not finite: particles sit inside a hard core. Use "
+            "init_conf='metropolis', fewer particles or a larger box."
+        )
+    per_particle = energy / (system.number_of_particles * BOLTZMANN * system.temperature)
+    if per_particle > INITIAL_ENERGY_LIMIT:
+        raise ValueError(
+            f"The initial configuration stores {per_particle:.3g} k_B T of potential energy per "
+            f"particle, above the limit of {INITIAL_ENERGY_LIMIT:g}; by equipartition, released "
+            f"as motion it would heat the system to roughly {per_particle:.3g} times "
+            f"{system.temperature:g} K. Particles overlap: use fewer particles, a larger box, or "
+            "init_conf='metropolis'."
+        )
 
 
 class System:
@@ -90,12 +158,12 @@ class System:
         interaction to be negligible.
     placement_temperature: float (optional)
         Temperature, in kelvin, of the Metropolis acceptance used by
-        ``init_conf='metropolis'``; by default the run temperature. It sets
-        how strongly overlapping trial positions are rejected and is a
-        parameter of the placement, not a thermodynamic temperature: the
-        placed configuration is a starting point, not an equilibrium sample,
-        and the run equilibrates it. Raising it tolerates more overlap;
-        lowering it packs more tightly and can exhaust the trial budget.
+        ``init_conf='metropolis'``; by default the run temperature. It is a
+        parameter of the placement: the placed configuration is a starting
+        point that the run equilibrates, and the acceptance temperature only
+        sets how strictly close contacts are rejected. Raising it tolerates
+        closer contacts; lowering it rejects them more strictly and can
+        exhaust the trial budget.
         Ignored by ``'square'``.
     seed: int (optional)
         Seed for the random number generator used to place an initial
@@ -128,8 +196,9 @@ class System:
     ------
     ValueError
         If the temperature or placement temperature is not positive and
-        finite, ``species`` is empty, or a pair of species has no potential
-        or one given in both orders.
+        finite, ``species`` is empty, a pair of species has no potential or
+        one given in both orders, or a species' own pair energy at the
+        cut-off is not finite or exceeds k_B T.
     TypeError
         If a pair potential is not a ``PairPotential`` instance.
     """
@@ -192,6 +261,9 @@ class System:
             self.cut_off = cut_off * 1e-10
         else:
             self.cut_off = box_length / 2 * 1e-10
+        _check_potentials_at_the_cut_off(
+            self.species, self.pair_potentials, self.cut_off, self.temperature
+        )
         if init_conf == "square":
             self.square()
         elif init_conf == "metropolis":
@@ -313,7 +385,6 @@ class System:
         energy change of the insertion, so a trial that overlaps a core is
         rejected with probability close to one and one whose net interaction
         is attractive is always accepted.
-        The first particle interacts with nothing and is always accepted.
 
         Sequential insertion is an initialiser, not an equilibrium sample:
         the placed configuration is free of hard overlaps, close contacts
@@ -322,7 +393,8 @@ class System:
 
         Raises:
             ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are
-                rejected for a single particle.
+                rejected for a single particle, or the pair potential returns
+                NaN for a trial position.
         """
         x = self.particles["xposition"]
         y = self.particles["yposition"]
@@ -335,6 +407,11 @@ class System:
                     trial, int(types[i]), placed,
                     self.box_length, self.cut_off, self.pair_potentials, self.species,
                 )
+                if np.isnan(energy):
+                    raise ValueError(
+                        "The pair potential returned NaN for a trial position; check its "
+                        "energies for a division by zero or an invalid parameter."
+                    )
                 if mc.accept(energy, self.placement_temperature, rng=self.rng):
                     x[i], y[i] = trial
                     break

@@ -14,13 +14,13 @@ All notable changes to pylj are recorded here. The format follows
 - `pylj.constants`, taking the Boltzmann constant and the atomic mass unit from `scipy.constants`.
 - ruff and mypy configuration in `pyproject.toml`, a `dev` extra, and continuous integration on Python 3.11 to 3.14.
 - `System.restart()` returns a new system that continues from the current configuration with step and time at zero, empty sample arrays and the mean squared displacement measured from the copied positions, for starting a production run after equilibration.
-- `seed` on `md.initialise`, `mc.initialise` and `System`, and `System.rng`, the `numpy.random.Generator` that places a random configuration, draws the initial velocities and makes Monte Carlo moves. The same seed reproduces the same run.
+- `seed` on `md.initialise`, `mc.initialise` and `System`, and `System.rng`, the `numpy.random.Generator` that places an initial configuration, draws the initial velocities and makes Monte Carlo moves. The same seed reproduces the same run.
 - `pylj.potentials`: `Species`, a frozen dataclass of mass and name; the `PairPotential` interface, `energies(dr)` and `forces(dr)` on an array of separations, the force being the signed radial `-dE/dr`; and `LennardJones(*, epsilon, sigma)`, `Buckingham(*, a, b, c)` and `SquareWell(*, epsilon, sigma, lambda_, max_val)`, keyword-only with physical parameters (#57). `Species` rejects a non-positive or non-finite mass.
 - `pairwise.compute_energy`, which evaluates the pair distances and energies without calling `forces`, so a potential with no finite force drives Monte Carlo; `System.compute_energy` uses it.
 - `pairwise.pair_potential` and `pairwise.particle_masses`.
 - `CellPane(diameter=...)` and a `diameter` keyword on every named viewer, in Angstrom, one value or one per species; by default particles are drawn at the separation of the minimum of their species' own pair energy.
 - `mc.accept`, the Metropolis criterion on an energy change; `mc.Proposal`, a proposed configuration with its energy change; `pairwise.particle_energy`, one particle's interaction energy with a set of others; `System.propose`, `System.apply` and `System.energy`, the total pair energy of the current configuration.
-- `md.initialise` refuses an initial configuration whose pair energy is not finite or whose forces would move a particle further than the box in one step, as when particles overlap or the potential's parameters are in the wrong units; `mc.initialise` refuses a non-finite initial energy.
+- `md.initialise` and `mc.initialise` refuse an initial configuration whose pair energy is not finite or stores more than `util.INITIAL_ENERGY_LIMIT` (ten) k_B T per particle, the equipartition temperature it would heat to, as an overlapping lattice does. `System` refuses a potential whose own pair energy is still above k_B T at the cut-off, as one with parameters in the wrong units is.
 - `placement_temperature` on `md.initialise`, `mc.initialise` and `System`: the temperature of the Metropolis acceptance used to place an initial configuration, by default the run temperature.
 
 ### Changed
@@ -55,7 +55,7 @@ All notable changes to pylj are recorded here. The format follows
 - The Metropolis criterion, `mc.accept`, draws a fresh random number for every uphill change (a downhill change is accepted without a draw); one was reused for the life of the process (#78).
 - The square-well hard core tested epsilon rather than sigma (part of #80), and `square_well.energy` failed on integer input.
 - A custom forcefield without a `diameter` property, a diameter given in metres, or a non-positive or non-finite diameter (whether from the forcefield or passed by the caller) is refused with a clear message.
-- Initial configurations no longer overlap: `'metropolis'` placement rejects overlapping trial positions by their energy (#82).
+- `init_conf='metropolis'` places initial configurations without overlapping particles, rejecting trial positions by their energy (#82).
 - `energy` and `force` on the forcefields no longer store their result on `self`, overwriting the bound method and breaking a second call on the same instance (#79).
 - `buckingham.energy` and `buckingham.force` raised under NumPy 2.1 or later when the separation was an integer, a 0-d array, or a NumPy scalar that is not a float subclass (#83). `lennard_jones` and `lennard_jones_sigma_epsilon` also failed on integer input.
 - The mean squared displacement was wrong unless sampled on every integration step, and non-zero before the first step (#74).
@@ -69,4 +69,4 @@ All notable changes to pylj are recorded here. The format follows
 - `pairwise.separation`, `pairwise.pbc_correction`, `pairwise.second_law`, and the deprecated `pairwise.lennard_jones_energy` and `pairwise.lennard_jones_force` wrappers.
 - `System.select_random_particle`, `new_random_position`, `metropolis`, `accept` and `reject`, with `old_energy`, `new_energy`, `position_store` and `random_particle`; `mc.select_random_particle`, `mc.get_new_particle`, `mc.reject`, `mc.metropolis`, and the identity `mc.accept(new_energy)`; the unused `energy` field of the particle dtype.
 - `pylj.forcefields` and its `mixing` and `diameter` members; cross-species potentials are entries in `pair_potentials`. `md.compute_force` (a wrapper of `pairwise.compute_force`), `util.Particle`, `System.setup_types`, `System.setup_diameters` and `System.diameters`.
-- `System.cores`, `System.setup_cores`, `System.random`, and the geometric overlap and density guards on placement, with their error messages.
+- The `'random'` initial configuration, replaced by `'metropolis'`.

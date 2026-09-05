@@ -5,7 +5,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-from pylj.potentials import LennardJones, SquareWell
+from pylj.potentials import SquareWell
 from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL
 
 
@@ -44,29 +44,16 @@ class TestMd(unittest.TestCase):
         self.assertLess(abs(np.sum(a.masses * a.particles["yvelocity"])), 1e-12 * momentum_scale)
         assert_almost_equal(md.calculate_temperature(a.particles, a.masses), 100)
 
-    def test_initialise_refuses_parameters_in_the_wrong_units(self):
-        # Sigma given in Angstrom: every lattice pair sits deep inside the
-        # core, and the first step would throw a particle far beyond the box.
-        in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
-        with self.assertRaisesRegex(ValueError, "wrong units"):
-            md.initialise(
-                4, 300, 30, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): in_angstrom}
-            )
-
-    def test_initialise_refuses_a_lattice_inside_a_hard_core(self):
-        # Four particles on a 2 by 2 lattice in a 4 Angstrom box are 2
-        # Angstrom apart, inside a 3 Angstrom hard core.
-        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
-        with self.assertRaisesRegex(ValueError, "not finite"):
-            mc.initialise(
-                4, 300, 4, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): well}
-            )
-
-    def test_initialise_accepts_a_dense_but_finite_lattice(self):
+    def test_initialise_refuses_an_overlapping_lattice(self):
         # 16 argon on a 4 by 4 lattice in a 10 Angstrom box are 2.5 Angstrom
-        # apart, well inside sigma, but the first-step displacement is far
-        # less than the box: a silly start is allowed, a nonsensical one is not.
-        a = md.initialise(16, 300, 10, "square", **ARGON_MODEL)
+        # apart, inside sigma: about 90 k_B T of potential energy per particle.
+        with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
+            md.initialise(16, 300, 10, "square", **ARGON_MODEL)
+
+    def test_initialise_accepts_a_compressed_but_bound_lattice(self):
+        # 16 argon in a 14 Angstrom box are 3.5 Angstrom apart, just outside
+        # sigma, so the lattice is bound and starts.
+        a = md.initialise(16, 300, 14, "square", **ARGON_MODEL)
         assert_equal(a.number_of_particles, 16)
 
     def test_initialise_refuses_a_potential_with_no_force(self):

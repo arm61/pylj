@@ -48,9 +48,8 @@ def initialise(
         species, including each species with itself.
     placement_temperature: float (optional)
         Temperature, in kelvin, of the Metropolis acceptance used by
-        ``init_conf='metropolis'``; by default the run temperature. A
-        parameter of the placement, not a thermodynamic temperature: raising
-        it tolerates more overlap, lowering it packs more tightly.
+        ``init_conf='metropolis'``; by default the run temperature. See
+        :class:`util.System`.
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     seed: int (optional)
@@ -66,10 +65,12 @@ def initialise(
     Raises
     ------
     ValueError
-        If fewer than two particles are requested, the temperature is not
-        positive, the initial pair energy is not finite, or the initial forces
-        would move a particle further than the box in one step, as they do when
-        particles overlap or the potential's parameters are in the wrong units.
+        If fewer than two particles are requested, the temperature or the
+        placement temperature is not positive and finite, a species' pair
+        energy has not died away at the cut-off, Metropolis placement
+        exhausts its trial budget, or the initial configuration is not finite
+        or stores more than ``util.INITIAL_ENERGY_LIMIT`` k_B T of potential
+        energy per particle.
     """
     from pylj import util
 
@@ -98,19 +99,7 @@ def initialise(
     system.particles["yvelocity"] = v[:, 1]
     system.particles = heat_bath(system.particles, system.masses, temperature)
     system.compute_force()
-    if not np.all(np.isfinite(system.energies)):
-        raise ValueError(
-            "The initial pair energy is not finite: particles sit inside a hard core. "
-            "Use init_conf='metropolis', fewer particles or a larger box."
-        )
-    acceleration = np.hypot(system.particles["xacceleration"], system.particles["yacceleration"])
-    displacement = 0.5 * acceleration.max() * timestep_length**2
-    if displacement > system.box_length:
-        raise ValueError(
-            f"The initial forces would move a particle {displacement:.3g} m in one step, "
-            f"further than the {system.box_length:.3g} m box. Particles are overlapping, "
-            "or the potential's parameters are in the wrong units (metres and joules)."
-        )
+    util.check_initial_energy(system, float(system.energies.sum()))
     return system
 
 

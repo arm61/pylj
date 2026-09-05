@@ -62,9 +62,8 @@ def initialise(
         square well, can be used.
     placement_temperature: float (optional)
         Temperature, in kelvin, of the Metropolis acceptance used by
-        ``init_conf='metropolis'``; by default the run temperature. A
-        parameter of the placement, not a thermodynamic temperature: raising
-        it tolerates more overlap, lowering it packs more tightly.
+        ``init_conf='metropolis'``; by default the run temperature. See
+        :class:`util.System`.
     seed: int (optional)
         Seed for the random number generator used to place an initial
         configuration and make the Monte Carlo moves. The same seed
@@ -78,8 +77,11 @@ def initialise(
     Raises
     ------
     ValueError
-        If the initial pair energy is not finite, as when particles of a
-        hard-core potential sit inside its diameter.
+        If the temperature or the placement temperature is not positive and
+        finite, a species' pair energy has not died away at the cut-off,
+        Metropolis placement exhausts its trial budget, or the initial
+        configuration is not finite or stores more than
+        ``util.INITIAL_ENERGY_LIMIT`` k_B T of potential energy per particle.
     """
     from pylj import util
 
@@ -94,11 +96,7 @@ def initialise(
         placement_temperature=placement_temperature,
         seed=seed,
     )
-    if not np.isfinite(system.energy):
-        raise ValueError(
-            "The initial pair energy is not finite: particles sit inside a hard core. "
-            "Use init_conf='metropolis', fewer particles or a larger box."
-        )
+    util.check_initial_energy(system, system.energy)
     return system
 
 

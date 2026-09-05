@@ -4,8 +4,9 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, md, pairwise, util
+from pylj.constants import BOLTZMANN
 from pylj.potentials import LennardJones, SquareWell
-from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, LJ_LARGER, MIXTURE_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL
 
 
 class TestUtil(unittest.TestCase):
@@ -46,18 +47,29 @@ class TestUtil(unittest.TestCase):
         self.assertGreaterEqual(distances.min(), well.sigma)
 
     def test_system_metropolis_places_a_mixture_with_each_pairs_own_potential(self):
-        # The larger species has a 5 Angstrom core; its pairs must respect
-        # that, not argon's 3.4 Angstrom one.
-        a = util.System(
-            20, 100, 60, init_conf="metropolis", simulation="md", seed=2, **MIXTURE_MODEL
-        )
-        distances, _ = pairwise.compute_energy(
-            a.particles, a.box_length, a.cut_off, a.pair_potentials, a.species
-        )
-        i, j = np.triu_indices(a.number_of_particles, 1)
-        types = a.particles["types"]
-        larger_pairs = (types[i] == 1) & (types[j] == 1)
-        self.assertGreater(distances[larger_pairs].min(), 0.8 * LJ_LARGER.sigma)
+        # Under its own potential no placed pair can sit at a repulsive energy
+        # the acceptance could not have passed: a single pair above 20 k_B T
+        # cannot be offset by a few attractive neighbours. Evaluating every
+        # pair with its own potential catches a placement that used the
+        # wrong one, whatever the seed.
+        for seed in range(5):
+            a = util.System(
+                20, 100, 60, init_conf="metropolis", simulation="md", seed=seed, **MIXTURE_MODEL
+            )
+            _, energies = pairwise.compute_energy(
+                a.particles, a.box_length, a.cut_off, a.pair_potentials, a.species
+            )
+            self.assertLess(energies.max(), 20 * BOLTZMANN * 100)
+
+    def test_system_refuses_a_potential_still_repulsive_at_the_cut_off(self):
+        # Sigma given in Angstrom: the pair energy is astronomically positive
+        # at the cut-off, where a sensible potential has died away.
+        in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
+        with self.assertRaisesRegex(ValueError, "at the cut-off"):
+            util.System(
+                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): in_angstrom},
+                simulation="md",
+            )
 
     def test_system_metropolis_configuration_has_no_overlap(self):
         # At 100 K a pair inside 0.8 sigma costs over 40 well depths and is
@@ -69,7 +81,7 @@ class TestUtil(unittest.TestCase):
         self.assertGreater(distances.min(), 0.8 * LJ_ARGON.sigma)
 
     def test_system_metropolis_too_dense_raises(self):
-        with self.assertRaisesRegex(ValueError, "after 1000 attempts"):
+        with self.assertRaisesRegex(ValueError, f"after {util.PLACEMENT_ATTEMPTS} attempts"):
             util.System(200, 100, 20, init_conf="metropolis", simulation="md", **ARGON_MODEL)
 
     def test_system_metropolis_seed_reproduces_placement(self):
