@@ -43,24 +43,6 @@ class TestMd(unittest.TestCase):
         self.assertLess(abs(np.sum(a.masses * a.particles["yvelocity"])), 1e-12 * momentum_scale)
         assert_almost_equal(md.calculate_temperature(a.particles, a.masses), 100)
 
-    def test_initialise_refuses_an_overlapping_lattice(self):
-        # 16 argon on a 4 by 4 lattice in a 10 Angstrom box are 2.5 Angstrom
-        # apart, inside sigma: about 90 k_B T of potential energy per particle.
-        with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
-            md.initialise(16, 300, 10, "square", **ARGON_MODEL)
-
-    def test_initialise_accepts_a_lattice_below_the_energy_limit(self):
-        # 16 argon in a 12 Angstrom box store about 5.6 k_B T per particle
-        # at 300 K, under the limit of 10, and construct.
-        a = md.initialise(16, 300, 12, "square", **ARGON_MODEL)
-        assert_equal(a.number_of_particles, 16)
-
-    def test_initialise_accepts_a_compressed_but_bound_lattice(self):
-        # 16 argon in a 14 Angstrom box are 3.5 Angstrom apart, just outside
-        # sigma, so the lattice is bound and starts.
-        a = md.initialise(16, 300, 14, "square", **ARGON_MODEL)
-        assert_equal(a.number_of_particles, 16)
-
     def test_initialise_refuses_a_potential_with_no_force(self):
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
             md.initialise(2, 300, 8, "square", **WELL_MODEL)

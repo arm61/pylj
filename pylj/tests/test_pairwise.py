@@ -217,14 +217,13 @@ class TestPairwise(unittest.TestCase):
     def test_compute_energy_needs_no_force_from_the_potential(self):
         # The square well has no finite force, so it drives the energy path
         # only.
-        well = WELL
         particles = three_particles([0, 0, 0])
-        _, energies = pairwise.compute_energy(particles, 30, 15, {(ARGON, ARGON): well}, [ARGON])
+        _, energies = pairwise.compute_energy(particles, 30, 15, {(ARGON, ARGON): WELL}, [ARGON])
         # (0, 1) at 4 Angstrom is in the well; (0, 2) at 5.1 and (1, 2) at
         # 7.07 are beyond it.
         assert_almost_equal(energies * 1e21, [-1.5, 0.0, 0.0])
         with pytest.raises(ValueError, match="Monte Carlo"):
-            pairwise.compute_force(particles, 30, 15, {(ARGON, ARGON): well}, [ARGON])
+            pairwise.compute_force(particles, 30, 15, {(ARGON, ARGON): WELL}, [ARGON])
 
     def test_particle_energy_sums_the_pairs(self):
         # Neighbours 4 and 5 Angstrom from the origin, both argon.

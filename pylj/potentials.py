@@ -65,11 +65,13 @@ class LennardJones(PairPotential):
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
-        return 4 * self.epsilon * (self.sigma**12 / dr**12 - self.sigma**6 / dr**6)
+        x = (self.sigma / dr) ** 6
+        return 4 * self.epsilon * x * (x - 1)
 
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
-        return 4 * self.epsilon * (12 * self.sigma**12 / dr**13 - 6 * self.sigma**6 / dr**7)
+        x = (self.sigma / dr) ** 6
+        return 24 * self.epsilon * x * (2 * x - 1) / dr
 
 
 class Buckingham(PairPotential):

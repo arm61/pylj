@@ -77,9 +77,7 @@ def initialise(
     Raises
     ------
     ValueError
-        If the initial configuration is not finite or stores more than
-        ``util.INITIAL_ENERGY_LIMIT`` k_B T of potential energy per particle;
-        and anything :class:`util.System` raises at construction.
+        Whatever :class:`util.System` rejects at construction.
     """
     from pylj import util
 
@@ -94,7 +92,6 @@ def initialise(
         placement_temperature=placement_temperature,
         seed=seed,
     )
-    util.check_initial_energy(system)
     return system
 
 
@@ -125,15 +122,7 @@ def accept(
 
     Returns:
         True if the proposed configuration should be accepted.
-
-    Raises:
-        ValueError: If ``energy_change`` is NaN.
     """
-    if np.isnan(energy_change):
-        raise ValueError(
-            "The energy change is NaN; check the pair potential's energies for a division "
-            "by zero or an invalid parameter."
-        )
     if energy_change <= 0:
         return True
     if random_number is None:

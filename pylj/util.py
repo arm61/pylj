@@ -85,10 +85,11 @@ def _check_potentials_at_the_cut_off(
     remedy = "Use a larger box" if cut_off_from_box else "Use a larger box or cut-off"
     for one, other in itertools.combinations_with_replacement(species, 2):
         potential = pairwise.pair_potential(pair_potentials, one, other)
-        at_cut_off = np.asarray(potential.energies(np.array([cut_off])), dtype=float)
-        energy = float(np.ravel(at_cut_off)[0])
-        pair = f"{type(potential).__name__} between {one.name or 'particles'} and " \
-               f"{other.name or 'particles'}"
+        energy = float(potential.energies(np.array([cut_off]))[0])
+        pair = (
+            f"{type(potential).__name__} between {one.name or 'particles'} and "
+            f"{other.name or 'particles'}"
+        )
         if not np.isfinite(energy):
             raise ValueError(
                 f"{pair} is infinite at {where}: its hard core is wider than the cut-off. "
@@ -98,49 +99,13 @@ def _check_potentials_at_the_cut_off(
             raise ValueError(
                 f"{pair} is still {energy / (BOLTZMANN * temperature):+.3g} k_B T at {where}; "
                 "the cut-off assumes the interaction has died away there. "
-                f"{remedy}, or a potential that has decayed by the cut-off; parameters given "
-                "in the wrong units (metres and joules are expected) are one cause."
+                f"{remedy}, or check the parameter units: metres and joules are expected."
             )
 
 
 #: Largest potential energy per particle, in units of k_B T, accepted for an
-#: initial configuration by :func:`md.initialise` and :func:`mc.initialise`.
+#: initial configuration by :class:`System`.
 INITIAL_ENERGY_LIMIT = 10.0
-
-
-def check_initial_energy(system: "System") -> None:
-    """Refuse a starting configuration that stores far more potential energy
-    than thermal energy.
-
-    Potential energy stored in an initial configuration is released as
-    motion over the first steps and heats the run. A configuration holding
-    more than :data:`INITIAL_ENERGY_LIMIT` k_B T per particle has particles
-    too close together for its temperature.
-
-    Args:
-        system: The system, after placement and a pair-energy evaluation.
-
-    Raises:
-        ValueError: If the total pair energy is not finite, or exceeds
-            :data:`INITIAL_ENERGY_LIMIT` k_B T per particle.
-    """
-    remedy = (
-        "Use fewer particles or a larger box; with init_conf='metropolis', a lower "
-        "placement_temperature keeps particles further apart, and from a lattice, "
-        "init_conf='metropolis' places them by energy."
-    )
-    energy = float(system.energies.sum())
-    if not np.isfinite(energy):
-        raise ValueError(
-            f"The initial pair energy is not finite: particles sit inside a hard core. {remedy}"
-        )
-    per_particle = energy / (system.number_of_particles * BOLTZMANN * system.temperature)
-    if per_particle > INITIAL_ENERGY_LIMIT:
-        raise ValueError(
-            f"The initial configuration stores {per_particle:.3g} k_B T of potential energy per "
-            f"particle, above the limit of {INITIAL_ENERGY_LIMIT:g}: its particles are too close "
-            f"together for {system.temperature:g} K. {remedy}"
-        )
 
 
 class System:
@@ -207,6 +172,8 @@ class System:
         The temperature given at construction, in kelvin.
     placement_temperature: float
         The Metropolis placement temperature, in kelvin.
+    energies: numpy.ndarray
+        The pair energies of the current configuration, in joules.
     energy: float
         The total pair energy of the current configuration, in joules, for a
         Monte Carlo system: computed at construction, kept current by
@@ -221,15 +188,15 @@ class System:
         If the temperature or placement temperature is not positive and
         finite, ``species`` is empty, a pair of species has no potential or
         one given in both orders, a pair potential's energy at the cut-off
-        is not finite or larger in magnitude than k_B T, Metropolis
-        placement exhausts its trial budget, or ``simulation`` is not
-        ``'md'`` or ``'mc'``.
+        is not finite or larger in magnitude than k_B T, the box length is
+        outside 4 to 600 Angstrom, Metropolis placement exhausts its trial
+        budget, the initial configuration's pair energy is not finite or
+        exceeds :data:`INITIAL_ENERGY_LIMIT` k_B T per particle, or
+        ``simulation`` is not ``'md'`` or ``'mc'``.
     TypeError
         If a pair potential is not a ``PairPotential`` instance.
     NotImplementedError
         If ``init_conf`` is not ``'square'`` or ``'metropolis'``.
-    AttributeError
-        If the box length is below 4 or above 600 Angstrom.
     """
 
     def __init__(
@@ -261,34 +228,21 @@ class System:
         self.pair_potentials = dict(pair_potentials)
         _check_pair_potentials(self.species, self.pair_potentials)
         self.rng = np.random.default_rng(seed)
-        if box_length <= 600:
-            self.box_length = box_length * 1e-10
-        else:
-            raise AttributeError(
-                f"With a box length of {box_length} the particles are "
-                "probably too small to be seen in the "
-                "viewer. Try something (much) less than "
-                "600."
+        if not 4 <= box_length <= 600:
+            raise ValueError(
+                f"box_length must be between 4 and 600 Angstrom, not {box_length}: below 4 the "
+                "cell cannot hold more than one particle, and above 600 the particles are too "
+                "small to be seen in the viewer."
             )
-        if box_length >= 4:
-            self.box_length = box_length * 1e-10
-        else:
-            raise AttributeError(
-                f"With a box length of {box_length} the cell is too "
-                "small to really hold more than one "
-                "particle."
-            )
+        self.box_length = box_length * 1e-10
         self.timestep_length = timestep_length
         self.particles: np.ndarray = np.zeros(self.number_of_particles, dtype=particle_dt())
         self.particles["types"] = np.arange(self.number_of_particles) % len(self.species)
         self.masses = pairwise.particle_masses(self.particles, self.species)
-        if box_length > 30:
-            self.cut_off = cut_off * 1e-10
-        else:
-            self.cut_off = box_length / 2 * 1e-10
+        cut_off_from_box = box_length <= 30
+        self.cut_off = (box_length / 2 if cut_off_from_box else cut_off) * 1e-10
         _check_potentials_at_the_cut_off(
-            self.species, self.pair_potentials, self.cut_off, self.temperature,
-            cut_off_from_box=box_length <= 30,
+            self.species, self.pair_potentials, self.cut_off, self.temperature, cut_off_from_box
         )
         if init_conf == "square":
             self.square()
@@ -314,10 +268,40 @@ class System:
         self.energy_sample = np.array([])
         self.step_sample = np.array([])
         self.initial_particles = np.array(self.particles)
-        self.energy = 0.0
-        if simulation == "mc":
-            self.compute_energy()
-            self.energy = float(self.energies.sum())
+        self.compute_energy()
+        self._check_initial_energy()
+        self.energy = float(self.energies.sum()) if simulation == "mc" else 0.0
+
+    def _check_initial_energy(self) -> None:
+        """Refuse a starting configuration that stores far more potential
+        energy than thermal energy.
+
+        Potential energy stored in an initial configuration is released as
+        motion over the first steps and heats the run. A configuration
+        holding more than :data:`INITIAL_ENERGY_LIMIT` k_B T per particle
+        has particles too close together for its temperature.
+
+        Raises:
+            ValueError: If the total pair energy is not finite, or exceeds
+                :data:`INITIAL_ENERGY_LIMIT` k_B T per particle.
+        """
+        remedy = (
+            "Use fewer particles or a larger box; init_conf='metropolis' places particles by "
+            "energy, and a lower placement_temperature there keeps them further apart."
+        )
+        energy = float(self.energies.sum())
+        if not np.isfinite(energy):
+            raise ValueError(
+                f"The initial pair energy is not finite: particles sit inside a hard core. "
+                f"{remedy}"
+            )
+        per_particle = energy / (self.number_of_particles * BOLTZMANN * self.temperature)
+        if per_particle > INITIAL_ENERGY_LIMIT:
+            raise ValueError(
+                f"The initial configuration stores {per_particle:.3g} k_B T of potential energy "
+                f"per particle, above the limit of {INITIAL_ENERGY_LIMIT:g}: its particles are "
+                f"too close together for {self.temperature:g} K. {remedy}"
+            )
 
     def number_of_pairs(self):
         """Calculates the number of pairwise interactions in the simulation.
@@ -408,9 +392,7 @@ class System:
         accepted by :func:`mc.accept` at ``placement_temperature`` on its
         total interaction energy with the particles already placed, and
         redrawn on rejection. Inserting from vacuum makes that energy the
-        energy change of the insertion, so a trial that overlaps a core is
-        rejected with probability close to one and one whose net interaction
-        is attractive is always accepted.
+        energy change of the insertion.
 
         Sequential insertion is an initialiser, not an equilibrium sample:
         the placed configuration avoids the close contacts the potential
@@ -419,21 +401,18 @@ class System:
 
         Raises:
             ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are
-                rejected for a single particle.
+                rejected for a single particle. Near the density the budget
+                allows, whether that happens depends on the draw, so the
+                same call can place with one seed and raise with another.
         """
-        x = self.particles["xposition"]
-        y = self.particles["yposition"]
-        types = self.particles["types"]
         for i in range(self.number_of_particles):
+            species_index = int(self.particles["types"][i])
             placed = self.particles[:i]
             for _attempt in range(PLACEMENT_ATTEMPTS):
-                trial = (self.rng.uniform(0, self.box_length), self.rng.uniform(0, self.box_length))
-                energy = pairwise.particle_energy(
-                    trial, int(types[i]), placed,
-                    self.box_length, self.cut_off, self.pair_potentials, self.species,
-                )
+                trial = self._random_position()
+                energy = self._interaction_energy(trial, species_index, placed)
                 if mc.accept(energy, self.placement_temperature, rng=self.rng):
-                    x[i], y[i] = trial
+                    self.particles["xposition"][i], self.particles["yposition"][i] = trial
                     break
             else:
                 raise ValueError(
@@ -443,6 +422,20 @@ class System:
                     "reduce the number of particles or use a larger box; for a soft "
                     "potential, raising placement_temperature tolerates closer contacts."
                 )
+
+    def _random_position(self) -> tuple[float, float]:
+        """Draw a position uniformly over the box."""
+        return (self.rng.uniform(0, self.box_length), self.rng.uniform(0, self.box_length))
+
+    def _interaction_energy(
+        self, position: tuple[float, float], species_index: int, others: np.ndarray
+    ) -> float:
+        """The energy of a particle of one species at a position, with the
+        given particles, under this system's potentials and cut-off."""
+        return pairwise.particle_energy(
+            position, species_index, others,
+            self.box_length, self.cut_off, self.pair_potentials, self.species,
+        )
 
     def compute_force(self):
         """Compute the pair forces and the accelerations of the current
@@ -520,19 +513,13 @@ class System:
             The proposed configuration and its energy change.
         """
         particle = int(self.rng.integers(self.number_of_particles))
-        trial = (self.rng.uniform(0, self.box_length), self.rng.uniform(0, self.box_length))
+        trial = self._random_position()
         current = (self.particles["xposition"][particle], self.particles["yposition"][particle])
         species_index = int(self.particles["types"][particle])
         others = np.delete(self.particles, particle)
-        trial_energy = pairwise.particle_energy(
-            trial, species_index, others,
-            self.box_length, self.cut_off, self.pair_potentials, self.species,
-        )
-        current_energy = pairwise.particle_energy(
-            current, species_index, others,
-            self.box_length, self.cut_off, self.pair_potentials, self.species,
-        )
-        energy_change = trial_energy - current_energy
+        energy_change = self._interaction_energy(
+            trial, species_index, others
+        ) - self._interaction_energy(current, species_index, others)
         xposition = self.particles["xposition"].copy()
         yposition = self.particles["yposition"].copy()
         xposition[particle], yposition[particle] = trial

@@ -65,11 +65,9 @@ def initialise(
     Raises
     ------
     ValueError
-        If fewer than two particles are requested, a pair potential has no
-        finite force (as the square well has not), or the initial
-        configuration is not finite or stores more than
-        ``util.INITIAL_ENERGY_LIMIT`` k_B T of potential energy per particle;
-        and anything :class:`util.System` raises at construction.
+        If fewer than two particles are requested or a pair potential has no
+        finite force (as the square well has not). See :class:`util.System`
+        for what construction rejects.
     """
     from pylj import util
 
@@ -98,7 +96,6 @@ def initialise(
     system.particles["yvelocity"] = v[:, 1]
     system.particles = heat_bath(system.particles, system.masses, temperature)
     system.compute_force()
-    util.check_initial_energy(system)
     return system
 
 

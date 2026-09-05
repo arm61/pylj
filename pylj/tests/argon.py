@@ -30,6 +30,16 @@ ARGON_MODEL: Model = {
 WELL = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
 WELL_MODEL: Model = {"species": [ARGON], "pair_potentials": {(ARGON, ARGON): WELL}}
 
+# Hard cores of three different diameters, one per species pair.
+WELL_MIXTURE_MODEL: Model = {
+    "species": [ARGON, LARGER],
+    "pair_potentials": {
+        (ARGON, ARGON): WELL,
+        (LARGER, LARGER): SquareWell(epsilon=1.5e-21, sigma=5e-10, lambda_=1.5),
+        (ARGON, LARGER): SquareWell(epsilon=1.5e-21, sigma=4e-10, lambda_=1.5),
+    },
+}
+
 MIXTURE_MODEL: Model = {
     "species": [ARGON, LARGER],
     "pair_potentials": {
