@@ -5,8 +5,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, pairwise
 from pylj.constants import BOLTZMANN
-from pylj.potentials import SquareWell
-from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL, WELL_MODEL
 
 
 def run_moves(system, steps):
@@ -51,14 +50,16 @@ class TestMc(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "temperature must be positive"):
                 mc.initialise(4, temperature, 8, "square", **ARGON_MODEL)
 
+    def test_initialise_passes_the_placement_temperature_to_the_system(self):
+        a = mc.initialise(4, 100, 20, "metropolis", placement_temperature=50, **ARGON_MODEL)
+        self.assertEqual(a.placement_temperature, 50)
+
     def test_square_well_drives_monte_carlo(self):
         # Nine particles on a 3 by 3 lattice in a 12 Angstrom box: each has
         # four lattice neighbours 4 Angstrom away, inside the well, and four
         # diagonal ones 5.66 Angstrom away, beyond it, so 18 pairs sit at
         # -epsilon. The cut-off, half the box, is 6 Angstrom.
-        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
-        model = {"species": [ARGON], "pair_potentials": {(ARGON, ARGON): well}}
-        system = mc.initialise(9, 300, 12, "square", seed=2, **model)
+        system = mc.initialise(9, 300, 12, "square", seed=2, **WELL_MODEL)
         assert_almost_equal(system.energy * 1e21, -27.0)
         overlaps = 0
         for _ in range(50):
@@ -188,7 +189,8 @@ class TestMc(unittest.TestCase):
 
     def test_seeded_runs_are_identical(self):
         def run(seed):
-            return run_moves(mc.initialise(16, 300, 30, "random", seed=seed, **ARGON_MODEL), 200)
+            system = mc.initialise(16, 300, 30, "metropolis", seed=seed, **ARGON_MODEL)
+            return run_moves(system, 200)
 
         first = run(7)
         second = run(7)

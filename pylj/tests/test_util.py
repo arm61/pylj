@@ -1,30 +1,22 @@
-import itertools
-import re
 import unittest
 
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
-from pylj import mc, md, util
-from pylj.potentials import Buckingham, LennardJones, PairPotential, SquareWell
-from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL
-
-
-def minimum_image_distances(system):
-    """Return the minimum-image separation, in metres, for every pair of
-    particles in ``system``."""
-    box_length = system.box_length
-    x = system.particles["xposition"]
-    y = system.particles["yposition"]
-    distances = []
-    for i in range(system.number_of_particles):
-        for j in range(i + 1, system.number_of_particles):
-            dx = x[i] - x[j]
-            dy = y[i] - y[j]
-            dx -= box_length * np.round(dx / box_length)
-            dy -= box_length * np.round(dy / box_length)
-            distances.append(np.sqrt(dx**2 + dy**2))
-    return distances
+from pylj import mc, md, pairwise, util
+from pylj.potentials import LennardJones, SquareWell
+from pylj.tests.argon import (
+    ARGON,
+    ARGON_MODEL,
+    BUCKINGHAM_ARGON,
+    BUCKINGHAM_MODEL,
+    LARGER,
+    LJ_ARGON,
+    MIXTURE_MODEL,
+    WELL,
+    WELL_MIXTURE_MODEL,
+    WELL_MODEL,
+)
 
 
 class TestUtil(unittest.TestCase):
@@ -43,106 +35,169 @@ class TestUtil(unittest.TestCase):
         assert_equal(a.forces.size, 1)
         assert_equal(a.energies.size, 1)
 
-    def test_system_random(self):
-        a = util.System(2, 300, 8, init_conf="random", simulation="md", **ARGON_MODEL)
+    def test_system_metropolis(self):
+        a = util.System(2, 300, 8, init_conf="metropolis", simulation="md", **ARGON_MODEL)
         assert_equal(a.number_of_particles, 2)
-        assert_equal(a.temperature, 300)
-        assert_almost_equal(a.box_length * 1e10, 8)
-        assert_almost_equal(a.timestep_length, 1e-14)
-        self.assertTrue(0 <= a.particles["xposition"][0] * 1e10 <= 8)
-        self.assertTrue(0 <= a.particles["yposition"][0] * 1e10 <= 8)
-        self.assertTrue(0 <= a.particles["xposition"][1] * 1e10 <= 8)
-        self.assertTrue(0 <= a.particles["yposition"][1] * 1e10 <= 8)
-        assert_almost_equal(a.cut_off * 1e10, 4.0)
-        assert_equal(a.distances.size, 1)
-        assert_equal(a.forces.size, 1)
-        assert_equal(a.energies.size, 1)
+        for axis in ("xposition", "yposition"):
+            self.assertTrue(np.all((0 <= a.particles[axis]) & (a.particles[axis] < a.box_length)))
 
-    def test_system_random_no_overlap(self):
-        a = util.System(30, 100, 40, init_conf="random", simulation="md", seed=0, **ARGON_MODEL)
-        for distance in minimum_image_distances(a):
-            self.assertTrue(distance >= a.cores[0])
+    def test_system_metropolis_places_a_hard_core_outside_its_diameter(self):
+        # A trial inside the square well's core costs infinite energy and is
+        # always rejected, so no pair is closer than sigma.
+        a = util.System(50, 300, 30, init_conf="metropolis", simulation="mc", seed=1, **WELL_MODEL)
+        self.assertGreaterEqual(a.distances.min(), WELL.sigma)
 
-    def test_system_random_too_dense_raises(self):
-        with self.assertRaisesRegex(ValueError, "after 1000 attempts"):
-            util.System(200, 100, 20, init_conf="random", simulation="md", **ARGON_MODEL)
-
-    def test_system_square_overlap_message_for_one_particle(self):
-        with self.assertRaisesRegex(ValueError, "1 particle fits"):
-            util.System(5, 100, 4, simulation="md", **ARGON_MODEL)
-
-    def test_system_square_overlap_raises(self):
-        # 50 argon particles in a 20 Angstrom box: at most 25 fit on a
-        # square lattice without overlap.
-        with self.assertRaisesRegex(ValueError, "at most 25 particles"):
-            util.System(50, 100, 20, simulation="md", **ARGON_MODEL)
-
-    def test_system_square_between_core_and_diameter_is_accepted(self):
-        # 101 argon particles in a 40 Angstrom box space 3.64 Angstrom apart,
-        # above the 3.37 Angstrom repulsive core.
-        a = util.System(101, 100, 40, simulation="md", **ARGON_MODEL)
-        assert_equal(a.number_of_particles, 101)
-
-    def test_system_random_threshold_is_the_core(self):
-        # With seed 4 particles land closer together than 8 Angstrom but
-        # still respect the 3.37 Angstrom repulsive core.
-        a = util.System(10, 100, 30, init_conf="random", simulation="md", seed=4, **ARGON_MODEL)
-        distances = minimum_image_distances(a)
-        self.assertTrue(all(distance >= a.cores[0] for distance in distances))
-        self.assertTrue(any(distance < 8e-10 for distance in distances))
-
-    def test_system_random_two_types_uses_the_mean_of_the_pair_cores(self):
-        a = util.System(12, 100, 60, init_conf="random", simulation="md", seed=5, **MIXTURE_MODEL)
-        types = a.particles["types"]
-        distances = minimum_image_distances(a)
-        pairs = itertools.combinations(range(a.number_of_particles), 2)
-        for distance, (i, j) in zip(distances, pairs, strict=True):
-            type_i, type_j = int(types[i]), int(types[j])
-            min_separation = (a.cores[type_i] + a.cores[type_j]) / 2
-            self.assertTrue(distance >= min_separation)
-
-    def test_system_argon_core_equals_sigma(self):
-        a = util.System(2, 300, 8, simulation="md", **ARGON_MODEL)
-        assert_almost_equal(a.cores[0] * 1e10, LJ_ARGON.sigma * 1e10, decimal=3)
-
-    def test_system_square_well_core_is_at_least_sigma(self):
-        sigma = 1.5e-10
-        well = SquareWell(epsilon=1.0, sigma=sigma, lambda_=2.0)
-        b = util.System(
-            2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): well}, simulation="md"
+    def test_system_metropolis_places_a_mixture_with_each_pairs_own_potential(self):
+        # Hard cores of three different diameters: no pair may sit inside the
+        # core of its own potential. A placement using the wrong potential
+        # for a pair lets it inside the true core.
+        a = util.System(
+            30, 300, 40, init_conf="metropolis", simulation="mc", seed=0, **WELL_MIXTURE_MODEL
         )
-        self.assertTrue(sigma <= b.cores[0] <= sigma * 1.002)
+        for mask, type_1, type_2 in pairwise._species_pairs(a.particles["types"]):
+            core = pairwise.pair_potential(
+                a.pair_potentials, a.species[type_1], a.species[type_2]
+            ).sigma
+            self.assertGreaterEqual(a.distances[mask].min(), core)
 
-    def test_system_potential_never_positive_raises(self):
-        class NeverPositive(PairPotential):
-            def energies(self, dr):
-                return -np.ones_like(np.asarray(dr, dtype=float))
+    def test_system_metropolis_places_buckingham_outside_its_turnover(self):
+        # The Buckingham form falls to minus infinity inside its barrier, so
+        # a trial there would be accepted as downhill and the run would
+        # collapse; the wall inside the turnover keeps every pair outside it.
+        a = util.System(
+            30, 300, 40, init_conf="metropolis", simulation="md", seed=0, **BUCKINGHAM_MODEL
+        )
+        self.assertGreater(a.distances.min(), BUCKINGHAM_ARGON.turnover)
+        self.assertTrue(np.isfinite(a.energies).all())
 
-            def forces(self, dr):
-                return np.zeros_like(np.asarray(dr, dtype=float))
+    def test_system_refuses_an_overlapping_lattice(self):
+        # 16 argon on a 4 by 4 lattice in a 10 Angstrom box are 2.5 Angstrom
+        # apart, inside sigma: about 90 k_B T of potential energy per particle.
+        with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
+            util.System(16, 300, 10, simulation="md", **ARGON_MODEL)
 
-        with self.assertRaisesRegex(ValueError, "repulsive core"):
+    def test_system_refuses_a_lattice_inside_a_hard_core(self):
+        # 16 particles on a 4 by 4 lattice in a 10 Angstrom box are 2.5
+        # Angstrom apart, inside a 3 Angstrom hard core that the 5 Angstrom
+        # cut-off clears: the lattice energy is infinite.
+        with self.assertRaisesRegex(ValueError, "not finite"):
+            util.System(16, 300, 10, simulation="mc", **WELL_MODEL)
+
+    def test_system_accepts_a_lattice_below_the_energy_limit(self):
+        # 16 argon in a 12 Angstrom box store about 5.6 k_B T per particle
+        # at 300 K, under the limit of 10, and construct.
+        a = util.System(16, 300, 12, simulation="md", **ARGON_MODEL)
+        assert_equal(a.number_of_particles, 16)
+
+    def test_system_refuses_a_potential_still_repulsive_at_the_cut_off(self):
+        # Sigma given in Angstrom: the pair energy is astronomically positive
+        # at the cut-off, where a sensible potential has died away.
+        in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
+        with self.assertRaisesRegex(ValueError, "at the cut-off"):
             util.System(
-                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): NeverPositive()},
+                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): in_angstrom},
                 simulation="md",
             )
 
-    def test_system_too_big(self):
-        with self.assertRaises(AttributeError) as context:
-            util.System(2, 300, 1000, simulation="md", **ARGON_MODEL)
-        self.assertTrue(
-            "With a box length of 1000 the particles are probably "
-            "too small to be seen in the viewer. Try something "
-            "(much) less than 600." in str(context.exception)
+    def test_system_refuses_a_potential_still_attractive_at_the_cut_off(self):
+        # Epsilon typed in kJ/mol: a well about 1e17 k_B T deep at the cut-off.
+        deep = LennardJones(epsilon=0.95, sigma=3.372e-10)
+        with self.assertRaisesRegex(ValueError, "at the cut-off"):
+            util.System(
+                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): deep},
+                simulation="md",
+            )
+
+    def test_system_refuses_a_hard_core_wider_than_the_cut_off(self):
+        wide = SquareWell(epsilon=1.5e-21, sigma=8e-10, lambda_=1.5)
+        with self.assertRaisesRegex(ValueError, "hard core is wider than the cut-off"):
+            util.System(
+                2, 300, 10, species=[ARGON], pair_potentials={(ARGON, ARGON): wide},
+                simulation="mc",
+            )
+
+    def test_system_refuses_a_cross_potential_still_repulsive_at_the_cut_off(self):
+        mistyped = dict(MIXTURE_MODEL["pair_potentials"])
+        mistyped[(ARGON, LARGER)] = LennardJones(epsilon=1.577e-21, sigma=4.186)
+        with self.assertRaisesRegex(ValueError, "between argon and larger"):
+            util.System(
+                4, 100, 60, species=MIXTURE_MODEL["species"], pair_potentials=mistyped,
+                simulation="md",
+            )
+
+    def test_system_metropolis_places_a_soft_potential_outside_its_core(self):
+        # Lennard-Jones has no hard core, but at 100 K a pair inside 0.8
+        # sigma costs over 40 well depths and is never accepted.
+        a = util.System(30, 100, 40, init_conf="metropolis", simulation="md", seed=0, **ARGON_MODEL)
+        self.assertGreater(a.distances.min(), 0.8 * LJ_ARGON.sigma)
+
+    def test_system_metropolis_too_dense_raises(self):
+        with self.assertRaisesRegex(ValueError, f"after {util.PLACEMENT_ATTEMPTS} attempts"):
+            util.System(200, 100, 20, init_conf="metropolis", simulation="md", **ARGON_MODEL)
+
+    def test_system_metropolis_seed_reproduces_placement(self):
+        def build(seed):
+            return util.System(
+                10, 100, 40, init_conf="metropolis", simulation="md", seed=seed, **ARGON_MODEL
+            )
+
+        first = build(3)
+        second = build(3)
+        other = build(4)
+        assert_equal(first.particles["xposition"], second.particles["xposition"])
+        assert_equal(first.particles["yposition"], second.particles["yposition"])
+        self.assertFalse(
+            np.array_equal(first.particles["xposition"], other.particles["xposition"])
         )
 
-    def test_system_too_small(self):
-        with self.assertRaises(AttributeError) as context:
-            util.System(2, 300, 2, simulation="md", **ARGON_MODEL)
-        self.assertTrue(
-            "With a box length of 2 the cell is too small to "
-            "really hold more than one particle." in str(context.exception)
+    def test_system_metropolis_seed_is_not_taken_from_the_global_state(self):
+        def build():
+            return util.System(
+                10, 100, 40, init_conf="metropolis", simulation="md", seed=3, **ARGON_MODEL
+            )
+
+        first = build()
+        state = np.random.get_state()
+        try:
+            np.random.seed(99)
+            second = build()
+        finally:
+            np.random.set_state(state)
+        assert_equal(first.particles["xposition"], second.particles["xposition"])
+
+    def test_system_defaults_placement_temperature_to_the_run_temperature(self):
+        default = util.System(2, 300, 8, simulation="md", **ARGON_MODEL)
+        explicit = util.System(
+            2, 300, 8, simulation="md", placement_temperature=1000, **ARGON_MODEL
         )
+        self.assertEqual(default.placement_temperature, 300)
+        self.assertEqual(explicit.placement_temperature, 1000)
+
+    def test_system_rejects_a_bad_placement_temperature(self):
+        for bad in (0, -1, np.inf):
+            with self.assertRaisesRegex(ValueError, "placement_temperature must be positive"):
+                util.System(2, 300, 8, simulation="md", placement_temperature=bad, **ARGON_MODEL)
+
+    def test_system_metropolis_placement_temperature_governs_success(self):
+        # 50 argon particles in a 27 Angstrom box: as near-hard discs of
+        # diameter sigma (placement at 1 K) they exceed the packing that
+        # sequential insertion reaches, but at 1000 K closer contacts are
+        # tolerated and the configuration is still bound.
+        with self.assertRaisesRegex(ValueError, "Could not place"):
+            util.System(
+                50, 100, 27, init_conf="metropolis", simulation="md", seed=0,
+                placement_temperature=1.0, **ARGON_MODEL,
+            )
+        hot = util.System(
+            50, 100, 27, init_conf="metropolis", simulation="md", seed=0,
+            placement_temperature=1000, **ARGON_MODEL,
+        )
+        assert_equal(hot.number_of_particles, 50)
+
+    def test_system_refuses_a_box_outside_the_viewer_range(self):
+        for box_length in (2, 1000):
+            with self.assertRaisesRegex(ValueError, "between 4 and 600 Angstrom"):
+                util.System(2, 300, box_length, simulation="md", **ARGON_MODEL)
 
     def test_system_init_conf(self):
         with self.assertRaises(NotImplementedError) as context:
@@ -150,7 +205,7 @@ class TestUtil(unittest.TestCase):
         self.assertTrue(
             "The initial configuration type horseradish is not "
             "recognised. Available options are: square or "
-            "random" in str(context.exception)
+            "metropolis" in str(context.exception)
         )
 
     def test_system_records_simulation_kind(self):
@@ -211,68 +266,6 @@ class TestUtil(unittest.TestCase):
         self.assertIs(production.species, system.species)
         self.assertIs(production.pair_potentials, system.pair_potentials)
         assert_equal(production.masses, system.masses)
-
-    def test_system_square_too_small_box_suggests_a_box_that_fits(self):
-        for number_of_particles in (2, 7, 50):
-            with self.assertRaises(ValueError) as context:
-                util.System(number_of_particles, 100, 4, simulation="md", **ARGON_MODEL)
-            match = re.search(r"at least ([0-9.]+) Angstrom fits", str(context.exception))
-            self.assertIsNotNone(match)
-            suggested_box = float(match.group(1))
-            a = util.System(
-                number_of_particles, 100, suggested_box, simulation="md", **ARGON_MODEL
-            )
-            self.assertEqual(a.number_of_particles, number_of_particles)
-
-    def test_system_potential_energies_returning_a_scalar_is_rejected(self):
-        class ScalarEnergy(PairPotential):
-            def energies(self, dr):
-                return 1.0
-
-            def forces(self, dr):
-                return 0.0
-
-        with self.assertRaisesRegex(ValueError, "one value per separation"):
-            util.System(
-                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): ScalarEnergy()},
-                simulation="md",
-            )
-
-    def test_system_potential_energies_returning_the_wrong_shape_is_rejected(self):
-        class ShortEnergy(PairPotential):
-            def energies(self, dr):
-                return np.ones(3)
-
-            def forces(self, dr):
-                return np.zeros(3)
-
-        with self.assertRaisesRegex(ValueError, "one value per separation"):
-            util.System(
-                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): ShortEnergy()},
-                simulation="md",
-            )
-
-    def test_system_potential_positive_at_50_angstrom_names_units(self):
-        # Sigma given in Angstrom rather than metres: the pair energy never
-        # falls to zero on the 0.1 to 50 Angstrom grid.
-        in_angstrom = LennardJones(epsilon=1.58e-21, sigma=3.4)
-        with self.assertRaisesRegex(ValueError, "still positive at 50 Angstrom"):
-            util.System(
-                2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): in_angstrom},
-                simulation="md",
-            )
-
-    def test_system_random_buckingham_core_energy_is_near_zero(self):
-        potential = Buckingham(a=1.69e-15, b=3.66e10, c=1.01e-77)
-        a = util.System(
-            10, 100, 40, init_conf="random", species=[ARGON],
-            pair_potentials={(ARGON, ARGON): potential}, simulation="md", seed=0,
-        )
-        self.assertTrue(a.cores[0] > 3e-10)
-        r = np.logspace(-11, np.log10(5e-9), 4000)
-        well_depth = potential.energies(r).min()
-        core_energy = potential.energies(np.array([a.cores[0]]))[0]
-        self.assertTrue(abs(core_energy) < 1e-3 * abs(well_depth))
 
     def test_restart_starts_a_fresh_record_from_the_current_state(self):
         system = md.initialise(4, 300, 12, "square", **ARGON_MODEL)
@@ -336,38 +329,6 @@ class TestUtil(unittest.TestCase):
         self.assertEqual(production.energy, system.energy)
         self.assertEqual(production.energy_sample.size, 0)
         self.assertEqual(system.energy_sample.size, 1)
-
-    def test_system_seed_reproduces_random_placement(self):
-        def build(seed):
-            return util.System(
-                10, 100, 40, init_conf="random", simulation="md", seed=seed, **ARGON_MODEL
-            )
-
-        first = build(3)
-        second = build(3)
-        other = build(4)
-        assert_equal(first.particles["xposition"], second.particles["xposition"])
-        assert_equal(first.particles["yposition"], second.particles["yposition"])
-        self.assertFalse(
-            np.array_equal(first.particles["xposition"], other.particles["xposition"])
-        )
-
-    def test_system_seed_is_not_taken_from_the_global_state(self):
-        # Two systems built with the same seed agree even when the global
-        # NumPy state differs between them.
-        def build():
-            return util.System(
-                10, 100, 40, init_conf="random", simulation="md", seed=3, **ARGON_MODEL
-            )
-
-        first = build()
-        state = np.random.get_state()
-        try:
-            np.random.seed(99)
-            second = build()
-        finally:
-            np.random.set_state(state)
-        assert_equal(first.particles["xposition"], second.particles["xposition"])
 
     def test_restart_copies_the_generator_state(self):
         system = md.initialise(4, 300, 12, "square", seed=1, **ARGON_MODEL)

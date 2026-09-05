@@ -5,8 +5,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-from pylj.potentials import SquareWell
-from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL, WELL_MODEL
 
 
 class TestMd(unittest.TestCase):
@@ -45,22 +44,23 @@ class TestMd(unittest.TestCase):
         assert_almost_equal(md.calculate_temperature(a.particles, a.masses), 100)
 
     def test_initialise_refuses_a_potential_with_no_force(self):
-        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
-            md.initialise(
-                2, 300, 8, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): well}
-            )
+            md.initialise(2, 300, 8, "square", **WELL_MODEL)
 
     def test_initialise_is_reproducible_with_a_seed(self):
-        first = md.initialise(10, 100, 40, "random", seed=3, **ARGON_MODEL)
-        second = md.initialise(10, 100, 40, "random", seed=3, **ARGON_MODEL)
-        other = md.initialise(10, 100, 40, "random", seed=4, **ARGON_MODEL)
+        first = md.initialise(10, 100, 40, "metropolis", seed=3, **ARGON_MODEL)
+        second = md.initialise(10, 100, 40, "metropolis", seed=3, **ARGON_MODEL)
+        other = md.initialise(10, 100, 40, "metropolis", seed=4, **ARGON_MODEL)
         assert_equal(first.particles["xposition"], second.particles["xposition"])
         assert_equal(first.particles["xvelocity"], second.particles["xvelocity"])
         assert_equal(first.particles["yvelocity"], second.particles["yvelocity"])
         self.assertFalse(
             np.array_equal(first.particles["xvelocity"], other.particles["xvelocity"])
         )
+
+    def test_initialise_passes_the_placement_temperature_to_the_system(self):
+        a = md.initialise(4, 100, 20, "metropolis", placement_temperature=50, **ARGON_MODEL)
+        self.assertEqual(a.placement_temperature, 50)
 
     def test_initialise_one_particle_raises(self):
         with self.assertRaisesRegex(ValueError, "at least two particles"):

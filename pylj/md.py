@@ -13,12 +13,13 @@ def initialise(
     *,
     species,
     pair_potentials,
+    placement_temperature=None,
     timestep_length=1e-14,
     seed=None,
 ):
-    """Initialise the particle positions (this can be either as a square or
-    random arrangement) and velocities (based on the temperature defined), and
-    calculate the initial forces/accelerations.
+    """Initialise the particle positions (this can be either as a square
+    lattice or by Metropolis insertion) and velocities (based on the
+    temperature defined), and calculate the initial forces/accelerations.
 
     Each velocity component is drawn from a normal (Gaussian) distribution
     with the thermal width for the particle's mass at the requested
@@ -36,20 +37,23 @@ def initialise(
         Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string
         The way that the particles are initially positioned. Should be one of:
-        - 'square'
-        - 'random'
-        Both raise ``ValueError`` if the particles cannot be placed without
-        their repulsive cores overlapping.
+        - 'square', a square lattice
+        - 'metropolis', sequential Metropolis insertion at
+          ``placement_temperature``
     species: sequence of Species
         Required, keyword only. The species in the system; particles are
         assigned to them in turn.
     pair_potentials: mapping of (Species, Species) to PairPotential
         Required, keyword only. The potential acting between each pair of
         species, including each species with itself.
+    placement_temperature: float (optional)
+        Temperature, in kelvin, of the Metropolis acceptance used by
+        ``init_conf='metropolis'``; by default the run temperature. See
+        :class:`util.System`.
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     seed: int (optional)
-        Seed for the random number generator used to place a random initial
+        Seed for the random number generator used to place an initial
         configuration and draw the initial velocities. The same seed
         reproduces the same run.
 
@@ -61,8 +65,9 @@ def initialise(
     Raises
     ------
     ValueError
-        If fewer than two particles are requested, or the temperature is not
-        positive.
+        If fewer than two particles are requested or a pair potential has no
+        finite force (as the square well has not). See :class:`util.System`
+        for what construction rejects.
     """
     from pylj import util
 
@@ -79,6 +84,7 @@ def initialise(
         pair_potentials=pair_potentials,
         simulation="md",
         init_conf=init_conf,
+        placement_temperature=placement_temperature,
         timestep_length=timestep_length,
         seed=seed,
     )
