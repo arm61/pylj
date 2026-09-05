@@ -10,8 +10,8 @@ from pylj import mc, md, pairwise
 from pylj.pairwise import PairPotentials
 from pylj.potentials import PairPotential, Species
 
-#: Number of rejection-sampling attempts made for a single particle in
-#: :meth:`System.random` before it gives up and raises ``ValueError``.
+#: Number of trial positions tried for a single particle by Metropolis
+#: placement before it gives up and raises ``ValueError``.
 PLACEMENT_ATTEMPTS = 1000
 
 
@@ -78,15 +78,25 @@ class System:
         by :func:`md.initialise` and :func:`mc.initialise`.
     init_conf: string (optional)
         The way that the particles are initially positioned. Should be one of:
-        - 'square'
-        - 'random'
-        Both raise ``ValueError`` if the particles cannot be placed without
-        their repulsive cores overlapping.
+        - 'square', a square lattice
+        - 'metropolis', sequential Metropolis insertion: each particle is
+          given a uniform trial position, accepted by the Metropolis rule at
+          ``placement_temperature`` on its interaction energy with the
+          particles already placed
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     cut_off: float (optional)
         The distance apart that the particles must be to consider their
         interaction to be negligible.
+    placement_temperature: float (optional)
+        Temperature, in kelvin, of the Metropolis acceptance used by
+        ``init_conf='metropolis'``; by default the run temperature. It sets
+        how strongly overlapping trial positions are rejected and is a
+        parameter of the placement, not a thermodynamic temperature: the
+        placed configuration is a starting point, not an equilibrium sample,
+        and the run equilibrates it. Raising it tolerates more overlap;
+        lowering it packs more tightly and can exhaust the trial budget.
+        Ignored by ``'square'``.
     seed: int (optional)
         Seed for the random number generator used to place a random initial
         configuration, draw the initial velocities and make Monte Carlo
@@ -102,12 +112,10 @@ class System:
         The potential acting between each pair of species.
     masses: numpy.ndarray
         The mass of each particle, in atomic mass units, from its species.
-    cores: list of float
-        Separation at which each species' pair energy falls to zero, in
-        metres. Particles of one species are placed at least this far apart,
-        and particles of two species at least the mean of their cores apart.
     temperature: float
         The temperature given at construction, in kelvin.
+    placement_temperature: float
+        The Metropolis placement temperature, in kelvin.
     energy: float
         The total pair energy of the current configuration, in joules, for a
         Monte Carlo system: computed at construction, kept current by
@@ -119,8 +127,9 @@ class System:
     Raises
     ------
     ValueError
-        If the temperature is not positive and finite, ``species`` is empty,
-        or a pair of species has no potential or one given in both orders.
+        If the temperature or placement temperature is not positive and
+        finite, ``species`` is empty, or a pair of species has no potential
+        or one given in both orders.
     TypeError
         If a pair potential is not a ``PairPotential`` instance.
     """
@@ -137,6 +146,7 @@ class System:
         init_conf: str = "square",
         timestep_length: float = 1e-14,
         cut_off: float = 15,
+        placement_temperature: float | None = None,
         seed: int | None = None,
     ):
         if simulation not in ("md", "mc"):
@@ -146,11 +156,16 @@ class System:
         if not (np.isfinite(temperature) and temperature > 0):
             raise ValueError(f"temperature must be positive and finite, not {temperature}")
         self.temperature = temperature
+        if placement_temperature is None:
+            placement_temperature = temperature
+        elif not (np.isfinite(placement_temperature) and placement_temperature > 0):
+            raise ValueError(
+                f"placement_temperature must be positive and finite, not {placement_temperature}"
+            )
+        self.placement_temperature = placement_temperature
         self.species = list(species)
         self.pair_potentials = dict(pair_potentials)
         _check_pair_potentials(self.species, self.pair_potentials)
-        self.cores: list[float] = []
-        self.setup_cores()
         self.rng = np.random.default_rng(seed)
         if box_length <= 600:
             self.box_length = box_length * 1e-10
@@ -173,22 +188,22 @@ class System:
         self.particles: np.ndarray = np.zeros(self.number_of_particles, dtype=particle_dt())
         self.particles["types"] = np.arange(self.number_of_particles) % len(self.species)
         self.masses = pairwise.particle_masses(self.particles, self.species)
-        if init_conf == "square":
-            self.square()
-        elif init_conf == "random":
-            self.random()
-        else:
-            raise NotImplementedError(
-                f"The initial configuration type {init_conf} is "
-                "not recognised. Available options are: "
-                "square or random"
-            )
-        self.particles["xunwrapped"] = self.particles["xposition"]
-        self.particles["yunwrapped"] = self.particles["yposition"]
         if box_length > 30:
             self.cut_off = cut_off * 1e-10
         else:
             self.cut_off = box_length / 2 * 1e-10
+        if init_conf == "square":
+            self.square()
+        elif init_conf == "metropolis":
+            self._place_by_metropolis()
+        else:
+            raise NotImplementedError(
+                f"The initial configuration type {init_conf} is "
+                "not recognised. Available options are: "
+                "square or metropolis"
+            )
+        self.particles["xunwrapped"] = self.particles["xposition"]
+        self.particles["yunwrapped"] = self.particles["yposition"]
         self.step = 0
         self.time = 0.0
         self.distances = np.zeros(self.number_of_pairs())
@@ -232,7 +247,7 @@ class System:
             argon = Species(mass=39.948, name="argon")
             lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
             system = md.initialise(
-                100, 300, 40, "random",
+                100, 300, 40, "metropolis",
                 species=[argon], pair_potentials={(argon, argon): lj},
             )
             for _ in range(1000):
@@ -271,30 +286,15 @@ class System:
         return new
 
     def square(self) -> None:
-        """Places the particles on a square lattice.
+        """Place the particles on a square lattice.
 
-        Raises:
-            ValueError: If the lattice spacing, ``box_length`` divided by
-                ``ceil(sqrt(number_of_particles))``, is less than the
-                largest repulsive core (``self.cores``). Reduce the number
-                of particles or use a larger box.
+        The lattice has ``ceil(sqrt(number_of_particles))`` sites along each
+        side of the box and the particles fill it in order. No overlap check
+        is made: a lattice too dense for the potential gives a large initial
+        energy on the first evaluation.
         """
         m = int(np.ceil(np.sqrt(self.number_of_particles)))
         d = self.box_length / m
-        core = max(self.cores)
-        if d < core:
-            n_max = int(np.floor(self.box_length / core)) ** 2
-            l_min = np.ceil(np.sqrt(self.number_of_particles)) * core
-            l_min_angstrom = np.ceil(l_min * 1e10 * 10) / 10
-            fits = "1 particle fits" if n_max == 1 else f"{n_max} particles fit"
-            raise ValueError(
-                f"A square lattice of {self.number_of_particles} particles in a "
-                f"{self.box_length * 1e10:.1f} Angstrom box spaces them {d * 1e10:.2f} "
-                f"Angstrom apart, less than the largest repulsive core of "
-                f"{core * 1e10:.2f} Angstrom; at most {fits} in this "
-                f"box, or a box of at least {l_min_angstrom:.1f} Angstrom fits "
-                f"{self.number_of_particles}."
-            )
         n = 0
         for i in range(0, m):
             for j in range(0, m):
@@ -303,135 +303,48 @@ class System:
                     self.particles[n]["yposition"] = (j + 0.5) * d
                     n += 1
 
-    def random(self) -> None:
-        """Places the particles at random positions, without overlap.
+    def _place_by_metropolis(self) -> None:
+        """Place the particles one at a time by Metropolis insertion.
 
-        Particles are placed one at a time by rejection sampling: a
-        candidate position for a particle is accepted only if, for every
-        already placed particle, the minimum-image distance between them is
-        at least the two particles' repulsive core, ``self.cores``, one per
-        species. Two particles of different species are kept at least
-        the mean of their two cores apart.
+        Each particle in turn is given a uniform trial position in the box,
+        accepted by :func:`mc.accept` at ``placement_temperature`` on its
+        interaction energy with the particles already placed, and redrawn on
+        rejection. Inserting from vacuum makes that energy the energy change
+        of the insertion, so an overlapping trial is rejected with
+        probability close to one and an attractive one is always accepted.
+        The first particle interacts with nothing and is always accepted.
 
-        Rejection sampling reaches area fractions of roughly 0.4 to 0.5;
-        near that limit the same call may succeed or raise depending on
-        the random draw.
+        Sequential insertion is an initialiser, not an equilibrium sample:
+        the placed configuration is free of overlaps at the placement
+        temperature, and the run equilibrates it.
 
         Raises:
-            ValueError: If :data:`PLACEMENT_ATTEMPTS` candidate positions are
-                rejected for a single particle, which suggests the particles
-                are too large, or too many, for the box. Reduce the number
-                of particles or use a larger box.
+            ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are
+                rejected for a single particle.
         """
         x = self.particles["xposition"]
         y = self.particles["yposition"]
-        for i in range(self.number_of_particles):
-            x[i], y[i] = self._place_particle(i, x, y)
-
-    def _place_particle(
-        self, index: int, placed_x: np.ndarray, placed_y: np.ndarray
-    ) -> tuple[float, float]:
-        """Find a non-overlapping position for one particle by rejection sampling.
-
-        Args:
-            index: Index of the particle being placed into
-                ``self.particles["types"]``.
-            placed_x: x positions of the particles already placed, indexed
-                0 to ``index - 1``.
-            placed_y: y positions of the particles already placed, indexed
-                0 to ``index - 1``.
-
-        Returns:
-            An (x, y) position, in metres, at least the mean of the two
-            particles' repulsive cores from every already-placed particle.
-
-        Raises:
-            ValueError: If :data:`PLACEMENT_ATTEMPTS` candidate positions are
-                rejected.
-        """
-        box_length = self.box_length
         types = self.particles["types"]
-        type_i = int(types[index])
-        cores = np.asarray(self.cores)
-        thresholds = (cores[type_i] + cores[types[:index]]) / 2
-        for _attempt in range(PLACEMENT_ATTEMPTS):
-            x = self.rng.uniform(0, box_length)
-            y = self.rng.uniform(0, box_length)
-            dx = x - placed_x[:index]
-            dy = y - placed_y[:index]
-            # minimum-image convention: wrap the separation to the
-            # nearest periodic copy of each already-placed particle
-            dx -= box_length * np.round(dx / box_length)
-            dy -= box_length * np.round(dy / box_length)
-            separations = np.sqrt(dx**2 + dy**2)
-            if np.all(separations >= thresholds):
-                return x, y
-        core_angstrom = self.cores[type_i] * 1e10
-        box_angstrom = box_length * 1e10
-        largest_core_angstrom = max(self.cores) * 1e10
-        area_fraction = (
-            sum(np.pi * (self.cores[int(t)] / 2) ** 2 for t in self.particles["types"])
-            / box_length**2
-        )
-        raise ValueError(
-            f"Could not place particle {index + 1} of {self.number_of_particles} "
-            f"(repulsive core {core_angstrom:.2f} Angstrom, largest "
-            f"{largest_core_angstrom:.2f} Angstrom) without overlap in a "
-            f"{box_angstrom:.1f} Angstrom box after {PLACEMENT_ATTEMPTS} attempts "
-            f"(requested area fraction {area_fraction:.2f}); reduce the number of particles or "
-            "use a larger box; a square lattice (init_conf='square') packs more "
-            "densely than random placement and may still fit."
-        )
-
-    def setup_cores(self) -> None:
-        """Set the separation at which each species' pair energy falls to
-        zero, in metres, one per species. Particles closer than this sit
-        inside each other's repulsive core, so the initial configurations
-        keep them at least this far apart.
-
-        Raises:
-            ValueError: If a potential's ``energies`` does not return one
-                value per separation, if its pair energy is positive at
-                every grid point between 0.1 and 50 Angstrom (suggesting its
-                parameters are in the wrong units), or if its pair energy
-                never falls from positive to non-positive on that range, so
-                it has no repulsive core there.
-        """
-        r = np.logspace(-11, np.log10(5e-9), 4000)
-        self.cores = []
-        for one in self.species:
-            potential = pairwise.pair_potential(self.pair_potentials, one, one)
-            name = type(potential).__name__
-            energy = np.asarray(potential.energies(r), dtype=float)
-            if energy.shape != r.shape:
-                raise ValueError(
-                    f"{name}.energies must return one value per separation; got "
-                    f"shape {energy.shape} for {r.shape[0]} separations"
+        for i in range(self.number_of_particles):
+            placed = self.particles[:i]
+            for _attempt in range(PLACEMENT_ATTEMPTS):
+                trial = (self.rng.uniform(0, self.box_length), self.rng.uniform(0, self.box_length))
+                energy = pairwise.particle_energy(
+                    trial, int(types[i]), placed,
+                    self.box_length, self.cut_off, self.pair_potentials, self.species,
                 )
-            positive = energy > 0
-            crossings = np.flatnonzero(positive[:-1] & ~positive[1:])
-            if crossings.size == 0:
-                if positive.all():
-                    raise ValueError(
-                        f"{name}: the pair energy is still positive at 50 Angstrom; "
-                        "check the units of the parameters"
-                    )
-                raise ValueError(
-                    f"{name} has no repulsive core: its pair energy never falls from "
-                    "positive to zero between 0.1 and 50 Angstrom"
-                )
-            i = int(crossings[-1])
-            r0, r1 = r[i], r[i + 1]
-            e0, e1 = energy[i], energy[i + 1]
-            if np.isfinite(e0) and np.isfinite(e1):
-                # linear interpolation to the point where the energy is zero
-                core = r0 + (r1 - r0) * (-e0) / (e1 - e0)
+                if mc.accept(energy, self.placement_temperature, rng=self.rng):
+                    x[i], y[i] = trial
+                    break
             else:
-                # a discontinuous step (e.g. an infinite repulsive wall): the
-                # first non-positive grid point is a safe, slightly
-                # conservative estimate
-                core = r1
-            self.cores.append(float(core))
+                raise ValueError(
+                    f"Could not place particle {i + 1} of {self.number_of_particles} in a "
+                    f"{self.box_length * 1e10:.1f} Angstrom box at a placement temperature of "
+                    f"{self.placement_temperature:g} K after {PLACEMENT_ATTEMPTS} attempts; "
+                    "reduce the number of particles, use a larger box, raise "
+                    "placement_temperature, or start from a square lattice "
+                    "(init_conf='square')."
+                )
 
     def compute_force(self):
         """Compute the pair forces and the accelerations of the current

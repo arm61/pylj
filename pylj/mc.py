@@ -33,10 +33,11 @@ def initialise(
     *,
     species,
     pair_potentials,
+    placement_temperature=None,
     seed=None,
 ):
-    """Initialise the particle positions (square or random arrangement) and
-    calculate the initial pair energies and their total.
+    """Initialise the particle positions (square lattice or Metropolis
+    insertion) and calculate the initial pair energies and their total.
 
     Parameters
     ----------
@@ -48,10 +49,9 @@ def initialise(
         Length of a single dimension of the simulation square, in Angstrom.
     init_conf: string
         The way that the particles are initially positioned. Should be one of:
-        - 'square'
-        - 'random'
-        Both raise ``ValueError`` if the particles cannot be placed without
-        their repulsive cores overlapping.
+        - 'square', a square lattice
+        - 'metropolis', sequential Metropolis insertion at
+          ``placement_temperature``
     species: sequence of Species
         Required, keyword only. The species in the system; particles are
         assigned to them in turn.
@@ -60,6 +60,11 @@ def initialise(
         species, including each species with itself. Only the pair energies
         are evaluated, so a potential with no finite force, such as the
         square well, can be used.
+    placement_temperature: float (optional)
+        Temperature, in kelvin, of the Metropolis acceptance used by
+        ``init_conf='metropolis'``; by default the run temperature. A
+        parameter of the placement, not a thermodynamic temperature: raising
+        it tolerates more overlap, lowering it packs more tightly.
     seed: int (optional)
         Seed for the random number generator used to place a random initial
         configuration and make the Monte Carlo moves. The same seed
@@ -80,6 +85,7 @@ def initialise(
         pair_potentials=pair_potentials,
         simulation="mc",
         init_conf=init_conf,
+        placement_temperature=placement_temperature,
         seed=seed,
     )
     return system
