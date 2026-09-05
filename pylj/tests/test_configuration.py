@@ -4,8 +4,8 @@ import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 
 from pylj import pairwise
+from pylj.configuration import Configuration, MDConfiguration
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-from pylj.simulation import Configuration, MDConfiguration
 from pylj.tests.argon import (
     ARGON,
     ARGON_MODEL,
@@ -38,7 +38,7 @@ class TestConfiguration(unittest.TestCase):
     def test_holds_positions_species_and_box(self):
         c = three_particles([0, 1, 0])
         self.assertEqual(c.number_of_particles, 3)
-        assert_almost_equal(c.masses, [39.948, 80.0, 39.948])
+        assert_allclose(c.masses, np.array([39.948, 80.0, 39.948]) * ATOMIC_MASS_UNIT)
         self.assertEqual(c.box, 30e-10)
 
     def test_rejects_positions_that_are_not_n_by_2(self):
@@ -97,24 +97,50 @@ class TestConfiguration(unittest.TestCase):
             0.0,
         ]
         assert_allclose(pairs.energy, expected, rtol=1e-12)
-        assert pairs.force is not None
-        assert_allclose(pairs.force[0], LJ_ARGON_LARGER.forces(pairs.distance[0]), rtol=1e-12)
-        self.assertEqual(pairs.force[2], 0.0)
+        assert pairs.radial_force is not None
+        assert_allclose(
+            pairs.radial_force[0], LJ_ARGON_LARGER.forces(pairs.distance[0]), rtol=1e-12
+        )
+        self.assertEqual(pairs.radial_force[2], 0.0)
 
     def test_pairs_needs_no_force_from_the_potential(self):
         c = three_particles()
         pairs = c.pairs(WELL_MODEL["pair_potentials"], 15e-10)
         assert_almost_equal(pairs.energy * 1e21, [-1.5, 0.0, 0.0])
-        self.assertIsNone(pairs.force)
+        self.assertIsNone(pairs.radial_force)
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
             c.pairs(WELL_MODEL["pair_potentials"], 15e-10, forces=True)
 
     def test_potential_energy_is_the_sum_of_the_pair_energies(self):
+        # Pairs at 4, sqrt(26) and sqrt(50) Angstrom, all argon.
         c = three_particles()
-        pairs = c.pairs(ARGON_MODEL["pair_potentials"], 15e-10)
+        expected = LJ_ARGON.energies(np.array([4e-10, np.sqrt(26) * 1e-10, np.sqrt(50) * 1e-10]))
         assert_allclose(
-            c.potential_energy(ARGON_MODEL["pair_potentials"], 15e-10), pairs.energy.sum()
+            c.potential_energy(ARGON_MODEL["pair_potentials"], 15e-10), expected.sum(), rtol=1e-12
         )
+
+    def test_insertion_energy_is_the_energy_the_particle_adds(self):
+        # The same minimum image, species lookup and cut-off on both paths:
+        # inserting a particle into a mixture raises the total pair energy
+        # by exactly its insertion energy, at a cut-off that drops pairs.
+        rng = np.random.default_rng(1)
+        n, box, cut_off = 8, 30e-10, 9e-10
+        species_index = np.array([0, 1, 0, 1, 0, 1, 0, 1])
+        potentials = MIXTURE_MODEL["pair_potentials"]
+        full = configuration(
+            rng.uniform(0, box, (n, 2)),
+            species=MIXTURE_MODEL["species"],
+            species_index=species_index,
+            box=box,
+        )
+        without_last = full.without(n - 1)
+        added = without_last.insertion_energy(
+            full.position[-1], int(species_index[-1]), potentials, cut_off
+        )
+        difference = full.potential_energy(potentials, cut_off) - without_last.potential_energy(
+            potentials, cut_off
+        )
+        assert_allclose(added, difference, rtol=1e-9)
 
     def test_forces_and_virial_match_a_reference_loop(self):
         # An independent double loop over pairs is the oracle for the net
@@ -124,8 +150,10 @@ class TestConfiguration(unittest.TestCase):
         n, box = 8, 30e-10
         species_index = np.array([0, 0, 1, 1, 0, 1, 0, 1])
         c = configuration(
-            rng.uniform(0, box, (n, 2)), species=MIXTURE_MODEL["species"],
-            species_index=species_index, box=box,
+            rng.uniform(0, box, (n, 2)),
+            species=MIXTURE_MODEL["species"],
+            species_index=species_index,
+            box=box,
         )
         potentials = MIXTURE_MODEL["pair_potentials"]
         reference = np.zeros((n, 2))
@@ -162,8 +190,7 @@ class TestConfiguration(unittest.TestCase):
         )
         energy = c.insertion_energy((0.0, 0.0), 0, MIXTURE_MODEL["pair_potentials"], 6e-10)
         expected = (
-            LJ_ARGON_LARGER.energies(np.array([4e-10]))[0]
-            + LJ_ARGON.energies(np.array([5e-10]))[0]
+            LJ_ARGON_LARGER.energies(np.array([4e-10]))[0] + LJ_ARGON.energies(np.array([5e-10]))[0]
         )
         assert_allclose(energy, expected, rtol=1e-12)
 
@@ -211,9 +238,7 @@ class TestMDConfiguration(unittest.TestCase):
         # Two particles with equal and opposite velocities of 1e-10 m/s in x
         # and y: kinetic energy m (vx^2 + vy^2), divided by (N - 1) k_B with
         # N - 1 = 1 for the two particles.
-        c = md_configuration(
-            [[2e-10, 2e-10], [2e-10, 6e-10]], [[1e-10, 1e-10], [-1e-10, -1e-10]]
-        )
+        c = md_configuration([[2e-10, 2e-10], [2e-10, 6e-10]], [[1e-10, 1e-10], [-1e-10, -1e-10]])
         expected = 39.948 * ATOMIC_MASS_UNIT * 2e-20
         assert_allclose(c.kinetic_energy(), expected)
         assert_allclose(c.temperature(), expected / BOLTZMANN)

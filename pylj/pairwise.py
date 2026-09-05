@@ -246,6 +246,20 @@ def calculate_pressure(
     return virial / (2 * area) + number_of_particles * BOLTZMANN * temperature / area
 
 
+def minimum_image(separation: NDArray[np.float64], box: float) -> NDArray[np.float64]:
+    """Return separations wrapped to the nearest periodic image.
+
+    Args:
+        separation: Separation vectors, shape ``(..., 2)``, in metres.
+        box: The side length of the square periodic box, in metres.
+
+    Returns:
+        The separations with each component brought into ``[-box / 2,
+        box / 2]``, so each is the shortest of the periodic copies.
+    """
+    return separation - box * np.round(separation / box)
+
+
 def dist(
     position: NDArray[np.float64], box: float
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -262,6 +276,5 @@ def dist(
         i < j pair order, where ``M = N (N - 1) / 2``.
     """
     i, j = np.triu_indices(position.shape[0], 1)
-    separation = position[i] - position[j]
-    separation -= box * np.round(separation / box)
+    separation = minimum_image(position[i] - position[j], box)
     return np.linalg.norm(separation, axis=1), separation

@@ -1,5 +1,4 @@
-"""Configurations, the physical state a simulation evolves; the placement of
-initial configurations; and the base class of the simulations."""
+"""Configurations: the physical state a simulation evolves."""
 
 import dataclasses
 from dataclasses import dataclass
@@ -23,22 +22,22 @@ class PairData:
         separation: The minimum-image separation ``r_i - r_j`` of each pair,
             shape ``(M, 2)``, in metres.
         energy: The energy of each pair, in joules; zero beyond the cut-off.
-        force: The radial force on each pair, in newtons, positive where
-            repulsive and zero beyond the cut-off; ``None`` when the forces
-            were not evaluated.
+        radial_force: The radial force on each pair, in newtons, positive
+            where repulsive and zero beyond the cut-off; ``None`` when the
+            forces were not evaluated.
     """
 
     distance: NDArray[np.float64]
     separation: NDArray[np.float64]
     energy: NDArray[np.float64]
-    force: NDArray[np.float64] | None
+    radial_force: NDArray[np.float64] | None
 
 
-def _radial_forces(pairs: PairData) -> NDArray[np.float64]:
+def _radial_force(pairs: PairData) -> NDArray[np.float64]:
     """The radial forces of a pair evaluation made with ``forces=True``."""
-    if pairs.force is None:
+    if pairs.radial_force is None:
         raise ValueError("The pair forces were not evaluated; call pairs(..., forces=True)")
-    return pairs.force
+    return pairs.radial_force
 
 
 @dataclass(frozen=True)
@@ -52,7 +51,7 @@ class Configuration:
 
     Attributes:
         position: The position of each particle, shape ``(N, 2)``, in
-            metres, wrapped into the box.
+            metres; a simulation keeps them wrapped into the box.
         species: The species in the configuration.
         species_index: The index in ``species`` of each particle's species,
             shape ``(N,)``.
@@ -94,8 +93,9 @@ class Configuration:
 
     @property
     def masses(self) -> NDArray[np.float64]:
-        """The mass of each particle, in atomic mass units, from its species."""
-        return np.array([one.mass for one in self.species], dtype=float)[self.species_index]
+        """The mass of each particle, in kilograms, from its species."""
+        masses = np.array([one.mass for one in self.species], dtype=float) * ATOMIC_MASS_UNIT
+        return masses[self.species_index]
 
     def replace(self, **changes: Any) -> Self:
         """A copy with the given fields replaced; the copy is validated."""
@@ -154,7 +154,7 @@ class Configuration:
     def forces(self, pair_potentials: PairPotentials, cut_off: float) -> NDArray[np.float64]:
         """The net force on each particle, shape ``(N, 2)``, in newtons."""
         pairs = self.pairs(pair_potentials, cut_off, forces=True)
-        radial = _radial_forces(pairs)
+        radial = _radial_force(pairs)
         i, j = np.triu_indices(self.number_of_particles, 1)
         # Each pair's radial force acts along its separation, pushing
         # particle i one way and particle j the other.
@@ -167,7 +167,7 @@ class Configuration:
     def virial(self, pair_potentials: PairPotentials, cut_off: float) -> float:
         """The sum over pairs of the radial force times the distance, in joules."""
         pairs = self.pairs(pair_potentials, cut_off, forces=True)
-        return float(np.sum(_radial_forces(pairs) * pairs.distance))
+        return float(np.sum(_radial_force(pairs) * pairs.distance))
 
     def insertion_energy(
         self,
@@ -189,8 +189,9 @@ class Configuration:
             The sum of its pair energies, in joules; zero for an empty
             configuration.
         """
-        separation = np.asarray(position, dtype=float) - self.position
-        separation -= self.box * np.round(separation / self.box)
+        separation = pairwise.minimum_image(
+            np.asarray(position, dtype=float) - self.position, self.box
+        )
         distance = np.linalg.norm(separation, axis=1)
         energy = np.zeros(distance.size)
         for other in np.unique(self.species_index):
@@ -233,8 +234,7 @@ class MDConfiguration(Configuration):
 
     def kinetic_energy(self) -> float:
         """The total kinetic energy, in joules."""
-        masses_kg = self.masses * ATOMIC_MASS_UNIT
-        return float(0.5 * np.sum(masses_kg * np.sum(self.velocity**2, axis=1)))
+        return float(0.5 * np.sum(self.masses * np.sum(self.velocity**2, axis=1)))
 
     def temperature(self) -> float:
         """The instantaneous temperature, in kelvin.
