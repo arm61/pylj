@@ -35,7 +35,7 @@ from pylj.sample.panes import (
     TemperaturePane,
     _fit_axes,
 )
-from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL
+from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL, WELL_MODEL
 
 NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering]
 
@@ -182,14 +182,11 @@ def test_cell_pane_takes_one_diameter_per_species():
 def test_cell_pane_default_diameter_for_a_square_well_is_the_hard_core():
     # The square-well energy steps from an infinite core through the well to
     # zero, so the default drawn diameter is the hard-core diameter sigma.
-    well = WELL
-    system = mc.initialise(
-        4, 100, 20, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): well}
-    )
+    system = mc.initialise(4, 100, 20, "square", **WELL_MODEL)
     fig, ax = environment(1)
     pane = CellPane()
     pane.setup(ax, system)
-    assert_allclose(pane.diameters, [3e-10], rtol=2e-3)
+    assert_allclose(pane.diameters, [WELL.sigma], rtol=2e-3)
     plt.close(fig)
 
 
