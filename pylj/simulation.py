@@ -1,12 +1,17 @@
-"""The checks a simulation makes on its model, and the base class of the
-simulations."""
+"""The checks a simulation makes on its model, the record of its samples,
+and the base class of the simulations."""
 
+import copy
 import itertools
 from collections.abc import Sequence
+from dataclasses import dataclass, field
+from typing import Self
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pylj import pairwise
+from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
 from pylj.pairwise import PairPotentials
 from pylj.potentials import PairPotential, Species
@@ -157,3 +162,121 @@ def _resolve_cut_off(box: float, cut_off: float | None) -> float:
             "most half the box."
         )
     return cut_off
+
+
+def _empty() -> NDArray[np.float64]:
+    return np.array([])
+
+
+@dataclass
+class Samples:
+    """The record a simulation's ``sample`` appends to.
+
+    Every array holds one entry per call of ``sample``, in order, so the
+    arrays line up: ``step[i]`` is the step at which the other arrays'
+    ``i``-th entries were measured. Subclasses add the quantities their
+    simulation measures.
+
+    Attributes:
+        step: The step at which each sample was taken.
+    """
+
+    step: NDArray[np.float64] = field(default_factory=_empty)
+
+    def add(self, **values: float) -> None:
+        """Append one value to each named array.
+
+        Args:
+            **values: The arrays to append to, by name, and the values.
+
+        Raises:
+            AttributeError: If a name is not one of this record's arrays.
+        """
+        for name, value in values.items():
+            setattr(self, name, np.append(getattr(self, name), value))
+
+
+class Simulation:
+    """A configuration, the interaction law, the numerical choices, and the
+    machinery to evolve and measure it.
+
+    ``MDSimulation`` and ``MCSimulation`` extend this with ``step`` and
+    ``sample``. The constructor takes a ready configuration in SI units;
+    the ``initialise`` factories of the subclasses derive one from a model.
+
+    Args:
+        configuration: The starting configuration.
+        pair_potentials: The potential between each pair of species, keyed
+            by the two species in either order. Every pair, including each
+            species with itself, needs an entry.
+        cut_off: The separation, in metres, beyond which a pair's
+            interaction is taken as negligible. By default 15 Angstrom or
+            half the box, whichever is smaller; it may not exceed half the
+            box.
+        seed: Seed for the random number generator. The same seed
+            reproduces the same run; without one the run differs each time.
+
+    Attributes:
+        configuration: The current configuration.
+        pair_potentials: The interaction law.
+        cut_off: The cut-off, in metres.
+        rng: The random number generator for this simulation.
+        steps: The number of steps taken.
+        samples: The record ``sample`` appends to; subclasses replace it
+            with the record of what they measure.
+
+    Raises:
+        ValueError: If the model is incomplete or the cut-off exceeds half
+            the box.
+        TypeError: If a pair potential is not a ``PairPotential`` instance.
+    """
+
+    def __init__(
+        self,
+        configuration: Configuration,
+        pair_potentials: PairPotentials,
+        *,
+        cut_off: float | None = None,
+        seed: int | None = None,
+    ) -> None:
+        _check_pair_potentials(configuration.species, pair_potentials)
+        self.configuration = configuration
+        self.pair_potentials = dict(pair_potentials)
+        self.cut_off = _resolve_cut_off(configuration.box, cut_off)
+        self.rng = np.random.default_rng(seed)
+        self.steps = 0
+        self.samples = Samples()
+
+    def step(self) -> None:
+        """Advance the simulation by one step."""
+        raise NotImplementedError
+
+    def sample(self) -> None:
+        """Record the quantities of interest at the current step."""
+        raise NotImplementedError
+
+    def restart(self) -> Self:
+        """A new simulation that continues from the current configuration.
+
+        The new simulation shares the model and the numerical choices,
+        copies the state of the random number generator so its draws do not
+        depend on what this one does next, and starts with ``steps`` at zero
+        and an empty record of samples. This simulation is not changed. Use
+        it to start a production run after equilibration::
+
+            for _ in range(1000):
+                simulation.step()
+                simulation.heat_bath(300)
+            production = simulation.restart()
+            for _ in range(5000):
+                production.step()
+                production.sample()
+
+        Returns:
+            The new simulation.
+        """
+        new = copy.copy(self)
+        new.rng = copy.deepcopy(self.rng)
+        new.steps = 0
+        new.samples = type(self.samples)()
+        return new

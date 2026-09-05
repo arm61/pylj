@@ -1,7 +1,10 @@
 import unittest
 
-from pylj import simulation
-from pylj.tests.argon import ARGON_MODEL, WELL_MODEL
+import numpy as np
+from numpy.testing import assert_almost_equal, assert_equal
+
+from pylj import placement, simulation
+from pylj.tests.argon import ARGON, ARGON_MODEL, WELL_MODEL
 from pylj.tests.test_placement import place
 
 
@@ -26,3 +29,89 @@ class TestInitialEnergyCheck(unittest.TestCase):
         c, cut_off = place(16, 300, 12)
         energy = c.potential_energy(ARGON_MODEL["pair_potentials"], cut_off)
         simulation._check_initial_energy(energy, 16, 300)
+
+
+class Counting(simulation.Simulation):
+    """A simulation whose step and sample only count, for the base class tests."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sampled = 0
+
+    def step(self):
+        self.steps += 1
+
+    def sample(self):
+        self.sampled += 1
+        self.samples.add(step=self.steps)
+
+
+class TestSimulation(unittest.TestCase):
+    def build(self, box=40e-10, **kwargs):
+        c = placement.place_square(4, (ARGON,), box)
+        return Counting(c, ARGON_MODEL["pair_potentials"], **kwargs)
+
+    def test_holds_the_configuration_and_the_model(self):
+        s = self.build(seed=1)
+        self.assertEqual(s.configuration.number_of_particles, 4)
+        self.assertEqual(s.pair_potentials, ARGON_MODEL["pair_potentials"])
+        self.assertEqual(s.steps, 0)
+        self.assertIsInstance(s.samples, simulation.Samples)
+        self.assertEqual(s.samples.step.size, 0)
+        self.assertEqual(s.rng.random(), np.random.default_rng(1).random())
+
+    def test_samples_add_appends_one_value_to_each_named_array(self):
+        samples = simulation.Samples()
+        samples.add(step=3)
+        samples.add(step=7)
+        assert_equal(samples.step, [3, 7])
+        with self.assertRaises(AttributeError):
+            samples.add(pressure=1.0)
+
+    def test_cut_off_defaults_to_15_angstrom_or_half_the_box(self):
+        assert_almost_equal(self.build().cut_off * 1e10, 15)
+        assert_almost_equal(self.build(box=20e-10).cut_off * 1e10, 10)
+        assert_almost_equal(self.build(cut_off=12e-10).cut_off * 1e10, 12)
+
+    def test_refuses_a_cut_off_beyond_half_the_box(self):
+        with self.assertRaisesRegex(ValueError, "exceeds half the box"):
+            self.build(cut_off=25e-10)
+
+    def test_validates_the_model(self):
+        c = placement.place_square(4, (ARGON,), 40e-10)
+        with self.assertRaisesRegex(ValueError, "no entry for the pair"):
+            Counting(c, {})
+
+    def test_step_and_sample_are_abstract(self):
+        c = placement.place_square(4, (ARGON,), 40e-10)
+        s = simulation.Simulation(c, ARGON_MODEL["pair_potentials"])
+        with self.assertRaises(NotImplementedError):
+            s.step()
+        with self.assertRaises(NotImplementedError):
+            s.sample()
+
+    def test_restart_starts_a_fresh_record_and_shares_the_model(self):
+        s = self.build(seed=1)
+        for _ in range(3):
+            s.step()
+            s.sample()
+        production = s.restart()
+        self.assertIsNot(production, s)
+        self.assertIsInstance(production, Counting)
+        self.assertIs(production.configuration, s.configuration)
+        self.assertIs(production.pair_potentials, s.pair_potentials)
+        self.assertEqual(production.steps, 0)
+        self.assertIsNot(production.samples, s.samples)
+        self.assertEqual(production.samples.step.size, 0)
+        self.assertEqual(s.steps, 3)
+        assert_equal(s.samples.step, [1, 2, 3])
+
+    def test_restart_copies_the_generator_state(self):
+        s = self.build(seed=1)
+        production = s.restart()
+        self.assertIsNot(production.rng, s.rng)
+        # Equal state: the next draw agrees. Independent: drawing from one
+        # leaves the other where it was.
+        self.assertEqual(production.rng.random(), s.rng.random())
+        s.rng.random()
+        self.assertNotEqual(production.rng.random(), s.rng.random())
