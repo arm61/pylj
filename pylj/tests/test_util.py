@@ -71,6 +71,14 @@ class TestUtil(unittest.TestCase):
                 simulation="md",
             )
 
+    def test_system_refuses_a_cross_potential_still_repulsive_at_the_cut_off(self):
+        mistyped = dict(MIXTURE_MODEL["pair_potentials"])
+        mistyped[(ARGON, LARGER)] = LennardJones(epsilon=1.577e-21, sigma=4.186)
+        with self.assertRaisesRegex(ValueError, "between argon and larger"):
+            util.System(
+                4, 100, 60, species=[ARGON, LARGER], pair_potentials=mistyped, simulation="md"
+            )
+
     def test_system_metropolis_configuration_has_no_overlap(self):
         # At 100 K a pair inside 0.8 sigma costs over 40 well depths and is
         # never accepted, so the closest pair sits outside the core.
