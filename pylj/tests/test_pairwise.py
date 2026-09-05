@@ -80,7 +80,7 @@ class TestPairwise(unittest.TestCase):
         # pressure is the ideal-gas value N k_B T / L^2.
         box = 25e-10
         p = pairwise.calculate_pressure(0.0, box, 50, 200)
-        assert_almost_equal(p * 1e3, 50 * 1.380649e-23 * 200 / box**2 * 1e3)
+        assert_almost_equal(p, 50 * 1.380649e-23 * 200 / box**2)
 
     def test_species_pairs_yields_each_unordered_pair_once(self):
         # Particles of species 0, 1, 0: pairs (0, 1), (0, 2), (1, 2) are

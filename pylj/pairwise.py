@@ -100,11 +100,11 @@ def particle_energy(
 def species_pairs(
     species_index: NDArray[np.int64],
 ) -> Iterator[tuple[NDArray[np.bool_], int, int]]:
-    """Yield the pairs of each unordered pair of species present.
+    """Group the particle pairs by the two species they join.
 
-    A pair of species 0 and 1 is the same pair as 1 and 0, so each unordered
-    pair is yielded once, with a mask over the i < j pair arrays selecting
-    the pairs it covers.
+    Each unordered pair of species present is yielded once (species 0 with
+    1 is the same pair as 1 with 0), with a mask selecting the entries of the
+    i < j pair arrays returned by :func:`dist` that join those two species.
 
     Args:
         species_index: The species index of each particle.
