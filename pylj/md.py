@@ -65,12 +65,10 @@ def initialise(
     Raises
     ------
     ValueError
-        If fewer than two particles are requested, the temperature or the
-        placement temperature is not positive and finite, a pair potential's
-        energy has not died away at the cut-off, Metropolis placement
-        exhausts its trial budget, or the initial configuration is not finite
-        or stores more than ``util.INITIAL_ENERGY_LIMIT`` k_B T of potential
-        energy per particle.
+        If fewer than two particles are requested, or the initial
+        configuration is not finite or stores more than
+        ``util.INITIAL_ENERGY_LIMIT`` k_B T of potential energy per particle;
+        and anything :class:`util.System` raises at construction.
     """
     from pylj import util
 
@@ -99,7 +97,7 @@ def initialise(
     system.particles["yvelocity"] = v[:, 1]
     system.particles = heat_bath(system.particles, system.masses, temperature)
     system.compute_force()
-    util.check_initial_energy(system, float(system.energies.sum()))
+    util.check_initial_energy(system)
     return system
 
 

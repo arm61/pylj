@@ -16,6 +16,12 @@ from pylj.potentials import PairPotential, Species
 PLACEMENT_ATTEMPTS = 1000
 
 
+def _check_positive_finite(name: str, value: float) -> None:
+    """Raise ``ValueError`` unless ``value`` is positive and finite."""
+    if not (np.isfinite(value) and value > 0):
+        raise ValueError(f"{name} must be positive and finite, not {value}")
+
+
 def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPotentials) -> None:
     """Check that a system's model is complete.
 
@@ -66,8 +72,8 @@ def _check_potentials_at_the_cut_off(
     """
     for one, other in itertools.combinations_with_replacement(species, 2):
         potential = pairwise.pair_potential(pair_potentials, one, other)
-        at_cut_off = np.asarray(potential.energies(np.array([cut_off])), dtype=float).reshape(-1)
-        energy = float(at_cut_off[0])
+        at_cut_off = np.asarray(potential.energies(np.array([cut_off])), dtype=float)
+        energy = float(np.ravel(at_cut_off)[0])
         if not np.isfinite(energy) or energy > BOLTZMANN * temperature:
             pair = f"{one.name or 'particles'} and {other.name or 'particles'}"
             raise ValueError(
@@ -84,7 +90,7 @@ def _check_potentials_at_the_cut_off(
 INITIAL_ENERGY_LIMIT = 10.0
 
 
-def check_initial_energy(system: "System", energy: float) -> None:
+def check_initial_energy(system: "System") -> None:
     """Refuse a starting configuration that stores far more potential energy
     than thermal energy.
 
@@ -95,18 +101,21 @@ def check_initial_energy(system: "System", energy: float) -> None:
     the stored energy is released depends on where the configuration
     relaxes to. Overlapping particles store enormous energy.
 
+    The factories validate the configuration they derive; ``System`` itself
+    validates the model and places unconditionally.
+
     Args:
-        system: The system, after placement.
-        energy: The total pair energy of the initial configuration, in joules.
+        system: The system, after placement and a pair-energy evaluation.
 
     Raises:
-        ValueError: If ``energy`` is not finite, or exceeds
+        ValueError: If the total pair energy is not finite, or exceeds
             :data:`INITIAL_ENERGY_LIMIT` k_B T per particle.
     """
+    remedy = "Use fewer particles, a larger box, or init_conf='metropolis'."
+    energy = float(system.energies.sum())
     if not np.isfinite(energy):
         raise ValueError(
-            "The initial pair energy is not finite: particles sit inside a hard core. Use "
-            "init_conf='metropolis', fewer particles or a larger box."
+            f"The initial pair energy is not finite: particles sit inside a hard core. {remedy}"
         )
     per_particle = energy / (system.number_of_particles * BOLTZMANN * system.temperature)
     if per_particle > INITIAL_ENERGY_LIMIT:
@@ -114,8 +123,7 @@ def check_initial_energy(system: "System", energy: float) -> None:
             f"The initial configuration stores {per_particle:.3g} k_B T of potential energy per "
             f"particle, above the limit of {INITIAL_ENERGY_LIMIT:g}; released as motion it "
             f"could raise the temperature to as much as roughly {per_particle + 1:.3g} times "
-            f"{system.temperature:g} K. Particles overlap: use fewer particles, a larger box, or "
-            "init_conf='metropolis'."
+            f"{system.temperature:g} K. Particles overlap. {remedy}"
         )
 
 
@@ -151,10 +159,8 @@ class System:
     init_conf: string (optional)
         The way that the particles are initially positioned. Should be one of:
         - 'square', a square lattice
-        - 'metropolis', sequential Metropolis insertion: each particle is
-          given a uniform trial position, accepted by the Metropolis rule at
-          ``placement_temperature`` on its interaction energy with the
-          particles already placed
+        - 'metropolis', sequential Metropolis insertion at
+          ``placement_temperature``
     timestep_length: float (optional)
         Length for each Velocity-Verlet integration step, in seconds.
     cut_off: float (optional)
@@ -162,13 +168,10 @@ class System:
         interaction to be negligible.
     placement_temperature: float (optional)
         Temperature, in kelvin, of the Metropolis acceptance used by
-        ``init_conf='metropolis'``; by default the run temperature. It is a
-        parameter of the placement: the placed configuration is a starting
-        point that the run equilibrates, and the acceptance temperature only
-        sets how strictly close contacts are rejected. Raising it tolerates
-        closer contacts; lowering it rejects them more strictly and can
-        exhaust the trial budget.
-        Ignored by ``'square'``.
+        ``init_conf='metropolis'``; by default the run temperature. The
+        placed configuration is a starting point that the run equilibrates;
+        raising this tolerates closer contacts, lowering it rejects them more
+        strictly and can exhaust the trial budget. Ignored by ``'square'``.
     seed: int (optional)
         Seed for the random number generator used to place an initial
         configuration, draw the initial velocities and make Monte Carlo
@@ -203,7 +206,7 @@ class System:
         finite, ``species`` is empty, a pair of species has no potential or
         one given in both orders, a pair potential's energy at the cut-off
         is not finite or exceeds k_B T, or Metropolis placement exhausts its
-        trial budget or receives NaN from a potential.
+        trial budget.
     TypeError
         If a pair potential is not a ``PairPotential`` instance.
     NotImplementedError
@@ -229,15 +232,11 @@ class System:
             raise ValueError(f"simulation must be 'md' or 'mc', not {simulation!r}")
         self.simulation = simulation
         self.number_of_particles = number_of_particles
-        if not (np.isfinite(temperature) and temperature > 0):
-            raise ValueError(f"temperature must be positive and finite, not {temperature}")
+        _check_positive_finite("temperature", temperature)
         self.temperature = temperature
         if placement_temperature is None:
             placement_temperature = temperature
-        elif not (np.isfinite(placement_temperature) and placement_temperature > 0):
-            raise ValueError(
-                f"placement_temperature must be positive and finite, not {placement_temperature}"
-            )
+        _check_positive_finite("placement_temperature", placement_temperature)
         self.placement_temperature = placement_temperature
         self.species = list(species)
         self.pair_potentials = dict(pair_potentials)
@@ -400,8 +399,7 @@ class System:
 
         Raises:
             ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are
-                rejected for a single particle, or the pair potential returns
-                NaN for a trial position.
+                rejected for a single particle.
         """
         x = self.particles["xposition"]
         y = self.particles["yposition"]
@@ -414,11 +412,6 @@ class System:
                     trial, int(types[i]), placed,
                     self.box_length, self.cut_off, self.pair_potentials, self.species,
                 )
-                if np.isnan(energy):
-                    raise ValueError(
-                        "The pair potential returned NaN for a trial position; check its "
-                        "energies for a division by zero or an invalid parameter."
-                    )
                 if mc.accept(energy, self.placement_temperature, rng=self.rng):
                     x[i], y[i] = trial
                     break
@@ -428,8 +421,7 @@ class System:
                     f"{self.box_length * 1e10:.1f} Angstrom box at a placement temperature of "
                     f"{self.placement_temperature:g} K after {PLACEMENT_ATTEMPTS} attempts; "
                     "reduce the number of particles or use a larger box; for a soft "
-                    "potential, raising placement_temperature tolerates closer contacts; "
-                    "and check the units of the potential's parameters (metres and joules)."
+                    "potential, raising placement_temperature tolerates closer contacts."
                 )
 
     def compute_force(self):

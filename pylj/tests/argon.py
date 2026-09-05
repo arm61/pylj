@@ -6,7 +6,7 @@
 
 from typing import TypedDict
 
-from pylj.potentials import LennardJones, PairPotential, Species
+from pylj.potentials import LennardJones, PairPotential, Species, SquareWell
 
 
 class Model(TypedDict):
@@ -26,6 +26,10 @@ ARGON_MODEL: Model = {
     "species": [ARGON],
     "pair_potentials": {(ARGON, ARGON): LJ_ARGON},
 }
+# A hard-core square well with a 3 Angstrom core and a well out to 4.5.
+WELL = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
+WELL_MODEL: Model = {"species": [ARGON], "pair_potentials": {(ARGON, ARGON): WELL}}
+
 MIXTURE_MODEL: Model = {
     "species": [ARGON, LARGER],
     "pair_potentials": {

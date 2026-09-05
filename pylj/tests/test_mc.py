@@ -5,8 +5,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, pairwise
 from pylj.constants import BOLTZMANN
-from pylj.potentials import SquareWell
-from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL, WELL_MODEL
 
 
 def run_moves(system, steps):
@@ -55,11 +54,8 @@ class TestMc(unittest.TestCase):
         # 16 particles on a 4 by 4 lattice in a 10 Angstrom box are 2.5
         # Angstrom apart, inside a 3 Angstrom hard core that the 5 Angstrom
         # cut-off clears: the lattice energy is infinite.
-        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
         with self.assertRaisesRegex(ValueError, "not finite"):
-            mc.initialise(
-                16, 300, 10, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): well}
-            )
+            mc.initialise(16, 300, 10, "square", **WELL_MODEL)
 
     def test_initialise_refuses_an_overlapping_lattice(self):
         with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
@@ -70,9 +66,7 @@ class TestMc(unittest.TestCase):
         # four lattice neighbours 4 Angstrom away, inside the well, and four
         # diagonal ones 5.66 Angstrom away, beyond it, so 18 pairs sit at
         # -epsilon. The cut-off, half the box, is 6 Angstrom.
-        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
-        model = {"species": [ARGON], "pair_potentials": {(ARGON, ARGON): well}}
-        system = mc.initialise(9, 300, 12, "square", seed=2, **model)
+        system = mc.initialise(9, 300, 12, "square", seed=2, **WELL_MODEL)
         assert_almost_equal(system.energy * 1e21, -27.0)
         overlaps = 0
         for _ in range(50):
@@ -100,6 +94,10 @@ class TestMc(unittest.TestCase):
         a = mc.sample(300, a)
         assert_almost_equal(a.energy_sample, [300])
         assert_equal(a.step_sample, [5])
+
+    def test_accept_refuses_a_nan_energy_change(self):
+        with self.assertRaisesRegex(ValueError, "NaN"):
+            mc.accept(float("nan"), 300)
 
     def test_accept_takes_a_downhill_change_without_drawing(self):
         rng = np.random.default_rng(3)

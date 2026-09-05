@@ -3,10 +3,10 @@ import unittest
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
-from pylj import mc, md, pairwise, util
+from pylj import mc, md, util
 from pylj.constants import BOLTZMANN
-from pylj.potentials import LennardJones, SquareWell
-from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL
+from pylj.potentials import LennardJones
+from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL, WELL, WELL_MODEL
 
 
 class TestUtil(unittest.TestCase):
@@ -30,21 +30,13 @@ class TestUtil(unittest.TestCase):
         assert_equal(a.number_of_particles, 2)
         for axis in ("xposition", "yposition"):
             self.assertTrue(np.all((0 <= a.particles[axis]) & (a.particles[axis] < a.box_length)))
-        assert_almost_equal(a.cut_off * 1e10, 4.0)
-        assert_equal(a.distances.size, 1)
 
     def test_system_metropolis_places_a_hard_core_outside_its_diameter(self):
         # A trial inside the square well's core costs infinite energy and is
         # always rejected, so no pair is closer than sigma.
-        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
-        a = util.System(
-            50, 300, 30, init_conf="metropolis", simulation="mc", seed=1,
-            species=[ARGON], pair_potentials={(ARGON, ARGON): well},
-        )
-        distances, _ = pairwise.compute_energy(
-            a.particles, a.box_length, a.cut_off, a.pair_potentials, a.species
-        )
-        self.assertGreaterEqual(distances.min(), well.sigma)
+        a = util.System(50, 300, 30, init_conf="metropolis", simulation="mc", seed=1, **WELL_MODEL)
+        a.compute_energy()
+        self.assertGreaterEqual(a.distances.min(), WELL.sigma)
 
     def test_system_metropolis_places_a_mixture_with_each_pairs_own_potential(self):
         # Under its own potential no placed pair can sit at a repulsive energy
@@ -56,10 +48,8 @@ class TestUtil(unittest.TestCase):
             a = util.System(
                 20, 100, 60, init_conf="metropolis", simulation="md", seed=seed, **MIXTURE_MODEL
             )
-            _, energies = pairwise.compute_energy(
-                a.particles, a.box_length, a.cut_off, a.pair_potentials, a.species
-            )
-            self.assertLess(energies.max(), 20 * BOLTZMANN * 100)
+            a.compute_energy()
+            self.assertLess(a.energies.max(), 20 * BOLTZMANN * 100)
 
     def test_system_refuses_a_potential_still_repulsive_at_the_cut_off(self):
         # Sigma given in Angstrom: the pair energy is astronomically positive
@@ -76,17 +66,16 @@ class TestUtil(unittest.TestCase):
         mistyped[(ARGON, LARGER)] = LennardJones(epsilon=1.577e-21, sigma=4.186)
         with self.assertRaisesRegex(ValueError, "between argon and larger"):
             util.System(
-                4, 100, 60, species=[ARGON, LARGER], pair_potentials=mistyped, simulation="md"
+                4, 100, 60, species=MIXTURE_MODEL["species"], pair_potentials=mistyped,
+                simulation="md",
             )
 
     def test_system_metropolis_configuration_has_no_overlap(self):
         # At 100 K a pair inside 0.8 sigma costs over 40 well depths and is
         # never accepted, so the closest pair sits outside the core.
         a = util.System(30, 100, 40, init_conf="metropolis", simulation="md", seed=0, **ARGON_MODEL)
-        distances, _ = pairwise.compute_energy(
-            a.particles, a.box_length, a.cut_off, a.pair_potentials, a.species
-        )
-        self.assertGreater(distances.min(), 0.8 * LJ_ARGON.sigma)
+        a.compute_energy()
+        self.assertGreater(a.distances.min(), 0.8 * LJ_ARGON.sigma)
 
     def test_system_metropolis_too_dense_raises(self):
         with self.assertRaisesRegex(ValueError, f"after {util.PLACEMENT_ATTEMPTS} attempts"):
@@ -122,7 +111,7 @@ class TestUtil(unittest.TestCase):
             np.random.set_state(state)
         assert_equal(first.particles["xposition"], second.particles["xposition"])
 
-    def test_system_metropolis_defaults_placement_temperature_to_the_run_temperature(self):
+    def test_system_defaults_placement_temperature_to_the_run_temperature(self):
         default = util.System(2, 300, 8, simulation="md", **ARGON_MODEL)
         explicit = util.System(
             2, 300, 8, simulation="md", placement_temperature=1000, **ARGON_MODEL

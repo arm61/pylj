@@ -9,7 +9,7 @@ from numpy.testing import assert_allclose
 
 from pylj import mc, md
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-from pylj.potentials import PairPotential, SquareWell
+from pylj.potentials import PairPotential
 from pylj.sample import (
     RDF,
     CellPlus,
@@ -35,7 +35,7 @@ from pylj.sample.panes import (
     TemperaturePane,
     _fit_axes,
 )
-from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL
 
 NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering]
 
@@ -182,7 +182,7 @@ def test_cell_pane_takes_one_diameter_per_species():
 def test_cell_pane_default_diameter_for_a_square_well_is_the_hard_core():
     # The square-well energy steps from an infinite core through the well to
     # zero, so the default drawn diameter is the hard-core diameter sigma.
-    well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
+    well = WELL
     system = mc.initialise(
         4, 100, 20, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): well}
     )

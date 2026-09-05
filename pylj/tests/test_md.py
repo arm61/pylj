@@ -5,8 +5,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc, md, pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-from pylj.potentials import SquareWell
-from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL, WELL_MODEL
 
 
 class TestMd(unittest.TestCase):
@@ -57,11 +56,8 @@ class TestMd(unittest.TestCase):
         assert_equal(a.number_of_particles, 16)
 
     def test_initialise_refuses_a_potential_with_no_force(self):
-        well = SquareWell(epsilon=1.5e-21, sigma=3e-10, lambda_=1.5)
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
-            md.initialise(
-                2, 300, 8, "square", species=[ARGON], pair_potentials={(ARGON, ARGON): well}
-            )
+            md.initialise(2, 300, 8, "square", **WELL_MODEL)
 
     def test_initialise_is_reproducible_with_a_seed(self):
         first = md.initialise(10, 100, 40, "metropolis", seed=3, **ARGON_MODEL)
