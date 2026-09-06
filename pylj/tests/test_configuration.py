@@ -6,6 +6,7 @@ from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 from pylj import pairwise
 from pylj.configuration import Configuration, MDConfiguration
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+from pylj.potentials import PairPotential
 from pylj.tests.argon import (
     ARGON,
     ARGON_MODEL,
@@ -208,6 +209,38 @@ class TestConfiguration(unittest.TestCase):
             empty.insertion_energy((1e-10, 1e-10), 0, ARGON_MODEL["pair_potentials"], 15e-10),
             0.0,
         )
+
+    def test_pairs_evaluates_each_potential_only_on_its_own_pairs(self):
+        # GaussianCore is finite and non-zero at zero separation, so this
+        # would fail if a potential were handed distances belonging to other
+        # species pairs, zeroed out.
+        class GaussianCore(PairPotential):
+            def __init__(self, *, a, b):
+                self.a = a
+                self.b = b
+
+            def energies(self, dr):
+                dr = np.asarray(dr, dtype=float)
+                return self.a * np.exp(-((dr / self.b) ** 2))
+
+            def forces(self, dr):
+                dr = np.asarray(dr, dtype=float)
+                return 2 * self.a * dr / self.b**2 * np.exp(-((dr / self.b) ** 2))
+
+        potentials = {
+            (ARGON, ARGON): GaussianCore(a=1.0, b=2.0),
+            (LARGER, LARGER): GaussianCore(a=3.0, b=4.0),
+            (ARGON, LARGER): GaussianCore(a=2.0, b=3.0),
+        }
+        c = three_particles([0, 1, 0])
+        pairs = c.pairs(potentials, 15e-10, forces=True)
+        # pairs (0, 1), (0, 2), (1, 2) are argon-larger, argon-argon, larger-argon
+        kinds = [(ARGON, LARGER), (ARGON, ARGON), (ARGON, LARGER)]
+        by_pair = list(zip(pairs.distance, kinds, strict=True))
+        expected_energy = [potentials[k].energies(d) for d, k in by_pair]
+        expected_force = [potentials[k].forces(d) for d, k in by_pair]
+        assert_almost_equal(pairs.energy, expected_energy)
+        assert_almost_equal(pairs.radial_force, expected_force)
 
 
 def md_configuration(position, velocity, box=8e-10):
