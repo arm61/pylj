@@ -7,7 +7,7 @@ existing viewers
 pylj comes with eight viewers, each a live figure that redraws when its :code:`update(simulation)` method is called:
 
 - :code:`JustCell`: the particle positions
-- :code:`Energy`: positions and the total energy
+- :code:`Energy`: positions and the energy: the total energy, potential plus kinetic, for molecular dynamics, and the potential energy for Monte Carlo, which has no kinetic energy to add
 - :code:`MaxBolt`: positions and a histogram of particle speeds
 - :code:`RDF`: positions and the radial distribution function
 - :code:`CellPlus`: positions and one plot of data you supply

@@ -201,7 +201,8 @@ class SquareWell(PairPotential):
 
     Raises:
         ValueError: If ``epsilon`` or ``sigma`` is not positive and finite,
-            or ``lambda_`` is not greater than one.
+            ``lambda_`` is not greater than one, or ``max_val`` is not
+            positive.
     """
 
     def __init__(self, *, epsilon: float, sigma: float, lambda_: float, max_val: float = np.inf):
@@ -211,6 +212,11 @@ class SquareWell(PairPotential):
             raise ValueError(
                 f"lambda_ must be greater than 1, not {lambda_}: the well lies outside "
                 "the hard core"
+            )
+        if not max_val > 0:
+            raise ValueError(
+                f"max_val must be positive, not {max_val}: a hard core that lowers the "
+                "energy would draw particles into it"
             )
         self.epsilon = epsilon
         self.sigma = sigma

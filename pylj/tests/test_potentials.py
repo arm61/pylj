@@ -171,6 +171,10 @@ class TestSquareWell:
         for bad in (1.0, 0.5, np.inf, np.nan):
             with pytest.raises(ValueError, match="lambda_"):
                 SquareWell(**{**good, "lambda_": bad})
+        for bad in (0.0, -1e-21, np.nan):
+            with pytest.raises(ValueError, match="max_val"):
+                SquareWell(**{**good, "max_val": bad})
+        assert SquareWell(**good, max_val=1e-20).max_val == 1e-20
 
     def test_energy_is_a_step(self):
         sw = SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5, max_val=1e5)
