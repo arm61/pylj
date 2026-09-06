@@ -4,15 +4,9 @@
 
 To build from source:
 
-```python
+```bash
 
-pip install -r requirements.txt
-
-python setup.py build
-
-python setup.py install
-
-python setup.py test
+pip install -e ".[dev]"
 
 ```
 Check out our publication in the [Journal of Open Source Education](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d) to find out more about pylj.
@@ -21,7 +15,7 @@ Be aware! pylj runs within a [Jupyter notebook](http://jupyter.org/), and theref
 
 If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom](https://gitter.im/pylj/HELP).
 
-Check out some [examples](https://github.com/arm61/pylj/tree/master/examples) of how pylj can be used in undergraduate teaching exercises.
+The [documentation](https://pylj.readthedocs.io/) is a textbook of worked examples on molecular dynamics and Monte Carlo with pylj.
 
 ## Badges
 

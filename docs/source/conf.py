@@ -20,13 +20,13 @@ extensions = [
 
 source_suffix = {".rst": "restructuredtext", ".md": "myst-nb"}
 master_doc = "index"
-exclude_patterns = ["superpowers"]
 
 # Chapters are executed when the site is built. "cache" re-runs a chapter
 # only when its source changes; an error in any cell fails the build.
 nb_execution_mode = "cache"
 nb_execution_timeout = 300
 nb_execution_raise_on_error = True
+nb_execution_show_tb = True
 nb_merge_streams = True
 myst_enable_extensions = ["dollarmath", "colon_fence"]
 
@@ -35,7 +35,7 @@ napoleon_google_docstring = True
 
 html_theme = "sphinx_book_theme"
 html_title = "pylj"
-html_logo = "https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true"
+html_logo = "_static/logo.png"
 html_static_path = ["_static"]
 html_css_files = ["my_styles.css"]
 html_theme_options = {
