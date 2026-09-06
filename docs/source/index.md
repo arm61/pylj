@@ -86,7 +86,7 @@ first-principles
 :caption: Extending pylj
 
 byof
-visualisation
+viewers
 ```
 
 ```{toctree}
