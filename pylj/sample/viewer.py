@@ -101,7 +101,8 @@ class JustCell(Viewer):
 
 
 class Energy(Viewer):
-    """The particle positions and the total energy.
+    """The particle positions and the energy: total for molecular dynamics,
+    potential for Monte Carlo.
 
     Args:
         simulation: The simulation to visualise.

@@ -12,12 +12,10 @@ from collections.abc import Iterable
 import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
-from numpy.typing import NDArray
 
 from pylj import pairwise
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
-from pylj.pairwise import pair_potential
 from pylj.potentials import PairPotential
 from pylj.simulation import Simulation
 
@@ -194,7 +192,7 @@ def _drawn_diameters(
     species = simulation.configuration.species
     if diameter is None:
         return [
-            _potential_minimum(pair_potential(simulation.pair_potentials, one, one))
+            _potential_minimum(pairwise.pair_potential(simulation.pair_potentials, one, one))
             for one in species
         ]
     if isinstance(diameter, Iterable):
@@ -233,19 +231,22 @@ class CellPane(Pane):
     Attributes:
         diameters: The drawn diameter of each species, in metres, set by
             ``setup``.
+        box: The side length of the box the axes span, in metres, set by
+            ``setup``.
     """
 
     def __init__(self, diameter: float | Iterable[float] | None = None) -> None:
         self.diameter = diameter
         self.diameters: list[float] = []
+        self.box = 0.0
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         self.diameters = _drawn_diameters(simulation, self.diameter)
-        box = simulation.configuration.box
+        self.box = simulation.configuration.box
         for _ in self.diameters:
             ax.plot([], [], "o", markeredgecolor="black")
-        ax.set_xlim(0, box)
-        ax.set_ylim(0, box)
+        ax.set_xlim(0, self.box)
+        ax.set_ylim(0, self.box)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_aspect("equal")
@@ -260,7 +261,7 @@ class CellPane(Pane):
             line = ax.lines[index]
             position = configuration.position[configuration.species_index == index]
             line.set_data(position[:, 0], position[:, 1])
-            line.set_markersize(diameter / configuration.box * axes_width_points)
+            line.set_markersize(diameter / self.box * axes_width_points)
 
 
 class _SeriesPane(Pane):
@@ -317,9 +318,17 @@ class MSDPane(_SeriesPane):
     y_from_zero = True
 
 
-def _energy_series(simulation: Simulation) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """The x and y data of the energy pane: total energy against time for
-    molecular dynamics, potential energy against step for Monte Carlo.
+def _energy_series(
+    simulation: Simulation,
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Return the x and y data of the energy pane.
+
+    Args:
+        simulation: The simulation being visualised.
+
+    Returns:
+        Time and the total energy for a molecular dynamics simulation; step
+        and the potential energy for a Monte Carlo one.
 
     Raises:
         TypeError: If the simulation records no energy.
@@ -334,9 +343,11 @@ def _energy_series(simulation: Simulation) -> tuple[NDArray[np.float64], NDArray
 
 
 class EnergyPane(Pane):
-    """Total energy of the system: the potential plus the kinetic energy
-    against time for a molecular dynamics simulation, the potential energy
-    against step for a Monte Carlo one.
+    """The energy of the system.
+
+    For a molecular dynamics simulation this is the total energy, potential
+    plus kinetic, against time. For a Monte Carlo simulation it is the
+    potential energy against step; there is no kinetic energy to add.
     """
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
