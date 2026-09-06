@@ -112,7 +112,7 @@ fig.tight_layout()
 
 ## The loop
 
-A step is: propose, decide, and apply if accepted. `apply` makes the proposed positions the configuration and adds the energy change to the running total. A rejected proposal is dropped and the configuration is unchanged. Written by hand, with the simulation's own random number generator so the run is reproducible. `sample()` records the energy the viewer plots; consecutive configurations differ by one particle, so sampling every tenth step loses little, and the viewer redraws every two hundred:
+A step is: propose, decide, and apply if accepted. `apply` makes the proposed positions the configuration and adds the energy change to the running total. A rejected proposal is dropped and the configuration is unchanged. The loop below is written by hand, and draws from the simulation's own random number generator so the run is reproducible. `sample()` records the energy the viewer plots; consecutive configurations differ by one particle, so sampling every tenth step loses little, and the viewer redraws every two hundred:
 
 ```{code-cell} python
 simulation = MCSimulation.initialise(16, 300, 20, seed=0, **model)
@@ -131,9 +131,9 @@ for _ in range(2000):
 print(f"accepted {accepted} of {simulation.steps} moves")
 ```
 
-The energy pane shows the run settling. The lattice is not an equilibrium configuration: the energy falls over the first few hundred steps as the particles find each other's wells, and then fluctuates about a steady value. Averages are taken over the steady part, and the settling steps are discarded.
+The energy pane shows the run settling. The lattice is not an equilibrium configuration: the energy falls over the first few hundred steps as the particles find each other's wells, and then fluctuates about a steady value. Sixteen particles fluctuate hard, so the fall is easier to see in an average than by eye. Averages are taken over the steady part, and the settling steps are discarded.
 
-`step()` is the same three lines, and it counts the accepted moves as `accepted`:
+`step()` does the same three things, and counts the accepted moves as `accepted`:
 
 ```{literalinclude} ../../pylj/mc.py
 :pyobject: MCSimulation.step
@@ -154,7 +154,7 @@ The two runs accept the same number of moves because they draw the same random n
 
 ## The two methods agree
 
-The molecular dynamics chapter held a temperature with a thermostat; the Monte Carlo rule holds it by construction. Run both on the same sixteen particles in the same box at 300 K, discard the settling steps, and compare the mean potential energy over the rest:
+The molecular dynamics chapter held a temperature with a thermostat; the Monte Carlo rule holds it by construction. Run both on the same sixteen particles in the same box at 300 K, discard the settling steps, and compare the mean potential energy over the rest. A Monte Carlo step moves one particle while a dynamics step moves them all, so the Monte Carlo run is given twice as many steps:
 
 ```{code-cell} python
 from pylj.md import MDSimulation
@@ -186,7 +186,7 @@ print(f"mean potential energy by Monte Carlo        {by_monte_carlo * 1e21:.2f} 
 print(f"difference {abs(by_dynamics - by_monte_carlo) / abs(by_monte_carlo):.1%}")
 ```
 
-`restart()` begins a fresh record from the current configuration, so the samples cover only the settled run. The two methods reach the same average by different routes: one by following the motion, the other by drawing configurations with the Boltzmann weight. The remaining difference is statistical, and shrinks with longer runs.
+`restart()` begins a fresh record from the current configuration, so the samples cover only the settled run. The two methods reach the same average by different routes: one by following the motion, the other by drawing configurations with the Boltzmann weight. The remaining difference does not shrink with longer runs. Sixteen particles is a small system, and rescaling the velocities at every step holds the temperature in a slightly different way from the Metropolis rule; with more particles and a gentler thermostat the two draw closer.
 
 ## A potential only Monte Carlo can use
 
@@ -207,6 +207,6 @@ viewer.average()
 print(f"accepted {simulation.accepted} of {simulation.steps} moves")
 ```
 
-The viewer is built after five thousand settling steps, so its average covers only the equilibrated run. The radial distribution function is zero inside 3 Angstrom, where the core forbids any pair, highest just outside it, where the well holds pairs together, and steps down at 4.5 Angstrom, the outer edge of the well. The axis is in metres, so 3 Angstrom reads as 0.3 on the nanometre scale.
+The viewer is built after five thousand settling steps, so its average covers only the equilibrated run. The radial distribution function is zero inside 3 Angstrom, where the core forbids any pair, highest just outside it, where the well holds pairs together, and steps down at 4.5 Angstrom, the outer edge of the well. The axis is in metres, with a factor of 1e-9 printed in its corner, so 3 Angstrom reads as 0.3.
 
 Monte Carlo gives equilibrium averages without dynamics. When the question is how fast something happens, the molecular dynamics chapter's method is the one to use; when the question is what the equilibrium looks like, either method answers it, and Monte Carlo answers it for potentials with no force at all. The next chapter takes molecular dynamics back out and uses it to measure the pressure of argon against the ideal gas law.
