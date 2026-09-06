@@ -22,7 +22,8 @@ source_suffix = {".rst": "restructuredtext", ".md": "myst-nb"}
 master_doc = "index"
 
 # Chapters are executed when the site is built. "cache" re-runs a chapter
-# only when its source changes; an error in any cell fails the build.
+# only when its source changes, so after changing pylj itself run `make clean`
+# first; an error in any cell fails the build.
 nb_execution_mode = "cache"
 nb_execution_timeout = 300
 nb_execution_raise_on_error = True

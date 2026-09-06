@@ -1,7 +1,7 @@
 pylj.mc
 =======
 
-Functions related to the Monte-Carlo components of pylj. 
+Monte Carlo: the Metropolis criterion, proposals, and the simulation class that applies them.
 
 .. automodule:: pylj.mc
     :members:

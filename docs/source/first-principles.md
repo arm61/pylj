@@ -29,7 +29,7 @@ $$
 \Lambda = \left(\frac{h^2}{2 \pi m k_B T}\right)^{1/2}.
 $$
 
-$\Lambda$, with $h$ Planck's constant, is the length scale below which quantum mechanics matters. For argon at room temperature it is far smaller than the spacing between atoms, which is why a classical simulation is justified:
+$\Lambda$, with $h$ Planck's constant, is the length scale below which quantum mechanics matters. For argon at room temperature it is far smaller than the spacing between atoms, which is why a classical simulation is justified; for an electron, thousands of times lighter, it is not:
 
 ```{code-cell} python
 import numpy as np
@@ -61,7 +61,7 @@ $$
 p = k_B T \left(\frac{\partial \ln Q}{\partial V}\right)_T = k_B T \frac{N}{V},
 $$
 
-which is the ideal gas law, $pV = N k_B T$. The terms in $N!$ and $\Lambda$ do not depend on $V$ and drop out of the derivative.
+which is the ideal gas law, $pV = N k_B T$.
 
 ## Two dimensions
 
@@ -78,7 +78,7 @@ $$
 p = k_B T \left(\frac{\partial \ln Q}{\partial A}\right)_T = \frac{N k_B T}{A}.
 $$
 
-This is the ideal gas law the previous chapter tested. The simulation measures the pressure from the kinetic energy, and each of the $2N$ velocity components carries $k_B T / 2$, so the kinetic term of its pressure is $K / A = N k_B T / A$, the same law by a different route. Holding the centre of mass at rest fixes two of those components, which is why the simulation measured $(N - 1) k_B T / A$. Written as a function, and evaluated for the argon at STP the previous chapter ran:
+This is the ideal gas law the previous chapter tested. The simulation reaches the same law by a different route. Its pressure has a kinetic term $K / A$, and each of the $2N$ velocity components carries $k_B T / 2$, so that term is $N k_B T / A$. Holding the centre of mass at rest fixes two of those components, which is why the simulation measured $(N - 1) k_B T / A$. The function below evaluates the law for the argon at STP the previous chapter ran:
 
 ```{code-cell} python
 def ideal_pressure(number, temperature, area):
@@ -86,8 +86,9 @@ def ideal_pressure(number, temperature, area):
 
 
 area = (150e-10) ** 2
-print(f"20 particles: {ideal_pressure(20, 273.15, area):.3e} N/m")
-print(f"19 particles: {ideal_pressure(19, 273.15, area):.3e} N/m")
+number = round((1.784 / (39.948 * ATOMIC_MASS_UNIT)) ** (2 / 3) * area)
+print(f"{number} particles: {ideal_pressure(number, 273.15, area):.3e} N/m")
+print(f"{number - 1} particles: {ideal_pressure(number - 1, 273.15, area):.3e} N/m")
 ```
 
 These are the two ideal lines the previous chapter printed, and its measured pressure sat on the second. The derivation assumed the particles do not interact and have no size. Both assumptions fail for the Lennard-Jones argon of the previous chapter as the density rises, which is where its measured pressures left the law.

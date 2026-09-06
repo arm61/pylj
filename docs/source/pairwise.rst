@@ -1,7 +1,7 @@
 pylj.pairwise
 =============
 
-Generally these are functions required by pylj which involve a pair-wise comparison of particles.
+Calculations over every pair of particles: the minimum image convention, the pair distances, and the pressure from the virial.
 
 .. automodule:: pylj.pairwise
     :members:

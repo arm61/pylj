@@ -106,7 +106,7 @@ dilute = run(20, 100, 40, 20000, sample.RDF, draw_every=200)
 dense = run(100, 100, 40, 2000, sample.RDF, draw_every=20)
 ```
 
-With twenty particles there is one peak, at the minimum of the potential, and beyond it $g(r)$ settles to one: a particle has a neighbour at the well minimum more often than chance, and no order beyond that. In the dilute limit the height of the peak is the Boltzmann factor of the well depth, $\exp(\epsilon / k_B T)$, which is 3.1 at 100 K, and the dilute run is long because a curve from twenty particles takes many frames to converge. With a hundred particles in the same box the first peak sharpens and a second and third appear at twice and three times the distance. These are the shells of neighbours of a liquid. The axis is in metres, with a factor of 1e-9 printed in its corner.
+With twenty particles there is one peak, at the minimum of the potential, and beyond it $g(r)$ settles to one: a particle has a neighbour at the well minimum more often than chance, and no order beyond that. In the dilute limit the height of the peak is the Boltzmann factor of the well depth, $\exp(\epsilon / k_B T)$, which is 3.1 at 100 K; the run gives a little more, because twenty particles in this box are not quite the dilute limit. The dilute run is long because a curve from twenty particles takes many frames to converge. With a hundred particles in the same box a second and third peak appear at twice and three times the distance, and the first is pushed a little lower as the shells crowd it. These are the shells of neighbours of a liquid. The axis is in metres, with a factor of 1e-9 printed in its corner.
 
 ## Argon at standard temperature and pressure
 
@@ -168,7 +168,7 @@ for n, r in zip(numbers, ratio):
 
 The right-hand panel divides the measured pressure by the ideal one. At the lowest densities the ratio is a few per cent above one. The excess grows steeply with $N$, and at 100 particles the pressure is several times ideal: the particles take up a large fraction of the box, their repulsive cores push on each other, and the virial is large and positive.
 
-The pressure never falls below the ideal line. The Lennard-Jones well is attractive, and at low enough temperature the attraction wins at low density and pulls the pressure under the line. The temperature at which the two effects balance is where the second virial coefficient changes sign:
+In these runs the pressure never falls below the ideal line. The Lennard-Jones well is attractive, and at low enough temperature the attraction wins at low density and pulls the pressure under the line. The temperature at which the two effects balance is where the second virial coefficient changes sign:
 
 ```{code-cell} python
 def second_virial(temperature):

@@ -1,7 +1,7 @@
 pylj.md
 =======
 
-Functions related to the molecular dynamics components of pylj. 
+Molecular dynamics: the Velocity-Verlet integrator, the velocity-rescaling thermostat, and the simulation class that runs them.
 
 .. automodule:: pylj.md
     :members:

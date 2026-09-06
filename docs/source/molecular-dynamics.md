@@ -224,6 +224,6 @@ assert np.array_equal(ours.configuration.position, theirs.configuration.position
 print("100 steps, identical trajectories")
 ```
 
-`verlet_step` has no half-cut-off check, so a run that goes wrong under `HandWritten` continues until the potential itself raises.
+`verlet_step` has no half-cut-off check, so a run that goes wrong under `HandWritten` continues until the potential itself raises an error.
 
 The ideal gas law chapter uses this loop to measure the pressure of argon and test the ideal gas law. The next chapter reaches equilibrium properties by a different route, with no velocities and no clock.

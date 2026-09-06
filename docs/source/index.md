@@ -15,7 +15,7 @@ plt.rcParams["figure.dpi"] = 100
 
 pylj runs two-dimensional simulations of a few tens of particles, and draws them as they move. It runs molecular dynamics and Monte Carlo in a periodic box and shows the temperature, pressure, energy and structure as they are measured. It exists to teach how these methods work, so its code is short, in plain Python and NumPy, and written to be read. This book explains the methods with pylj as the vehicle and shows the code that does each step.
 
-pylj is for undergraduate chemistry and physics students meeting simulation for the first time, and for the lecturers who set them work. Everything on these pages was produced by the code shown above it when the pages were built.
+pylj is for undergraduate chemistry and physics students meeting simulation for the first time, and for the lecturers who set them work. Every figure and number on these pages was produced by the code shown above it when the pages were built.
 
 ## Installing pylj
 

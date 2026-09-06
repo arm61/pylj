@@ -1,9 +1,7 @@
 pylj.sample
 ===========
 
-This module is dedicated visualisation of the pylj output. More details of how to implement custom visualisation see :doc:`viewers`.
-
-.. _here: 
+Viewers and panes that draw a simulation as it runs. The :doc:`viewers` chapter shows how to compose them and write your own.
 
 .. automodule:: pylj.sample
     :members:

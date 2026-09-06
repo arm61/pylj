@@ -207,6 +207,6 @@ viewer.average()
 print(f"accepted {simulation.accepted} of {simulation.steps} moves")
 ```
 
-The viewer is built after five thousand settling steps, so its average covers only the equilibrated run. The radial distribution function is zero inside 3 Angstrom, where the core forbids any pair, highest just outside it, where the well holds pairs together, and steps down at 4.5 Angstrom, the outer edge of the well. The axis is in metres, with a factor of 1e-9 printed in its corner, so 3 Angstrom reads as 0.3.
+The viewer is built after five thousand settling steps, so its average covers only the settled run. The radial distribution function is zero inside 3 Angstrom, where the core forbids any pair, highest just outside it, where the well holds pairs together, and steps down at 4.5 Angstrom, the outer edge of the well. The axis is in metres, with a factor of 1e-9 printed in its corner, so 3 Angstrom reads as 0.3.
 
 Monte Carlo gives equilibrium averages without dynamics. When the question is how fast something happens, the molecular dynamics chapter's method is the one to use; when the question is what the equilibrium looks like, either method answers it, and Monte Carlo answers it for potentials with no force at all. The next chapter takes molecular dynamics back out and uses it to measure the pressure of argon against the ideal gas law.
