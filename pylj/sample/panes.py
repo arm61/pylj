@@ -190,8 +190,9 @@ def _drawn_diameters(
 
     Raises:
         ValueError: If the number of diameters differs from the number of
-            species, a diameter is not positive and finite, or a diameter is below 0.01. A value that small is almost certainly in metres,
-                given where an Angstrom-sized diameter would fall.
+            species, a diameter is not positive and finite, or a diameter is
+            below 0.01. A value that small is almost certainly in metres,
+            given where an Angstrom-sized diameter would fall.
     """
     species = simulation.configuration.species
     if diameter is None:

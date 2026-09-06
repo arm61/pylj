@@ -89,8 +89,9 @@ def dist(
 
     Returns:
         The distance between each pair, shape ``(M,)``, and the separation
-        ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in metres, with each of the ``M = N (N - 1) / 2`` pairs appearing once,
-            ordered by the lower particle index and then the higher.
+        ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in metres. Each of
+        the ``M = N (N - 1) / 2`` pairs appears once, ordered by the lower
+        particle index and then the higher.
     """
     i, j = np.triu_indices(position.shape[0], 1)
     separation = minimum_image(position[i] - position[j], box)

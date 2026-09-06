@@ -78,9 +78,10 @@ class MDSimulation(Simulation):
     Raises:
         TypeError: If ``configuration`` is not an ``MDConfiguration``.
         ValueError: If the timestep is not positive and finite, the
-            configuration is at rest or has a non-finite temperature, a pair potential has not died away at the cut-off, judged at the
-                configuration's own temperature, the configuration stores more than
-            :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
+            configuration is at rest or has a non-finite temperature, a pair
+            potential has not died away at the cut-off, judged at the
+            configuration's own temperature, the configuration stores more
+            than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
             energy per particle, or for anything :class:`Simulation`
             rejects.
     """
