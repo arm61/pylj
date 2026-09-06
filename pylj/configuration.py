@@ -135,9 +135,13 @@ class Configuration:
 
         Each pair is separated by its minimum-image distance, and the potential
         for the two species it joins gives its energy. A pair further apart
-        than the cut-off contributes nothing. The forces are evaluated only
-        when ``forces`` is requested, so a potential that has no finite force,
-        such as the square well, can still be used here.
+        than the cut-off contributes nothing. A pair closer than its
+        potential's ``min_separation`` is forbidden: its energy is infinite,
+        and if forces are requested the evaluation raises, since the
+        simulation has entered a region where the model is not valid. The
+        forces are evaluated only when ``forces`` is requested, so a
+        potential that has no finite force, such as the square well, can
+        still be used here.
 
         Args:
             pair_potentials: The potential between each pair of species.
@@ -148,6 +152,10 @@ class Configuration:
         Returns:
             The pair distances, separations, energies and, if requested,
             forces.
+
+        Raises:
+            ValueError: If forces are requested and a pair is closer than
+                its potential's ``min_separation``.
         """
         distance, separation = pairwise.dist(self.position, self.box)
         energy = np.zeros(distance.size)
@@ -157,6 +165,17 @@ class Configuration:
                 pair_potentials, self.species[type_1], self.species[type_2]
             )
             energy[mask] = potential.energies(distance[mask])
+            forbidden = mask & (distance < potential.min_separation)
+            if forbidden.any():
+                if force is not None:
+                    raise ValueError(
+                        f"A pair of {self.species[type_1].name or 'particles'} and "
+                        f"{self.species[type_2].name or 'particles'} is "
+                        f"{distance[forbidden].min() * 1e10:.2f} Angstrom apart, closer than the "
+                        f"{potential.min_separation * 1e10:.2f} Angstrom below which "
+                        f"{type(potential).__name__} is not valid: the simulation has collapsed."
+                    )
+                energy[forbidden] = np.inf
             if force is not None:
                 force[mask] = potential.forces(distance[mask])
         beyond = distance > cut_off
@@ -218,6 +237,7 @@ class Configuration:
                 pair_potentials, self.species[species_index], self.species[int(other)]
             )
             energy[mask] = potential.energies(distance[mask])
+            energy[mask & (distance < potential.min_separation)] = np.inf
         energy[distance > cut_off] = 0.0
         return float(energy.sum())
 

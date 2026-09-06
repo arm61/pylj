@@ -45,6 +45,8 @@ The two methods take an array of pair separations :code:`dr`, in metres, and ret
 
 A purely repulsive potential such as this one has no energy minimum for the viewers to size the particles by, so a viewer of such a simulation takes an explicit :code:`diameter=`, in Angstrom.
 
+If the formula stops being physical below some separation, as the Buckingham potential's does inside its short-range barrier, set :code:`min_separation` to that separation: a simulation then treats any pair closer than it as forbidden, and the formula itself is left as it is.
+
 The constructor is yours to define. Keyword-only parameters named after the physical quantities, as above, mean a swapped pair of numbers is an error rather than a silently wrong model.
 
 A mixture is more species and more entries in :code:`pair_potentials`: one for each species with itself and one for each pair of different species, in either order.

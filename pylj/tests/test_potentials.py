@@ -103,27 +103,34 @@ class TestBuckingham:
         numerical = -(bk.energies(r + h) - bk.energies(r - h)) / (2 * h)
         np.testing.assert_allclose(bk.forces(r), numerical, rtol=1e-4)
 
-    def test_turnover_is_the_top_of_the_barrier(self):
+    def test_min_separation_is_the_top_of_the_barrier(self):
         bk = Buckingham(a=1e-16, b=3e10, c=1e-77)
-        r = bk.turnover
+        r = bk.min_separation
         assert 0 < r < 3e-10
         # Zero to the root finder's tolerance, against a force scale of A B.
         np.testing.assert_allclose(bk.forces(np.array([r])), [0.0], atol=1e-6 * 1e-16 * 3e10)
-        assert bk.energies(np.array([0.99 * r]))[0] == np.inf
+        assert bk.energies(np.array([0.99 * r]))[0] < bk.energies(np.array([r]))[0]
         assert bk.energies(np.array([1.01 * r]))[0] < bk.energies(np.array([r]))[0]
 
-    def test_is_infinite_inside_the_turnover(self):
-        # The form collapses to minus infinity at short range; inside the
-        # barrier the potential is a hard wall instead.
+    def test_is_the_formula_inside_the_barrier(self):
+        # The formula itself collapses to minus infinity at short range; the
+        # potential reports it as it is and leaves the simulation to keep
+        # pairs outside min_separation.
         bk = Buckingham(a=1e-16, b=3e10, c=1e-77)
-        inside = np.array([0.0, 0.5 * bk.turnover])
-        assert np.all(bk.energies(inside) == np.inf)
-        assert np.all(bk.forces(inside) == np.inf)
+        inside = np.array([0.5 * bk.min_separation])
+        expected = 1e-16 * np.exp(-3e10 * inside) - 1e-77 / inside**6
+        np.testing.assert_allclose(bk.energies(inside), expected, rtol=1e-12)
+        assert expected[0] < 0
+        assert bk.energies(np.array([0.0]))[0] == -np.inf
 
-    def test_a_form_without_a_barrier_has_no_wall(self):
+    def test_a_form_without_a_barrier_is_trusted_everywhere(self):
         bk = Buckingham(a=1e-16, b=3e10, c=0.0)
-        assert bk.turnover == 0.0
+        assert bk.min_separation == 0.0
         assert np.isfinite(bk.energies(np.array([1e-12]))[0])
+
+    def test_other_potentials_are_trusted_everywhere(self):
+        assert LennardJones(epsilon=1.65e-21, sigma=3.4e-10).min_separation == 0.0
+        assert SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5).min_separation == 0.0
 
 
 class TestSquareWell:

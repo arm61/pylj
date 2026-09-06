@@ -85,13 +85,13 @@ class TestPlacement(unittest.TestCase):
             core = potential.sigma
             self.assertGreaterEqual(distance[mask].min(), core)
 
-    def test_metropolis_places_buckingham_outside_its_turnover(self):
-        # The Buckingham form falls to minus infinity inside its barrier, so
-        # a trial there would be accepted as downhill; the wall inside the
-        # turnover keeps every pair outside it.
+    def test_metropolis_places_buckingham_outside_its_min_separation(self):
+        # The Buckingham formula falls to minus infinity inside its barrier,
+        # so a trial there would be accepted as downhill; the potential's
+        # min_separation makes such a trial cost infinite energy instead.
         c, cut_off = place(30, 300, 40, init_conf="metropolis", seed=0, model=BUCKINGHAM_MODEL)
         pairs = c.pairs(BUCKINGHAM_MODEL["pair_potentials"], cut_off)
-        self.assertGreater(pairs.distance.min(), BUCKINGHAM_ARGON.turnover)
+        self.assertGreater(pairs.distance.min(), BUCKINGHAM_ARGON.min_separation)
         self.assertTrue(np.isfinite(pairs.energy).all())
 
     def test_metropolis_places_a_soft_potential_outside_its_core(self):

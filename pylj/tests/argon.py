@@ -26,7 +26,8 @@ ARGON_MODEL: Model = {
     "species": [ARGON],
     "pair_potentials": {(ARGON, ARGON): LJ_ARGON},
 }
-# A Buckingham form for argon, with its short-range barrier at 0.78 Angstrom.
+# A Buckingham form for argon, with its short-range barrier, and so its
+# min_separation, at 0.78 Angstrom.
 BUCKINGHAM_ARGON = Buckingham(a=1.69e-15, b=3.66e10, c=1.02e-77)
 BUCKINGHAM_MODEL: Model = {
     "species": [ARGON],

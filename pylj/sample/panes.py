@@ -480,7 +480,7 @@ class MaxwellBoltzmannPane(Pane):
     """Histogram of the speeds of every particle at every update so far.
 
     The histogram already pools every update, so there is no separate history
-    to average and this pane has no average to show. """
+    to average and this pane has no average to show."""
 
     needs_md = True
     BINS = 25

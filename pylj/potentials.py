@@ -33,7 +33,17 @@ class PairPotential(ABC):
     and the force that follows from it, depend only on how far apart the two
     particles are, and not on the direction from one to the other. Both
     ``energies`` and ``forces`` take an array of separations ``dr``, in metres,
-    and return an array of the same shape. """
+    and return an array of the same shape.
+
+    Attributes:
+        min_separation: The separation, in metres, below which the potential
+            is not to be trusted. Zero, the default, means the potential is
+            valid at every separation. A configuration treats any pair closer
+            than this as forbidden: its energy is infinite, and asking for
+            its force raises an error.
+    """
+
+    min_separation: float = 0.0
 
     @abstractmethod
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
@@ -87,10 +97,9 @@ class Buckingham(PairPotential):
     faster than the exponential repulsion. The energy therefore rises to a
     barrier as the particles approach and then falls to minus infinity as
     the separation goes to zero. That collapse is a defect of the formula,
-    not real physics, so this potential treats the barrier as an
-    impenetrable wall: at any separation smaller than ``turnover``, the
-    separation at the top of the barrier, the energy and the force are
-    infinite.
+    not real physics. ``energies`` and ``forces`` return the formula at
+    every separation, and ``min_separation`` is set to the separation at the
+    top of the barrier, so a simulation never lets two particles pass it.
 
     Args:
         a: The A parameter, an energy scale, in joules.
@@ -98,15 +107,15 @@ class Buckingham(PairPotential):
         c: The C parameter, the dispersion coefficient, in joule metre^6.
 
     Attributes:
-        turnover: The separation of the top of the short-range barrier, in
-            metres; zero when there is no barrier.
+        min_separation: The separation of the top of the short-range
+            barrier, in metres; zero when there is no barrier.
     """
 
     def __init__(self, *, a: float, b: float, c: float):
         self.a = a
         self.b = b
         self.c = c
-        self.turnover = self._find_turnover()
+        self.min_separation = self._find_barrier()
 
     def _form(self, dr: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.a * np.exp(-self.b * dr) - self.c / dr**6
@@ -114,7 +123,7 @@ class Buckingham(PairPotential):
     def _slope(self, dr: float) -> float:
         return float(-self.a * self.b * np.exp(-self.b * dr) + 6 * self.c / dr**7)
 
-    def _find_turnover(self) -> float:
+    def _find_barrier(self) -> float:
         """Locate the top of the short-range barrier. The slope of the energy is zero
         there, between the fall to minus infinity at short range and the well
         beyond."""
@@ -127,14 +136,13 @@ class Buckingham(PairPotential):
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            return np.where(dr < self.turnover, np.inf, self._form(dr))
+        with np.errstate(divide="ignore"):
+            return self._form(dr)
 
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            force = self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
-        return np.where(dr < self.turnover, np.inf, force)
+        with np.errstate(divide="ignore"):
+            return self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
 
 
 class SquareWell(PairPotential):

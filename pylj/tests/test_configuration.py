@@ -10,6 +10,8 @@ from pylj.potentials import PairPotential
 from pylj.tests.argon import (
     ARGON,
     ARGON_MODEL,
+    BUCKINGHAM_ARGON,
+    BUCKINGHAM_MODEL,
     LARGER,
     LJ_ARGON,
     LJ_ARGON_LARGER,
@@ -202,6 +204,25 @@ class TestConfiguration(unittest.TestCase):
         c = configuration([[29e-10, 0.0], [8e-10, 0.0]])
         energy = c.insertion_energy((0.0, 0.0), 0, ARGON_MODEL["pair_potentials"], 6e-10)
         assert_allclose(energy, LJ_ARGON.energies(np.array([1e-10]))[0], rtol=1e-12)
+
+    def test_pairs_forbid_a_separation_the_potential_does_not_trust(self):
+        # Two argon 0.5 Angstrom apart, inside the Buckingham barrier: the
+        # formula there is a deep negative number, but the pair is forbidden,
+        # so the energy is infinite and asking for the force raises.
+        potentials = BUCKINGHAM_MODEL["pair_potentials"]
+        c = configuration([[0.0, 0.0], [0.5e-10, 0.0]])
+        self.assertLess(BUCKINGHAM_ARGON.energies(np.array([0.5e-10]))[0], 0.0)
+        self.assertEqual(c.pairs(potentials, 15e-10).energy[0], np.inf)
+        self.assertEqual(c.potential_energy(potentials, 15e-10), np.inf)
+        with self.assertRaisesRegex(ValueError, "not valid"):
+            c.forces(potentials, 15e-10)
+        with self.assertRaisesRegex(ValueError, "collapsed"):
+            c.virial(potentials, 15e-10)
+
+    def test_insertion_energy_forbids_a_separation_the_potential_does_not_trust(self):
+        c = configuration([[0.0, 0.0]])
+        energy = c.insertion_energy((0.5e-10, 0.0), 0, BUCKINGHAM_MODEL["pair_potentials"], 15e-10)
+        self.assertEqual(energy, np.inf)
 
     def test_insertion_energy_with_no_particles_is_zero(self):
         empty = configuration(np.zeros((0, 2)))

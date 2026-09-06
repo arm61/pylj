@@ -1,7 +1,7 @@
 """Calculations over every pair of particles at once: finding the potential
 that acts between two species, grouping the particle pairs by the species they
 join, applying the minimum image convention, and getting the pressure from the
-virial. """
+virial."""
 
 from collections.abc import Iterator, Mapping
 
