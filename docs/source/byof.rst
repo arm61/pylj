@@ -1,18 +1,18 @@
 bring your own potential
 ========================
 
-A pylj system is built from the species it contains and the pair potential acting between each pair of species:
+A pylj simulation is built from the species it contains and the pair potential acting between each pair of species:
 
 .. code-block:: python
 
-    from pylj import md
+    from pylj.md import MDSimulation
     from pylj.potentials import Species, LennardJones
 
     argon = Species(mass=39.948, name="argon")
     lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
 
-    system = md.initialise(
-        100, 300, 40, "square",
+    simulation = MDSimulation.initialise(
+        100, 300, 40,
         species=[argon],
         pair_potentials={(argon, argon): lj},
     )

@@ -14,4 +14,4 @@ This is the documentation for the open-source Python project, pylj. A library de
 
 how to cite pylj
 ----------------
-If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would cite the JOSE article DOI and the Zenodo DOI for the specific version you use. If you are unsure which version you are using run :code:`pylj.util.__cite__()` in the Jupyter notebook to launch the a webpage to the Zenodo page.
+If you use this code in a teaching laboratory or a publication we would greatly appreciate if you would cite the JOSE article DOI and the Zenodo DOI for the specific version you use. If you are unsure which version you are using run :code:`pylj.__cite__()` in the Jupyter notebook to launch the a webpage to the Zenodo page.
