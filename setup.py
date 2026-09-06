@@ -27,7 +27,10 @@ info = {
         'include_package_data': True,
         'package_data': {'pylj': ['py.typed']},
         'install_requires': ['jupyter', 'numpy', 'scipy', 'matplotlib'],
-        'extras_require': {'dev': ['pytest', 'pytest-cov', 'ruff', 'mypy', 'scipy-stubs']},
+        'extras_require': {
+            'dev': ['pytest', 'pytest-cov', 'ruff', 'mypy', 'scipy-stubs'],
+            'docs': ['sphinx>=8', 'myst-nb>=1.2', 'sphinx-book-theme>=1.1', 'sphinx-copybutton'],
+        },
         'python_requires': '>=3.11',
         'version': VERSION,
         'license': 'MIT',
