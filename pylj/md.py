@@ -1,394 +1,419 @@
+"""Molecular dynamics: the simulation that integrates Newton's equations of
+motion, the Velocity-Verlet integrator, and the velocity-rescaling
+thermostat."""
+
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from typing import Self
+
 import numpy as np
 from numpy.typing import NDArray
 
 from pylj import pairwise
-from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+from pylj.configuration import MDConfiguration
+from pylj.constants import BOLTZMANN
+from pylj.pairwise import PairPotentials
+from pylj.placement import place
+from pylj.potentials import Species, check_positive_finite
+from pylj.simulation import (
+    Samples,
+    Simulation,
+    _check_initial_energy,
+    _check_potentials_at_the_cut_off,
+    _empty,
+)
 
 
-def initialise(
-    number_of_particles,
-    temperature,
-    box_length,
-    init_conf,
-    *,
-    species,
-    pair_potentials,
-    placement_temperature=None,
-    timestep_length=1e-14,
-    seed=None,
-):
-    """Initialise the particle positions (this can be either as a square
-    lattice or by Metropolis insertion) and velocities (based on the
-    temperature defined), and calculate the initial forces/accelerations.
+@dataclass
+class MDSamples(Samples):
+    """What a molecular dynamics simulation records at each sample.
 
-    Each velocity component is drawn from a normal (Gaussian) distribution
-    with the thermal width for the particle's mass at the requested
-    temperature, the centre-of-mass velocity is removed, and the result is
-    rescaled so that the instantaneous temperature is exactly the requested
-    one. Molecular dynamics needs at least two particles.
-
-    Parameters
-    ----------
-    number_of_particles: int
-        Number of particles to simulate.
-    temperature: float
-        Initial temperature of the particles, in kelvin.
-    box_length: float
-        Length of a single dimension of the simulation square, in Angstrom.
-    init_conf: string
-        The way that the particles are initially positioned. Should be one of:
-        - 'square', a square lattice
-        - 'metropolis', sequential Metropolis insertion at
-          ``placement_temperature``
-    species: sequence of Species
-        Required, keyword only. The species in the system; particles are
-        assigned to them in turn.
-    pair_potentials: mapping of (Species, Species) to PairPotential
-        Required, keyword only. The potential acting between each pair of
-        species, including each species with itself.
-    placement_temperature: float (optional)
-        Temperature, in kelvin, of the Metropolis acceptance used by
-        ``init_conf='metropolis'``; by default the run temperature. See
-        :class:`util.System`.
-    timestep_length: float (optional)
-        Length for each Velocity-Verlet integration step, in seconds.
-    seed: int (optional)
-        Seed for the random number generator used to place an initial
-        configuration and draw the initial velocities. The same seed
-        reproduces the same run.
-
-    Returns
-    -------
-    System
-        System information.
-
-    Raises
-    ------
-    ValueError
-        If fewer than two particles are requested or a pair potential has no
-        finite force (as the square well has not). See :class:`util.System`
-        for what construction rejects.
+    Attributes:
+        temperature: The instantaneous temperature, in kelvin.
+        pressure: The pressure, in newtons per metre.
+        potential_energy: The total pair energy, in joules.
+        kinetic_energy: The total kinetic energy, in joules.
+        msd: The mean squared displacement from the initial configuration,
+            in metres squared.
     """
-    from pylj import util
 
-    if number_of_particles < 2:
-        raise ValueError(
-            "Molecular dynamics needs at least two particles: with one particle "
-            "there is no thermal motion once the centre-of-mass velocity is removed."
+    temperature: NDArray[np.float64] = field(default_factory=_empty)
+    pressure: NDArray[np.float64] = field(default_factory=_empty)
+    potential_energy: NDArray[np.float64] = field(default_factory=_empty)
+    kinetic_energy: NDArray[np.float64] = field(default_factory=_empty)
+    msd: NDArray[np.float64] = field(default_factory=_empty)
+
+    @property
+    def total_energy(self) -> NDArray[np.float64]:
+        """The potential plus the kinetic energy at each sample, in joules."""
+        return self.potential_energy + self.kinetic_energy
+
+
+class MDSimulation(Simulation):
+    """A molecular dynamics simulation.
+
+    Between steps the simulation holds two things: the configuration, and the
+    force on each particle at that configuration. Velocity-Verlet needs both to
+    take the next step. ``step`` integrates one timestep and advances the
+    clock; ``sample`` measures the configuration.
+
+    Args:
+        configuration: The starting configuration, with velocities.
+        pair_potentials: The potential between each pair of species.
+        cut_off: The cut-off, in metres; see :class:`Simulation`.
+        timestep: The length of each integration step, in seconds.
+        seed: Seed for the random number generator.
+
+    Attributes:
+        configuration: The current configuration.
+        forces: The net force on each particle at the current
+            configuration, shape ``(N, 2)``, in newtons.
+        timestep: The length of each step, in seconds.
+        initial_configuration: The configuration the mean squared
+            displacement is measured from.
+        samples: The :class:`MDSamples` record that ``sample`` appends to.
+
+    Raises:
+        TypeError: If ``configuration`` is not an ``MDConfiguration``.
+        ValueError: If the timestep is not positive and finite, the
+            configuration is at rest or has a non-finite temperature, a pair
+            potential has not died away at the cut-off, judged at the
+            configuration's own temperature, the configuration stores more
+            than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
+            energy per particle, or for anything :class:`Simulation`
+            rejects.
+    """
+
+    configuration: MDConfiguration
+    samples: MDSamples
+
+    def __init__(
+        self,
+        configuration: MDConfiguration,
+        pair_potentials: PairPotentials,
+        *,
+        cut_off: float | None = None,
+        timestep: float = 1e-14,
+        seed: int | None = None,
+    ) -> None:
+        if not isinstance(configuration, MDConfiguration):
+            raise TypeError(
+                "MDSimulation needs an MDConfiguration, which carries velocities; build one "
+                "with MDSimulation.initialise(...) or construct an MDConfiguration."
+            )
+        super().__init__(configuration, pair_potentials, cut_off=cut_off, seed=seed)
+        check_positive_finite("timestep", timestep)
+        self.timestep = timestep
+        temperature = configuration.temperature()
+        if temperature == 0:
+            raise ValueError(
+                "The configuration is at rest: molecular dynamics needs velocities. "
+                "MDSimulation.initialise draws them at a temperature."
+            )
+        if not np.isfinite(temperature):
+            raise ValueError(
+                f"The configuration's temperature is {temperature}: the simulation it came "
+                "from has diverged."
+            )
+        _check_potentials_at_the_cut_off(
+            configuration.species,
+            self.pair_potentials,
+            self.cut_off,
+            temperature,
+            configuration.box,
         )
-    system = util.System(
-        number_of_particles,
-        temperature,
-        box_length,
-        species=species,
-        pair_potentials=pair_potentials,
-        simulation="md",
-        init_conf=init_conf,
-        placement_temperature=placement_temperature,
-        timestep_length=timestep_length,
-        seed=seed,
-    )
-    masses_kg = system.masses * ATOMIC_MASS_UNIT
-    thermal_speed = np.sqrt(BOLTZMANN * temperature / masses_kg)
-    v = system.rng.normal(0.0, thermal_speed[:, None], size=(number_of_particles, 2))
-    v -= (masses_kg[:, None] * v).sum(axis=0) / masses_kg.sum()
-    system.particles["xvelocity"] = v[:, 0]
-    system.particles["yvelocity"] = v[:, 1]
-    system.particles = heat_bath(system.particles, system.masses, temperature)
-    system.compute_force()
-    return system
+        _check_initial_energy(
+            configuration.potential_energy(self.pair_potentials, self.cut_off),
+            configuration.number_of_particles,
+            temperature,
+        )
+        self.forces = configuration.forces(self.pair_potentials, self.cut_off)
+        self.initial_configuration = configuration
+        self.samples = MDSamples()
+
+    @classmethod
+    def initialise(
+        cls,
+        number_of_particles: int,
+        temperature: float,
+        box: float,
+        *,
+        species: Sequence[Species],
+        pair_potentials: PairPotentials,
+        init_conf: str = "square",
+        placement_temperature: float | None = None,
+        timestep: float = 1e-14,
+        cut_off: float | None = None,
+        seed: int | None = None,
+    ) -> Self:
+        """Build a simulation from a model: place the particles and draw
+        their velocities at a temperature.
+
+        Each component of each velocity is drawn from a normal distribution
+        of width ``sqrt(k_B T / m)``, where ``m`` is the mass of that
+        particle, so heavier particles move more slowly. The velocity of
+        the centre of mass is then subtracted, so the system as a whole is
+        at rest. Finally
+        every velocity is scaled by the same factor, so that the instantaneous
+        temperature is exactly the one requested. The temperature is not
+        stored: molecular dynamics measures it.
+
+        Args:
+            number_of_particles: The number of particles, at least two.
+            temperature: The initial temperature, in kelvin.
+            box: The side length of the box, in Angstrom, from 4 to 600.
+            species: The species; particles are assigned to them in turn.
+            pair_potentials: The potential between each pair of species.
+            init_conf: ``'square'`` for a lattice or ``'metropolis'`` for
+                sequential Metropolis insertion.
+            placement_temperature: The temperature of the Metropolis
+                acceptance used by ``'metropolis'``, in kelvin; by default
+                the run temperature. Raising it tolerates closer contacts,
+                lowering it rejects them more strictly and can exhaust the
+                trial budget. Ignored by ``'square'``.
+            timestep: The length of each integration step, in seconds.
+            cut_off: The cut-off, in Angstrom; by default 15 Angstrom or
+                half the box, whichever is smaller.
+            seed: Seed for the random number generator used to place the
+                configuration, draw the velocities and continue the run.
+
+        Returns:
+            The simulation, with its forces evaluated.
+
+        Raises:
+            ValueError: If fewer than two particles are requested, or for
+                anything :func:`placement.place` or the constructor
+                rejects.
+        """
+        if number_of_particles < 2:
+            raise ValueError(
+                "Molecular dynamics needs at least two particles: with one particle "
+                "there is no thermal motion once the centre-of-mass velocity is removed."
+            )
+        rng = np.random.default_rng(seed)
+        placed, cut_off_metres = place(
+            number_of_particles,
+            temperature,
+            box,
+            species=species,
+            pair_potentials=pair_potentials,
+            init_conf=init_conf,
+            placement_temperature=placement_temperature,
+            cut_off=cut_off,
+            rng=rng,
+        )
+        masses = placed.masses
+        thermal_speed = np.sqrt(BOLTZMANN * temperature / masses)
+        velocity = rng.normal(0.0, thermal_speed[:, None], size=(number_of_particles, 2))
+        velocity -= (masses[:, None] * velocity).sum(axis=0) / masses.sum()
+        configuration = heat_bath(
+            MDConfiguration(
+                position=placed.position,
+                species=placed.species,
+                species_index=placed.species_index,
+                box=placed.box,
+                velocity=velocity,
+                unwrapped=placed.position.copy(),
+            ),
+            temperature,
+        )
+        simulation = cls(configuration, pair_potentials, cut_off=cut_off_metres, timestep=timestep)
+        simulation.rng = rng
+        return simulation
+
+    @property
+    def time(self) -> float:
+        """The simulated time, in seconds: the steps taken times the timestep."""
+        return self.steps * self.timestep
+
+    def integrate(self) -> None:
+        """Move the configuration one timestep forward with Velocity-Verlet,
+        replacing the configuration and the forces.
+
+        A subclass with a different integrator overrides this method.
+        """
+        self.configuration, self.forces = velocity_verlet(
+            self.configuration, self.forces, self.timestep, self.pair_potentials, self.cut_off
+        )
+
+    def step(self) -> None:
+        """Integrate one timestep and advance the clock.
+
+        Raises:
+            ValueError: If a particle moves further than half the cut-off in
+                the step, or a pair comes closer than its potential allows;
+                either way the run has diverged.
+        """
+        self.integrate()
+        self.steps += 1
+
+    def heat_bath(self, bath_temperature: float) -> None:
+        """Rescale the velocities to the bath temperature.
+
+        Args:
+            bath_temperature: The desired temperature, in kelvin.
+
+        Raises:
+            ValueError: If the bath temperature is not positive and finite,
+                the particles are at rest, or the simulation has diverged.
+        """
+        self.configuration = heat_bath(self.configuration, bath_temperature)
+
+    def sample(self) -> None:
+        """Measure the configuration: record the step, temperature, pressure,
+        potential and kinetic energies and mean squared displacement.
+        """
+        configuration = self.configuration
+        kinetic_energy = configuration.kinetic_energy()
+        pairs = configuration.pairs(self.pair_potentials, self.cut_off, forces=True)
+        self.samples.add(
+            step=self.steps,
+            temperature=configuration.temperature(),
+            pressure=pairwise.calculate_pressure(pairs.virial, configuration.box, kinetic_energy),
+            potential_energy=float(pairs.energy.sum()),
+            kinetic_energy=kinetic_energy,
+            msd=configuration.msd(self.initial_configuration),
+        )
+
+    def restart(self) -> Self:
+        """A new simulation that continues from the current configuration,
+        with the mean squared displacement measured from it.
+
+        See :meth:`Simulation.restart`.
+        """
+        new = super().restart()
+        new.configuration = self.configuration.replace(unwrapped=self.configuration.position.copy())
+        new.initial_configuration = new.configuration
+        new.forces = self.forces.copy()
+        return new
 
 
-initialize = initialise  # US spelling
+def velocity_verlet(
+    configuration: MDConfiguration,
+    forces: NDArray[np.float64],
+    timestep: float,
+    pair_potentials: PairPotentials,
+    cut_off: float,
+) -> tuple[MDConfiguration, NDArray[np.float64]]:
+    """Move a configuration one timestep forward with the Velocity-Verlet
+    integrator.
 
+    The positions are advanced with the current velocities and
+    accelerations, the forces are evaluated at the new positions, and the
+    velocities are advanced with the mean of the old and new accelerations.
 
-def velocity_verlet(particles, timestep_length, box_length, cut_off, pair_potentials, species):
-    """Move the particles forward one step with the Velocity-Verlet
-    integrator: update the positions, recompute the forces, then update the
-    velocities from the mean of the old and new accelerations.
+    Args:
+        configuration: The configuration at time t.
+        forces: The net force on each particle at that configuration, shape
+            ``(N, 2)``, in newtons.
+        timestep: The length of the step, in seconds.
+        pair_potentials: The potential between each pair of species.
+        cut_off: The cut-off, in metres.
 
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    timestep_length: float
-        Length for each Velocity-Verlet integration step, in seconds.
-    box_length: float
-        Length of a single dimension of the simulation square, in metres.
-    cut_off: float
-        The separation beyond which the pair energy and force are taken to be
-        zero, in metres.
-    pair_potentials: mapping of (Species, Species) to PairPotential
-        The potential acting between each pair of species.
-    species: sequence of Species
-        The species, in the order the particles' ``types`` field indexes.
+    Returns:
+        The configuration at time t + dt and the forces at it.
 
-    Returns
-    -------
-    util.particle_dt, array_like:
-        Information about the particles, with new positions, velocities and
-        accelerations.
-    float, array_like
-        Current distances between pairs of particles in the simulation.
-    float, array_like
-        Current forces between pairs of particles in the simulation.
-    float, array_like
-        Current energies between pairs of particles in the simulation.
+    Raises:
+        ValueError: If a particle moves further than half the cut-off in
+            the one step. No particle moves that far in a run that is
+            behaving: the timestep is too long, or the run has already
+            diverged.
     """
-    positions, unwrapped = update_positions(
-        [particles["xposition"], particles["yposition"]],
-        [particles["xunwrapped"], particles["yunwrapped"]],
-        [particles["xvelocity"], particles["yvelocity"]],
-        [particles["xacceleration"], particles["yacceleration"]],
-        timestep_length,
-        box_length,
+    masses = configuration.masses[:, None]
+    accelerations = forces / masses
+    position, unwrapped = update_positions(configuration, accelerations, timestep)
+    furthest = float(np.linalg.norm(unwrapped - configuration.unwrapped, axis=1).max())
+    if not furthest < cut_off / 2:
+        raise ValueError(
+            f"A particle moved {furthest * 1e10:.3g} Angstrom in a single step of "
+            f"{timestep:.3g} s, more than half the cut-off of {cut_off * 1e10:.3g} Angstrom: "
+            "the timestep is too long, or the simulation has diverged."
+        )
+    moved = configuration.replace(position=position, unwrapped=unwrapped)
+    next_forces = moved.forces(pair_potentials, cut_off)
+    next_accelerations = next_forces / masses
+    velocity = update_velocities(
+        configuration.velocity, accelerations, next_accelerations, timestep
     )
-    [particles["xposition"], particles["yposition"]] = positions
-    [particles["xunwrapped"], particles["yunwrapped"]] = unwrapped
-    xacceleration_store = list(particles["xacceleration"])
-    yacceleration_store = list(particles["yacceleration"])
-    particles, distances, forces, energies = pairwise.compute_force(
-        particles, box_length, cut_off, pair_potentials, species
-    )
-    [particles["xvelocity"], particles["yvelocity"]] = update_velocities(
-        [particles["xvelocity"], particles["yvelocity"]],
-        [xacceleration_store, yacceleration_store],
-        [particles["xacceleration"], particles["yacceleration"]],
-        timestep_length,
-    )
-    return particles, distances, forces, energies
-
-
-def sample(particles, box_length, initial_particles, system):
-    """Sample parameters of interest in the simulation.
-
-    The pressure is calculated from the pair distances and forces stored on
-    the system by the last force evaluation, not from the current particle
-    positions.
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    box_length: float
-        Length of a single dimension of the simulation square, in metres.
-    initial_particles: util.particle_dt, array-like
-        Information about the initial particle conformation.
-    system: System
-        Details about the whole system
-
-    Returns
-    -------
-    System:
-        Details about the whole system, with the new step, temperature,
-        pressure, energy, msd, and force appended to the appropriate
-        arrays.
-    """
-    temperature_new = calculate_temperature(particles, system.masses)
-    system.temperature_sample = np.append(system.temperature_sample, temperature_new)
-    pressure_new = pairwise.calculate_pressure(
-        system.distances,
-        system.forces,
-        box_length,
-        particles.size,
-        temperature_new,
-    )
-    msd_new = calculate_msd(particles, initial_particles)
-    system.pressure_sample = np.append(system.pressure_sample, pressure_new)
-    system.force_sample = np.append(system.force_sample, np.sum(system.forces))
-    system.energy_sample = np.append(system.energy_sample, np.sum(system.energies))
-    system.msd_sample = np.append(system.msd_sample, msd_new)
-    system.step_sample = np.append(system.step_sample, system.step)
-    return system
-
-
-def calculate_msd(particles, initial_particles):
-    """Determines the mean squared displacement of the particles from their
-    positions in initial_particles, using the unwrapped positions so that
-    crossings of the periodic boundary are included. The unwrapped positions
-    are maintained by md.velocity_verlet only, so the displacement is
-    meaningful for a molecular dynamics system and not after Monte Carlo
-    moves.
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    initial_particles: util.particle_dt, array_like
-        Information about the particles at the origin of the displacement.
-
-    Returns
-    -------
-    float:
-        Mean squared displacement of the particles, in metres squared.
-    """
-    dx = particles["xunwrapped"] - initial_particles["xunwrapped"]
-    dy = particles["yunwrapped"] - initial_particles["yunwrapped"]
-    return np.mean(dx * dx + dy * dy)
+    return moved.replace(velocity=velocity), next_forces
 
 
 def update_positions(
-    positions, unwrapped, velocities, accelerations, timestep_length, box_length
-):
-    """Update the particle positions using the Velocity-Verlet integrator.
+    configuration: MDConfiguration, accelerations: NDArray[np.float64], timestep: float
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Advance the positions by the velocity times the timestep, plus half the
+    acceleration times the timestep squared.
 
-    Parameters
-    ----------
-    positions: (2, N) array_like
-        Where N is the number of particles, and the first row are the x
-        positions and the second row the y positions, wrapped into the
-        simulation cell.
-    unwrapped: (2, N) array_like
-        The same positions without periodic wrapping.
-    velocities: (2, N) array_like
-        Where N is the number of particles, and the first row are the x
-        velocities and the second row the y velocities.
-    accelerations: (2, N) array_like
-        Where N is the number of particles, and the first row are the x
-        accelerations and the second row the y accelerations.
-    timestep_length: float
-        Length for each Velocity-Verlet integration step, in seconds.
-    box_length: float
-        Length of a single dimension of the simulation square, in metres.
+    Args:
+        configuration: The configuration to advance.
+        accelerations: The acceleration of each particle, shape ``(N, 2)``,
+            in metres per second squared.
+        timestep: The length of the step, in seconds.
 
-    Returns
-    -------
-    (2, N) array_like:
-        Updated positions, wrapped into the simulation cell.
-    (2, N) array_like:
-        Updated unwrapped positions.
+    Returns:
+        The new positions, wrapped into the box, and the new unwrapped
+        positions.
     """
-    for axis in (0, 1):
-        displacement = velocities[axis] * timestep_length + (
-            0.5 * accelerations[axis] * timestep_length * timestep_length
-        )
-        positions[axis] = (positions[axis] + displacement) % box_length
-        unwrapped[axis] = unwrapped[axis] + displacement
-    return [positions[0], positions[1]], [unwrapped[0], unwrapped[1]]
+    displacement = configuration.velocity * timestep + 0.5 * accelerations * timestep**2
+    position = (configuration.position + displacement) % configuration.box
+    return position, configuration.unwrapped + displacement
 
 
 def update_velocities(
-    velocities, accelerations_old, accelerations_new, timestep_length
-):
-    """Update the particle velocities using the Velocity-Verlet algoritm.
+    velocity: NDArray[np.float64],
+    accelerations: NDArray[np.float64],
+    next_accelerations: NDArray[np.float64],
+    timestep: float,
+) -> NDArray[np.float64]:
+    """Advance the velocities by the mean acceleration times the timestep.
 
-    Parameters
-    ----------
-    velocities: (2, N) array_like
-        Where N is the number of particles, and the first row are the x
-        velocities and the second row the y velocities.
-    accelerations: (2, N) array_like
-        Where N is the number of particles, and the first row are the x
-        accelerations and the second row the y
-        accelerations.
-    timestep_length: float
-        Length for each Velocity-Verlet integration step, in seconds.
+    Args:
+        velocity: The velocity of each particle, shape ``(N, 2)``.
+        accelerations: The accelerations at the start of the step.
+        next_accelerations: The accelerations at the end of the step.
+        timestep: The length of the step, in seconds.
 
-    Returns
-    -------
-    (2, N) array_like:
-        Updated velocities.
+    Returns:
+        The new velocities.
     """
-    velocities[0] += (
-        0.5 * (accelerations_old[0] + accelerations_new[0]) * timestep_length
-    )
-    velocities[1] += (
-        0.5 * (accelerations_old[1] + accelerations_new[1]) * timestep_length
-    )
-    return [velocities[0], velocities[1]]
+    return velocity + 0.5 * (accelerations + next_accelerations) * timestep
 
 
-def calculate_temperature(particles, mass):
-    """Determine the instantaneous temperature of the system.
-
-    The centre-of-mass velocity is zero at initialisation and conserved by
-    the pair forces, so 2N - 2 velocity components carry thermal energy and
-    the temperature is the kinetic energy divided by (N - 1) k_B.
-
-    Parameters
-    ----------
-    particles: util.particle_dt, array_like
-        Information about the particles.
-    mass: float or array_like
-        The mass of the particles, in atomic mass units: one value per
-        particle, or a single value for all of them.
-
-    Returns
-    -------
-    float:
-        Calculated instantaneous simulation temperature, in kelvin.
-
-    Raises
-    ------
-    ValueError
-        If there are fewer than two particles.
-    """
-    if particles.size < 2:
-        raise ValueError(
-            "The temperature needs at least two particles: with one particle there "
-            "is no thermal motion once the centre-of-mass velocity is removed."
-        )
-    mass_kg = np.asarray(mass, dtype=float) * ATOMIC_MASS_UNIT
-    kinetic = 0.5 * np.sum(
-        mass_kg
-        * (
-            particles["xvelocity"] * particles["xvelocity"]
-            + particles["yvelocity"] * particles["yvelocity"]
-        )
-    )
-    return kinetic / ((particles.size - 1) * BOLTZMANN)
-
-
-def heat_bath(
-    particles: np.ndarray, mass: float | NDArray[np.float64], bath_temperature: float
-) -> np.ndarray:
+def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConfiguration:
     r"""Rescale the velocities so the instantaneous temperature equals the
     bath temperature.
 
     This is a velocity-rescaling thermostat: each call sets the
-    instantaneous temperature to the bath temperature. The velocities are
-    rescaled according to
+    instantaneous temperature to the bath temperature, scaling every
+    velocity by
 
     .. math::
-        v_{\text{new}} = v_{\text{old}} \times
-        \sqrt{\frac{T_{\text{bath}}}{T_{\text{now}}}}
+        \sqrt{T_{\text{bath}} / T_{\text{now}}}
 
     where :math:`T_{\text{now}}` is the temperature of the current
     velocities.
 
     Args:
-        particles: Information about the particles.
-        mass: The mass of the particles, in atomic mass units: one value per
-            particle, or a single value for all of them.
-        bath_temperature: The desired temperature of the simulation, in
-            kelvin.
+        configuration: The configuration to thermostat.
+        bath_temperature: The desired temperature, in kelvin.
 
     Returns:
-        The particles with velocities rescaled in place; the same array is
-        returned.
+        The configuration with the velocities rescaled.
 
     Raises:
-        ValueError: If bath_temperature is not positive.
-        ValueError: If the current temperature is zero (the particles are at
-            rest, as in a Monte Carlo system) or not finite (the simulation
-            has diverged).
+        ValueError: If the bath temperature is not positive and finite, the
+            particles are at rest, or the current temperature is not finite
+            (the simulation has diverged).
     """
-    if not bath_temperature > 0:
+    check_positive_finite("bath_temperature", bath_temperature)
+    current = configuration.temperature()
+    if current == 0:
+        raise ValueError("Cannot rescale velocities: the particles are at rest.")
+    if not (np.isfinite(current) and current > 0):
         raise ValueError(
-            f"bath_temperature must be positive, not {bath_temperature}"
+            f"Cannot rescale velocities: the current temperature is {current}, so the "
+            "simulation has diverged."
         )
-    current_temperature = calculate_temperature(particles, mass)
-    if current_temperature == 0:
-        raise ValueError(
-            "Cannot rescale velocities: the particles are at rest. A Monte Carlo "
-            "system has no velocities to thermostat; use md.initialise for MD."
-        )
-    if not (np.isfinite(current_temperature) and current_temperature > 0):
-        raise ValueError(
-            "Cannot rescale velocities: the current temperature is "
-            f"{current_temperature}, so the simulation has diverged."
-        )
-    scale = np.sqrt(bath_temperature / current_temperature)
-    particles["xvelocity"] = particles["xvelocity"] * scale
-    particles["yvelocity"] = particles["yvelocity"] * scale
-    return particles
+    return configuration.replace(
+        velocity=configuration.velocity * np.sqrt(bath_temperature / current)
+    )

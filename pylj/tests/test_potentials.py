@@ -50,6 +50,13 @@ class TestLennardJones:
         with pytest.raises(TypeError):
             LennardJones(1.65e-21, 3.4e-10)
 
+    def test_rejects_a_non_positive_or_non_finite_parameter(self):
+        for name in ("epsilon", "sigma"):
+            for bad in (0.0, -1.0, np.inf, np.nan):
+                parameters = {"epsilon": 1.65e-21, "sigma": 3.4e-10, name: bad}
+                with pytest.raises(ValueError, match=name):
+                    LennardJones(**parameters)
+
     def test_energy_zero_at_sigma(self):
         lj = LennardJones(epsilon=1.65e-21, sigma=3.4e-10)
         np.testing.assert_allclose(lj.energies(np.array([3.4e-10])), [0.0], atol=1e-30)
@@ -90,6 +97,23 @@ class TestBuckingham:
         with pytest.raises(TypeError):
             Buckingham(1e-16, 3e10, 1e-77)
 
+    def test_rejects_a_non_positive_or_non_finite_parameter(self):
+        good = {"a": 1e-16, "b": 3e10, "c": 1e-77}
+        for name in ("a", "b"):
+            for bad in (0.0, -1.0, np.inf, np.nan):
+                with pytest.raises(ValueError, match=name):
+                    Buckingham(**{**good, name: bad})
+        for bad in (-1e-77, np.inf, np.nan):
+            with pytest.raises(ValueError, match="c must"):
+                Buckingham(**{**good, "c": bad})
+
+    def test_rejects_a_repulsion_too_weak_to_form_a_barrier(self):
+        # With A fourteen orders of magnitude too small the barrier would
+        # sit at about 500 Angstrom, beyond any separation a simulation
+        # reaches: every pair would be inside it.
+        with pytest.raises(ValueError, match="too weak"):
+            Buckingham(a=1e-30, b=1e5, c=1e-77)
+
     def test_energy_matches_the_formula(self):
         bk = Buckingham(a=1e-16, b=3e10, c=1e-77)
         r = np.array([3e-10, 4e-10])
@@ -103,33 +127,54 @@ class TestBuckingham:
         numerical = -(bk.energies(r + h) - bk.energies(r - h)) / (2 * h)
         np.testing.assert_allclose(bk.forces(r), numerical, rtol=1e-4)
 
-    def test_turnover_is_the_top_of_the_barrier(self):
+    def test_min_separation_is_the_top_of_the_barrier(self):
         bk = Buckingham(a=1e-16, b=3e10, c=1e-77)
-        r = bk.turnover
+        r = bk.min_separation
         assert 0 < r < 3e-10
         # Zero to the root finder's tolerance, against a force scale of A B.
         np.testing.assert_allclose(bk.forces(np.array([r])), [0.0], atol=1e-6 * 1e-16 * 3e10)
-        assert bk.energies(np.array([0.99 * r]))[0] == np.inf
+        assert bk.energies(np.array([0.99 * r]))[0] < bk.energies(np.array([r]))[0]
         assert bk.energies(np.array([1.01 * r]))[0] < bk.energies(np.array([r]))[0]
 
-    def test_is_infinite_inside_the_turnover(self):
-        # The form collapses to minus infinity at short range; inside the
-        # barrier the potential is a hard wall instead.
+    def test_is_the_formula_inside_the_barrier(self):
+        # The formula itself collapses to minus infinity at short range; the
+        # potential reports it as it is and leaves the simulation to keep
+        # pairs outside min_separation.
         bk = Buckingham(a=1e-16, b=3e10, c=1e-77)
-        inside = np.array([0.0, 0.5 * bk.turnover])
-        assert np.all(bk.energies(inside) == np.inf)
-        assert np.all(bk.forces(inside) == np.inf)
+        inside = np.array([0.5 * bk.min_separation])
+        expected = 1e-16 * np.exp(-3e10 * inside) - 1e-77 / inside**6
+        np.testing.assert_allclose(bk.energies(inside), expected, rtol=1e-12)
+        assert expected[0] < 0
+        assert bk.energies(np.array([0.0]))[0] == -np.inf
 
-    def test_a_form_without_a_barrier_has_no_wall(self):
+    def test_a_form_without_a_barrier_is_trusted_everywhere(self):
         bk = Buckingham(a=1e-16, b=3e10, c=0.0)
-        assert bk.turnover == 0.0
+        assert bk.min_separation == 0.0
         assert np.isfinite(bk.energies(np.array([1e-12]))[0])
+
+    def test_other_potentials_are_trusted_everywhere(self):
+        assert LennardJones(epsilon=1.65e-21, sigma=3.4e-10).min_separation == 0.0
+        assert SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5).min_separation == 0.0
 
 
 class TestSquareWell:
     def test_constructor_is_keyword_only(self):
         with pytest.raises(TypeError):
             SquareWell(1.65e-21, 3.4e-10, 1.5)
+
+    def test_rejects_a_non_positive_or_non_finite_parameter(self):
+        good = {"epsilon": 1.65e-21, "sigma": 3.4e-10, "lambda_": 1.5}
+        for name in ("epsilon", "sigma"):
+            for bad in (0.0, -1.0, np.inf, np.nan):
+                with pytest.raises(ValueError, match=name):
+                    SquareWell(**{**good, name: bad})
+        for bad in (1.0, 0.5, np.inf, np.nan):
+            with pytest.raises(ValueError, match="lambda_"):
+                SquareWell(**{**good, "lambda_": bad})
+        for bad in (0.0, -1e-21, np.nan):
+            with pytest.raises(ValueError, match="max_val"):
+                SquareWell(**{**good, "max_val": bad})
+        assert SquareWell(**good, max_val=1e-20).max_val == 1e-20
 
     def test_energy_is_a_step(self):
         sw = SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5, max_val=1e5)

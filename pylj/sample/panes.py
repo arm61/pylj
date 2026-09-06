@@ -2,7 +2,7 @@
 
 A pane draws one quantity into one matplotlib Axes. ``setup`` creates the
 artists and static decoration once; ``update`` pushes the current state of the
-system into those artists. Panes hold any history they accumulate across
+simulation into those artists. Panes hold any history they accumulate across
 updates.
 """
 
@@ -13,10 +13,11 @@ import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
 
-from pylj.constants import BOLTZMANN
-from pylj.pairwise import pair_potential
+from pylj import pairwise
+from pylj.mc import MCSimulation
+from pylj.md import MDSimulation
 from pylj.potentials import PairPotential
-from pylj.util import System
+from pylj.simulation import Simulation
 
 LINE_COLOUR = "#34a5daff"
 LABEL_SIZE = 16
@@ -30,7 +31,8 @@ def _fit_axes(
     x_from_zero: bool = True,
     y_from_zero: bool = False,
 ) -> None:
-    """Fit the axis limits to the data, leaving them alone when there is none.
+    """Fit the axis limits to the data, leaving the limits unchanged when there is no
+    data to fit them to.
 
     Args:
         ax: Axes to adjust.
@@ -74,38 +76,38 @@ class Pane:
     Attributes:
         keeps_history: Whether this pane accumulates a history across
             updates that ``average`` can summarise.
-        needs_md: Whether this pane plots samples that only a molecular
-            dynamics run records. The viewer refuses a Monte Carlo system
-            when any of its panes sets this.
+        needs_md: Whether this pane can only plot molecular dynamics samples.
+            If any pane in a viewer sets this, the viewer refuses a Monte Carlo
+            simulation.
     """
 
     keeps_history: bool = False
     needs_md: bool = False
 
-    def setup(self, ax: Axes, system: System) -> None:
+    def setup(self, ax: Axes, simulation: Simulation) -> None:
         """Create the artists and static decoration for this pane.
 
         Args:
             ax: Axes to draw into.
-            system: The simulation being visualised.
+            simulation: The simulation being visualised.
         """
         raise NotImplementedError
 
-    def update(self, ax: Axes, system: System) -> None:
-        """Push the current state of the system into the artists.
+    def update(self, ax: Axes, simulation: Simulation) -> None:
+        """Push the current state of the simulation into the artists.
 
         Args:
             ax: Axes this pane was set up in.
-            system: The simulation being visualised.
+            simulation: The simulation being visualised.
         """
         raise NotImplementedError
 
     def average(self, ax: Axes) -> None:
-        """Show the average of every update so far, for panes that keep one.
+        """Show the average of every update so far, for panes that keep a history.
 
         Panes that keep a history of their updates override this to draw the
-        mean of that history. Panes that keep no history do nothing, and
-        report that by leaving ``keeps_history`` false.
+        mean of that history. A pane that keeps no history does nothing here,
+        and says so by leaving ``keeps_history`` false.
 
         Args:
             ax: Axes this pane was set up in.
@@ -139,13 +141,14 @@ class _HistoryPane(Pane):
 def _potential_minimum(potential: PairPotential) -> float:
     """Return the separation at the minimum of a pair potential, in metres.
 
-    The minimum is located on a logarithmic grid between 0.1 and 50
-    Angstrom, as the lowest energy beyond the grid's highest point. For a
-    Lennard-Jones potential the minimum is at 2^(1/6) sigma and for a square
-    well at the hard-core diameter. For a Buckingham potential the highest
-    point is the repulsive barrier that separates the well from the
-    unphysical collapse at short range, and the minimum is the well beyond
-    it.
+    The energy is evaluated on a logarithmic grid of separations from 0.1 to 50
+    Angstrom. The search starts at the highest energy on that grid and takes
+    the lowest energy beyond it, so that a barrier at short range is stepped
+    over rather than mistaken for the well. For a Lennard-Jones potential the
+    minimum found is at 2^(1/6) sigma, and for a square well it is at the hard-
+    core diameter. For a Buckingham potential the highest point is the barrier
+    that separates the well from the fall to minus infinity at short range, and
+    the minimum lies in the well beyond that barrier.
 
     Args:
         potential: The pair potential.
@@ -169,35 +172,41 @@ def _potential_minimum(potential: PairPotential) -> float:
     return float(r[well])
 
 
-def _drawn_diameters(system: System, diameter: float | Iterable[float] | None) -> list[float]:
+def _drawn_diameters(
+    simulation: Simulation, diameter: float | Iterable[float] | None
+) -> list[float]:
     """Return the drawn diameter of each species, in metres.
 
     Args:
-        system: The simulation being visualised.
-        diameter: Diameter in Angstrom: one value for every species, one
-            per species, or ``None`` for the separation at the minimum of
-            each species' own pair energy.
+        simulation: The simulation being visualised.
+        diameter: The diameter to draw, in Angstrom. A single value is used for
+            every species; a sequence gives one value per species, in order.
+            ``None`` uses the separation at the minimum of each species' own
+            pair energy.
 
     Returns:
-        One diameter per species, in the order of ``system.species``.
+        One diameter per species, in the order of
+        ``simulation.configuration.species``.
 
     Raises:
         ValueError: If the number of diameters differs from the number of
-            species, a diameter is not positive and finite, or a diameter
-            is below 0.01, which is a value in metres mistaken for Angstrom.
+            species, a diameter is not positive and finite, or a diameter is
+            below 0.01. A value that small is almost certainly in metres,
+            given where an Angstrom-sized diameter would fall.
     """
+    species = simulation.configuration.species
     if diameter is None:
         return [
-            _potential_minimum(pair_potential(system.pair_potentials, one, one))
-            for one in system.species
+            _potential_minimum(pairwise.pair_potential(simulation.pair_potentials, one, one))
+            for one in species
         ]
     if isinstance(diameter, Iterable):
         values = [float(d) for d in diameter]
     else:
-        values = [float(diameter)] * len(system.species)
-    if len(values) != len(system.species):
+        values = [float(diameter)] * len(species)
+    if len(values) != len(species):
         raise ValueError(
-            f"Expected {len(system.species)} diameters, one per species, but got {len(values)}"
+            f"Expected {len(species)} diameters, one per species, but got {len(values)}"
         )
     for value in values:
         if not (np.isfinite(value) and value > 0):
@@ -221,52 +230,54 @@ class CellPane(Pane):
     Args:
         diameter: Drawn diameter of the particles, in Angstrom: one value
             for every species, or one per species in the order of
-            ``System.species``. Each value must be positive and at least
-            0.01, as smaller values are metres mistaken for Angstrom.
+            ``Configuration.species``. Each value must be positive and at
+            least 0.01, as smaller values are metres mistaken for Angstrom.
 
     Attributes:
         diameters: The drawn diameter of each species, in metres, set by
+            ``setup``.
+        box: The side length of the box the axes span, in metres, set by
             ``setup``.
     """
 
     def __init__(self, diameter: float | Iterable[float] | None = None) -> None:
         self.diameter = diameter
         self.diameters: list[float] = []
+        self.box = 0.0
 
-    def setup(self, ax: Axes, system: System) -> None:
-        self.diameters = _drawn_diameters(system, self.diameter)
+    def setup(self, ax: Axes, simulation: Simulation) -> None:
+        self.diameters = _drawn_diameters(simulation, self.diameter)
+        self.box = simulation.configuration.box
         for _ in self.diameters:
             ax.plot([], [], "o", markeredgecolor="black")
-        ax.set_xlim(0, system.box_length)
-        ax.set_ylim(0, system.box_length)
+        ax.set_xlim(0, self.box)
+        ax.set_ylim(0, self.box)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_aspect("equal")
 
-    def update(self, ax: Axes, system: System) -> None:
-        types = system.particles["types"]
+    def update(self, ax: Axes, simulation: Simulation) -> None:
+        configuration = simulation.configuration
         # Settle the axes box to the equal aspect before its width is read.
         ax.apply_aspect()
         # Marker sizes are in points, and there are 72 points to the inch.
         axes_width_points = ax.get_window_extent().width / ax.figure.dpi * 72
         for index, diameter in enumerate(self.diameters):
             line = ax.lines[index]
-            mask = types == index
-            line.set_data(
-                system.particles["xposition"][mask], system.particles["yposition"][mask]
-            )
-            line.set_markersize(diameter / system.box_length * axes_width_points)
+            position = configuration.position[configuration.species_index == index]
+            line.set_data(position[:, 0], position[:, 1])
+            line.set_markersize(diameter / self.box * axes_width_points)
 
 
 class _SeriesPane(Pane):
     """A sampled quantity plotted against simulation time.
 
-    Subclasses name the ``System`` attribute holding the samples and the
+    Subclasses name the ``MDSamples`` attribute holding the samples and the
     y-axis label.
 
     Attributes:
-        attribute: Name of the ``System`` attribute holding the sample array
-            to plot on the y axis.
+        attribute: Name of the ``MDSamples`` attribute holding the sample
+            array to plot on the y axis.
         ylabel: Label for the y axis.
         y_from_zero: Whether the y axis should start at zero rather than
             below the minimum of the data.
@@ -277,14 +288,15 @@ class _SeriesPane(Pane):
     ylabel: str
     y_from_zero: bool = False
 
-    def setup(self, ax: Axes, system: System) -> None:
+    def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
         ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)
 
-    def update(self, ax: Axes, system: System) -> None:
-        x = system.step_sample * system.timestep_length
-        y = getattr(system, self.attribute)
+    def update(self, ax: Axes, simulation: Simulation) -> None:
+        assert isinstance(simulation, MDSimulation)  # needs_md is set
+        x = simulation.samples.step * simulation.timestep
+        y = getattr(simulation.samples, self.attribute)
         ax.lines[0].set_data(x, y)
         _fit_axes(ax, x, y, y_from_zero=self.y_from_zero)
 
@@ -292,55 +304,65 @@ class _SeriesPane(Pane):
 class TemperaturePane(_SeriesPane):
     """Instantaneous temperature against time."""
 
-    attribute = "temperature_sample"
+    attribute = "temperature"
     ylabel = "Temperature/K"
 
 
 class PressurePane(_SeriesPane):
     """Instantaneous two-dimensional pressure against time."""
 
-    attribute = "pressure_sample"
+    attribute = "pressure"
     ylabel = "Pressure/N m$^{-1}$"
-
-
-class ForcePane(_SeriesPane):
-    """Sum of the pair forces against time."""
-
-    attribute = "force_sample"
-    ylabel = "Force/N"
 
 
 class MSDPane(_SeriesPane):
     """Mean squared displacement against time."""
 
-    attribute = "msd_sample"
+    attribute = "msd"
     ylabel = "MSD/m$^2$"
     y_from_zero = True
 
 
-class EnergyPane(Pane):
-    """Total energy of the system.
+def _energy_series(
+    simulation: Simulation,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return the x and y data of the energy pane.
 
-    For an MD system this is the potential energy plus the kinetic energy
-    ``(N - 1) k_B T`` of ``N`` particles in two dimensions with the
-    centre-of-mass motion removed, against time. For an MC system it is the
-    potential energy against step.
+    Args:
+        simulation: The simulation being visualised.
+
+    Returns:
+        Time and the total energy for a molecular dynamics simulation; step
+        and the potential energy for a Monte Carlo one.
+
+    Raises:
+        TypeError: If the simulation records no energy.
+    """
+    if isinstance(simulation, MDSimulation):
+        return simulation.samples.step * simulation.timestep, simulation.samples.total_energy
+    if isinstance(simulation, MCSimulation):
+        return simulation.samples.step, simulation.samples.potential_energy
+    raise TypeError(
+        f"EnergyPane needs an MDSimulation or an MCSimulation, not {type(simulation).__name__}"
+    )
+
+
+class EnergyPane(Pane):
+    """The energy of the system.
+
+    For a molecular dynamics simulation this is the total energy, potential
+    plus kinetic, against time. For a Monte Carlo simulation it is the
+    potential energy against step; there is no kinetic energy to add.
     """
 
-    def setup(self, ax: Axes, system: System) -> None:
+    def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel("Energy/J", fontsize=LABEL_SIZE)
-        xlabel = "Time/s" if system.simulation == "md" else "Step"
+        xlabel = "Time/s" if isinstance(simulation, MDSimulation) else "Step"
         ax.set_xlabel(xlabel, fontsize=LABEL_SIZE)
 
-    def update(self, ax: Axes, system: System) -> None:
-        if system.simulation == "md":
-            x = system.step_sample * system.timestep_length
-            kinetic = (system.number_of_particles - 1) * BOLTZMANN * system.temperature_sample
-            y = system.energy_sample + kinetic
-        else:
-            x = system.step_sample
-            y = system.energy_sample
+    def update(self, ax: Axes, simulation: Simulation) -> None:
+        x, y = _energy_series(simulation)
         ax.lines[0].set_data(x, y)
         _fit_axes(ax, x, y)
 
@@ -357,19 +379,22 @@ class RDFPane(_HistoryPane):
         super().__init__()
         self.r = np.array([])
 
-    def setup(self, ax: Axes, system: System) -> None:
+    def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_xlim(0, system.box_length / 2)
+        ax.set_xlim(0, simulation.configuration.box / 2)
         ax.set_yticks([])
         ax.set_ylabel("RDF", fontsize=LABEL_SIZE)
         ax.set_xlabel("r/m", fontsize=LABEL_SIZE)
 
-    def update(self, ax: Axes, system: System) -> None:
-        edges = np.linspace(0, system.box_length / 2, self.BINS + 1)
+    def update(self, ax: Axes, simulation: Simulation) -> None:
+        configuration = simulation.configuration
+        box = configuration.box
+        edges = np.linspace(0, box / 2, self.BINS + 1)
         dr = edges[1] - edges[0]
         r = edges[:-1] + dr / 2
-        counts, _ = np.histogram(system.distances, bins=edges)
-        n = system.number_of_particles
+        distance, _ = pairwise.dist(configuration.position, box)
+        counts, _ = np.histogram(distance, bins=edges)
+        n = configuration.number_of_particles
         pairs = n * (n - 1) / 2
         if pairs == 0:
             # A single particle has no pairs, and so no radial distribution
@@ -378,7 +403,7 @@ class RDFPane(_HistoryPane):
             return
         # The ideal-gas count for the N(N - 1) / 2 pairs, spread evenly over
         # the box, in a 2D shell of area 2 pi r dr at radius r.
-        ideal = pairs * 2 * np.pi * r * dr / system.box_length**2
+        ideal = pairs * 2 * np.pi * r * dr / box**2
         gr = counts / ideal
         self.r = r
         self.history.append(gr)
@@ -400,6 +425,10 @@ class RDFPane(_HistoryPane):
 class ScatteringPane(_HistoryPane):
     """Scattering profile I(q) from the Debye sum over pair distances.
 
+    The Debye sum for ``N`` identical scatterers is ``N`` from each particle
+    scattering on its own, plus ``2 sin(q r) / (q r)`` for each pair at
+    distance ``r``.
+
     Keeps every profile it has drawn so ``average`` can show the mean.
     """
 
@@ -416,22 +445,22 @@ class ScatteringPane(_HistoryPane):
         super().__init__()
         self.q = np.array([])
 
-    def setup(self, ax: Axes, system: System) -> None:
+    def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_yticks([])
         ax.set_ylabel("I(q)", fontsize=LABEL_SIZE)
         ax.set_xlabel("q/m$^{-1}$", fontsize=LABEL_SIZE)
 
-    def update(self, ax: Axes, system: System) -> None:
-        q = np.linspace(2 * np.pi / system.box_length, self.Q_MAX, self.POINTS)[self.SKIP :]
+    def update(self, ax: Axes, simulation: Simulation) -> None:
+        configuration = simulation.configuration
+        distance, _ = pairwise.dist(configuration.position, configuration.box)
+        q = np.linspace(2 * np.pi / configuration.box, self.Q_MAX, self.POINTS)[self.SKIP :]
         intensity = np.empty_like(q)
         for start in range(0, q.size, self.BLOCK):
             block = q[start : start + self.BLOCK]
-            qr = np.outer(block, system.distances)
+            qr = np.outer(block, distance)
             intensity[start : start + self.BLOCK] = np.sum(np.sinc(qr / np.pi), axis=1)
-        # The Debye sum is truncated to a finite set of pairs, so it can come
-        # out slightly negative; an intensity cannot be.
-        intensity = np.clip(intensity, 0, None)
+        intensity = configuration.number_of_particles + 2 * intensity
         self.q = q
         self.history.append(intensity)
         ax.lines[0].set_data(q, intensity)
@@ -452,8 +481,8 @@ class ScatteringPane(_HistoryPane):
 class MaxwellBoltzmannPane(Pane):
     """Histogram of the speeds of every particle at every update so far.
 
-    It keeps no per-frame history, so it has no average.
-    """
+    The histogram already pools every update, so there is no separate history
+    to average and this pane has no average to show."""
 
     needs_md = True
     BINS = 25
@@ -461,14 +490,14 @@ class MaxwellBoltzmannPane(Pane):
     def __init__(self) -> None:
         self.speeds = np.array([])
 
-    def setup(self, ax: Axes, system: System) -> None:
+    def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.step([], [], where="post", color=LINE_COLOUR)
         ax.set_ylabel("PDF", fontsize=LABEL_SIZE)
         ax.set_xlabel("Speed/m s$^{-1}$", fontsize=LABEL_SIZE)
 
-    def update(self, ax: Axes, system: System) -> None:
-        particles = system.particles
-        speeds = np.hypot(particles["xvelocity"], particles["yvelocity"])
+    def update(self, ax: Axes, simulation: Simulation) -> None:
+        assert isinstance(simulation, MDSimulation)  # needs_md is set
+        speeds = np.linalg.norm(simulation.configuration.velocity, axis=1)
         self.speeds = np.append(self.speeds, speeds)
         density, edges = np.histogram(self.speeds, bins=self.BINS, density=True)
         plateau = np.append(density, density[-1])
@@ -500,19 +529,18 @@ class CustomPane(Pane):
         y_data = np.atleast_1d(np.asarray(y, dtype=float))
         if x_data.shape != y_data.shape:
             raise ValueError(
-                "x and y must have the same shape, but they are "
-                f"{x_data.shape} and {y_data.shape}"
+                f"x and y must have the same shape, but they are {x_data.shape} and {y_data.shape}"
             )
         if not (np.isfinite(x_data).all() and np.isfinite(y_data).all()):
             raise ValueError("x and y must contain only finite values")
         self.x = x_data
         self.y = y_data
 
-    def setup(self, ax: Axes, system: System) -> None:
+    def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_xlabel(self.xlabel, fontsize=LABEL_SIZE)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
 
-    def update(self, ax: Axes, system: System) -> None:
+    def update(self, ax: Axes, simulation: Simulation) -> None:
         ax.lines[0].set_data(self.x, self.y)
         _fit_axes(ax, self.x, self.y, x_from_zero=False)

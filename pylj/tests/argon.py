@@ -1,7 +1,7 @@
 """The species and pair potentials shared across the test suite.
 
 ``ARGON_MODEL`` and ``MIXTURE_MODEL`` unpack into the ``species`` and
-``pair_potentials`` keywords of the initialisers and ``System``.
+``pair_potentials`` keywords of the ``initialise`` factories.
 """
 
 from typing import TypedDict
@@ -26,7 +26,8 @@ ARGON_MODEL: Model = {
     "species": [ARGON],
     "pair_potentials": {(ARGON, ARGON): LJ_ARGON},
 }
-# A Buckingham form for argon, with its short-range barrier at 0.78 Angstrom.
+# A Buckingham form for argon, with its short-range barrier, and so its
+# min_separation, at 0.78 Angstrom.
 BUCKINGHAM_ARGON = Buckingham(a=1.69e-15, b=3.66e10, c=1.02e-77)
 BUCKINGHAM_MODEL: Model = {
     "species": [ARGON],

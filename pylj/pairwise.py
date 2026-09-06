@@ -1,9 +1,13 @@
-from collections.abc import Iterator, Mapping, Sequence
+"""Calculations over every pair of particles at once: finding the potential
+that acts between two species, grouping the particle pairs by the species they
+join, applying the minimum image convention, and getting the pressure from the
+virial."""
+
+from collections.abc import Iterator, Mapping
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.potentials import PairPotential, Species
 
 #: The potential acting between each pair of species, keyed by the two
@@ -35,253 +39,83 @@ def pair_potential(
     return pair_potentials[(species_2, species_1)]
 
 
-def particle_masses(particles: np.ndarray, species: Sequence[Species]) -> NDArray[np.float64]:
-    """Return the mass of each particle, in atomic mass units.
-
-    Args:
-        particles: The particles, as a ``util.particle_dt`` array whose
-            ``types`` field indexes ``species``.
-        species: The species, in the order ``types`` indexes.
-
-    Returns:
-        The mass of each particle, from its species.
-    """
-    return np.array([one.mass for one in species], dtype=float)[particles["types"]]
-
-
-def particle_energy(
-    position: tuple[float, float],
-    species_index: int,
-    others: np.ndarray,
-    box_length: float,
-    cut_off: float,
-    pair_potentials: PairPotentials,
-    species: Sequence[Species],
-) -> float:
-    """Return the interaction energy of one particle with a set of others.
-
-    The particle is described by its position and species; ``others`` are
-    the particles it interacts with. Each pair is evaluated on the potential
-    for the two species, at the minimum-image separation, and pairs beyond
-    the cut-off contribute nothing. Only ``energies`` is called on the
-    potentials.
-
-    Args:
-        position: The particle's ``(x, y)`` position, in metres.
-        species_index: The index of the particle's species in ``species``.
-        others: The particles it interacts with, as a ``util.particle_dt``
-            array whose ``types`` field indexes ``species``. May be empty.
-        box_length: Length of a single dimension of the simulation square,
-            in metres.
-        cut_off: The separation beyond which the pair energy is taken to be
-            zero, in metres.
-        pair_potentials: The potential between each pair of species.
-        species: The species, in the order ``types`` indexes.
-
-    Returns:
-        The sum of the pair energies, in joules; zero for no others.
-    """
-    dx = position[0] - others["xposition"]
-    dy = position[1] - others["yposition"]
-    dx -= box_length * np.round(dx / box_length)
-    dy -= box_length * np.round(dy / box_length)
-    dr = np.hypot(dx, dy)
-    energies = np.zeros(dr.size)
-    for other_species in np.unique(others["types"]):
-        mask = others["types"] == other_species
-        potential = pair_potential(
-            pair_potentials, species[species_index], species[int(other_species)]
-        )
-        energies[mask] = potential.energies(dr[mask])
-    energies[dr > cut_off] = 0.0
-    return float(energies.sum())
-
-
-def _species_pairs(
-    types: NDArray[np.int64],
+def species_pairs(
+    species_index: NDArray[np.int64],
 ) -> Iterator[tuple[NDArray[np.bool_], int, int]]:
-    """Yield the pairs of each unordered pair of species indices present.
+    """Group the particle pairs by the two species they join.
 
-    A pair of species 0 and 1 is the same pair as 1 and 0, so each unordered
-    pair is yielded once, with a mask over the i < j pair arrays selecting
-    the pairs it covers.
+    Each pair of species present is yielded once, because species 0 with
+    species 1 is the same pair as species 1 with species 0. Each comes with a
+    mask, which picks out the entries of the pair arrays returned by
+    :func:`dist` that join those two species.
 
     Args:
-        types: The species index of each particle.
+        species_index: The species index of each particle.
 
     Yields:
         The mask, the lower species index and the upper species index.
     """
-    i, j = np.triu_indices(types.size, 1)
-    lower = np.minimum(types[i], types[j])
-    upper = np.maximum(types[i], types[j])
+    i, j = np.triu_indices(species_index.size, 1)
+    lower = np.minimum(species_index[i], species_index[j])
+    upper = np.maximum(species_index[i], species_index[j])
     for type_1, type_2 in sorted(set(zip(lower.tolist(), upper.tolist(), strict=True))):
         yield (lower == type_1) & (upper == type_2), type_1, type_2
 
 
-def compute_energy(particles, box_length, cut_off, pair_potentials, species):
-    """Calculate the pair distances and pair energies of the configuration.
-
-    Only ``energies`` is called on the potentials, so a potential with no
-    finite force, such as the square well, drives Monte Carlo through this
-    path. The particles are not changed.
+def minimum_image(separation: NDArray[np.float64], box: float) -> NDArray[np.float64]:
+    """Return separations wrapped to the nearest periodic image.
 
     Args:
-        particles: The particles, as a ``util.particle_dt`` array whose
-            ``types`` field indexes ``species``.
-        box_length: Length of a single dimension of the simulation square,
-            in metres.
-        cut_off: The separation beyond which the pair energy is taken to be
-            zero, in metres.
-        pair_potentials: The potential between each pair of species.
-        species: The species, in the order ``types`` indexes.
+        separation: Separation vectors, shape ``(..., 2)``, in metres.
+        box: The side length of the square periodic box, in metres.
 
     Returns:
-        The distance between each pair of particles, in metres, and the
-        energy of each pair, in joules, both in i < j pair order.
+        The separations with each component brought into ``[-box / 2,
+        box / 2]``, so each is the shortest of the periodic copies.
     """
-    distances, _, _ = dist(particles["xposition"], particles["yposition"], box_length)
-    energies = np.zeros(distances.size)
-    for mask, type_1, type_2 in _species_pairs(particles["types"]):
-        potential = pair_potential(pair_potentials, species[type_1], species[type_2])
-        energies[mask] = potential.energies(distances[mask])
-    energies[distances > cut_off] = 0.0
-    return distances, energies
+    return separation - box * np.round(separation / box)
 
 
-def compute_force(particles, box_length, cut_off, pair_potentials, species):
-    """Calculate the pair forces and the acceleration of each particle.
-
-    Each pair's radial force is projected onto the pair separation and
-    divided by the mass of the particle it acts on, so the accelerations
-    replace those already on the particles.
+def dist(
+    position: NDArray[np.float64], box: float
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Return the minimum-image distance and separation of every pair.
 
     Args:
-        particles: The particles, as a ``util.particle_dt`` array whose
-            ``types`` field indexes ``species``.
-        box_length: Length of a single dimension of the simulation square,
-            in metres.
-        cut_off: The separation beyond which the pair energy and force are
-            taken to be zero, in metres.
-        pair_potentials: The potential between each pair of species.
-        species: The species, in the order ``types`` indexes.
+        position: The position of each particle, shape ``(N, 2)``, in
+            metres.
+        box: The side length of the square periodic box, in metres.
 
     Returns:
-        The particles with their accelerations replaced; the distance
-        between each pair of particles, in metres; the force on each pair,
-        in newtons; and the energy of each pair, in joules. The pair arrays
-        are in i < j pair order.
+        The distance between each pair, shape ``(M,)``, and the separation
+        ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in metres. Each of
+        the ``M = N (N - 1) / 2`` pairs appears once, ordered by the lower
+        particle index and then the higher.
     """
-    particles["xacceleration"] = 0.0
-    particles["yacceleration"] = 0.0
-    distances, dx, dy = dist(particles["xposition"], particles["yposition"], box_length)
-    forces = np.zeros(distances.size)
-    energies = np.zeros(distances.size)
-    for mask, type_1, type_2 in _species_pairs(particles["types"]):
-        potential = pair_potential(pair_potentials, species[type_1], species[type_2])
-        energies[mask] = potential.energies(distances[mask])
-        forces[mask] = potential.forces(distances[mask])
-    forces[distances > cut_off] = 0.0
-    energies[distances > cut_off] = 0.0
-    masses_kg = particle_masses(particles, species) * ATOMIC_MASS_UNIT
-    particles = update_accelerations(particles, forces, masses_kg, dx, dy, distances)
-    return particles, distances, forces, energies
+    i, j = np.triu_indices(position.shape[0], 1)
+    separation = minimum_image(position[i] - position[j], box)
+    return np.linalg.norm(separation, axis=1), separation
 
 
-def update_accelerations(particles, f, m, dx, dy, dr):
-    """Add the accelerations from the pair forces to each particle.
-
-    The accelerations already on the particles are added to, so the caller
-    zeroes them first. The pair arrays are in i < j order, as returned by
-    dist.
-
-    Args:
-        particles: The particles, as a ``util.particle_dt`` array.
-        f: The force on each pair of particles, in newtons.
-        m: The mass of each particle, in kilograms.
-        dx: The x-dimension component of each pair separation, x_i - x_j,
-            in metres.
-        dy: The y-dimension component of each pair separation, y_i - y_j,
-            in metres.
-        dr: The distance between each pair of particles, in metres.
-
-    Returns:
-        The particles with their accelerations accumulated from the pairs.
-    """
-    i, j = np.triu_indices(particles.size, 1)
-    fx = f * dx / dr
-    fy = f * dy / dr
-    # each pair pushes particle i one way and particle j the other, and
-    # each is accelerated by its own mass.
-    np.add.at(particles["xacceleration"], i, fx / m[i])
-    np.add.at(particles["xacceleration"], j, -fx / m[j])
-    np.add.at(particles["yacceleration"], i, fy / m[i])
-    np.add.at(particles["yacceleration"], j, -fy / m[j])
-    return particles
-
-
-def calculate_pressure(
-    distances, forces, box_length, number_of_particles, temperature
-):
-    r"""Calculate the instantaneous pressure of the simulation cell in two
-    dimensions, from the pair distances and forces of the configuration:
+def calculate_pressure(virial: float, box: float, kinetic_energy: float) -> float:
+    r"""Return the instantaneous pressure of the cell in two dimensions.
 
     .. math::
-        p = \frac{N k_B T}{L^2} + \frac{1}{2 L^2} \sum_{i} \sum_{j > i}
-        r_{ij} f_{ij}
+        p = \frac{1}{2 L^2} \left( 2 K + \sum_{i} \sum_{j > i} f_{ij} r_{ij} \right)
 
-    Parameters
-    ----------
-    distances: float, array_like
-        The distance between each pair of particles, in metres.
-    forces: float, array_like
-        The force between each pair of particles, in newtons.
-    box_length: float
-        Length of a single dimension of the simulation square, in metres.
-    number_of_particles: int
-        The number of particles in the simulation.
-    temperature: float
-        Instantaneous temperature of the simulation, in kelvin.
+    The kinetic term is the momentum the particles carry across a line in
+    the cell. The centre of mass is held at rest, so over a run at
+    temperature ``T`` the kinetic energy averages ``(N - 1) k_B T`` and this
+    term averages ``(N - 1) k_B T / L^2``, one particle short of the
+    ideal-gas pressure ``N k_B T / L^2``.
 
-    Returns
-    -------
-    float:
-        Instantaneous pressure of the simulation, in N / m (a two-dimensional
-        pressure).
+    Args:
+        virial: The sum over pairs of the radial force times the distance,
+            in joules.
+        box: The side length of the square periodic box, in metres.
+        kinetic_energy: The total kinetic energy, in joules.
+
+    Returns:
+        The pressure, in newtons per metre (a two-dimensional pressure).
     """
-    virial = np.sum(forces * distances) / (2 * box_length * box_length)
-    ideal = number_of_particles * BOLTZMANN * temperature / (box_length * box_length)
-    return virial + ideal
-
-
-def dist(xposition, yposition, box_length):
-    """Return the minimum-image distances between every pair of particles.
-
-    Parameters
-    ----------
-    xposition: float, array_like (N)
-        The x-dimension positions of the N particles, in metres.
-    yposition: float, array_like (N)
-        The y-dimension positions of the N particles, in metres.
-    box_length: float
-        The box length of the simulation cell, in metres.
-
-    Returns
-    -------
-    dr: float, array_like (N (N - 1) / 2)
-        The distance between each pair of particles, in metres, in i < j pair
-        order.
-    dx: float, array_like (N (N - 1) / 2)
-        The x-dimension component of each pair separation, x_i - x_j, in
-        metres.
-    dy: float, array_like (N (N - 1) / 2)
-        The y-dimension component of each pair separation, y_i - y_j, in
-        metres.
-    """
-    i, j = np.triu_indices(xposition.size, 1)
-    dx = xposition[i] - xposition[j]
-    dy = yposition[i] - yposition[j]
-    dx -= box_length * np.round(dx / box_length)
-    dy -= box_length * np.round(dy / box_length)
-    dr = np.hypot(dx, dy)
-    return dr, dx, dy
+    return (2 * kinetic_energy + virial) / (2 * box * box)
