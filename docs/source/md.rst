@@ -1,5 +1,5 @@
-pylj\.md
-========
+pylj.md
+=======
 
 Functions related to the molecular dynamics components of pylj. 
 

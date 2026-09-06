@@ -1,5 +1,5 @@
-pylj\.configuration
-===================
+pylj.configuration
+==================
 
 .. automodule:: pylj.configuration
     :members:

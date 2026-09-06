@@ -1,5 +1,5 @@
-pylj\.placement
-===============
+pylj.placement
+==============
 
 .. automodule:: pylj.placement
     :members:

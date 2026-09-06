@@ -45,6 +45,7 @@ All notable changes to pylj are recorded here. The format follows
 - `mc.Proposal` holds `position`, shape `(N, 2)`, in place of `xposition` and `yposition`, and `source`, the configuration it was proposed from; `MCSimulation.apply` refuses a proposal whose `source` is no longer the current configuration.
 - `init_conf` is a keyword argument, `'square'` by default, taking `'square'` or `'metropolis'`; an unknown value raises `ValueError`. `'metropolis'` seats particles by sequential Metropolis insertion, each trial position accepted on its interaction energy with the particles already placed, in place of the `'random'` rejection-sampled placement; it works for any potential, including a hard core. `'square'` places on the lattice without an overlap check.
 - The radial distribution function pane shows its y axis, so the level g(r) = 1 can be read.
+- The documentation is a textbook of executed chapters on molecular dynamics, Monte Carlo and the ideal gas law, built with myst-nb, and the example notebooks are removed (#85, #58).
 
 ### Fixed
 

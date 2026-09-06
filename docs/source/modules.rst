@@ -1,5 +1,5 @@
-pylj modules
-============
+Reference
+=========
 
 .. toctree::
    :maxdepth: 4

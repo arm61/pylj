@@ -1,5 +1,5 @@
-pylj\.simulation
-================
+pylj.simulation
+===============
 
 .. automodule:: pylj.simulation
     :members:

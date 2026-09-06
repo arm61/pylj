@@ -1,5 +1,5 @@
-pylj\.potentials
-================
+pylj.potentials
+===============
 
 The species and pair potentials packaged with pylj.
 

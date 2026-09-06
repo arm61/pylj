@@ -1,5 +1,5 @@
-pylj\.mc
-========
+pylj.mc
+=======
 
 Functions related to the Monte-Carlo components of pylj. 
 
