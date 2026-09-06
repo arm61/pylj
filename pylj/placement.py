@@ -24,12 +24,14 @@ def place_square(
 ) -> Configuration:
     """Place particles on a square lattice.
 
-    The lattice has ``ceil(sqrt(number_of_particles))`` sites along each
-    side of the box and the particles fill it in order, each assigned to the
-    species in turn; on a lattice with an even number of sites per side the
-    species of a mixture therefore start in stripes, which diffusion mixes
-    over the run. No overlap check is made: a lattice too dense for the
-    potential stores a large, or for a hard core infinite, energy.
+    The lattice has ``ceil(sqrt(number_of_particles))`` sites along each side of
+    the box, and the particles fill those sites in order, taking the species in
+    turn. On a lattice with an even number of sites per side, a mixture
+    therefore starts out in stripes of one species and then the other.
+    Diffusion mixes them over the course of the run. No check is made for
+    overlapping particles. A lattice packed too tightly for the potential
+    stores a large potential energy, and for a potential with a hard core that
+    energy is infinite.
 
     Args:
         number_of_particles: The number of particles.
@@ -61,13 +63,15 @@ def place_metropolis(
     Each particle in turn is given a uniform trial position in the box,
     accepted by :func:`mc.accept` at ``placement_temperature`` on its
     interaction energy with the particles already placed, and redrawn on
-    rejection. Inserting from vacuum makes that energy the energy change of
-    the insertion.
+    rejection. Before the particle is added it interacts with nothing, so its interaction
+    energy with the particles already placed is exactly the energy change the
+    insertion causes.
 
-    Sequential insertion is an initialiser, not an equilibrium sample: the
-    placed configuration avoids the close contacts the potential penalises
-    at the placement temperature, closer contacts become likelier as that
-    temperature rises, and the run equilibrates it.
+    Placing the particles one after another gives a reasonable starting point, not
+    a configuration drawn from equilibrium. The particles avoid the close
+    contacts the potential penalises at the placement temperature, and raising
+    that temperature makes closer contacts more likely. The run itself brings
+    the configuration to equilibrium.
 
     Args:
         number_of_particles: The number of particles.
@@ -82,10 +86,10 @@ def place_metropolis(
         The configuration.
 
     Raises:
-        ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are
-            rejected for a single particle. Near the density the budget
-            allows, whether that happens depends on the draw, so the same
-            call can place with one seed and raise with another.
+        ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are all rejected for a single
+            particle. At the highest densities this many attempts can reach,
+            success depends on the positions that happen to be drawn, so the
+            same call may succeed with one seed and raise with another.
     """
     # mc imports this module for its base classes, so the criterion is
     # imported here rather than at the top of the module.
@@ -151,7 +155,7 @@ def place(
         The configuration and the cut-off, both in metres.
 
     Raises:
-        ValueError: If there are fewer than one particle, a temperature is
+        ValueError: If no particles are requested, a temperature is
             not positive and finite, the box is outside 4 to 600 Angstrom,
             the cut-off exceeds half the box, the model is incomplete, a
             potential has not died away at the cut-off, ``init_conf`` is

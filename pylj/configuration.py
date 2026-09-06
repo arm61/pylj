@@ -15,7 +15,10 @@ from pylj.potentials import Species
 
 @dataclass(frozen=True)
 class PairData:
-    """The pair quantities of a configuration, in i < j pair order.
+    """The distance, separation, energy and force of every pair of particles.
+
+    Each pair appears once, in the order :func:`pairwise.dist` returns them: the
+    particle with the lower index first.
 
     Attributes:
         distance: The minimum-image distance between each pair, in metres.
@@ -39,7 +42,7 @@ class PairData:
 
 
 def _radial_force(pairs: PairData) -> NDArray[np.float64]:
-    """The radial forces of a pair evaluation made with ``forces=True``."""
+    """Return the radial forces, raising if the pair data was evaluated without them."""
     if pairs.radial_force is None:
         raise ValueError("The pair forces were not evaluated; call pairs(..., forces=True)")
     return pairs.radial_force
@@ -49,10 +52,10 @@ def _radial_force(pairs: PairData) -> NDArray[np.float64]:
 class Configuration:
     """Where the particles are: the state a Monte Carlo simulation evolves.
 
-    A configuration is immutable and knows nothing of the interaction law.
-    The methods that need one take ``pair_potentials`` and ``cut_off``
-    explicitly, so one configuration can be evaluated under different
-    potentials. Everything is in SI units.
+    A configuration cannot be changed once it is made, and it holds no description
+    of how the particles interact. Each method that needs the interaction law
+    is given ``pair_potentials`` and ``cut_off`` when it is called, so the same
+    configuration can be evaluated under different potentials. Everything is in SI units.
 
     Attributes:
         position: The position of each particle, shape ``(N, 2)``, in
@@ -63,8 +66,9 @@ class Configuration:
         box: The side length of the square periodic box, in metres.
 
     Raises:
-        ValueError: If the shapes disagree, ``species`` is empty, an index
-            names no species, or the box is not positive and finite.
+        ValueError: If the array shapes disagree, ``species`` is empty, an entry of
+            ``species_index`` does not correspond to one of the species, or the
+            box is not positive and finite.
     """
 
     position: NDArray[np.float64]
@@ -103,11 +107,16 @@ class Configuration:
         return masses[self.species_index]
 
     def replace(self, **changes: Any) -> Self:
-        """A copy with the given fields replaced; the copy is validated."""
+        """Return a copy with the given fields replaced. The copy is checked in the same
+        way as any other configuration."""
         return dataclasses.replace(self, **changes)
 
     def without(self, index: int) -> Self:
-        """A copy without one particle."""
+        """Return a copy with one particle removed.
+
+        Args: index: The index of the particle to remove.
+
+        Returns: The configuration without that particle."""
         arrays: dict[str, Any] = {
             field.name: np.delete(getattr(self, field.name), index, axis=0)
             for field in dataclasses.fields(self)
@@ -120,11 +129,11 @@ class Configuration:
     ) -> PairData:
         """Evaluate every pair of particles under the interaction law.
 
-        Each pair is evaluated on the potential for its two species at the
-        minimum-image distance, and pairs beyond the cut-off contribute
-        nothing. Only ``energies`` is called on the potentials unless
-        ``forces`` is requested, so a potential with no finite force, such
-        as the square well, can be evaluated.
+        Each pair is separated by its minimum-image distance, and the potential for the
+        two species it joins gives its energy. A pair further apart than the
+        cut-off contributes nothing. The forces are evaluated only when
+        ``forces`` is requested, so a potential that has no finite force, such
+        as the square well, can still be used here.
 
         Args:
             pair_potentials: The potential between each pair of species.
@@ -180,7 +189,8 @@ class Configuration:
         pair_potentials: PairPotentials,
         cut_off: float,
     ) -> float:
-        """The energy of one more particle at a position with every particle here.
+        """Return the interaction energy of one added particle with the particles already
+        in the configuration.
 
         Args:
             position: The ``(x, y)`` position of the added particle, in metres.
@@ -243,9 +253,10 @@ class MDConfiguration(Configuration):
     def temperature(self) -> float:
         """The instantaneous temperature, in kelvin.
 
-        The centre-of-mass velocity is zero at initialisation and conserved
-        by the pair forces, so ``2N - 2`` velocity components carry thermal
-        energy and the temperature is the kinetic energy over ``(N - 1) k_B``.
+        The centre of mass starts at rest, and the pair forces cannot set it moving.
+        Two of the ``2N`` velocity components are therefore fixed by that
+        condition, leaving ``2N - 2`` components to carry thermal energy. The
+        temperature is the kinetic energy divided by ``(N - 1) k_B``.
 
         Raises:
             ValueError: If there are fewer than two particles.
@@ -258,8 +269,14 @@ class MDConfiguration(Configuration):
         return self.kinetic_energy() / ((self.number_of_particles - 1) * BOLTZMANN)
 
     def msd(self, initial: "MDConfiguration") -> float:
-        """The mean squared displacement from an earlier configuration, in
-        metres squared, from the unwrapped positions so that crossings of
-        the periodic boundary count."""
+        """Return the mean squared displacement since an earlier configuration.
+
+        The unwrapped positions are used, so a particle that crosses the edge of the
+        box and reappears on the other side counts as having travelled the
+        whole way.
+
+        Args: initial: The configuration to measure the displacement from.
+
+        Returns: The mean squared displacement, in metres squared."""
         displacement = self.unwrapped - initial.unwrapped
         return float(np.mean(np.sum(displacement**2, axis=1)))

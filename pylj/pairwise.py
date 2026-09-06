@@ -1,6 +1,7 @@
-"""Array-level primitives for pairs of particles: the potential for a pair
-of species, the pairs of each species pair, the minimum image, and the
-pressure from the virial.
+"""Calculations over every pair of particles at once: finding the potential that
+acts between two species, grouping the particle pairs by the species they join,
+applying the minimum image convention, and getting the pressure from the
+virial.
 """
 
 from collections.abc import Iterator, Mapping
@@ -44,9 +45,10 @@ def species_pairs(
 ) -> Iterator[tuple[NDArray[np.bool_], int, int]]:
     """Group the particle pairs by the two species they join.
 
-    Each unordered pair of species present is yielded once (species 0 with
-    1 is the same pair as 1 with 0), with a mask selecting the entries of the
-    i < j pair arrays returned by :func:`dist` that join those two species.
+    Each pair of species present is yielded once, because species 0 with species 1
+    is the same pair as species 1 with species 0. Each comes with a mask, which
+    picks out the entries of the pair arrays returned by :func:`dist` that join
+    those two species.
 
     Args:
         species_index: The species index of each particle.
@@ -87,8 +89,8 @@ def dist(
 
     Returns:
         The distance between each pair, shape ``(M,)``, and the separation
-        ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in metres and in
-        i < j pair order, where ``M = N (N - 1) / 2``.
+        ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in metres, with each of the ``M = N (N - 1) / 2`` pairs appearing once,
+            ordered by the lower particle index and then the higher.
     """
     i, j = np.triu_indices(position.shape[0], 1)
     separation = minimum_image(position[i] - position[j], box)

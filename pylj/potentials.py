@@ -29,8 +29,9 @@ class Species:
 class PairPotential(ABC):
     """The interface every pair potential implements.
 
-    A pair potential is central: the pair energy, and the radial force
-    derived from it, depend only on the separation magnitude. Both
+    A pair potential is a central potential: the energy of a pair of particles, and
+    the force that follows from it, depend only on how far apart the two
+    particles are, and not on the direction from one to the other. Both
     ``energies`` and ``forces`` take an array of separations ``dr``, in
     metres, and return an array of the same shape.
     """
@@ -45,7 +46,7 @@ class PairPotential(ABC):
 
         The value is minus the derivative of the energy with respect to the
         separation, so it is positive where the interaction is repulsive and
-        negative where it is attractive.
+        negative where the interaction is attractive.
         """
 
 
@@ -83,10 +84,14 @@ class Buckingham(PairPotential):
     .. math::
         E = A e^{-B r} - C / r^{6}
 
-    The form has a barrier at short range, inside which the dispersion term
-    wins and the energy falls to minus infinity. Inside the top of that
-    barrier, ``turnover``, the energy and force are taken as infinite: a
-    hard wall in place of the collapse.
+    At short range the attractive term, minus C over r to the sixth, grows
+    faster than the exponential repulsion. The energy therefore rises to a
+    barrier as the particles approach and then falls to minus infinity as
+    the separation goes to zero. That collapse is a defect of the formula,
+    not real physics, so this potential treats the barrier as an
+    impenetrable wall: at any separation smaller than ``turnover``, the
+    separation at the top of the barrier, the energy and the force are
+    infinite.
 
     Args:
         a: The A parameter, an energy scale, in joules.
@@ -111,8 +116,9 @@ class Buckingham(PairPotential):
         return float(-self.a * self.b * np.exp(-self.b * dr) + 6 * self.c / dr**7)
 
     def _find_turnover(self) -> float:
-        """Locate the top of the short-range barrier, where the slope is zero
-        between the collapse and the well."""
+        """Locate the top of the short-range barrier. The slope of the energy is zero
+        there, between the fall to minus infinity at short range and the well
+        beyond."""
         dr = np.geomspace(1e-13, 1e-8, 4000)
         with np.errstate(over="ignore"):
             barrier = int(np.argmax(self._form(dr)))
@@ -133,11 +139,18 @@ class Buckingham(PairPotential):
 
 
 class SquareWell(PairPotential):
-    r"""The square-well pair potential.
+    r"""The square-well pair potential: a hard core surrounded by a well of
+    constant depth.
 
-    The energy is ``max_val`` inside the hard core of diameter sigma, minus
-    epsilon in the well out to lambda times sigma, and zero beyond. The force
-    is impulsive at the two walls, so the potential drives Monte Carlo only.
+    The energy takes three values. When the separation is smaller than
+    ``sigma`` the particles overlap and the energy is ``max_val``, infinite
+    by default. Between ``sigma`` and ``lambda_`` times ``sigma`` the
+    particles sit in the well and the energy is minus ``epsilon``. Beyond
+    the well the energy is zero. Because the energy changes only in steps,
+    the force is zero everywhere except at the two walls, where it is
+    infinite. A potential without a finite force cannot drive molecular
+    dynamics, so the square well is for Monte Carlo, which uses energies
+    only.
 
     Args:
         epsilon: The well depth, in joules.
@@ -162,6 +175,7 @@ class SquareWell(PairPotential):
 
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
         raise ValueError(
-            "The square-well force is impulsive and cannot drive molecular "
-            "dynamics; use a Monte Carlo simulation."
+            "The square-well energy changes in steps, so its force is zero everywhere except "
+            "at the two walls, where it is infinite. Molecular dynamics cannot integrate that; "
+            "use a Monte Carlo simulation."
         )

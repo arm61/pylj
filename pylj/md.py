@@ -53,8 +53,9 @@ class MDSamples(Samples):
 class MDSimulation(Simulation):
     """A molecular dynamics simulation.
 
-    The state between steps is the configuration and the forces at it, the
-    two registers the Velocity-Verlet integrator needs. ``step`` integrates
+    Between steps the simulation holds two things: the configuration, and the force
+    on each particle at that configuration. Velocity-Verlet needs both to take
+    the next step. ``step`` integrates
     one timestep and advances the clock; ``sample`` measures the
     configuration.
 
@@ -77,9 +78,8 @@ class MDSimulation(Simulation):
     Raises:
         TypeError: If ``configuration`` is not an ``MDConfiguration``.
         ValueError: If the timestep is not positive and finite, the
-            configuration is at rest or has a non-finite temperature, a pair
-            potential has not died away at the cut-off at the
-            configuration's temperature, the configuration stores more than
+            configuration is at rest or has a non-finite temperature, a pair potential has not died away at the cut-off, judged at the
+                configuration's own temperature, the configuration stores more than
             :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
             energy per particle, or for anything :class:`Simulation`
             rejects.
@@ -150,10 +150,12 @@ class MDSimulation(Simulation):
         """Build a simulation from a model: place the particles and draw
         their velocities at a temperature.
 
-        Each velocity component is drawn from a normal distribution with
-        the thermal width for the particle's mass at the temperature, the
-        centre-of-mass velocity is removed, and the velocities are rescaled
-        so that the instantaneous temperature is exactly the one requested.
+        Each component of each velocity is drawn from a normal distribution whose width
+        is the thermal speed of that particle at the requested temperature,
+        which depends on its mass. The velocity of the centre of mass is then
+        subtracted, so the system as a whole is at rest. Finally every velocity
+        is scaled by the same factor, so that the instantaneous temperature is
+        exactly the one requested.
         The temperature is not stored: molecular dynamics measures it.
 
         Args:
@@ -320,7 +322,8 @@ def velocity_verlet(
 def update_positions(
     configuration: MDConfiguration, accelerations: NDArray[np.float64], timestep: float
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """Advance the positions by ``v dt + a dt^2 / 2``.
+    """Advance the positions by the velocity times the timestep, plus half the
+    acceleration times the timestep squared.
 
     Args:
         configuration: The configuration to advance.

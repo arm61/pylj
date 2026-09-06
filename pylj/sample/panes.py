@@ -31,7 +31,8 @@ def _fit_axes(
     x_from_zero: bool = True,
     y_from_zero: bool = False,
 ) -> None:
-    """Fit the axis limits to the data, leaving them alone when there is none.
+    """Fit the axis limits to the data, leaving the limits unchanged when there is no
+    data to fit them to.
 
     Args:
         ax: Axes to adjust.
@@ -75,8 +76,9 @@ class Pane:
     Attributes:
         keeps_history: Whether this pane accumulates a history across
             updates that ``average`` can summarise.
-        needs_md: The viewer refuses a simulation that is not an
-            ``MDSimulation`` when any of its panes sets this.
+        needs_md: Whether this pane can only plot molecular dynamics samples. If any
+            pane in a viewer sets this, the viewer refuses a Monte Carlo
+            simulation.
     """
 
     keeps_history: bool = False
@@ -101,11 +103,11 @@ class Pane:
         raise NotImplementedError
 
     def average(self, ax: Axes) -> None:
-        """Show the average of every update so far, for panes that keep one.
+        """Show the average of every update so far, for panes that keep a history.
 
         Panes that keep a history of their updates override this to draw the
-        mean of that history. Panes that keep no history do nothing, and
-        report that by leaving ``keeps_history`` false.
+        mean of that history. A pane that keeps no history does nothing here, and says so by leaving
+        ``keeps_history`` false.
 
         Args:
             ax: Axes this pane was set up in.
@@ -139,13 +141,14 @@ class _HistoryPane(Pane):
 def _potential_minimum(potential: PairPotential) -> float:
     """Return the separation at the minimum of a pair potential, in metres.
 
-    The minimum is located on a logarithmic grid between 0.1 and 50
-    Angstrom, as the lowest energy beyond the grid's highest point. For a
-    Lennard-Jones potential the minimum is at 2^(1/6) sigma and for a square
-    well at the hard-core diameter. For a Buckingham potential the highest
-    point is the repulsive barrier that separates the well from the
-    unphysical collapse at short range, and the minimum is the well beyond
-    it.
+    The energy is evaluated on a logarithmic grid of separations from 0.1 to 50
+    Angstrom. The search starts at the highest energy on that grid and takes
+    the lowest energy beyond it, so that a barrier at short range is stepped
+    over rather than mistaken for the well. For a Lennard-Jones potential the
+    minimum found is at 2^(1/6) sigma, and for a square well it is at the hard-
+    core diameter. For a Buckingham potential the highest point is the barrier
+    that separates the well from the fall to minus infinity at short range, and
+    the minimum lies in the well beyond that barrier.
 
     Args:
         potential: The pair potential.
@@ -176,9 +179,10 @@ def _drawn_diameters(
 
     Args:
         simulation: The simulation being visualised.
-        diameter: Diameter in Angstrom: one value for every species, one
-            per species, or ``None`` for the separation at the minimum of
-            each species' own pair energy.
+        diameter: The diameter to draw, in Angstrom. A single value is used for every
+            species; a sequence gives one value per species, in order. ``None``
+            uses the separation at the minimum of each species' own pair
+            energy.
 
     Returns:
         One diameter per species, in the order of
@@ -186,8 +190,8 @@ def _drawn_diameters(
 
     Raises:
         ValueError: If the number of diameters differs from the number of
-            species, a diameter is not positive and finite, or a diameter
-            is below 0.01, which is a value in metres mistaken for Angstrom.
+            species, a diameter is not positive and finite, or a diameter is below 0.01. A value that small is almost certainly in metres,
+                given where an Angstrom-sized diameter would fall.
     """
     species = simulation.configuration.species
     if diameter is None:
@@ -474,7 +478,8 @@ class ScatteringPane(_HistoryPane):
 class MaxwellBoltzmannPane(Pane):
     """Histogram of the speeds of every particle at every update so far.
 
-    It keeps no per-frame history, so it has no average.
+    The histogram already pools every update, so there is no separate history to
+    average and this pane has no average to show.
     """
 
     needs_md = True

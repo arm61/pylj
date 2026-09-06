@@ -1,5 +1,5 @@
-"""The checks a simulation makes on its model, the record of its samples,
-and the base class of the simulations."""
+"""The checks a simulation makes on its model, the record it keeps of its samples,
+and the base class the simulations share."""
 
 import copy
 import itertools
@@ -79,8 +79,9 @@ def _check_potentials_at_the_cut_off(
         pair_potentials: The potential between each pair of species.
         cut_off: The cut-off, in metres.
         temperature: The temperature, in kelvin.
-        box: The box side, in metres; a cut-off of half the box cannot be
-            raised, so the remedy is then a larger box.
+        box: The side length of the box, in metres. The cut-off can be no larger than
+            half the box, so when it already is, the only remedy is a larger
+            box.
 
     Raises:
         ValueError: If any pair potential's energy at the cut-off is not
@@ -146,12 +147,14 @@ def _check_initial_energy(energy: float, number_of_particles: int, temperature: 
 
 
 def _resolve_cut_off(box: float, cut_off: float | None) -> float:
-    """The cut-off in metres: as given, or 15 Angstrom or half the box,
-    whichever is smaller.
+    """Return the cut-off in metres.
+
+    A cut-off given by the caller is used as it stands. Without one, the cut-off is
+    15 Angstrom, or half the box if that is smaller.
 
     Raises:
-        ValueError: If a given cut-off is not positive and finite, or exceeds
-            half the box, beyond which the minimum image convention fails.
+        ValueError: If a given cut-off is not positive and finite, or is larger than half the box.
+            A cut-off beyond half the box breaks the minimum image convention.
     """
     if cut_off is None:
         return min(15e-10, box / 2)
@@ -198,12 +201,14 @@ class Samples:
 
 
 class Simulation(ABC):
-    """A configuration, the interaction law, the numerical choices, and the
-    machinery to evolve and measure it.
+    """A simulation: a configuration, the interaction law, the numerical choices, and
+    the machinery that evolves the configuration and measures it.
 
-    ``MDSimulation`` and ``MCSimulation`` extend this with ``step`` and
-    ``sample``. The constructor takes a ready configuration in SI units;
-    the ``initialise`` factories of the subclasses derive one from a model.
+    ``MDSimulation`` and ``MCSimulation`` add ``step`` and ``sample`` to this
+    class. The constructor takes a configuration that has already been built,
+    in SI units. To start from a description of the system instead, how many
+    particles, which species and which potentials, use the ``initialise``
+    method of one of those subclasses, which builds the configuration for you.
 
     Args:
         configuration: The starting configuration.
@@ -259,12 +264,12 @@ class Simulation(ABC):
     def restart(self) -> Self:
         """A new simulation that continues from the current configuration.
 
-        The new simulation is a shallow copy: it shares the model, the
-        numerical choices and every other attribute, copies the state of
-        the random number generator so its draws do not depend on what this
-        one does next, and starts with ``steps`` at zero and an empty record
-        of samples. A subclass that holds other per-run state extends this
-        method to reset it. This simulation is not changed. Use it to start
+        The new simulation shares the interaction law, the numerical choices and every
+        other attribute with this one. Its random number generator starts from
+        a copy of this one's state, so the two runs do not draw the same
+        numbers. The new simulation starts with ``steps`` at zero and an empty
+        record of samples. A subclass that holds other per-run state extends
+        this method to reset it. This simulation is not changed. Use it to start
         a production run after equilibration::
 
             for _ in range(1000):
