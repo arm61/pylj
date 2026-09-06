@@ -382,7 +382,6 @@ class RDFPane(_HistoryPane):
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_xlim(0, simulation.configuration.box / 2)
-        ax.set_yticks([])
         ax.set_ylabel("RDF", fontsize=LABEL_SIZE)
         ax.set_xlabel("r/m", fontsize=LABEL_SIZE)
 

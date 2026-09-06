@@ -18,7 +18,8 @@ The ideal gas law, $pV = N k_B T$, holds for particles that do not interact and 
 ```{code-cell} python
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
+from scipy.integrate import quad
+from scipy.optimize import brentq, curve_fit
 from pylj import sample
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.md import MDSimulation
@@ -29,8 +30,8 @@ lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
 model = dict(species=[argon], pair_potentials={(argon, argon): lj})
 
 
-def run(number_of_particles, temperature, box, steps, viewer_class=None, seed=0):
-    """Settle for a fifth of the steps, then sample the rest at the temperature."""
+def run(number_of_particles, temperature, box, steps, viewer_class=None, draw_every=100, seed=0):
+    """Settle for steps // 5, then run steps at the temperature, sampling every fifth."""
     simulation = MDSimulation.initialise(number_of_particles, temperature, box, seed=seed, **model)
     for _ in range(steps // 5):
         simulation.step()
@@ -40,49 +41,76 @@ def run(number_of_particles, temperature, box, steps, viewer_class=None, seed=0)
     for _ in range(steps):
         production.step()
         production.heat_bath(temperature)
-        production.sample()
-        if viewer and production.steps % 100 == 0:
+        if production.steps % 5 == 0:
+            production.sample()
+        if viewer and production.steps % draw_every == 0:
             viewer.update(production)
-    if viewer and hasattr(viewer.panes[-1], "history"):
+    if viewer and any(pane.keeps_history for pane in viewer.panes):
         viewer.average()
     return production
 ```
 
-The first fifth of each run brings the lattice to the temperature and is thrown away; `restart` begins a fresh record from that point, and the viewer is built after it so its history covers only the settled run. Every step is thermostatted, so the temperature is held at the value the ideal gas law will be evaluated at.
+The thermostat holds the temperature from the first step, but the square lattice the particles start on is not a fluid. The settling steps let it relax into one while the thermostat absorbs the potential energy released; `restart` then begins a fresh record, and the viewer is built after it so its history covers only the settled run. Sampling every fifth step is enough, because consecutive steps are almost the same configuration.
 
 ## Temperature and the speed distribution
 
-Forty particles in a 40 Angstrom box, at 100 K and at 1000 K. The speed histogram pools every frame drawn.
+In two dimensions the speeds of particles of mass $m$ at temperature $T$ follow the Maxwell-Boltzmann distribution
+
+$$
+p(v) = \frac{m v}{k_B T} \exp\!\left(-\frac{m v^2}{2 k_B T}\right),
+$$
+
+whose peak is at $\sqrt{k_B T / m}$. Collecting the speeds of forty particles over a run at 100 K and again at 1000 K, and drawing the distribution over each histogram:
 
 ```{code-cell} python
-cold = run(40, 100, 40, 2000, sample.MaxBolt)
+def speeds(temperature, steps=1000):
+    simulation = MDSimulation.initialise(40, temperature, 40, seed=0, **model)
+    collected = []
+    for _ in range(steps):
+        simulation.step()
+        simulation.heat_bath(temperature)
+        if simulation.steps % 10 == 0:
+            collected.append(np.linalg.norm(simulation.configuration.velocity, axis=1))
+    return np.concatenate(collected)
+
+
+mass = 39.948 * ATOMIC_MASS_UNIT
+fig, ax = plt.subplots(figsize=(5, 3.2))
+for temperature in (100, 1000):
+    v = speeds(temperature)
+    ax.hist(v, bins=40, density=True, alpha=0.5, label=f"{temperature} K")
+    grid = np.linspace(0, v.max(), 300)
+    kt = BOLTZMANN * temperature
+    ax.plot(grid, mass * grid / kt * np.exp(-mass * grid**2 / (2 * kt)), color="black")
+    print(f"{temperature} K: peak predicted at {np.sqrt(kt / mass):.0f} m/s")
+ax.set_xlabel("speed / m s$^{-1}$")
+ax.set_ylabel("probability density")
+ax.legend()
+fig.tight_layout()
 ```
 
-```{code-cell} python
-hot = run(40, 1000, 40, 2000, sample.MaxBolt)
-```
-
-At 100 K the particles cluster: the well depth of 1.58 zJ is about $1.1\,k_B T$, so pairs stay bound. At 1000 K it is $0.1\,k_B T$ and the particles move through each other's wells without sticking. The speed distribution is the two-dimensional Maxwell-Boltzmann distribution, whose peak moves out as $\sqrt{T}$.
+The histograms follow the curves, and the peak moves out by $\sqrt{10}$ between the two temperatures. The thermostat fixes the total kinetic energy at every step, but shares it among forty particles freely, so each particle's speed still varies as the distribution says.
 
 ## Density and structure
 
-The radial distribution function $g(r)$ is the probability of finding a particle at distance $r$ from another, relative to the same probability in an ideal gas at the same density. Averaged over a run, it shows structure. At low density there is one peak at the well minimum and $g(r)$ is one beyond it; at high density the first peak sharpens and further peaks appear, the shells of neighbours of a liquid.
+The radial distribution function $g(r)$ is the probability of finding a particle at distance $r$ from another, relative to the same probability in an ideal gas at the same density, so it tends to one at large $r$. Averaged over a run, it shows structure. At 100 K the well depth of 1.58 zJ is $1.1\,k_B T$, deep enough for pairs to linger near the minimum of the potential.
 
 ```{code-cell} python
-dilute = run(20, 100, 40, 2000, sample.RDF)
+dilute = run(20, 100, 40, 2000, sample.RDF, draw_every=20)
 ```
 
 ```{code-cell} python
-dense = run(100, 100, 40, 2000, sample.RDF)
+dense = run(100, 100, 40, 2000, sample.RDF, draw_every=20)
 ```
+
+With twenty particles there is one peak, at the minimum of the potential, and beyond it $g(r)$ settles to one: a particle has a neighbour at the well minimum more often than chance, and no order beyond that. With a hundred particles in the same box the first peak sharpens and a second and third appear at twice and three times the distance. These are the shells of neighbours of a liquid. The axis is in metres, with a factor of 1e-9 printed in its corner.
 
 ## Argon at standard temperature and pressure
 
 The density of argon at STP is 1.784 g/L. In three dimensions that is a number density $n_3$; the two-dimensional density with the same spacing between particles is $n_3^{2/3}$.
 
 ```{code-cell} python
-avogadro = 6.02214076e23
-n3 = 1.784e3 / 39.948 * avogadro  # particles per cubic metre
+n3 = 1.784 / (39.948 * ATOMIC_MASS_UNIT)  # particles per cubic metre
 n2 = n3 ** (2 / 3)  # particles per square metre
 box = 150  # Angstrom
 number = round(n2 * (box * 1e-10) ** 2)
@@ -92,63 +120,91 @@ print(f"{n2 * 1e-20:.2e} particles per square Angstrom: {number} particles in a 
 At that density a 40 Angstrom box would hold one particle, so the box is 150 Angstrom.
 
 ```{code-cell} python
-stp = run(number, 273.15, box, 2000, sample.Interactions)
-ideal = number * BOLTZMANN * 273.15 / (box * 1e-10) ** 2
-print(f"measured pressure {stp.samples.pressure.mean():.3e} N/m, ideal {ideal:.3e} N/m")
+stp = run(number, 273.15, box, 2000, sample.JustCell)
+area = (box * 1e-10) ** 2
+measured = stp.samples.pressure.mean()
+print(f"measured pressure {measured:.3e} N/m")
+print(f"ideal gas law with N particles {number * BOLTZMANN * 273.15 / area:.3e} N/m")
+print(f"ideal gas law with N - 1 particles {(number - 1) * BOLTZMANN * 273.15 / area:.3e} N/m")
 print(f"mean potential energy per particle {stp.samples.potential_energy.mean() / number / (BOLTZMANN * 273.15):.3f} k_B T")
 ```
 
-The particles rarely come within range of each other, the potential energy is a small fraction of $k_B T$ per particle, and the pressure is close to the ideal value. Argon at STP behaves as an ideal gas because it is dilute.
+The particles rarely come within range of each other, and the potential energy is a small fraction of $k_B T$ per particle. The measured pressure sits on the second of the two ideal lines, not the first. The simulation holds the centre of mass at rest, so the kinetic energy of $N$ particles is $(N - 1) k_B T$ rather than $N k_B T$, and the kinetic term of the pressure is one particle short; the next section returns to this. Allowing for it, argon at STP is an ideal gas to a fraction of a per cent, because it is dilute.
 
 ## Pressure against density
 
-Keeping the box at 40 Angstrom and the temperature at 273 K, and raising the number of particles from 4 to 100, takes the gas from dilute to dense. The pressure pylj measures is the virial pressure,
+Keeping the box at 40 Angstrom and the temperature at 273 K, and raising the number of particles from 9 to 100, takes the gas from dilute to dense. The pressure pylj measures is the virial pressure,
 
 $$
 p = \frac{1}{2A}\left(2K + \sum_{\text{pairs}} f_{ij}\, r_{ij}\right),
 $$
 
-where $K$ is the kinetic energy and the sum runs over the radial force times the distance for every pair. With no forces the second term vanishes and $2K / 2A = K / A$ is the kinetic pressure.
+where $K$ is the kinetic energy and the sum runs over the radial force times the distance for every pair. The thermostat sets $K$ to $(N - 1) k_B T$ at every step, so the first term is fixed and only the second, the virial, is measured. With no forces the virial vanishes and the pressure is $(N - 1) k_B T / A$.
 
 ```{code-cell} python
-numbers = np.array([4, 9, 16, 25, 36, 49, 64, 81, 100])
+numbers = np.array([9, 16, 25, 36, 49, 64, 81, 100])
 area = (40e-10) ** 2
-pressures = np.array([run(n, 273, 40, 2000, seed=n).samples.pressure.mean() for n in numbers])
-fig, ax = plt.subplots(figsize=(4.5, 3.5))
-ax.plot(numbers, pressures, "o", label="measured")
-ax.plot(numbers, numbers * BOLTZMANN * 273 / area, "-", label="ideal, $N$")
-ax.plot(numbers, (numbers - 1) * BOLTZMANN * 273 / area, "--", label="ideal, $N - 1$")
-ax.set_xlabel("N")
-ax.set_ylabel("p / N m$^{-1}$")
-ax.legend()
+kt = BOLTZMANN * 273
+pressures = np.array([run(n, 273, 40, 1500, seed=n).samples.pressure.mean() for n in numbers])
+ideal = (numbers - 1) * kt / area
+ratio = pressures / ideal
+fig, (left, right) = plt.subplots(1, 2, figsize=(8, 3.2))
+left.plot(numbers, pressures, "o", label="measured")
+left.plot(numbers, ideal, "--", label="ideal, $N - 1$")
+left.set_xlabel("N")
+left.set_ylabel("p / N m$^{-1}$")
+left.legend()
+right.plot(numbers, ratio, "o")
+right.axhline(1, color="grey", linewidth=0.5)
+right.set_xlabel("N")
+right.set_ylabel("p / p$_{\\mathrm{ideal}}$")
 fig.tight_layout()
+for n, r in zip(numbers, ratio):
+    print(f"N = {n:3d}: {r:.2f} times ideal")
 ```
 
-Two things separate the points from the ideal line.
+The right-hand panel divides the measured pressure by the ideal one. For the smallest boxes the ratio is within a few per cent of one, the level of run-to-run noise. From about 25 particles upward the excess roughly doubles with each step in $N$, and at 100 particles the pressure is several times ideal: the particles take up a large fraction of the box, their repulsive cores push on each other, and the virial is large and positive.
 
-The simulation holds the centre of mass at rest, so the kinetic energy of $N$ particles is $(N - 1) k_B T$ rather than $N k_B T$, and the kinetic term of the pressure is one particle short. The dashed line is the ideal gas law for $N - 1$ particles, and the dilute points sit on it. In a real gas of $10^{23}$ particles the difference is nothing; in a box of four it is a quarter.
+The pressure never falls below the ideal line. The Lennard-Jones well is attractive, and at low enough temperature the attraction wins at low density and pulls the pressure under the line. The temperature at which the two effects balance is where the second virial coefficient changes sign:
 
-The remaining gap grows with $N$, and it never goes negative: at $N = 4$ the measured pressure is already a few percent above the $N - 1$ line, and by $N = 100$ it is more than three times higher. The virial term in the pressure sums the force between a pair times their separation, and a collision spends most of that sum on the repulsive core. The potential falls steeply at short range, so a close pass pushes hard, and that push outweighs the slow pull between the many pairs that are merely nearby. Past about 50 particles the box is crowded enough that these repulsive collisions happen often, and the pressure rises steeply above the kinetic term alone.
+```{code-cell} python
+def second_virial(temperature):
+    kt = BOLTZMANN * temperature
+    integrand = lambda r: (np.exp(-lj.energies(r) / kt) - 1) * 2 * np.pi * r
+    return -0.5 * quad(integrand, 1e-11, 15e-10, limit=200)[0]
+
+
+boyle = brentq(second_virial, 50, 500)
+print(f"second virial coefficient at 273 K: {second_virial(273) * 1e20:+.2f} Angstrom^2")
+print(f"it changes sign at {boyle:.0f} K")
+```
+
+At 273 K the well is only $0.42\,k_B T$ deep and the coefficient is positive: repulsion wins at every density. Below the temperature printed above the coefficient is negative, and a run at 100 K, where the earlier sections found pairs lingering in the well, would show the pressure dip below the line at low density.
 
 ## The van der Waals equation
 
-The two corrections have a classical form. The van der Waals equation in two dimensions is
+The two corrections have a classical form. Writing $v = A / N$ for the area per particle, the van der Waals equation in two dimensions is
 
 $$
-p = \frac{k_B T}{a_{\text{p}} - b} - \frac{a}{a_{\text{p}}^2},
+p = \frac{k_B T}{v - b} - \frac{a}{v^2},
 $$
 
-with $a_{\text{p}} = A / N$ the area per particle, $b$ the area a particle excludes and $a$ the strength of the attraction. Fitting both to the measured pressures:
+with $b$ the area a particle excludes and $a$ the strength of the attraction. Expanded at low density it gives a second virial coefficient of $b - a / k_B T$. The fit is to the pressure $N$ particles would give with the measured virial, which adds the one missing particle's $k_B T / A$ back to the kinetic term:
 
 ```{code-cell} python
-def van_der_waals(area_per_particle, a, b):
-    return BOLTZMANN * 273 / (area_per_particle - b) - a / area_per_particle**2
+def van_der_waals(v, a, b):
+    return kt / (v - b) - a / v**2
 
-area_per_particle = area / numbers
-(a, b), _ = curve_fit(van_der_waals, area_per_particle, pressures, p0=(1e-40, 1e-19))
-print(f"a = {a:.2e} J m^2, b = {b:.2e} m^2, so an excluded diameter of {2 * np.sqrt(b / np.pi) * 1e10:.1f} Angstrom")
-fig, ax = plt.subplots(figsize=(4.5, 3.5))
-ax.plot(numbers, pressures, "o", label="measured")
+
+v = area / numbers
+full = pressures + kt / area
+(a, b), _ = curve_fit(van_der_waals, v, full, p0=(1e-40, 1e-19))
+diameter = np.sqrt(2 * b / np.pi)
+print(f"a = {a:.2e} J m^2, b = {b:.2e} m^2")
+print(f"b - a / k_B T = {(b - a / kt) * 1e20:+.2f} Angstrom^2, against {second_virial(273) * 1e20:+.2f} from the potential")
+print(f"hard discs with b = pi d^2 / 2 have diameter d = {diameter * 1e10:.2f} Angstrom")
+fig, ax = plt.subplots(figsize=(4.5, 3.2))
+ax.plot(numbers, full, "o", label="measured")
 fine = np.linspace(numbers[0], numbers[-1], 200)
 ax.plot(fine, van_der_waals(area / fine, a, b), "-", label="van der Waals fit")
 ax.set_xlabel("N")
@@ -157,4 +213,4 @@ ax.legend()
 fig.tight_layout()
 ```
 
-The excluded diameter the fit returns is close to $\sigma$, the separation at which the Lennard-Jones energy crosses zero: the fit has recovered the size of the particle from the pressure alone, which is what van der Waals did from experiment in 1873.
+The fitted $b - a / k_B T$ matches the second virial coefficient of the potential itself. For hard discs of diameter $d$ the excluded area is $b = \pi d^2 / 2$, and the diameter that comes out is a little below $\sigma$, the separation at which the Lennard-Jones energy crosses zero: at 273 K collisions push some way inside it. The fit has recovered the size of the particle from the pressure alone, which is what van der Waals did from experiment in 1873.
