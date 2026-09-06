@@ -67,7 +67,7 @@ print(f"centre of mass velocity {np.abs(configuration.velocity.mean(axis=0)).max
 print(f"temperature {configuration.temperature():.1f} K")
 ```
 
-The temperature is the kinetic energy divided by $(N - 1) k_B$, not $N k_B$. With the centre of mass at rest, two of the $2N$ velocity components are fixed, and the remaining $2N - 2$ each carry $k_B T / 2$ on average. The root mean square speed is $\sqrt{2}$ times the thermal speed because each particle has two components.
+The temperature is the kinetic energy divided by $(N - 1) k_B$, where $N$ is the number of particles, not by $N k_B$. With the centre of mass at rest, two of the $2N$ velocity components are fixed, and the remaining $2N - 2$ each carry $k_B T / 2$ on average. Each particle has two velocity components, so the root mean square speed is $\sqrt{2 (N - 1) / N}$ times the thermal speed, which tends to $\sqrt{2}$ for many particles; for sixteen it is 1.37.
 
 ## Forces
 
@@ -77,10 +77,11 @@ The force on a pair is minus the slope of the pair energy, which the previous ch
 :pyobject: Configuration.forces
 ```
 
-`pairs` evaluates every pair once, with the particle of lower index first. The radial force times the unit separation vector is the force that pair exerts on its first particle; the second particle feels the opposite. `np.add.at` accumulates those onto the particles. The simulation holds the result as `forces`, one two-component vector per particle, and Newton's second law turns it into accelerations:
+`pairs` evaluates every pair once, with the particle of lower index first. The radial force times the unit separation vector is the force that pair exerts on its first particle; the second particle feels the opposite. `np.add.at` accumulates those onto the particles. The simulation holds the result as `forces`, one two-component vector per particle, and Newton's second law turns it into accelerations. On the square lattice every particle's four nearest neighbours pull equally in four directions and the net force is zero, so the accelerations below are those of the Metropolis-placed configuration, whose particles have uneven surroundings:
 
 ```{code-cell} python
-accelerations = simulation.forces / configuration.masses[:, None]
+configuration = placed.configuration
+accelerations = placed.forces / configuration.masses[:, None]
 print(f"largest acceleration {np.abs(accelerations).max():.2e} m/s^2")
 ```
 
@@ -115,27 +116,27 @@ def verlet_step(configuration, forces, timestep, pair_potentials, cut_off):
 
 `update_positions` returns two arrays because the configuration keeps two copies of the positions: `position`, wrapped back into the box when a particle crosses an edge, and `unwrapped`, which is not, so that the distance a particle has travelled can be measured later. `replace` makes a new configuration with some arrays changed; a configuration is never edited in place, so the state before the step is still there to compare against.
 
-pylj's own step is the same code:
+pylj's own step is the same code, with one addition:
 
 ```{literalinclude} ../../pylj/md.py
 :pyobject: velocity_verlet
 ```
 
-with one addition. If a particle moves further than half the cut-off in one step, the run has already gone wrong, and the integrator stops with a message rather than continuing from a configuration the potential cannot evaluate. Running both on the same configuration gives the same result:
+If a particle moves further than half the cut-off in one step, the timestep is too long or the run has already diverged, and the integrator stops with a message that says so. The forces evaluated at the new positions are returned and kept for the next step, which is why the simulation stores `forces` beside the configuration; step 2 of the algorithm is the last thing step 3 does. Running both on the same configuration gives the same result:
 
 ```{code-cell} python
 ours, our_forces = verlet_step(
-    configuration, simulation.forces, simulation.timestep, simulation.pair_potentials, simulation.cut_off
+    configuration, placed.forces, placed.timestep, placed.pair_potentials, placed.cut_off
 )
 theirs, their_forces = md.velocity_verlet(
-    configuration, simulation.forces, simulation.timestep, simulation.pair_potentials, simulation.cut_off
+    configuration, placed.forces, placed.timestep, placed.pair_potentials, placed.cut_off
 )
 assert np.array_equal(ours.position, theirs.position)
 assert np.array_equal(ours.velocity, theirs.velocity)
-print(f"a particle moved {np.linalg.norm(ours.position - configuration.position, axis=1).max() * 1e10:.4f} Angstrom")
+print(f"the fastest particle moved {np.linalg.norm(ours.position - configuration.position, axis=1).max() * 1e10:.4f} Angstrom")
 ```
 
-The timestep is ten femtoseconds by default. A particle at the thermal speed moves a few hundredths of an Angstrom in that time, a small fraction of the distance over which the force changes, which is what the integrator needs.
+The timestep is ten femtoseconds by default. A particle at the thermal speed moves about 0.025 Angstrom in that time, and the fastest particle a few times that, a small fraction of the distance over which the force changes, which is what the integrator needs.
 
 ## The loop
 
@@ -151,13 +152,37 @@ for _ in range(2000):
         viewer.update(simulation)
 ```
 
-The total energy is potential plus kinetic. Nothing adds or removes energy in this loop, so the total should be constant, and the plot shows it is, to within the small error of the integrator. The kinetic and potential parts trade against each other as pairs approach and separate.
+The total energy is potential plus kinetic. Nothing adds or removes energy in this loop, so the total should be constant. The energy pane above rescales its axis to the data, so the whole height of that panel is a few parts in a thousand of the energy, the small error of the integrator. Plotting the two parts separately shows them trading against each other as pairs approach and separate:
 
 ```{code-cell} python
 s = simulation.samples
+time = s.step * simulation.timestep * 1e12
+fig, ax = plt.subplots(figsize=(5, 3))
+ax.plot(time, s.potential_energy * 1e21, label="potential")
+ax.plot(time, s.kinetic_energy * 1e21, label="kinetic")
+ax.plot(time, s.total_energy * 1e21, label="total")
+ax.set_xlabel("t / ps")
+ax.set_ylabel("E / zJ")
+ax.legend()
+fig.tight_layout()
+```
+
+```{code-cell} python
 drift = (s.total_energy.max() - s.total_energy.min()) / abs(s.total_energy.mean())
 print(f"total energy varies by {drift:.1e} of its value over the run")
 print(f"mean temperature {s.temperature.mean():.0f} K")
+```
+
+## Sampling
+
+`samples` holds one array per measured quantity, and `step` says when each was taken, so a loop may sample as often or as rarely as it likes. The mean squared displacement measures how far particles have travelled from where they started, using the unwrapped positions. It rises steeply at first, while each particle moves in a straight line, and grows linearly once the particles have had time to collide. Sixteen particles give a noisy curve.
+
+```{code-cell} python
+fig, ax = plt.subplots(figsize=(4, 3))
+ax.plot(s.step * simulation.timestep * 1e12, s.msd * 1e20)
+ax.set_xlabel("t / ps")
+ax.set_ylabel("MSD / Angstrom$^2$")
+fig.tight_layout()
 ```
 
 ## The thermostat
@@ -168,7 +193,7 @@ The run above conserves energy, so its temperature drifts from 300 K as the latt
 :pyobject: heat_bath
 ```
 
-Called every step it is a crude thermostat, since it removes the natural fluctuations of the temperature, but it is simple and it holds the target.
+Called every step it is a crude thermostat: it removes the natural fluctuations of the temperature, and averages taken under it are close to, but not exactly, those of a system at that temperature. It is simple and it holds the target, which is what the ideal gas law chapter needs.
 
 ```{code-cell} python
 simulation = MDSimulation.initialise(16, 300, 50, seed=0, **model)
@@ -177,19 +202,6 @@ for _ in range(2000):
     simulation.heat_bath(300)
     simulation.sample()
 print(f"mean temperature {simulation.samples.temperature.mean():.1f} K")
-```
-
-## Sampling
-
-`samples` holds one array per measured quantity, and `step` says when each was taken, so a loop may sample as often or as rarely as it likes. The mean squared displacement measures how far particles have travelled from where they started, using the unwrapped positions, and grows linearly in time for a fluid.
-
-```{code-cell} python
-s = simulation.samples
-fig, ax = plt.subplots(figsize=(4, 3))
-ax.plot(s.step * simulation.timestep * 1e12, s.msd * 1e20)
-ax.set_xlabel("t / ps")
-ax.set_ylabel("MSD / Angstrom$^2$")
-fig.tight_layout()
 ```
 
 ## Your own integrator
@@ -211,5 +223,7 @@ for _ in range(100):
 assert np.array_equal(ours.configuration.position, theirs.configuration.position)
 print("100 steps, identical trajectories")
 ```
+
+`verlet_step` has no half-cut-off check, so a run that goes wrong under `HandWritten` continues until the potential itself raises.
 
 The ideal gas law chapter uses this loop to measure the pressure of argon and test the ideal gas law. The next chapter reaches equilibrium properties by a different route, with no velocities and no clock.
