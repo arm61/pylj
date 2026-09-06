@@ -14,12 +14,11 @@ from pylj.configuration import MDConfiguration
 from pylj.constants import BOLTZMANN
 from pylj.pairwise import PairPotentials
 from pylj.placement import place
-from pylj.potentials import Species
+from pylj.potentials import Species, check_positive_finite
 from pylj.simulation import (
     Samples,
     Simulation,
     _check_initial_energy,
-    _check_positive_finite,
     _check_potentials_at_the_cut_off,
     _empty,
 )
@@ -103,7 +102,7 @@ class MDSimulation(Simulation):
                 "with MDSimulation.initialise(...) or construct an MDConfiguration."
             )
         super().__init__(configuration, pair_potentials, cut_off=cut_off, seed=seed)
-        _check_positive_finite("timestep", timestep)
+        check_positive_finite("timestep", timestep)
         self.timestep = timestep
         temperature = configuration.temperature()
         if temperature == 0:
@@ -406,7 +405,7 @@ def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConf
             particles are at rest, or the current temperature is not finite
             (the simulation has diverged).
     """
-    _check_positive_finite("bath_temperature", bath_temperature)
+    check_positive_finite("bath_temperature", bath_temperature)
     current = configuration.temperature()
     if current == 0:
         raise ValueError("Cannot rescale velocities: the particles are at rest.")

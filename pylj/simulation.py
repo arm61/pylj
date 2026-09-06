@@ -22,9 +22,6 @@ from pylj.potentials import PairPotential, Species, check_positive_finite
 INITIAL_ENERGY_LIMIT = 10.0
 
 
-_check_positive_finite = check_positive_finite
-
-
 def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPotentials) -> None:
     """Check that a model is complete.
 
@@ -159,7 +156,7 @@ def _resolve_cut_off(box: float, cut_off: float | None) -> float:
     """
     if cut_off is None:
         return min(15e-10, box / 2)
-    _check_positive_finite("cut_off", cut_off)
+    check_positive_finite("cut_off", cut_off)
     if cut_off > box / 2:
         raise ValueError(
             f"The cut-off of {cut_off * 1e10:.1f} Angstrom exceeds half the box of "

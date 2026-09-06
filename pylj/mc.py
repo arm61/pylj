@@ -13,12 +13,11 @@ from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
 from pylj.pairwise import PairPotentials
 from pylj.placement import place
-from pylj.potentials import Species
+from pylj.potentials import Species, check_positive_finite
 from pylj.simulation import (
     Samples,
     Simulation,
     _check_initial_energy,
-    _check_positive_finite,
     _check_potentials_at_the_cut_off,
     _empty,
 )
@@ -39,18 +38,21 @@ class MCSamples(Samples):
 class Proposal:
     """A proposed configuration for a Monte Carlo move.
 
-    The energy change is relative to the configuration that was current when
-    the proposal was made, so a proposal is applied to that configuration.
+    The energy change is relative to the configuration the proposal was made
+    from, so a proposal can only be applied while that configuration is
+    still the current one.
 
     Attributes:
         position: The proposed position of every particle, shape ``(N, 2)``,
             in metres.
         energy_change: The energy of the proposed configuration minus that
-            of the configuration it was proposed from, in joules.
+            of ``source``, in joules.
+        source: The configuration the proposal was made from.
     """
 
     position: NDArray[np.float64]
     energy_change: float
+    source: Configuration
 
 
 def accept(
@@ -132,7 +134,7 @@ class MCSimulation(Simulation):
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> None:
-        _check_positive_finite("temperature", temperature)
+        check_positive_finite("temperature", temperature)
         super().__init__(configuration, pair_potentials, cut_off=cut_off, seed=seed)
         self.temperature = temperature
         _check_potentials_at_the_cut_off(
@@ -227,7 +229,7 @@ class MCSimulation(Simulation):
         ) - others.insertion_energy(current, species_index, self.pair_potentials, self.cut_off)
         position = configuration.position.copy()
         position[particle] = trial
-        return Proposal(position, energy_change)
+        return Proposal(position, energy_change, configuration)
 
     def apply(self, proposal: Proposal) -> None:
         """Make a proposed configuration the current one.
@@ -237,7 +239,20 @@ class MCSimulation(Simulation):
 
         Args:
             proposal: The proposal to apply, from :meth:`propose`.
+
+        Raises:
+            ValueError: If the proposal was made from a configuration other
+                than the current one, so its energy change no longer
+                applies. This happens when two proposals are made and both
+                are applied: the second must be proposed after the first is
+                applied.
         """
+        if proposal.source is not self.configuration:
+            raise ValueError(
+                "This proposal was made from a configuration that is no longer the current "
+                "one, so its energy change no longer applies. Propose again from the current "
+                "configuration."
+            )
         self.configuration = self.configuration.replace(position=proposal.position)
         self.energy += proposal.energy_change
 

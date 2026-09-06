@@ -147,7 +147,8 @@ class TestMoves(unittest.TestCase):
         a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
         proposal = a.propose()
         self.assertEqual(proposal, proposal)
-        self.assertNotEqual(proposal, mc.Proposal(proposal.position, proposal.energy_change))
+        copy = mc.Proposal(proposal.position, proposal.energy_change, proposal.source)
+        self.assertNotEqual(proposal, copy)
 
     def test_propose_leaves_the_configuration_untouched(self):
         a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
@@ -183,6 +184,18 @@ class TestMoves(unittest.TestCase):
                 moved_species.add(int(a.configuration.species_index[moved][0]))
                 a.apply(proposal)
             self.assertEqual(moved_species, set(range(len(model["species"]))))
+
+    def test_apply_refuses_a_proposal_from_an_earlier_configuration(self):
+        # Two proposals made from the same configuration: applying the
+        # second after the first would undo the first move and add an
+        # energy change that no longer applies.
+        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+        first, second = a.propose(), a.propose()
+        a.apply(first)
+        with self.assertRaisesRegex(ValueError, "no longer the current one"):
+            a.apply(second)
+        assert_equal(a.configuration.position, first.position)
+        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
 
     def test_apply_updates_the_positions_and_the_energy(self):
         a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)

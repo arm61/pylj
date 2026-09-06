@@ -6,10 +6,9 @@ import numpy as np
 
 from pylj.configuration import Configuration
 from pylj.pairwise import PairPotentials
-from pylj.potentials import Species
+from pylj.potentials import Species, check_positive_finite
 from pylj.simulation import (
     _check_pair_potentials,
-    _check_positive_finite,
     _check_potentials_at_the_cut_off,
     _resolve_cut_off,
 )
@@ -165,10 +164,10 @@ def place(
     """
     if number_of_particles < 1:
         raise ValueError("A simulation needs at least one particle")
-    _check_positive_finite("temperature", temperature)
+    check_positive_finite("temperature", temperature)
     if placement_temperature is None:
         placement_temperature = temperature
-    _check_positive_finite("placement_temperature", placement_temperature)
+    check_positive_finite("placement_temperature", placement_temperature)
     if not 4 <= box <= 600:
         raise ValueError(
             f"box must be between 4 and 600 Angstrom, not {box}: below 4 the cell cannot "
