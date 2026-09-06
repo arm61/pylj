@@ -18,7 +18,7 @@ plt.rcParams["figure.dpi"] = 100
 pylj comes with eight viewers, each a live figure that redraws when its `update(simulation)` method is called:
 
 - `JustCell`: the particle positions
-- `Energy`: positions and the energy: the total energy, potential plus kinetic, for molecular dynamics, and the potential energy for Monte Carlo, which has no kinetic energy to add
+- `Energy`: positions and the energy. For molecular dynamics that is the total energy, potential plus kinetic; for Monte Carlo it is the potential energy.
 - `MaxBolt`: positions and a histogram of particle speeds
 - `RDF`: positions and the radial distribution function
 - `CellPlus`: positions and one plot of data you supply
@@ -26,15 +26,15 @@ pylj comes with eight viewers, each a live figure that redraws when its `update(
 - `Phase`: positions, total energy, mean squared displacement and the radial distribution function
 - `Scattering`: positions, the radial distribution function, mean squared displacement and the scattering profile
 
-The `MaxBolt`, `Interactions`, `Phase` and `Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo simulation before they build their figure, naming themselves in the error. Every viewer takes the `MDSimulation` or `MCSimulation`, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the particles at, in Angstrom; `CellPlus` also takes the axis labels of its custom plot. Every viewer has an `average()` method that replaces the latest curve with the mean of every update so far; it raises `ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the {doc}`sample` module documentation.
+The `MaxBolt`, `Interactions`, `Phase` and `Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo simulation before they build their figure, naming themselves in the error. Every viewer takes the `MDSimulation` or `MCSimulation`, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the particles at, in Angstrom; `CellPlus` takes the axis labels of its custom plot as well, and its `update(simulation, xdata, ydata)` takes the data to draw. Every viewer has an `average()` method that replaces the latest curve with the mean of every update so far; it raises `ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the {doc}`sample` module documentation.
 
 The viewers use the inline matplotlib backend. Start notebooks with `%matplotlib inline`.
 
 ## Panes
 
-A viewer is a grid of panes. A pane draws one quantity into one matplotlib axes and has two methods: `setup(ax, simulation)` creates the line and labels once, and `update(ax, simulation)` pushes the current state of the simulation into that line. The panes that exist are `CellPane`, `EnergyPane`, `TemperaturePane`, `PressurePane`, `MSDPane`, `RDFPane`, `ScatteringPane`, `MaxwellBoltzmannPane` and `CustomPane`.
+A viewer is a grid of panes. A pane draws one quantity into one matplotlib axes and has two methods: `setup(ax, simulation)` creates the line and labels once, and `update(ax, simulation)` pushes the current state of the simulation into that line. A pane whose curve can be averaged sets `keeps_history = True` and overrides `average(ax)`; the radial distribution function pane is the model to copy. The panes that exist are `CellPane`, `EnergyPane`, `TemperaturePane`, `PressurePane`, `MSDPane`, `RDFPane`, `ScatteringPane`, `MaxwellBoltzmannPane` and `CustomPane`.
 
-Panes that plot a quantity against time read it from the sample arrays on the simulation, which `sample()` fills. Each call records the current step in `samples.step`, so a loop may sample as often or as rarely as it likes. A molecular dynamics pane plots against `samples.step` times the timestep; a Monte Carlo pane plots against the step, since a Monte Carlo simulation has no timestep. The radial distribution function pane shows its axes in metres. `step()` advances the step count.
+Panes that plot a quantity against time read it from the sample arrays on the simulation, which `sample()` fills. Each call records the current step in `samples.step`, so a loop may sample as often or as rarely as it likes. A molecular dynamics pane plots against `samples.step` times the timestep; a Monte Carlo pane plots against the step, since a Monte Carlo simulation has no timestep. The radial distribution function pane shows its distance axis in metres.
 
 ## Building your own viewer
 
@@ -64,6 +64,8 @@ for _ in range(300):
     if simulation.steps % 100 == 0:
         viewer.update(simulation)
 ```
+
+A viewer composed this way takes the drawn diameter on its cell pane, `CellPane(diameter)`, in Angstrom; a purely repulsive potential needs one, as the previous chapter showed.
 
 To plot a new quantity, write a pane. This one plots the x velocity of the first particle against time; it reads velocities and a time, which only a molecular dynamics simulation has, so it sets `needs_md` and the viewer refuses a Monte Carlo simulation with a message rather than an `AttributeError`:
 
