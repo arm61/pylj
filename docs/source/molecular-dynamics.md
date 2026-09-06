@@ -136,7 +136,7 @@ assert np.array_equal(ours.velocity, theirs.velocity)
 print(f"the fastest particle moved {np.linalg.norm(ours.position - configuration.position, axis=1).max() * 1e10:.4f} Angstrom")
 ```
 
-The timestep is ten femtoseconds by default. A particle at the thermal speed moves about 0.025 Angstrom in that time, and the fastest particle a few times that, a small fraction of the distance over which the force changes, which is what the integrator needs.
+The timestep is ten femtoseconds by default. A particle at the thermal speed moves about 0.025 Angstrom in that time, and the fastest particle about twice that, a small fraction of the distance over which the force changes, which is what the integrator needs.
 
 ## The loop
 
@@ -175,7 +175,7 @@ print(f"mean temperature {s.temperature.mean():.0f} K")
 
 ## Sampling
 
-`samples` holds one array per measured quantity, and `step` says when each was taken, so a loop may sample as often or as rarely as it likes. The mean squared displacement measures how far particles have travelled from where they started, using the unwrapped positions. It rises steeply at first, while each particle moves in a straight line, and grows linearly once the particles have had time to collide. Sixteen particles give a noisy curve.
+`samples` holds one array per measured quantity, and `step` says when each was taken, so a loop may sample as often or as rarely as it likes. The mean squared displacement measures how far particles have travelled from where they started, using the unwrapped positions. While a particle flies freely its displacement grows with time, so the mean squared displacement grows with time squared and the curve bends upward. Once the particles have collided many times the curve straightens into a line whose slope gives the diffusion coefficient. Sixteen particles in a 50 Angstrom box are dilute, and in these 20 picoseconds most have not yet collided, so the curve here is still bending upward.
 
 ```{code-cell} python
 fig, ax = plt.subplots(figsize=(4, 3))
@@ -187,7 +187,7 @@ fig.tight_layout()
 
 ## The thermostat
 
-The run above conserves energy, so its temperature drifts from 300 K as the lattice relaxes and potential energy becomes kinetic. To hold a temperature, pylj rescales the velocities. `heat_bath(T)` multiplies every velocity by $\sqrt{T / T_{\text{now}}}$, which sets the instantaneous temperature to $T$ exactly:
+The run above conserves energy, so its temperature drifts from 300 K as the particles leave the lattice and fall into each other's attractive wells, turning potential energy into kinetic. To hold a temperature, pylj rescales the velocities. `heat_bath(T)` multiplies every velocity by $\sqrt{T / T_{\text{now}}}$, which sets the instantaneous temperature to $T$ exactly:
 
 ```{literalinclude} ../../pylj/md.py
 :pyobject: heat_bath
