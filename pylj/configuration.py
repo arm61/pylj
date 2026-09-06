@@ -13,7 +13,7 @@ from pylj.pairwise import PairPotentials
 from pylj.potentials import Species
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class PairData:
     """The distance, separation, energy and force of every pair of particles.
 
@@ -48,7 +48,7 @@ def _radial_force(pairs: PairData) -> NDArray[np.float64]:
     return pairs.radial_force
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class Configuration:
     """Where the particles are: the state a Monte Carlo simulation evolves.
 
@@ -242,7 +242,7 @@ class Configuration:
         return float(energy.sum())
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class MDConfiguration(Configuration):
     """Where the particles are and how fast they move: the state a molecular
     dynamics simulation evolves.
@@ -277,10 +277,11 @@ class MDConfiguration(Configuration):
     def temperature(self) -> float:
         """The instantaneous temperature, in kelvin.
 
-        The centre of mass starts at rest, and the pair forces cannot set it
-        moving. Two of the ``2N`` velocity components are therefore fixed by
-        that condition, leaving ``2N - 2`` components to carry thermal energy.
-        The temperature is the kinetic energy divided by ``(N - 1) k_B``.
+        ``MDSimulation.initialise`` sets the centre of mass at rest, and the
+        pair forces cannot set it moving. Two of the ``2N`` velocity
+        components are therefore fixed by that condition, leaving ``2N - 2``
+        components to carry thermal energy. The temperature is the kinetic
+        energy divided by ``(N - 1) k_B``.
 
         Raises:
             ValueError: If there are fewer than two particles.

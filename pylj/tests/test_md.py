@@ -8,7 +8,7 @@ from pylj.configuration import MDConfiguration
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.md import MDSimulation
 from pylj.potentials import LennardJones
-from pylj.tests.argon import ARGON, ARGON_MODEL, MIXTURE_MODEL, WELL_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL, WELL_MODEL
 
 
 def two_argon(velocity, box=8e-10):
@@ -71,6 +71,17 @@ class TestInitialise(unittest.TestCase):
         self.assertLess(abs(momentum[0]), 1e-12 * momentum_scale)
         self.assertLess(abs(momentum[1]), 1e-12 * momentum_scale)
         assert_almost_equal(c.temperature(), 100)
+
+    def test_heavier_particles_move_more_slowly(self):
+        # Each species gets its own thermal width: the mean square speed of
+        # a species is 2 k_B T / m, so the argon particles move faster than
+        # the heavier ones. A thousand particles keep the sampling noise
+        # to a few per cent.
+        c = MDSimulation.initialise(1000, 100, 320, seed=0, **MIXTURE_MODEL).configuration
+        for index, species in enumerate((ARGON, LARGER)):
+            speeds_squared = np.sum(c.velocity[c.species_index == index] ** 2, axis=1)
+            expected = 2 * BOLTZMANN * 100 / (species.mass * ATOMIC_MASS_UNIT)
+            assert_allclose(speeds_squared.mean(), expected, rtol=0.1)
 
     def test_refuses_a_potential_with_no_force(self):
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
@@ -242,9 +253,11 @@ class TestVelocityVerlet(unittest.TestCase):
         # truncation adds no energy jumps, leaving only the integrator's
         # error, which is second order in the timestep: halving the
         # timestep over the same simulated time cuts the drift by about
-        # four. Measured: 1.6e-4 at 1e-14 s, 3.9e-5 at 5e-15 s.
-        def worst_drift(timestep, steps):
-            a = MDSimulation.initialise(25, 100, 20, timestep=timestep, seed=0, **ARGON_MODEL)
+        # four. The mixture checks that each species is moved with its own
+        # mass. Measured for argon: 1.6e-4 at 1e-14 s, 3.9e-5 at 5e-15 s;
+        # for the mixture: 3.0e-3 and 7.6e-4.
+        def worst_drift(model, box, timestep, steps):
+            a = MDSimulation.initialise(25, 100, box, timestep=timestep, seed=0, **model)
             a.cut_off = 1e-8
             a.forces = a.configuration.forces(a.pair_potentials, a.cut_off)
             initial = kinetic_plus_potential(a)
@@ -254,21 +267,37 @@ class TestVelocityVerlet(unittest.TestCase):
                 drift = max(drift, abs(kinetic_plus_potential(a) - initial) / abs(initial))
             return drift
 
-        coarse = worst_drift(1e-14, 200)
-        fine = worst_drift(5e-15, 400)
-        self.assertLess(coarse, 5e-4)
-        self.assertLess(fine, coarse / 3)
+        for model, box, limit in ((ARGON_MODEL, 20, 5e-4), (MIXTURE_MODEL, 30, 5e-3)):
+            coarse = worst_drift(model, box, 1e-14, 200)
+            fine = worst_drift(model, box, 5e-15, 400)
+            self.assertLess(coarse, limit)
+            self.assertLess(fine, coarse / 3)
 
     def test_conserves_momentum(self):
         # The pair forces are equal and opposite, so the total momentum,
-        # zero after initialisation, stays zero to rounding.
-        a = MDSimulation.initialise(25, 100, 20, seed=0, **ARGON_MODEL)
-        thermal_speed = np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
-        for _ in range(200):
+        # zero after initialisation, stays zero to rounding. With two
+        # masses only the mass-weighted sum is conserved.
+        momentum_scale = (
+            ARGON.mass
+            * ATOMIC_MASS_UNIT
+            * np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
+        )
+        for model, box in ((ARGON_MODEL, 20), (MIXTURE_MODEL, 30)):
+            a = MDSimulation.initialise(25, 100, box, seed=0, **model)
+            for _ in range(200):
+                a.step()
+            c = a.configuration
+            momentum = (c.masses[:, None] * c.velocity).sum(axis=0)
+            self.assertLess(abs(momentum[0]), 1e-12 * momentum_scale)
+            self.assertLess(abs(momentum[1]), 1e-12 * momentum_scale)
+
+    def test_refuses_a_step_that_moves_a_particle_past_half_the_cut_off(self):
+        # A timestep a thousand times too long carries a particle tens of
+        # Angstrom in one step; the integrator refuses rather than continue
+        # from a configuration it cannot trust.
+        a = MDSimulation.initialise(25, 100, 20, timestep=1e-11, seed=0, **ARGON_MODEL)
+        with self.assertRaisesRegex(ValueError, "half the cut-off"):
             a.step()
-        momentum = a.configuration.velocity.sum(axis=0)
-        self.assertLess(abs(momentum[0]), 1e-12 * thermal_speed)
-        self.assertLess(abs(momentum[1]), 1e-12 * thermal_speed)
 
 
 class TestMSD(unittest.TestCase):
@@ -328,7 +357,7 @@ class TestHeatBath(unittest.TestCase):
 
     def test_raises_for_a_non_positive_bath_temperature(self):
         c = two_argon([[3e2, 0.0], [-3e2, 0.0]])
-        for bad in (0.0, -5.0, np.nan):
+        for bad in (0.0, -5.0, np.nan, np.inf):
             with self.assertRaises(ValueError):
                 md.heat_bath(c, bad)
 

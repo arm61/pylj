@@ -92,7 +92,7 @@ def place_metropolis(
             be drawn, so the same call may succeed with one seed and raise with
             another.
     """
-    # mc imports this module for its base classes, so the criterion is
+    # mc imports this module for place, so the acceptance criterion is
     # imported here rather than at the top of the module.
     from pylj.mc import accept
 

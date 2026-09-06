@@ -385,7 +385,9 @@ def test_scattering_pane_matches_direct_debye_sum():
     q = np.linspace(2 * np.pi / box, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
     q = q[ScatteringPane.SKIP :]
     r, _ = pairwise.dist(simulation.configuration.position, box)
-    expected = np.clip(np.array([np.sum(np.sin(qi * r) / (qi * r)) for qi in q]), 0, None)
+    n = simulation.configuration.number_of_particles
+    expected = np.array([n + 2 * np.sum(np.sin(qi * r) / (qi * r)) for qi in q])
+    assert np.all(expected > 0)
     assert_allclose(ax.lines[0].get_ydata(), expected, rtol=1e-6)
     plt.close(fig)
 

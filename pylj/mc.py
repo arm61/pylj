@@ -35,7 +35,7 @@ class MCSamples(Samples):
     potential_energy: NDArray[np.float64] = field(default_factory=_empty)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class Proposal:
     """A proposed configuration for a Monte Carlo move.
 

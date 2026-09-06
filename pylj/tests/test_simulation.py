@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
-from pylj import placement, simulation
+from pylj import md, placement, simulation
 from pylj.tests.argon import ARGON, ARGON_MODEL, WELL_MODEL
 
 
@@ -59,13 +59,21 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(s.samples.step.size, 0)
         self.assertEqual(s.rng.random(), np.random.default_rng(1).random())
 
-    def test_samples_add_appends_one_value_to_each_named_array(self):
+    def test_samples_add_appends_one_value_to_each_array(self):
         samples = simulation.Samples()
         samples.add(step=3)
         samples.add(step=7)
         assert_equal(samples.step, [3, 7])
-        with self.assertRaises(AttributeError):
-            samples.add(pressure=1.0)
+
+    def test_samples_add_refuses_a_partial_or_unknown_sample(self):
+        # A missing or unknown name would leave the arrays out of step, so
+        # both are refused and the record is left as it was.
+        samples = md.MDSamples()
+        with self.assertRaisesRegex(ValueError, "one value for each"):
+            samples.add(step=3)
+        with self.assertRaisesRegex(ValueError, "one value for each"):
+            samples.add(step=3, pressure=1.0, mass=2.0)
+        self.assertEqual(samples.step.size, 0)
 
     def test_cut_off_defaults_to_15_angstrom_or_half_the_box(self):
         assert_almost_equal(self.build().cut_off * 1e10, 15)

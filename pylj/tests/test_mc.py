@@ -143,6 +143,12 @@ class TestMoves(unittest.TestCase):
         self.assertGreater(overlaps, 0)
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
 
+    def test_proposals_compare_by_identity(self):
+        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+        proposal = a.propose()
+        self.assertEqual(proposal, proposal)
+        self.assertNotEqual(proposal, mc.Proposal(proposal.position, proposal.energy_change))
+
     def test_propose_leaves_the_configuration_untouched(self):
         a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
         before = a.configuration

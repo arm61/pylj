@@ -50,6 +50,13 @@ class TestLennardJones:
         with pytest.raises(TypeError):
             LennardJones(1.65e-21, 3.4e-10)
 
+    def test_rejects_a_non_positive_or_non_finite_parameter(self):
+        for name in ("epsilon", "sigma"):
+            for bad in (0.0, -1.0, np.inf, np.nan):
+                parameters = {"epsilon": 1.65e-21, "sigma": 3.4e-10, name: bad}
+                with pytest.raises(ValueError, match=name):
+                    LennardJones(**parameters)
+
     def test_energy_zero_at_sigma(self):
         lj = LennardJones(epsilon=1.65e-21, sigma=3.4e-10)
         np.testing.assert_allclose(lj.energies(np.array([3.4e-10])), [0.0], atol=1e-30)
@@ -89,6 +96,23 @@ class TestBuckingham:
     def test_constructor_is_keyword_only(self):
         with pytest.raises(TypeError):
             Buckingham(1e-16, 3e10, 1e-77)
+
+    def test_rejects_a_non_positive_or_non_finite_parameter(self):
+        good = {"a": 1e-16, "b": 3e10, "c": 1e-77}
+        for name in ("a", "b"):
+            for bad in (0.0, -1.0, np.inf, np.nan):
+                with pytest.raises(ValueError, match=name):
+                    Buckingham(**{**good, name: bad})
+        for bad in (-1e-77, np.inf, np.nan):
+            with pytest.raises(ValueError, match="c must"):
+                Buckingham(**{**good, "c": bad})
+
+    def test_rejects_a_repulsion_too_weak_to_form_a_barrier(self):
+        # With A fourteen orders of magnitude too small the barrier would
+        # sit at about 500 Angstrom, beyond any separation a simulation
+        # reaches: every pair would be inside it.
+        with pytest.raises(ValueError, match="too weak"):
+            Buckingham(a=1e-30, b=1e5, c=1e-77)
 
     def test_energy_matches_the_formula(self):
         bk = Buckingham(a=1e-16, b=3e10, c=1e-77)
@@ -137,6 +161,16 @@ class TestSquareWell:
     def test_constructor_is_keyword_only(self):
         with pytest.raises(TypeError):
             SquareWell(1.65e-21, 3.4e-10, 1.5)
+
+    def test_rejects_a_non_positive_or_non_finite_parameter(self):
+        good = {"epsilon": 1.65e-21, "sigma": 3.4e-10, "lambda_": 1.5}
+        for name in ("epsilon", "sigma"):
+            for bad in (0.0, -1.0, np.inf, np.nan):
+                with pytest.raises(ValueError, match=name):
+                    SquareWell(**{**good, name: bad})
+        for bad in (1.0, 0.5, np.inf, np.nan):
+            with pytest.raises(ValueError, match="lambda_"):
+                SquareWell(**{**good, "lambda_": bad})
 
     def test_energy_is_a_step(self):
         sw = SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5, max_val=1e5)

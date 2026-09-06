@@ -5,7 +5,7 @@ import copy
 import itertools
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Self
 
 import numpy as np
@@ -15,17 +15,14 @@ from pylj import pairwise
 from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
 from pylj.pairwise import PairPotentials
-from pylj.potentials import PairPotential, Species
+from pylj.potentials import PairPotential, Species, check_positive_finite
 
 #: Largest potential energy per particle, in units of k_B T, accepted for an
 #: initial configuration.
 INITIAL_ENERGY_LIMIT = 10.0
 
 
-def _check_positive_finite(name: str, value: float) -> None:
-    """Raise ``ValueError`` unless ``value`` is positive and finite."""
-    if not (np.isfinite(value) and value > 0):
-        raise ValueError(f"{name} must be positive and finite, not {value}")
+_check_positive_finite = check_positive_finite
 
 
 def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPotentials) -> None:
@@ -133,9 +130,12 @@ def _check_initial_energy(energy: float, number_of_particles: int, temperature: 
         "Use fewer particles or a larger box; init_conf='metropolis' places particles by "
         "energy, and a lower placement_temperature there keeps them further apart."
     )
+    if number_of_particles == 0:
+        return
     if not np.isfinite(energy):
         raise ValueError(
-            f"The initial pair energy is not finite: particles sit inside a hard core. {remedy}"
+            "The initial pair energy is not finite: particles sit inside a hard core, or a "
+            f"position is not a number. {remedy}"
         )
     per_particle = energy / (number_of_particles * BOLTZMANN * temperature)
     if per_particle > INITIAL_ENERGY_LIMIT:
@@ -189,14 +189,22 @@ class Samples:
     step: NDArray[np.int64] = field(default_factory=lambda: np.array([], dtype=np.int64))
 
     def add(self, **values: float) -> None:
-        """Append one value to each named array.
+        """Append one value to every array, keeping them aligned.
 
         Args:
-            **values: The arrays to append to, by name, and the values.
+            **values: One value for each of this record's arrays, by name.
 
         Raises:
-            AttributeError: If a name is not one of this record's arrays.
+            ValueError: If the names do not match this record's arrays
+                exactly, since a missing or unknown name would leave the
+                arrays out of step.
         """
+        expected = {f.name for f in fields(self)}
+        if set(values) != expected:
+            raise ValueError(
+                f"{type(self).__name__}.add needs one value for each of "
+                f"{sorted(expected)}, not {sorted(values)}"
+            )
         for name, value in values.items():
             setattr(self, name, np.append(getattr(self, name), value))
 

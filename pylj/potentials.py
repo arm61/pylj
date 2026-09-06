@@ -1,9 +1,23 @@
+"""The particle species and the pair potentials that act between them:
+Lennard-Jones, Buckingham and the square well."""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import brentq
+
+
+def check_positive_finite(name: str, value: float) -> None:
+    """Raise ``ValueError`` unless ``value`` is positive and finite.
+
+    Args:
+        name: The name of the parameter, for the error message.
+        value: The value to check.
+    """
+    if not (np.isfinite(value) and value > 0):
+        raise ValueError(f"{name} must be positive and finite, not {value}")
 
 
 @dataclass(frozen=True)
@@ -22,8 +36,7 @@ class Species:
     name: str = ""
 
     def __post_init__(self) -> None:
-        if not (np.isfinite(self.mass) and self.mass > 0):
-            raise ValueError(f"mass must be positive and finite, not {self.mass}")
+        check_positive_finite("mass", self.mass)
 
 
 class PairPotential(ABC):
@@ -68,9 +81,14 @@ class LennardJones(PairPotential):
     Args:
         epsilon: The well depth, in joules.
         sigma: The separation at which the pair energy is zero, in metres.
+
+    Raises:
+        ValueError: If ``epsilon`` or ``sigma`` is not positive and finite.
     """
 
     def __init__(self, *, epsilon: float, sigma: float):
+        check_positive_finite("epsilon", epsilon)
+        check_positive_finite("sigma", sigma)
         self.epsilon = epsilon
         self.sigma = sigma
 
@@ -109,9 +127,19 @@ class Buckingham(PairPotential):
     Attributes:
         min_separation: The separation of the top of the short-range
             barrier, in metres; zero when there is no barrier.
+
+    Raises:
+        ValueError: If ``a`` or ``b`` is not positive and finite, if ``c`` is
+            negative or not finite, or if the barrier lies beyond 100
+            Angstrom, so that the formula collapses at every separation a
+            simulation could reach.
     """
 
     def __init__(self, *, a: float, b: float, c: float):
+        check_positive_finite("a", a)
+        check_positive_finite("b", b)
+        if not (np.isfinite(c) and c >= 0):
+            raise ValueError(f"c must be non-negative and finite, not {c}")
         self.a = a
         self.b = b
         self.c = c
@@ -132,6 +160,12 @@ class Buckingham(PairPotential):
             barrier = int(np.argmax(self._form(dr)))
         if barrier == 0:
             return 0.0
+        if barrier == dr.size - 1:
+            raise ValueError(
+                "The Buckingham energy is still rising at 100 Angstrom: the repulsion "
+                "A exp(-B r) is too weak to hold particles apart at any separation a "
+                "simulation could reach. Increase a or b, or reduce c."
+            )
         return float(brentq(self._slope, dr[barrier - 1], dr[barrier + 1], xtol=1e-16))
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
@@ -164,9 +198,20 @@ class SquareWell(PairPotential):
         sigma: The hard-core diameter, in metres.
         lambda_: The outer edge of the well, in units of sigma.
         max_val: The value used in place of the infinite hard core.
+
+    Raises:
+        ValueError: If ``epsilon`` or ``sigma`` is not positive and finite,
+            or ``lambda_`` is not greater than one.
     """
 
     def __init__(self, *, epsilon: float, sigma: float, lambda_: float, max_val: float = np.inf):
+        check_positive_finite("epsilon", epsilon)
+        check_positive_finite("sigma", sigma)
+        if not (np.isfinite(lambda_) and lambda_ > 1):
+            raise ValueError(
+                f"lambda_ must be greater than 1, not {lambda_}: the well lies outside "
+                "the hard core"
+            )
         self.epsilon = epsilon
         self.sigma = sigma
         self.lambda_ = lambda_

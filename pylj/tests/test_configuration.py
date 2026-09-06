@@ -38,6 +38,18 @@ def three_particles(species_index=(0, 0, 0)):
 
 
 class TestConfiguration(unittest.TestCase):
+    def test_compares_by_identity_not_by_array_contents(self):
+        # A dataclass with array fields cannot compare field by field: numpy
+        # equality gives an array, not a truth value. Two configurations are
+        # equal only when they are the same object.
+        c = three_particles()
+        self.assertEqual(c, c)
+        self.assertNotEqual(c, c.replace())
+        self.assertNotEqual(
+            c.pairs(ARGON_MODEL["pair_potentials"], 15e-10),
+            c.pairs(ARGON_MODEL["pair_potentials"], 15e-10),
+        )
+
     def test_holds_positions_species_and_box(self):
         c = three_particles([0, 1, 0])
         self.assertEqual(c.number_of_particles, 3)

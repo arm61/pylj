@@ -31,6 +31,10 @@ class Viewer:
         simulation: The simulation to visualise.
         panes: The panes to show, in reading order across the grid.
         size: Figure size: 'small', 'medium' or 'large'.
+
+    Raises:
+        ValueError: If a pane plots molecular dynamics samples and the
+            simulation is a Monte Carlo one, which records none.
     """
 
     def __init__(self, simulation: Simulation, panes: list[Pane], size: str = "medium") -> None:

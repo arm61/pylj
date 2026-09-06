@@ -151,9 +151,10 @@ class MDSimulation(Simulation):
         their velocities at a temperature.
 
         Each component of each velocity is drawn from a normal distribution
-        whose width is the thermal speed of that particle at the requested
-        temperature, which depends on its mass. The velocity of the centre of
-        mass is then subtracted, so the system as a whole is at rest. Finally
+        of width ``sqrt(k_B T / m)``, where ``m`` is the mass of that
+        particle, so heavier particles move more slowly. The velocity of
+        the centre of mass is then subtracted, so the system as a whole is
+        at rest. Finally
         every velocity is scaled by the same factor, so that the instantaneous
         temperature is exactly the one requested. The temperature is not
         stored: molecular dynamics measures it.
@@ -237,7 +238,13 @@ class MDSimulation(Simulation):
         )
 
     def step(self) -> None:
-        """Integrate one timestep and advance the clock."""
+        """Integrate one timestep and advance the clock.
+
+        Raises:
+            ValueError: If a particle moves further than half the cut-off in
+                the step, or a pair comes closer than its potential allows;
+                either way the run has diverged.
+        """
         self.integrate()
         self.steps += 1
 
@@ -248,8 +255,8 @@ class MDSimulation(Simulation):
             bath_temperature: The desired temperature, in kelvin.
 
         Raises:
-            ValueError: If the bath temperature is not positive, or the
-                particles are at rest or the simulation has diverged.
+            ValueError: If the bath temperature is not positive and finite,
+                the particles are at rest, or the simulation has diverged.
         """
         self.configuration = heat_bath(self.configuration, bath_temperature)
 
@@ -306,10 +313,23 @@ def velocity_verlet(
 
     Returns:
         The configuration at time t + dt and the forces at it.
+
+    Raises:
+        ValueError: If a particle moves further than half the cut-off in
+            the one step. No particle moves that far in a run that is
+            behaving: the timestep is too long, or the run has already
+            diverged.
     """
     masses = configuration.masses[:, None]
     accelerations = forces / masses
     position, unwrapped = update_positions(configuration, accelerations, timestep)
+    furthest = float(np.linalg.norm(unwrapped - configuration.unwrapped, axis=1).max())
+    if not furthest < cut_off / 2:
+        raise ValueError(
+            f"A particle moved {furthest * 1e10:.3g} Angstrom in a single step of "
+            f"{timestep:.3g} s, more than half the cut-off of {cut_off * 1e10:.3g} Angstrom: "
+            "the timestep is too long, or the simulation has diverged."
+        )
     moved = configuration.replace(position=position, unwrapped=unwrapped)
     next_forces = moved.forces(pair_potentials, cut_off)
     next_accelerations = next_forces / masses
@@ -382,12 +402,11 @@ def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConf
         The configuration with the velocities rescaled.
 
     Raises:
-        ValueError: If the bath temperature is not positive, the particles
-            are at rest, or the current temperature is not finite (the
-            simulation has diverged).
+        ValueError: If the bath temperature is not positive and finite, the
+            particles are at rest, or the current temperature is not finite
+            (the simulation has diverged).
     """
-    if not bath_temperature > 0:
-        raise ValueError(f"bath_temperature must be positive, not {bath_temperature}")
+    _check_positive_finite("bath_temperature", bath_temperature)
     current = configuration.temperature()
     if current == 0:
         raise ValueError("Cannot rescale velocities: the particles are at rest.")

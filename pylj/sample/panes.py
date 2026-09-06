@@ -425,6 +425,10 @@ class RDFPane(_HistoryPane):
 class ScatteringPane(_HistoryPane):
     """Scattering profile I(q) from the Debye sum over pair distances.
 
+    The Debye sum for ``N`` identical scatterers is ``N`` from each particle
+    scattering on its own, plus ``2 sin(q r) / (q r)`` for each pair at
+    distance ``r``.
+
     Keeps every profile it has drawn so ``average`` can show the mean.
     """
 
@@ -456,9 +460,7 @@ class ScatteringPane(_HistoryPane):
             block = q[start : start + self.BLOCK]
             qr = np.outer(block, distance)
             intensity[start : start + self.BLOCK] = np.sum(np.sinc(qr / np.pi), axis=1)
-        # The Debye sum is truncated to a finite set of pairs, so it can come
-        # out slightly negative; an intensity cannot be.
-        intensity = np.clip(intensity, 0, None)
+        intensity = configuration.number_of_particles + 2 * intensity
         self.q = q
         self.history.append(intensity)
         ax.lines[0].set_data(q, intensity)

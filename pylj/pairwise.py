@@ -104,8 +104,10 @@ def calculate_pressure(virial: float, box: float, kinetic_energy: float) -> floa
         p = \frac{1}{2 L^2} \left( 2 K + \sum_{i} \sum_{j > i} f_{ij} r_{ij} \right)
 
     The kinetic term is the momentum the particles carry across a line in
-    the cell; averaged over a run at temperature ``T`` it is the ideal-gas
-    pressure ``N k_B T / L^2``.
+    the cell. The centre of mass is held at rest, so over a run at
+    temperature ``T`` the kinetic energy averages ``(N - 1) k_B T`` and this
+    term averages ``(N - 1) k_B T / L^2``, one particle short of the
+    ideal-gas pressure ``N k_B T / L^2``.
 
     Args:
         virial: The sum over pairs of the radial force times the distance,
