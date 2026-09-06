@@ -24,7 +24,7 @@ panes
 
 A viewer is a grid of panes. A pane draws one quantity into one matplotlib axes and has two methods: :code:`setup(ax, simulation)` creates the line and labels once, and :code:`update(ax, simulation)` pushes the current state of the simulation into that line. The panes that exist are :code:`CellPane`, :code:`EnergyPane`, :code:`TemperaturePane`, :code:`PressurePane`, :code:`MSDPane`, :code:`RDFPane`, :code:`ScatteringPane`, :code:`MaxwellBoltzmannPane` and :code:`CustomPane`.
 
-Panes that plot a quantity against time read it from the sample arrays on the simulation, which :code:`sample()` fills. Each call records the current step in :code:`samples.step`, so a loop may sample as often or as rarely as it likes. The time axes are derived from :code:`samples.step` and the timestep; :code:`step()` advances the step count.
+Panes that plot a quantity against time read it from the sample arrays on the simulation, which :code:`sample()` fills. Each call records the current step in :code:`samples.step`, so a loop may sample as often or as rarely as it likes. A molecular dynamics pane plots against :code:`samples.step` times the timestep; a Monte Carlo pane plots against the step, since a Monte Carlo simulation has no timestep. :code:`step()` advances the step count.
 
 building your own viewer
 ------------------------

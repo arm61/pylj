@@ -8,7 +8,7 @@ All notable changes to pylj are recorded here. The format follows
 ### Added
 
 - `simulation.Samples`, the record a simulation's `sample()` appends to, with one array per quantity and `step`; `md.MDSamples` adds `temperature`, `pressure`, `potential_energy`, `kinetic_energy`, `msd` and the derived `total_energy`; `mc.MCSamples` adds `potential_energy`. A simulation holds it as `samples`.
-- `pylj.configuration`: `Configuration`, an immutable snapshot of `position` (shape `(N, 2)`, metres), `species`, `species_index` and `box`, with `masses` in kilograms, `pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy` taking the pair potentials and the cut-off explicitly, and `replace` and `without` for copies; `MDConfiguration`, adding `velocity` and `unwrapped` with `kinetic_energy`, `temperature` and `msd`; and `PairData`, the per-pair distances, separations, energies and radial forces. `pylj.placement`: `place_square` and `place_metropolis`. `pylj.simulation`: `Simulation`, the base class with `configuration`, `pair_potentials`, `cut_off`, `rng`, `steps`, `samples` and `restart()`.
+- `pylj.configuration`: `Configuration`, an immutable snapshot of `position` (shape `(N, 2)`, metres), `species`, `species_index` and `box`, with `masses` in kilograms, `pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy` taking the pair potentials and the cut-off explicitly, and `replace` and `without` for copies; `MDConfiguration`, adding `velocity` and `unwrapped` with `kinetic_energy`, `temperature` and `msd`; and `PairData`, the per-pair `distance`, `separation`, `energy` and `radial_force` arrays with the `virial` derived from them. `pylj.placement`: `place_square` and `place_metropolis`. `pylj.simulation`: `Simulation`, the base class with `configuration`, `pair_potentials`, `cut_off`, `rng`, `steps`, `samples` and `restart()`.
 - `md.MDSimulation` and `mc.MCSimulation`. `initialise(number_of_particles, temperature, box, *, species, pair_potentials, init_conf='square', placement_temperature=None, cut_off=None, seed=None)` builds one from a model, with the box and the cut-off in Angstrom (`MDSimulation.initialise` also takes `timestep`); the constructors take a ready configuration in SI units. `step()` advances the simulation and `steps`; `sample()` records the samples; `restart()` continues from the current configuration. `MDSimulation` has `forces`, the net force on each particle, `timestep`, `time` (`steps * timestep`), `integrate()`, which applies Velocity-Verlet and which a subclass overrides for a different integrator, and `heat_bath()`. `MCSimulation` has `temperature`, `energy`, `accepted`, `propose()` and `apply()`.
 - A `cut_off` larger than half the box raises `ValueError`.
 - `pylj.sample` is a package: pane classes, one per plot, and a `Viewer` that lays out a list of panes. The eight viewer names are subclasses of it, and custom viewers combine panes or add a new one.
@@ -26,7 +26,7 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Changed
 
-- A box length outside 4 to 600 Angstrom raises `ValueError`.
+- A box length outside 4 to 600 Angstrom raises `ValueError` rather than `AttributeError`.
 - `md.heat_bath(configuration, bath_temperature)` returns the configuration with its velocities rescaled so that the instantaneous temperature is the bath temperature; it previously took the temperature sample array and rescaled towards its cumulative mean. A non-positive bath temperature, or a configuration at rest or with a non-finite temperature, raises `ValueError` (#76).
 - Python 3.11 or later is required. scipy is a dependency; Cython is not.
 - The initialisers compute the initial forces, so the first integration step uses real accelerations.
@@ -43,8 +43,7 @@ All notable changes to pylj are recorded here. The format follows
 - Initial velocities are drawn with each particle's own thermal width and the mass-weighted centre-of-mass velocity is removed.
 - The Monte Carlo loop proposes a configuration and applies it on acceptance, leaving the configuration untouched otherwise; a trial move costs O(N). `MCSimulation.sample` recomputes the energy exactly before recording.
 - `mc.Proposal` holds `position`, shape `(N, 2)`, in place of `xposition` and `yposition`.
-- `init_conf` takes `'square'` or `'metropolis'`. `'metropolis'` seats particles by sequential Metropolis insertion, each trial position accepted on its interaction energy with the particles already placed, in place of the `'random'` rejection-sampled placement; it works for any potential, including a hard core. `'square'` places on the lattice without an overlap check.
-- `init_conf` is a keyword argument defaulting to `'square'`; an unknown value raises `ValueError`.
+- `init_conf` is a keyword argument, `'square'` by default, taking `'square'` or `'metropolis'`; an unknown value raises `ValueError`. `'metropolis'` seats particles by sequential Metropolis insertion, each trial position accepted on its interaction energy with the particles already placed, in place of the `'random'` rejection-sampled placement; it works for any potential, including a hard core. `'square'` places on the lattice without an overlap check.
 
 ### Fixed
 
@@ -53,18 +52,21 @@ All notable changes to pylj are recorded here. The format follows
 - Two-type systems drew the other type's particles at the origin.
 - Pair energies in multi-type systems were counted once per type pair (#81).
 - The Metropolis criterion, `mc.accept`, draws a fresh random number for every uphill change (a downhill change is accepted without a draw); one was reused for the life of the process (#78).
-- The square-well hard core tests sigma, not epsilon (part of #80).
+- The square-well hard core tested epsilon rather than sigma (part of #80).
 - A diameter given in metres, a non-positive or non-finite diameter, or a potential with no energy minimum to size the particles by is refused with a clear message.
 - `'metropolis'` initial configurations do not overlap at the placement temperature (#82).
-- A pair potential's `energies` and `forces` return their values without storing them on the potential, so repeated calls on one instance work (#79).
-- The pair potentials accept integer, 0-d array and non-float NumPy scalar separations under NumPy 2.1 or later (#83).
+- A pair potential's energy and force stored their result on the potential, overwriting the method and breaking a second call on the same instance (#79).
+- The Buckingham potential raised under NumPy 2.1 or later for an integer, 0-d array or non-float NumPy scalar separation, and the Lennard-Jones and square-well forms failed on integer input (#83).
 - The mean squared displacement was wrong unless sampled on every integration step, and non-zero before the first step (#74).
 - Initial velocities carried a centre-of-mass drift that never decayed and added a ballistic term to the mean squared displacement, and were not at the requested temperature (#75).
 - The square-well potential drives a Monte Carlo simulation: its energies are evaluated without asking for a force, and `MDSimulation.initialise` refuses it with a clear message (#80).
 
 ### Removed
 
-- `pylj.util` and `System`; the structured particle array and `particle_dt`; the integer `types` field (`Configuration.species_index` replaces it); `md.initialise`, `mc.initialise`, `md.initialize`, `mc.initialize`, `md.sample`, `mc.sample`, `md.calculate_temperature` and `md.calculate_msd` (methods on the configuration now); `pairwise.compute_energy`, `pairwise.compute_force`, `pairwise.update_accelerations`, `pairwise.particle_energy`, `pairwise.particle_masses` and `pairwise.heat_bath`; the `temperature_sample`, `pressure_sample`, `force_sample`, `msd_sample`, `energy_sample` and `step_sample` arrays (`samples` replaces them); `ForcePane` and the sum of the pair forces it plotted, which has no physical meaning.
+- `pylj.util` and `System`; the structured particle array and `particle_dt`, whose integer `types` field `Configuration.species_index` replaces.
+- `md.initialise`, `mc.initialise`, `md.initialize`, `mc.initialize`, `md.sample` and `mc.sample`; `md.calculate_temperature` and `md.calculate_msd`, which are methods on the configuration now.
+- `pairwise.compute_force`, `pairwise.update_accelerations` and `pairwise.heat_bath`.
+- The `temperature_sample`, `pressure_sample`, `force_sample`, `msd_sample` and `energy_sample` arrays, which `samples` replaces, and the sum of the pair forces, which has no physical meaning.
 - `pylj/sample.py`, `point_size` on forcefields, `pairwise.create_dist_identifiers`, `MANIFEST.in`, and the Code Climate upload from CI.
 - `pairwise.separation`, `pairwise.pbc_correction`, `pairwise.second_law`, and the deprecated `pairwise.lennard_jones_energy` and `pairwise.lennard_jones_force` wrappers.
 - `mc.select_random_particle`, `mc.get_new_particle`, `mc.reject`, `mc.metropolis`, and the identity `mc.accept(new_energy)`.

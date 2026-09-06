@@ -5,5 +5,4 @@ Generally these are functions required by pylj which involve a pair-wise compari
 
 .. automodule:: pylj.pairwise
     :members:
-    :undoc-members:
     :show-inheritance:

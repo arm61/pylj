@@ -7,6 +7,5 @@ This module is dedicated visualisation of the pylj output. More details of how t
 
 .. automodule:: pylj.sample
     :members:
-    :undoc-members:
     :show-inheritance:
     
