@@ -65,6 +65,9 @@ whose peak is at $\sqrt{k_B T / m}$. Collecting the speeds of forty particles ov
 ```{code-cell} python
 def speeds(temperature, steps=1000):
     simulation = MDSimulation.initialise(40, temperature, 40, seed=0, **model)
+    for _ in range(200):
+        simulation.step()
+        simulation.heat_bath(temperature)
     collected = []
     for _ in range(steps):
         simulation.step()
@@ -78,7 +81,7 @@ mass = 39.948 * ATOMIC_MASS_UNIT
 fig, ax = plt.subplots(figsize=(5, 3.2))
 for temperature in (100, 1000):
     v = speeds(temperature)
-    ax.hist(v, bins=40, density=True, alpha=0.5, label=f"{temperature} K")
+    ax.hist(v, bins=25, density=True, alpha=0.5, label=f"{temperature} K")
     grid = np.linspace(0, v.max(), 300)
     kt = BOLTZMANN * temperature
     ax.plot(grid, mass * grid / kt * np.exp(-mass * grid**2 / (2 * kt)), color="black")
@@ -89,21 +92,21 @@ ax.legend()
 fig.tight_layout()
 ```
 
-The histograms follow the curves, and the peak moves out by $\sqrt{10}$ between the two temperatures. The thermostat fixes the total kinetic energy at every step, but shares it among forty particles freely, so each particle's speed still varies as the distribution says.
+The histograms follow the curves, and the predicted peak moves out by $\sqrt{10}$ between the two temperatures. The thermostat fixes the total kinetic energy at every step, and the collisions between one rescaling and the next share it among the forty particles, so each particle's speed still varies as the distribution says.
 
 ## Density and structure
 
 The radial distribution function $g(r)$ is the probability of finding a particle at distance $r$ from another, relative to the same probability in an ideal gas at the same density, so it tends to one at large $r$. Averaged over a run, it shows structure. At 100 K the well depth of 1.58 zJ is $1.1\,k_B T$, deep enough for pairs to linger near the minimum of the potential.
 
 ```{code-cell} python
-dilute = run(20, 100, 40, 2000, sample.RDF, draw_every=20)
+dilute = run(20, 100, 40, 20000, sample.RDF, draw_every=200)
 ```
 
 ```{code-cell} python
 dense = run(100, 100, 40, 2000, sample.RDF, draw_every=20)
 ```
 
-With twenty particles there is one peak, at the minimum of the potential, and beyond it $g(r)$ settles to one: a particle has a neighbour at the well minimum more often than chance, and no order beyond that. With a hundred particles in the same box the first peak sharpens and a second and third appear at twice and three times the distance. These are the shells of neighbours of a liquid. The axis is in metres, with a factor of 1e-9 printed in its corner.
+With twenty particles there is one peak, at the minimum of the potential, and beyond it $g(r)$ settles to one: a particle has a neighbour at the well minimum more often than chance, and no order beyond that. In the dilute limit the height of the peak is the Boltzmann factor of the well depth, $\exp(\epsilon / k_B T)$, which is 3.1 at 100 K, and the dilute run is long because a curve from twenty particles takes many frames to converge. With a hundred particles in the same box the first peak sharpens and a second and third appear at twice and three times the distance. These are the shells of neighbours of a liquid. The axis is in metres, with a factor of 1e-9 printed in its corner.
 
 ## Argon at standard temperature and pressure
 
@@ -163,7 +166,7 @@ for n, r in zip(numbers, ratio):
     print(f"N = {n:3d}: {r:.2f} times ideal")
 ```
 
-The right-hand panel divides the measured pressure by the ideal one. For the smallest boxes the ratio is within a few per cent of one, the level of run-to-run noise. From about 25 particles upward the excess roughly doubles with each step in $N$, and at 100 particles the pressure is several times ideal: the particles take up a large fraction of the box, their repulsive cores push on each other, and the virial is large and positive.
+The right-hand panel divides the measured pressure by the ideal one. At the lowest densities the ratio is a few per cent above one. The excess grows steeply with $N$, and at 100 particles the pressure is several times ideal: the particles take up a large fraction of the box, their repulsive cores push on each other, and the virial is large and positive.
 
 The pressure never falls below the ideal line. The Lennard-Jones well is attractive, and at low enough temperature the attraction wins at low density and pulls the pressure under the line. The temperature at which the two effects balance is where the second virial coefficient changes sign:
 
@@ -171,7 +174,7 @@ The pressure never falls below the ideal line. The Lennard-Jones well is attract
 def second_virial(temperature):
     kt = BOLTZMANN * temperature
     integrand = lambda r: (np.exp(-lj.energies(r) / kt) - 1) * 2 * np.pi * r
-    return -0.5 * quad(integrand, 1e-11, 15e-10, limit=200)[0]
+    return -0.5 * quad(integrand, 0, 15e-10, points=[2.5e-10, 3.4e-10, 5e-10], limit=200)[0]
 
 
 boyle = brentq(second_virial, 50, 500)
@@ -180,6 +183,14 @@ print(f"it changes sign at {boyle:.0f} K")
 ```
 
 At 273 K the well is only $0.42\,k_B T$ deep and the coefficient is positive: repulsion wins at every density. Below the temperature printed above the coefficient is negative, and a run at 100 K, where the earlier sections found pairs lingering in the well, would show the pressure dip below the line at low density.
+
+At low density the excess is set by the second virial coefficient alone: the pressure is $(N - 1) k_B T / A$ plus $B_2 N^2 k_B T / A^2$, so the ratio is $1 + B_2 N^2 / (A (N - 1))$. A single run scatters by a few per cent about this, but the prediction and the measurements agree in size and sign:
+
+```{code-cell} python
+b2 = second_virial(273)
+for n, r in zip(numbers[:3], ratio[:3]):
+    print(f"N = {n:3d}: predicted {1 + b2 * n**2 / (area * (n - 1)):.2f}, measured {r:.2f}")
+```
 
 ## The van der Waals equation
 
@@ -203,6 +214,7 @@ diameter = np.sqrt(2 * b / np.pi)
 print(f"a = {a:.2e} J m^2, b = {b:.2e} m^2")
 print(f"b - a / k_B T = {(b - a / kt) * 1e20:+.2f} Angstrom^2, against {second_virial(273) * 1e20:+.2f} from the potential")
 print(f"hard discs with b = pi d^2 / 2 have diameter d = {diameter * 1e10:.2f} Angstrom")
+print(f"the attractive term a / v^2 at 100 particles is {a / v[-1]**2 / full[-1]:.0%} of the pressure")
 fig, ax = plt.subplots(figsize=(4.5, 3.2))
 ax.plot(numbers, full, "o", label="measured")
 fine = np.linspace(numbers[0], numbers[-1], 200)
@@ -213,4 +225,4 @@ ax.legend()
 fig.tight_layout()
 ```
 
-The fitted $b - a / k_B T$ matches the second virial coefficient of the potential itself. For hard discs of diameter $d$ the excluded area is $b = \pi d^2 / 2$, and the diameter that comes out is a little below $\sigma$, the separation at which the Lennard-Jones energy crosses zero: at 273 K collisions push some way inside it. The fit has recovered the size of the particle from the pressure alone, which is what van der Waals did from experiment in 1873.
+The fitted $b - a / k_B T$ has the sign and size of the second virial coefficient of the potential itself, and comes out about a fifth above it: a two-parameter form fitted up to 100 particles, where the box is nearly full, is only a rough guide to the dilute limit. For hard discs of diameter $d$ the excluded area is $b = \pi d^2 / 2$, and the diameter that comes out is about $0.8\,\sigma$, where $\sigma$ is the separation at which the Lennard-Jones energy crosses zero. Part of the shortfall is that the repulsive wall is soft, so collisions at 273 K push inside $\sigma$; the rest is the crudeness of the fit. The attractive term is a small correction at every density here, as the positive second virial coefficient requires. The fit has recovered the size of the particle from the pressure alone, which is what van der Waals did from experiment in 1873.
