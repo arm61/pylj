@@ -20,3 +20,4 @@ pylj/comp.cpython-37m-darwin.so
 !TODO.md
 !paper/paper.md
 !.github/ISSUE_TEMPLATE/*.md
+*.pyc

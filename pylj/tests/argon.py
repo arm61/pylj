@@ -1,7 +1,7 @@
 """The species and pair potentials shared across the test suite.
 
 ``ARGON_MODEL`` and ``MIXTURE_MODEL`` unpack into the ``species`` and
-``pair_potentials`` keywords of the initialisers and ``System``.
+``pair_potentials`` keywords of the ``initialise`` factories.
 """
 
 from typing import TypedDict
