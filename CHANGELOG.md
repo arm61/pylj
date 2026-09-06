@@ -35,7 +35,6 @@ All notable changes to pylj are recorded here. The format follows
 - The radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in N m^-1.
 - `JustCell` no longer takes a `scale` argument. `Viewer.average()` raises on a viewer whose panes keep no history. `CellPlus.update` rejects half-supplied custom data.
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.
-- `energy` and `force` on the forcefields return a Python float for scalar input, rather than `np.float64`; a one-element list, such as to `square_well.energy`, returns a one-element array rather than a float.
 - Pair distances and forces are computed with vectorised NumPy. `pairwise.dist(position, box)` takes `(N, 2)` positions and returns the distances and the `(M, 2)` separations; `pairwise.calculate_pressure(virial, box, number_of_particles, temperature)` takes the virial.
 - `md.velocity_verlet(configuration, forces, timestep, pair_potentials, cut_off)` returns the next configuration and the forces at it; `md.update_positions(configuration, accelerations, timestep)` and `md.update_velocities(velocity, accelerations, next_accelerations, timestep)` work on `(N, 2)` arrays.
 - `MDConfiguration.unwrapped` holds the positions without periodic wrapping, advanced by the integrator, and `msd` reads them (#74).
@@ -54,11 +53,11 @@ All notable changes to pylj are recorded here. The format follows
 - Two-type systems drew the other type's particles at the origin.
 - Pair energies in multi-type systems were counted once per type pair (#81).
 - The Metropolis criterion, `mc.accept`, draws a fresh random number for every uphill change (a downhill change is accepted without a draw); one was reused for the life of the process (#78).
-- The square-well hard core tested epsilon rather than sigma (part of #80), and `square_well.energy` failed on integer input.
+- The square-well hard core tests sigma, not epsilon (part of #80).
 - A diameter given in metres, a non-positive or non-finite diameter, or a potential with no energy minimum to size the particles by is refused with a clear message.
 - `'metropolis'` initial configurations do not overlap at the placement temperature (#82).
-- `energy` and `force` on the forcefields no longer store their result on `self`, overwriting the bound method and breaking a second call on the same instance (#79).
-- `buckingham.energy` and `buckingham.force` raised under NumPy 2.1 or later when the separation was an integer, a 0-d array, or a NumPy scalar that is not a float subclass (#83). `lennard_jones` and `lennard_jones_sigma_epsilon` also failed on integer input.
+- A pair potential's `energies` and `forces` return their values without storing them on the potential, so repeated calls on one instance work (#79).
+- The pair potentials accept integer, 0-d array and non-float NumPy scalar separations under NumPy 2.1 or later (#83).
 - The mean squared displacement was wrong unless sampled on every integration step, and non-zero before the first step (#74).
 - Initial velocities carried a centre-of-mass drift that never decayed and added a ballistic term to the mean squared displacement, and were not at the requested temperature (#75).
 - The square-well potential drives a Monte Carlo simulation: its energies are evaluated without asking for a force, and `MDSimulation.initialise` refuses it with a clear message (#80).
