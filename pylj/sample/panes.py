@@ -76,8 +76,8 @@ class Pane:
     Attributes:
         keeps_history: Whether this pane accumulates a history across
             updates that ``average`` can summarise.
-        needs_md: Whether this pane can only plot molecular dynamics samples. If any
-            pane in a viewer sets this, the viewer refuses a Monte Carlo
+        needs_md: Whether this pane can only plot molecular dynamics samples.
+            If any pane in a viewer sets this, the viewer refuses a Monte Carlo
             simulation.
     """
 
@@ -106,8 +106,8 @@ class Pane:
         """Show the average of every update so far, for panes that keep a history.
 
         Panes that keep a history of their updates override this to draw the
-        mean of that history. A pane that keeps no history does nothing here, and says so by leaving
-        ``keeps_history`` false.
+        mean of that history. A pane that keeps no history does nothing here,
+        and says so by leaving ``keeps_history`` false.
 
         Args:
             ax: Axes this pane was set up in.
@@ -179,10 +179,10 @@ def _drawn_diameters(
 
     Args:
         simulation: The simulation being visualised.
-        diameter: The diameter to draw, in Angstrom. A single value is used for every
-            species; a sequence gives one value per species, in order. ``None``
-            uses the separation at the minimum of each species' own pair
-            energy.
+        diameter: The diameter to draw, in Angstrom. A single value is used for
+            every species; a sequence gives one value per species, in order.
+            ``None`` uses the separation at the minimum of each species' own
+            pair energy.
 
     Returns:
         One diameter per species, in the order of
@@ -479,9 +479,8 @@ class ScatteringPane(_HistoryPane):
 class MaxwellBoltzmannPane(Pane):
     """Histogram of the speeds of every particle at every update so far.
 
-    The histogram already pools every update, so there is no separate history to
-    average and this pane has no average to show.
-    """
+    The histogram already pools every update, so there is no separate history
+    to average and this pane has no average to show. """
 
     needs_md = True
     BINS = 25

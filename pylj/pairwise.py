@@ -1,8 +1,7 @@
-"""Calculations over every pair of particles at once: finding the potential that
-acts between two species, grouping the particle pairs by the species they join,
-applying the minimum image convention, and getting the pressure from the
-virial.
-"""
+"""Calculations over every pair of particles at once: finding the potential
+that acts between two species, grouping the particle pairs by the species they
+join, applying the minimum image convention, and getting the pressure from the
+virial. """
 
 from collections.abc import Iterator, Mapping
 
@@ -45,10 +44,10 @@ def species_pairs(
 ) -> Iterator[tuple[NDArray[np.bool_], int, int]]:
     """Group the particle pairs by the two species they join.
 
-    Each pair of species present is yielded once, because species 0 with species 1
-    is the same pair as species 1 with species 0. Each comes with a mask, which
-    picks out the entries of the pair arrays returned by :func:`dist` that join
-    those two species.
+    Each pair of species present is yielded once, because species 0 with
+    species 1 is the same pair as species 1 with species 0. Each comes with a
+    mask, which picks out the entries of the pair arrays returned by
+    :func:`dist` that join those two species.
 
     Args:
         species_index: The species index of each particle.

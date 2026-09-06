@@ -53,11 +53,10 @@ class MDSamples(Samples):
 class MDSimulation(Simulation):
     """A molecular dynamics simulation.
 
-    Between steps the simulation holds two things: the configuration, and the force
-    on each particle at that configuration. Velocity-Verlet needs both to take
-    the next step. ``step`` integrates
-    one timestep and advances the clock; ``sample`` measures the
-    configuration.
+    Between steps the simulation holds two things: the configuration, and the
+    force on each particle at that configuration. Velocity-Verlet needs both to
+    take the next step. ``step`` integrates one timestep and advances the
+    clock; ``sample`` measures the configuration.
 
     Args:
         configuration: The starting configuration, with velocities.
@@ -151,13 +150,13 @@ class MDSimulation(Simulation):
         """Build a simulation from a model: place the particles and draw
         their velocities at a temperature.
 
-        Each component of each velocity is drawn from a normal distribution whose width
-        is the thermal speed of that particle at the requested temperature,
-        which depends on its mass. The velocity of the centre of mass is then
-        subtracted, so the system as a whole is at rest. Finally every velocity
-        is scaled by the same factor, so that the instantaneous temperature is
-        exactly the one requested.
-        The temperature is not stored: molecular dynamics measures it.
+        Each component of each velocity is drawn from a normal distribution
+        whose width is the thermal speed of that particle at the requested
+        temperature, which depends on its mass. The velocity of the centre of
+        mass is then subtracted, so the system as a whole is at rest. Finally
+        every velocity is scaled by the same factor, so that the instantaneous
+        temperature is exactly the one requested. The temperature is not
+        stored: molecular dynamics measures it.
 
         Args:
             number_of_particles: The number of particles, at least two.

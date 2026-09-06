@@ -29,12 +29,11 @@ class Species:
 class PairPotential(ABC):
     """The interface every pair potential implements.
 
-    A pair potential is a central potential: the energy of a pair of particles, and
-    the force that follows from it, depend only on how far apart the two
+    A pair potential is a central potential: the energy of a pair of particles,
+    and the force that follows from it, depend only on how far apart the two
     particles are, and not on the direction from one to the other. Both
-    ``energies`` and ``forces`` take an array of separations ``dr``, in
-    metres, and return an array of the same shape.
-    """
+    ``energies`` and ``forces`` take an array of separations ``dr``, in metres,
+    and return an array of the same shape. """
 
     @abstractmethod
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:

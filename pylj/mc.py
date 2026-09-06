@@ -1,5 +1,6 @@
 """Monte Carlo: the simulation that samples configurations by the Metropolis
-criterion, the criterion itself, and the proposed move the criterion accepts or rejects."""
+criterion, the criterion itself, and the proposed move the criterion accepts or
+rejects."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -105,9 +106,9 @@ class MCSimulation(Simulation):
 
     Attributes:
         temperature: The temperature, in kelvin.
-        energy: The total pair energy of the current configuration, in joules. It is
-            computed when the simulation is built, updated by ``apply`` each
-            time a move is accepted, and recomputed exactly each time
+        energy: The total pair energy of the current configuration, in joules.
+            It is computed when the simulation is built, updated by ``apply``
+            each time a move is accepted, and recomputed exactly each time
             ``sample`` is called.
         accepted: The number of moves accepted so far.
         samples: The :class:`MCSamples` record that ``sample`` appends to.
@@ -231,8 +232,8 @@ class MCSimulation(Simulation):
     def apply(self, proposal: Proposal) -> None:
         """Make a proposed configuration the current one.
 
-        The configuration takes the proposal's positions, and the proposal's energy
-        change is added to ``energy``.
+        The configuration takes the proposal's positions, and the proposal's
+        energy change is added to ``energy``.
 
         Args:
             proposal: The proposal to apply, from :meth:`propose`.

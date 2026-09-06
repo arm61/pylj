@@ -63,12 +63,12 @@ def place_metropolis(
     Each particle in turn is given a uniform trial position in the box,
     accepted by :func:`mc.accept` at ``placement_temperature`` on its
     interaction energy with the particles already placed, and redrawn on
-    rejection. Before the particle is added it interacts with nothing, so its interaction
-    energy with the particles already placed is exactly the energy change the
-    insertion causes.
+    rejection. Before the particle is added it interacts with nothing, so its
+    interaction energy with the particles already placed is exactly the energy
+    change the insertion causes.
 
-    Placing the particles one after another gives a reasonable starting point, not
-    a configuration drawn from equilibrium. The particles avoid the close
+    Placing the particles one after another gives a reasonable starting point,
+    not a configuration drawn from equilibrium. The particles avoid the close
     contacts the potential penalises at the placement temperature, and raising
     that temperature makes closer contacts more likely. The run itself brings
     the configuration to equilibrium.
@@ -86,10 +86,11 @@ def place_metropolis(
         The configuration.
 
     Raises:
-        ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are all rejected for a single
-            particle. At the highest densities this many attempts can reach,
-            success depends on the positions that happen to be drawn, so the
-            same call may succeed with one seed and raise with another.
+        ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are all
+            rejected for a single particle. At the highest densities this many
+            attempts can reach, success depends on the positions that happen to
+            be drawn, so the same call may succeed with one seed and raise with
+            another.
     """
     # mc imports this module for its base classes, so the criterion is
     # imported here rather than at the top of the module.

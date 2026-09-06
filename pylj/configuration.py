@@ -17,8 +17,8 @@ from pylj.potentials import Species
 class PairData:
     """The distance, separation, energy and force of every pair of particles.
 
-    Each pair appears once, in the order :func:`pairwise.dist` returns them: the
-    particle with the lower index first.
+    Each pair appears once, in the order :func:`pairwise.dist` returns them:
+    the particle with the lower index first.
 
     Attributes:
         distance: The minimum-image distance between each pair, in metres.
@@ -52,10 +52,11 @@ def _radial_force(pairs: PairData) -> NDArray[np.float64]:
 class Configuration:
     """Where the particles are: the state a Monte Carlo simulation evolves.
 
-    A configuration cannot be changed once it is made, and it holds no description
-    of how the particles interact. Each method that needs the interaction law
-    is given ``pair_potentials`` and ``cut_off`` when it is called, so the same
-    configuration can be evaluated under different potentials. Everything is in SI units.
+    A configuration cannot be changed once it is made, and it holds no
+    description of how the particles interact. Each method that needs the
+    interaction law is given ``pair_potentials`` and ``cut_off`` when it is
+    called, so the same configuration can be evaluated under different
+    potentials. Everything is in SI units.
 
     Attributes:
         position: The position of each particle, shape ``(N, 2)``, in
@@ -66,9 +67,9 @@ class Configuration:
         box: The side length of the square periodic box, in metres.
 
     Raises:
-        ValueError: If the array shapes disagree, ``species`` is empty, an entry of
-            ``species_index`` does not correspond to one of the species, or the
-            box is not positive and finite.
+        ValueError: If the array shapes disagree, ``species`` is empty, an
+            entry of ``species_index`` does not correspond to one of the
+            species, or the box is not positive and finite.
     """
 
     position: NDArray[np.float64]
@@ -114,9 +115,12 @@ class Configuration:
     def without(self, index: int) -> Self:
         """Return a copy with one particle removed.
 
-        Args: index: The index of the particle to remove.
+        Args:
+            index: The index of the particle to remove.
 
-        Returns: The configuration without that particle."""
+        Returns:
+            The configuration without that particle.
+        """
         arrays: dict[str, Any] = {
             field.name: np.delete(getattr(self, field.name), index, axis=0)
             for field in dataclasses.fields(self)
@@ -129,11 +133,11 @@ class Configuration:
     ) -> PairData:
         """Evaluate every pair of particles under the interaction law.
 
-        Each pair is separated by its minimum-image distance, and the potential for the
-        two species it joins gives its energy. A pair further apart than the
-        cut-off contributes nothing. The forces are evaluated only when
-        ``forces`` is requested, so a potential that has no finite force, such
-        as the square well, can still be used here.
+        Each pair is separated by its minimum-image distance, and the potential
+        for the two species it joins gives its energy. A pair further apart
+        than the cut-off contributes nothing. The forces are evaluated only
+        when ``forces`` is requested, so a potential that has no finite force,
+        such as the square well, can still be used here.
 
         Args:
             pair_potentials: The potential between each pair of species.
@@ -253,10 +257,10 @@ class MDConfiguration(Configuration):
     def temperature(self) -> float:
         """The instantaneous temperature, in kelvin.
 
-        The centre of mass starts at rest, and the pair forces cannot set it moving.
-        Two of the ``2N`` velocity components are therefore fixed by that
-        condition, leaving ``2N - 2`` components to carry thermal energy. The
-        temperature is the kinetic energy divided by ``(N - 1) k_B``.
+        The centre of mass starts at rest, and the pair forces cannot set it
+        moving. Two of the ``2N`` velocity components are therefore fixed by
+        that condition, leaving ``2N - 2`` components to carry thermal energy.
+        The temperature is the kinetic energy divided by ``(N - 1) k_B``.
 
         Raises:
             ValueError: If there are fewer than two particles.
@@ -271,12 +275,15 @@ class MDConfiguration(Configuration):
     def msd(self, initial: "MDConfiguration") -> float:
         """Return the mean squared displacement since an earlier configuration.
 
-        The unwrapped positions are used, so a particle that crosses the edge of the
-        box and reappears on the other side counts as having travelled the
-        whole way.
+        The unwrapped positions are used, so a particle that crosses the edge
+        of the box and reappears on the other side counts as having travelled
+        the whole way.
 
-        Args: initial: The configuration to measure the displacement from.
+        Args:
+            initial: The configuration to measure the displacement from.
 
-        Returns: The mean squared displacement, in metres squared."""
+        Returns:
+            The mean squared displacement, in metres squared.
+        """
         displacement = self.unwrapped - initial.unwrapped
         return float(np.mean(np.sum(displacement**2, axis=1)))

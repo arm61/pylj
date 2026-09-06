@@ -1,5 +1,5 @@
-"""The checks a simulation makes on its model, the record it keeps of its samples,
-and the base class the simulations share."""
+"""The checks a simulation makes on its model, the record it keeps of its
+samples, and the base class the simulations share."""
 
 import copy
 import itertools
@@ -79,9 +79,9 @@ def _check_potentials_at_the_cut_off(
         pair_potentials: The potential between each pair of species.
         cut_off: The cut-off, in metres.
         temperature: The temperature, in kelvin.
-        box: The side length of the box, in metres. The cut-off can be no larger than
-            half the box, so when it already is, the only remedy is a larger
-            box.
+        box: The side length of the box, in metres. The cut-off can be no
+            larger than half the box, so when it already is, the only remedy is
+            a larger box.
 
     Raises:
         ValueError: If any pair potential's energy at the cut-off is not
@@ -149,12 +149,13 @@ def _check_initial_energy(energy: float, number_of_particles: int, temperature: 
 def _resolve_cut_off(box: float, cut_off: float | None) -> float:
     """Return the cut-off in metres.
 
-    A cut-off given by the caller is used as it stands. Without one, the cut-off is
-    15 Angstrom, or half the box if that is smaller.
+    A cut-off given by the caller is used as it stands. Without one, the
+    cut-off is 15 Angstrom, or half the box if that is smaller.
 
     Raises:
-        ValueError: If a given cut-off is not positive and finite, or is larger than half the box.
-            A cut-off beyond half the box breaks the minimum image convention.
+        ValueError: If a given cut-off is not positive and finite, or is larger
+            than half the box. A cut-off beyond half the box breaks the minimum
+            image convention.
     """
     if cut_off is None:
         return min(15e-10, box / 2)
@@ -264,13 +265,13 @@ class Simulation(ABC):
     def restart(self) -> Self:
         """A new simulation that continues from the current configuration.
 
-        The new simulation shares the interaction law, the numerical choices and every
-        other attribute with this one. Its random number generator starts from
-        a copy of this one's state, so the two runs do not draw the same
-        numbers. The new simulation starts with ``steps`` at zero and an empty
-        record of samples. A subclass that holds other per-run state extends
-        this method to reset it. This simulation is not changed. Use it to start
-        a production run after equilibration::
+        The new simulation shares the interaction law, the numerical choices
+        and every other attribute with this one. Its random number generator
+        starts from a copy of this one's state, so what this simulation draws
+        next has no effect on the new one. The new simulation starts with
+        ``steps`` at zero and an empty record of samples. A subclass that holds
+        other per-run state extends this method to reset it. This simulation is
+        not changed. Use it to start a production run after equilibration::
 
             for _ in range(1000):
                 simulation.step()
