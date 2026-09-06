@@ -320,7 +320,7 @@ class MSDPane(_SeriesPane):
 
 def _energy_series(
     simulation: Simulation,
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Return the x and y data of the energy pane.
 
     Args:

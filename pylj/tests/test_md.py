@@ -360,7 +360,7 @@ class TestSample(unittest.TestCase):
         assert_almost_equal(samples.temperature[-1], temperature)
         assert_almost_equal(
             samples.pressure[-1],
-            pairwise.calculate_pressure(virial, c.box, c.number_of_particles, temperature),
+            pairwise.calculate_pressure(virial, c.box, c.kinetic_energy()),
         )
         potential = c.potential_energy(a.pair_potentials, a.cut_off)
         assert_almost_equal(samples.potential_energy[-1], potential)

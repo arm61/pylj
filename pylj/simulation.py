@@ -182,7 +182,7 @@ class Samples:
         step: The step at which each sample was taken.
     """
 
-    step: NDArray[np.float64] = field(default_factory=_empty)
+    step: NDArray[np.int64] = field(default_factory=lambda: np.array([], dtype=np.int64))
 
     def add(self, **values: float) -> None:
         """Append one value to each named array.
@@ -269,7 +269,6 @@ class Simulation(ABC):
 
             for _ in range(1000):
                 simulation.step()
-                simulation.heat_bath(300)
             production = simulation.restart()
             for _ in range(5000):
                 production.step()

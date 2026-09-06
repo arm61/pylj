@@ -78,9 +78,8 @@ class MDSimulation(Simulation):
         TypeError: If ``configuration`` is not an ``MDConfiguration``.
         ValueError: If the timestep is not positive and finite, the
             configuration is at rest or has a non-finite temperature, a pair
-            potential has
-            not died away at the cut-off at the configuration's
-            temperature, the configuration stores more than
+            potential has not died away at the cut-off at the
+            configuration's temperature, the configuration stores more than
             :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
             energy per particle, or for anything :class:`Simulation`
             rejects.
@@ -257,16 +256,14 @@ class MDSimulation(Simulation):
         potential and kinetic energies and mean squared displacement.
         """
         configuration = self.configuration
-        temperature = configuration.temperature()
+        kinetic_energy = configuration.kinetic_energy()
         pairs = configuration.pairs(self.pair_potentials, self.cut_off, forces=True)
         self.samples.add(
             step=self.steps,
-            temperature=temperature,
-            pressure=pairwise.calculate_pressure(
-                pairs.virial, configuration.box, configuration.number_of_particles, temperature
-            ),
+            temperature=configuration.temperature(),
+            pressure=pairwise.calculate_pressure(pairs.virial, configuration.box, kinetic_energy),
             potential_energy=float(pairs.energy.sum()),
-            kinetic_energy=configuration.kinetic_energy(),
+            kinetic_energy=kinetic_energy,
             msd=configuration.msd(self.initial_configuration),
         )
 

@@ -8,7 +8,6 @@ from collections.abc import Iterator, Mapping
 import numpy as np
 from numpy.typing import NDArray
 
-from pylj.constants import BOLTZMANN
 from pylj.potentials import PairPotential, Species
 
 #: The potential acting between each pair of species, keyed by the two
@@ -96,24 +95,23 @@ def dist(
     return np.linalg.norm(separation, axis=1), separation
 
 
-def calculate_pressure(
-    virial: float, box: float, number_of_particles: int, temperature: float
-) -> float:
+def calculate_pressure(virial: float, box: float, kinetic_energy: float) -> float:
     r"""Return the instantaneous pressure of the cell in two dimensions.
 
     .. math::
-        p = \frac{N k_B T}{L^2} + \frac{1}{2 L^2} \sum_{i} \sum_{j > i}
-        f_{ij} r_{ij}
+        p = \frac{1}{2 L^2} \left( 2 K + \sum_{i} \sum_{j > i} f_{ij} r_{ij} \right)
+
+    The kinetic term is the momentum the particles carry across a line in
+    the cell; averaged over a run at temperature ``T`` it is the ideal-gas
+    pressure ``N k_B T / L^2``.
 
     Args:
         virial: The sum over pairs of the radial force times the distance,
             in joules.
         box: The side length of the square periodic box, in metres.
-        number_of_particles: The number of particles.
-        temperature: The instantaneous temperature, in kelvin.
+        kinetic_energy: The total kinetic energy, in joules.
 
     Returns:
         The pressure, in newtons per metre (a two-dimensional pressure).
     """
-    area = box * box
-    return virial / (2 * area) + number_of_particles * BOLTZMANN * temperature / area
+    return (2 * kinetic_energy + virial) / (2 * box * box)

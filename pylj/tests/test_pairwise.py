@@ -41,15 +41,16 @@ class TestPairwise(unittest.TestCase):
         assert_equal(pairs[1][0], [True, False, True])
 
     def test_calculate_pressure(self):
-        # The virial sum(f r) / (2 L^2) plus the ideal term N k_B T / L^2.
+        # The kinetic term K / L^2 plus the virial sum(f r) / (2 L^2).
         virial = -9.5864009e-12 * 4e-10
-        p = pairwise.calculate_pressure(virial, 30e-10, 2, 300)
-        ideal = 2 * 1.380649e-23 * 300 / (30e-10) ** 2
-        assert_almost_equal(p, virial / (2 * (30e-10) ** 2) + ideal)
+        kinetic = 2 * 1.380649e-23 * 300
+        p = pairwise.calculate_pressure(virial, 30e-10, kinetic)
+        assert_almost_equal(p, kinetic / (30e-10) ** 2 + virial / (2 * (30e-10) ** 2))
 
     def test_calculate_pressure_ideal_gas_limit(self):
         # With no pair forces the virial vanishes and the two-dimensional
-        # pressure is the ideal-gas value N k_B T / L^2.
+        # pressure is the kinetic energy over the area: N k_B T / L^2 for N
+        # particles at temperature T in two dimensions.
         box = 25e-10
-        p = pairwise.calculate_pressure(0.0, box, 50, 200)
+        p = pairwise.calculate_pressure(0.0, box, 50 * 1.380649e-23 * 200)
         assert_almost_equal(p, 50 * 1.380649e-23 * 200 / box**2)

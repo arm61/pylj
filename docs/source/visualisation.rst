@@ -15,7 +15,7 @@ pylj comes with eight viewers, each a live figure that redraws when its :code:`u
 - :code:`Phase`: positions, total energy, mean squared displacement and the radial distribution function
 - :code:`Scattering`: positions, the radial distribution function, mean squared displacement and the scattering profile
 
-The :code:`MaxBolt`, :code:`Interactions`, :code:`Phase` and :code:`Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo simulation before they build their figure, naming themselves in the error. Every viewer takes the :code:`MDSimulation` or :code:`MCSimulation` and an optional :code:`size` of :code:`'small'`, :code:`'medium'` or :code:`'large'`. Every viewer has an :code:`average()` method that replaces the latest curve with the mean of every update so far; it raises :code:`ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the :doc:`sample` module documentation.
+The :code:`MaxBolt`, :code:`Interactions`, :code:`Phase` and :code:`Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo simulation before they build their figure, naming themselves in the error. Every viewer takes the :code:`MDSimulation` or :code:`MCSimulation`, an optional :code:`size` of :code:`'small'`, :code:`'medium'` or :code:`'large'`, and an optional :code:`diameter` to draw the particles at, in Angstrom; :code:`CellPlus` also takes the axis labels of its custom plot. Every viewer has an :code:`average()` method that replaces the latest curve with the mean of every update so far; it raises :code:`ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the :doc:`sample` module documentation.
 
 The viewers use the inline matplotlib backend. Start notebooks with :code:`%matplotlib inline`.
 
@@ -37,13 +37,15 @@ To combine existing panes in a new layout, pass a list of one, two or four panes
 
     viewer = Viewer(simulation, [CellPane(), TemperaturePane()])
 
-To plot a new quantity, write a pane. This one plots the x velocity of the first particle against time:
+To plot a new quantity, write a pane. This one plots the x velocity of the first particle against time; it reads velocities and a time, which only a molecular dynamics simulation has, so it sets :code:`needs_md` and the viewer refuses a Monte Carlo simulation with a message rather than an :code:`AttributeError`:
 
 .. code-block:: python
 
     from pylj.sample import Pane, Viewer, CellPane
 
     class FirstParticlePane(Pane):
+        needs_md = True
+
         def __init__(self):
             self.times = []
             self.velocities = []
