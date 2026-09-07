@@ -59,9 +59,9 @@ class TestAccept(unittest.TestCase):
 
 class TestInitialise(unittest.TestCase):
     def test_square_lattice_at_a_temperature(self):
-        a = MCSimulation.initialise(2, 300, 8, **ARGON_MODEL)
+        a = MCSimulation.initialise(number_of_atoms=2, temperature=300, box=8, **ARGON_MODEL)
         c = a.configuration
-        self.assertEqual(c.number_of_particles, 2)
+        self.assertEqual(c.number_of_atoms, 2)
         assert_almost_equal(c.box, 8e-10)
         assert_almost_equal(c.position * 1e10, [[2, 2], [2, 6]])
         assert_almost_equal(a.temperature, 300)
@@ -70,44 +70,50 @@ class TestInitialise(unittest.TestCase):
         self.assertEqual(a.accepted, 0)
 
     def test_sets_the_starting_energy(self):
-        a = MCSimulation.initialise(2, 300, 8, **ARGON_MODEL)
+        a = MCSimulation.initialise(number_of_atoms=2, temperature=300, box=8, **ARGON_MODEL)
         assert_almost_equal(a.energy, total_energy(a))
         self.assertNotEqual(a.energy, 0.0)
 
     def test_rejects_a_non_positive_or_infinite_temperature(self):
         for temperature in (0, -300, np.inf):
             with self.assertRaisesRegex(ValueError, "temperature must be positive"):
-                MCSimulation.initialise(4, temperature, 8, **ARGON_MODEL)
+                MCSimulation.initialise(
+                    number_of_atoms=4, temperature=temperature, box=8, **ARGON_MODEL
+                )
 
     def test_passes_the_placement_temperature_and_seed_through(self):
         with self.assertRaisesRegex(ValueError, "Could not place"):
             MCSimulation.initialise(
-                50,
-                100,
-                27,
+                number_of_atoms=50,
+                temperature=100,
+                box=27,
                 init_conf="metropolis",
                 placement_temperature=1.0,
                 seed=0,
                 **ARGON_MODEL,
             )
-        a = MCSimulation.initialise(2, 300, 8, seed=5, **ARGON_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=2, temperature=300, box=8, seed=5, **ARGON_MODEL
+        )
         self.assertEqual(a.rng.random(), np.random.default_rng(5).random())
 
     def test_refuses_a_lattice_inside_a_hard_core(self):
-        # 16 particles on a 4 by 4 lattice in a 10 Angstrom box are 2.5
+        # 16 atoms on a 4 by 4 lattice in a 10 Angstrom box are 2.5
         # Angstrom apart, inside a 3 Angstrom hard core that the 5 Angstrom
         # cut-off clears: the lattice energy is infinite.
         with self.assertRaisesRegex(ValueError, "not finite"):
-            MCSimulation.initialise(16, 300, 10, **WELL_MODEL)
+            MCSimulation.initialise(number_of_atoms=16, temperature=300, box=10, **WELL_MODEL)
 
-    def test_one_particle_is_allowed(self):
-        a = MCSimulation.initialise(1, 300, 20, **ARGON_MODEL)
+    def test_one_atom_is_allowed(self):
+        a = MCSimulation.initialise(number_of_atoms=1, temperature=300, box=20, **ARGON_MODEL)
         self.assertEqual(a.energy, 0.0)
 
 
 class TestConstructor(unittest.TestCase):
     def test_accepts_an_md_configuration(self):
-        md_simulation = MDSimulation.initialise(4, 100, 20, **ARGON_MODEL)
+        md_simulation = MDSimulation.initialise(
+            number_of_atoms=4, temperature=100, box=20, **ARGON_MODEL
+        )
         a = MCSimulation(md_simulation.configuration, ARGON_MODEL["pair_potentials"], 100)
         self.assertIs(a.configuration, md_simulation.configuration)
         for _ in range(20):
@@ -117,18 +123,22 @@ class TestConstructor(unittest.TestCase):
         assert_equal(a.configuration.velocity, md_simulation.configuration.velocity)
 
     def test_validates_the_temperature_before_the_model(self):
-        c = MDSimulation.initialise(4, 100, 20, **ARGON_MODEL).configuration
+        c = MDSimulation.initialise(
+            number_of_atoms=4, temperature=100, box=20, **ARGON_MODEL
+        ).configuration
         with self.assertRaisesRegex(ValueError, "temperature must be positive"):
             MCSimulation(c, {}, -1)
 
 
 class TestMoves(unittest.TestCase):
     def test_square_well_drives_monte_carlo(self):
-        # Nine particles on a 3 by 3 lattice in a 12 Angstrom box: each has
+        # Nine atoms on a 3 by 3 lattice in a 12 Angstrom box: each has
         # four lattice neighbours 4 Angstrom away, inside the well, and four
         # diagonal ones 5.66 Angstrom away, beyond it, so 18 pairs sit at
         # -epsilon. The cut-off, half the box, is 6 Angstrom.
-        a = MCSimulation.initialise(9, 300, 12, seed=2, **WELL_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=9, temperature=300, box=12, seed=2, **WELL_MODEL
+        )
         assert_almost_equal(a.energy * 1e21, -27.0)
         overlaps = 0
         for _ in range(50):
@@ -144,14 +154,18 @@ class TestMoves(unittest.TestCase):
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
 
     def test_proposals_compare_by_identity(self):
-        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=16, temperature=300, box=30, seed=1, **ARGON_MODEL
+        )
         proposal = a.propose()
         self.assertEqual(proposal, proposal)
         copy = mc.Proposal(proposal.position, proposal.energy_change, proposal.source)
         self.assertNotEqual(proposal, copy)
 
     def test_propose_leaves_the_configuration_untouched(self):
-        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=16, temperature=300, box=30, seed=1, **ARGON_MODEL
+        )
         before = a.configuration
         position = before.position.copy()
         energy = a.energy
@@ -160,8 +174,10 @@ class TestMoves(unittest.TestCase):
         assert_equal(a.configuration.position, position)
         self.assertEqual(a.energy, energy)
 
-    def test_propose_moves_exactly_one_particle_inside_the_box(self):
-        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+    def test_propose_moves_exactly_one_atom_inside_the_box(self):
+        a = MCSimulation.initialise(
+            number_of_atoms=16, temperature=300, box=30, seed=1, **ARGON_MODEL
+        )
         proposal = a.propose()
         moved = np.any(proposal.position != a.configuration.position, axis=1)
         self.assertEqual(moved.sum(), 1)
@@ -170,10 +186,12 @@ class TestMoves(unittest.TestCase):
 
     def test_propose_energy_change_matches_a_full_recompute(self):
         # The oracle: apply the proposal to a copy and recompute every pair.
-        # The mixture checks the moving particle's own species is used, so
-        # the proposals must move particles of both species.
+        # The mixture checks the moving atom's own species is used, so
+        # the proposals must move atoms of both species.
         for model in (ARGON_MODEL, MIXTURE_MODEL):
-            a = MCSimulation.initialise(16, 300, 40, seed=1, **model)
+            a = MCSimulation.initialise(
+                number_of_atoms=16, temperature=300, box=40, seed=1, **model
+            )
             moved_species = set()
             for _ in range(5):
                 proposal = a.propose()
@@ -189,7 +207,9 @@ class TestMoves(unittest.TestCase):
         # Two proposals made from the same configuration: applying the
         # second after the first would undo the first move and add an
         # energy change that no longer applies.
-        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=16, temperature=300, box=30, seed=1, **ARGON_MODEL
+        )
         first, second = a.propose(), a.propose()
         a.apply(first)
         with self.assertRaisesRegex(ValueError, "no longer the current one"):
@@ -198,14 +218,18 @@ class TestMoves(unittest.TestCase):
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
 
     def test_apply_updates_the_positions_and_the_energy(self):
-        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=16, temperature=300, box=30, seed=1, **ARGON_MODEL
+        )
         proposal = a.propose()
         a.apply(proposal)
         assert_equal(a.configuration.position, proposal.position)
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
 
     def test_step_proposes_decides_and_counts(self):
-        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=16, temperature=300, box=30, seed=1, **ARGON_MODEL
+        )
         for _ in range(100):
             a.step()
         self.assertEqual(a.steps, 100)
@@ -214,7 +238,9 @@ class TestMoves(unittest.TestCase):
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
 
     def test_sample_sets_the_exact_energy_and_records_it(self):
-        a = MCSimulation.initialise(16, 300, 30, seed=1, **ARGON_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=16, temperature=300, box=30, seed=1, **ARGON_MODEL
+        )
         for _ in range(20):
             a.apply(a.propose())
         # A corrupted running total is replaced by the exact one.
@@ -227,7 +253,12 @@ class TestMoves(unittest.TestCase):
     def test_seeded_runs_are_identical(self):
         def run(seed):
             a = MCSimulation.initialise(
-                16, 300, 30, init_conf="metropolis", seed=seed, **ARGON_MODEL
+                number_of_atoms=16,
+                temperature=300,
+                box=30,
+                init_conf="metropolis",
+                seed=seed,
+                **ARGON_MODEL,
             )
             for _ in range(200):
                 a.step()
@@ -240,8 +271,8 @@ class TestMoves(unittest.TestCase):
         self.assertFalse(np.array_equal(first.configuration.position, other.configuration.position))
 
     def test_samples_the_boltzmann_distribution(self):
-        # Two argon particles in a 12 Angstrom box at 300 K. The relative
-        # position of a pair of uniformly placed particles is uniform over
+        # Two argon atoms in a 12 Angstrom box at 300 K. The relative
+        # position of a pair of uniformly placed atoms is uniform over
         # the box, so the mean pair energy is the Boltzmann average of the
         # minimum-image pair energy over the box, which quadrature gives.
         box, cut_off, temperature = 12e-10, 6e-10, 300
@@ -257,7 +288,9 @@ class TestMoves(unittest.TestCase):
         inside = weight > 0
         contribution[inside] = energy[inside] * weight[inside]
         expected = contribution.sum() / weight.sum()
-        a = MCSimulation.initialise(2, temperature, 12, seed=0, **ARGON_MODEL)
+        a = MCSimulation.initialise(
+            number_of_atoms=2, temperature=temperature, box=12, seed=0, **ARGON_MODEL
+        )
         energies = []
         for _ in range(40000):
             a.step()
@@ -265,7 +298,7 @@ class TestMoves(unittest.TestCase):
         np.testing.assert_allclose(np.mean(energies[5000:]), expected, rtol=0.05)
 
     def test_restart_carries_the_energy_and_resets_the_counts(self):
-        a = MCSimulation.initialise(4, 300, 12, **ARGON_MODEL)
+        a = MCSimulation.initialise(number_of_atoms=4, temperature=300, box=12, **ARGON_MODEL)
         for _ in range(10):
             a.step()
         a.sample()

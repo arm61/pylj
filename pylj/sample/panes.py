@@ -12,6 +12,7 @@ from collections.abc import Iterable
 import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
+from numpy.typing import NDArray
 
 from pylj import pairwise
 from pylj.mc import MCSimulation
@@ -167,7 +168,7 @@ def _potential_minimum(potential: PairPotential) -> float:
     if well == r.size - 1:
         raise ValueError(
             f"{type(potential).__name__} has no minimum between 0.1 and 50 Angstrom to "
-            "size the particles by; pass diameter= to the pane or the viewer."
+            "size the atoms by; pass diameter= to the pane or the viewer."
         )
     return float(r[well])
 
@@ -219,16 +220,46 @@ def _drawn_diameters(
     return [value * 1e-10 for value in values]
 
 
+def _with_periodic_images(
+    position: NDArray[np.float64], box: float, radius: float
+) -> NDArray[np.float64]:
+    """Return the positions with a copy of each atom that overhangs an edge.
+
+    An atom whose centre is within ``radius`` of an edge of the box is
+    drawn again one box length away, so the part of its disc that hangs over
+    the edge appears at the opposite edge, where it belongs.
+
+    Args:
+        position: The atom positions, shape ``(N, 2)``, in metres.
+        box: The side length of the box, in metres.
+        radius: The drawn radius of the atoms, in metres.
+
+    Returns:
+        The positions followed by the images, shape ``(N + images, 2)``.
+    """
+    images = [position]
+    for shift_x in (-box, 0.0, box):
+        for shift_y in (-box, 0.0, box):
+            if shift_x == 0.0 and shift_y == 0.0:
+                continue
+            shifted = position + np.array([shift_x, shift_y])
+            overhangs = np.all((shifted > -radius) & (shifted < box + radius), axis=1)
+            images.append(shifted[overhangs])
+    return np.concatenate(images)
+
+
 class CellPane(Pane):
-    """The particles drawn to scale inside the simulation cell.
+    """The atoms drawn to scale inside the simulation cell.
 
     Each species is drawn with its own marker. The drawn diameter is a
     display choice; by default it is the separation at the minimum of the
     species' own pair energy, which for a Lennard-Jones potential is
-    2^(1/6) sigma.
+    2^(1/6) sigma. An atom that overhangs an edge of the box is drawn
+    again at the opposite edge, since the box is periodic and that is where
+    the overhanging part of it is.
 
     Args:
-        diameter: Drawn diameter of the particles, in Angstrom: one value
+        diameter: Drawn diameter of the atoms, in Angstrom: one value
             for every species, or one per species in the order of
             ``Configuration.species``. Each value must be positive and at
             least 0.01, as smaller values are metres mistaken for Angstrom.
@@ -265,7 +296,8 @@ class CellPane(Pane):
         for index, diameter in enumerate(self.diameters):
             line = ax.lines[index]
             position = configuration.position[configuration.species_index == index]
-            line.set_data(position[:, 0], position[:, 1])
+            drawn = _with_periodic_images(position, self.box, diameter / 2)
+            line.set_data(drawn[:, 0], drawn[:, 1])
             line.set_markersize(diameter / self.box * axes_width_points)
 
 
@@ -279,6 +311,8 @@ class _SeriesPane(Pane):
         attribute: Name of the ``MDSamples`` attribute holding the sample
             array to plot on the y axis.
         ylabel: Label for the y axis.
+        scale: Factor the sample values are multiplied by before plotting,
+            to convert from SI to the unit named in ``ylabel``.
         y_from_zero: Whether the y axis should start at zero rather than
             below the minimum of the data.
     """
@@ -286,17 +320,18 @@ class _SeriesPane(Pane):
     needs_md = True
     attribute: str
     ylabel: str
+    scale: float = 1.0
     y_from_zero: bool = False
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
-        ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)
+        ax.set_xlabel("Time/ps", fontsize=LABEL_SIZE)
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set
-        x = simulation.samples.step * simulation.timestep
-        y = getattr(simulation.samples, self.attribute)
+        x = simulation.samples.step * simulation.timestep * 1e12
+        y = getattr(simulation.samples, self.attribute) * self.scale
         ax.lines[0].set_data(x, y)
         _fit_axes(ax, x, y, y_from_zero=self.y_from_zero)
 
@@ -319,7 +354,8 @@ class MSDPane(_SeriesPane):
     """Mean squared displacement against time."""
 
     attribute = "msd"
-    ylabel = "MSD/m$^2$"
+    ylabel = "MSD/Angstrom$^2$"
+    scale = 1e20
     y_from_zero = True
 
 
@@ -332,14 +368,15 @@ def _energy_series(
         simulation: The simulation being visualised.
 
     Returns:
-        Time and the total energy for a molecular dynamics simulation; step
-        and the potential energy for a Monte Carlo one.
+        Time in picoseconds and the total energy for a molecular dynamics
+        simulation; step and the potential energy for a Monte Carlo one.
 
     Raises:
         TypeError: If the simulation records no energy.
     """
     if isinstance(simulation, MDSimulation):
-        return simulation.samples.step * simulation.timestep, simulation.samples.total_energy
+        time = simulation.samples.step * simulation.timestep * 1e12
+        return time, simulation.samples.total_energy
     if isinstance(simulation, MCSimulation):
         return simulation.samples.step, simulation.samples.potential_energy
     raise TypeError(
@@ -358,7 +395,7 @@ class EnergyPane(Pane):
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel("Energy/J", fontsize=LABEL_SIZE)
-        xlabel = "Time/s" if isinstance(simulation, MDSimulation) else "Step"
+        xlabel = "Time/ps" if isinstance(simulation, MDSimulation) else "Step"
         ax.set_xlabel(xlabel, fontsize=LABEL_SIZE)
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
@@ -381,10 +418,9 @@ class RDFPane(_HistoryPane):
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_xlim(0, simulation.configuration.box / 2)
-        ax.set_yticks([])
+        ax.set_xlim(0, simulation.configuration.box / 2 * 1e10)
         ax.set_ylabel("RDF", fontsize=LABEL_SIZE)
-        ax.set_xlabel("r/m", fontsize=LABEL_SIZE)
+        ax.set_xlabel("r/Angstrom", fontsize=LABEL_SIZE)
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         configuration = simulation.configuration
@@ -394,10 +430,10 @@ class RDFPane(_HistoryPane):
         r = edges[:-1] + dr / 2
         distance, _ = pairwise.dist(configuration.position, box)
         counts, _ = np.histogram(distance, bins=edges)
-        n = configuration.number_of_particles
+        n = configuration.number_of_atoms
         pairs = n * (n - 1) / 2
         if pairs == 0:
-            # A single particle has no pairs, and so no radial distribution
+            # A single atom has no pairs, and so no radial distribution
             # function to draw or to average.
             ax.lines[0].set_data([], [])
             return
@@ -405,10 +441,10 @@ class RDFPane(_HistoryPane):
         # the box, in a 2D shell of area 2 pi r dr at radius r.
         ideal = pairs * 2 * np.pi * r * dr / box**2
         gr = counts / ideal
-        self.r = r
+        self.r = r * 1e10
         self.history.append(gr)
-        ax.lines[0].set_data(r, gr)
-        _fit_axes(ax, r, gr, y_from_zero=True)
+        ax.lines[0].set_data(self.r, gr)
+        _fit_axes(ax, self.r, gr, y_from_zero=True)
 
     def average(self, ax: Axes) -> None:
         """Replace the current g(r) with the mean of every update so far.
@@ -425,7 +461,7 @@ class RDFPane(_HistoryPane):
 class ScatteringPane(_HistoryPane):
     """Scattering profile I(q) from the Debye sum over pair distances.
 
-    The Debye sum for ``N`` identical scatterers is ``N`` from each particle
+    The Debye sum for ``N`` identical scatterers is ``N`` from each atom
     scattering on its own, plus ``2 sin(q r) / (q r)`` for each pair at
     distance ``r``.
 
@@ -433,7 +469,7 @@ class ScatteringPane(_HistoryPane):
     """
 
     # An empirical upper limit, in 1/m, that shows the first few peaks for
-    # argon-sized particles.
+    # argon-sized atoms.
     Q_MAX = 1e11
     POINTS = 1000
     SKIP = 20  # lowest-q points, where the box periodicity dominates
@@ -460,7 +496,7 @@ class ScatteringPane(_HistoryPane):
             block = q[start : start + self.BLOCK]
             qr = np.outer(block, distance)
             intensity[start : start + self.BLOCK] = np.sum(np.sinc(qr / np.pi), axis=1)
-        intensity = configuration.number_of_particles + 2 * intensity
+        intensity = configuration.number_of_atoms + 2 * intensity
         self.q = q
         self.history.append(intensity)
         ax.lines[0].set_data(q, intensity)
@@ -479,7 +515,7 @@ class ScatteringPane(_HistoryPane):
 
 
 class MaxwellBoltzmannPane(Pane):
-    """Histogram of the speeds of every particle at every update so far.
+    """Histogram of the speeds of every atom at every update so far.
 
     The histogram already pools every update, so there is no separate history
     to average and this pane has no average to show."""

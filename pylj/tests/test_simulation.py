@@ -10,7 +10,7 @@ from pylj.tests.argon import ARGON, ARGON_MODEL, WELL_MODEL
 class TestInitialEnergyCheck(unittest.TestCase):
     def test_refuses_an_overlapping_lattice(self):
         # 16 argon on a 4 by 4 lattice in a 10 Angstrom box are 2.5 Angstrom
-        # apart, inside sigma: about 90 k_B T of potential energy per particle.
+        # apart, inside sigma: about 90 k_B T of potential energy per atom.
         c = placement.place_square(16, (ARGON,), 10e-10)
         energy = c.potential_energy(ARGON_MODEL["pair_potentials"], 5e-10)
         with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
@@ -23,7 +23,7 @@ class TestInitialEnergyCheck(unittest.TestCase):
             simulation._check_initial_energy(energy, 16, 300)
 
     def test_accepts_a_lattice_below_the_limit(self):
-        # 16 argon in a 12 Angstrom box store about 5.6 k_B T per particle
+        # 16 argon in a 12 Angstrom box store about 5.6 k_B T per atom
         # at 300 K, under the limit of 10.
         c = placement.place_square(16, (ARGON,), 12e-10)
         energy = c.potential_energy(ARGON_MODEL["pair_potentials"], 6e-10)
@@ -52,7 +52,7 @@ class TestSimulation(unittest.TestCase):
 
     def test_holds_the_configuration_and_the_model(self):
         s = self.build(seed=1)
-        self.assertEqual(s.configuration.number_of_particles, 4)
+        self.assertEqual(s.configuration.number_of_atoms, 4)
         self.assertEqual(s.pair_potentials, ARGON_MODEL["pair_potentials"])
         self.assertEqual(s.steps, 0)
         self.assertIsInstance(s.samples, simulation.Samples)

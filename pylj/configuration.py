@@ -15,10 +15,10 @@ from pylj.potentials import Species
 
 @dataclass(frozen=True, eq=False)
 class PairData:
-    """The distance, separation, energy and force of every pair of particles.
+    """The distance, separation, energy and force of every pair of atoms.
 
     Each pair appears once, in the order :func:`pairwise.dist` returns them:
-    the particle with the lower index first.
+    the atom with the lower index first.
 
     Attributes:
         distance: The minimum-image distance between each pair, in metres.
@@ -50,19 +50,19 @@ def _radial_force(pairs: PairData) -> NDArray[np.float64]:
 
 @dataclass(frozen=True, eq=False)
 class Configuration:
-    """Where the particles are: the state a Monte Carlo simulation evolves.
+    """Where the atoms are: the state a Monte Carlo simulation evolves.
 
     A configuration cannot be changed once it is made, and it holds no
-    description of how the particles interact. Each method that needs the
+    description of how the atoms interact. Each method that needs the
     interaction law is given ``pair_potentials`` and ``cut_off`` when it is
     called, so the same configuration can be evaluated under different
     potentials. Everything is in SI units.
 
     Attributes:
-        position: The position of each particle, shape ``(N, 2)``, in
+        position: The position of each atom, shape ``(N, 2)``, in
             metres; a simulation keeps them wrapped into the box.
         species: The species in the configuration.
-        species_index: The index in ``species`` of each particle's species,
+        species_index: The index in ``species`` of each atom's species,
             shape ``(N,)``.
         box: The side length of the square periodic box, in metres.
 
@@ -85,7 +85,7 @@ class Configuration:
         if self.species_index.shape != (n,) or not integer:
             raise ValueError(
                 f"species_index must be an integer array of shape ({n},), one entry per "
-                f"particle, not {self.species_index.dtype} of shape {self.species_index.shape}"
+                f"atom, not {self.species_index.dtype} of shape {self.species_index.shape}"
             )
         if not self.species:
             raise ValueError("species must name at least one Species")
@@ -97,13 +97,13 @@ class Configuration:
             raise ValueError(f"box must be positive and finite, not {self.box}")
 
     @property
-    def number_of_particles(self) -> int:
-        """The number of particles."""
+    def number_of_atoms(self) -> int:
+        """The number of atoms."""
         return self.position.shape[0]
 
     @property
     def masses(self) -> NDArray[np.float64]:
-        """The mass of each particle, in kilograms, from its species."""
+        """The mass of each atom, in kilograms, from its species."""
         masses = np.array([one.mass for one in self.species], dtype=float) * ATOMIC_MASS_UNIT
         return masses[self.species_index]
 
@@ -113,13 +113,13 @@ class Configuration:
         return dataclasses.replace(self, **changes)
 
     def without(self, index: int) -> Self:
-        """Return a copy with one particle removed.
+        """Return a copy with one atom removed.
 
         Args:
-            index: The index of the particle to remove.
+            index: The index of the atom to remove.
 
         Returns:
-            The configuration without that particle.
+            The configuration without that atom.
         """
         arrays: dict[str, Any] = {
             field.name: np.delete(getattr(self, field.name), index, axis=0)
@@ -131,7 +131,7 @@ class Configuration:
     def pairs(
         self, pair_potentials: PairPotentials, cut_off: float, *, forces: bool = False
     ) -> PairData:
-        """Evaluate every pair of particles under the interaction law.
+        """Evaluate every pair of atoms under the interaction law.
 
         Each pair is separated by its minimum-image distance, and the potential
         for the two species it joins gives its energy. A pair further apart
@@ -169,8 +169,8 @@ class Configuration:
             if forbidden.any():
                 if force is not None:
                     raise ValueError(
-                        f"A pair of {self.species[type_1].name or 'particles'} and "
-                        f"{self.species[type_2].name or 'particles'} is "
+                        f"A pair of {self.species[type_1].name or 'atoms'} and "
+                        f"{self.species[type_2].name or 'atoms'} is "
                         f"{distance[forbidden].min() * 1e10:.2f} Angstrom apart, closer than the "
                         f"{potential.min_separation * 1e10:.2f} Angstrom below which "
                         f"{type(potential).__name__} is not valid: the simulation has collapsed."
@@ -189,14 +189,14 @@ class Configuration:
         return float(self.pairs(pair_potentials, cut_off).energy.sum())
 
     def forces(self, pair_potentials: PairPotentials, cut_off: float) -> NDArray[np.float64]:
-        """The net force on each particle, shape ``(N, 2)``, in newtons."""
+        """The net force on each atom, shape ``(N, 2)``, in newtons."""
         pairs = self.pairs(pair_potentials, cut_off, forces=True)
         radial = _radial_force(pairs)
-        i, j = np.triu_indices(self.number_of_particles, 1)
+        i, j = np.triu_indices(self.number_of_atoms, 1)
         # Each pair's radial force acts along its separation, pushing
-        # particle i one way and particle j the other.
+        # atom i one way and atom j the other.
         pair_force = (radial / pairs.distance)[:, None] * pairs.separation
-        force = np.zeros((self.number_of_particles, 2))
+        force = np.zeros((self.number_of_atoms, 2))
         np.add.at(force, i, pair_force)
         np.add.at(force, j, -pair_force)
         return force
@@ -212,11 +212,11 @@ class Configuration:
         pair_potentials: PairPotentials,
         cut_off: float,
     ) -> float:
-        """Return the interaction energy of one added particle with the particles already
+        """Return the interaction energy of one added atom with the atoms already
         in the configuration.
 
         Args:
-            position: The ``(x, y)`` position of the added particle, in metres.
+            position: The ``(x, y)`` position of the added atom, in metres.
             species_index: The index in ``species`` of its species.
             pair_potentials: The potential between each pair of species.
             cut_off: The separation beyond which a pair contributes nothing,
@@ -244,13 +244,13 @@ class Configuration:
 
 @dataclass(frozen=True, eq=False)
 class MDConfiguration(Configuration):
-    """Where the particles are and how fast they move: the state a molecular
+    """Where the atoms are and how fast they move: the state a molecular
     dynamics simulation evolves.
 
     Attributes:
-        velocity: The velocity of each particle, shape ``(N, 2)``, in
+        velocity: The velocity of each atom, shape ``(N, 2)``, in
             metres per second.
-        unwrapped: The position of each particle without periodic wrapping,
+        unwrapped: The position of each atom without periodic wrapping,
             shape ``(N, 2)``, in metres, for the mean squared displacement.
 
     Raises:
@@ -284,19 +284,19 @@ class MDConfiguration(Configuration):
         energy divided by ``(N - 1) k_B``.
 
         Raises:
-            ValueError: If there are fewer than two particles.
+            ValueError: If there are fewer than two atoms.
         """
-        if self.number_of_particles < 2:
+        if self.number_of_atoms < 2:
             raise ValueError(
-                "The temperature needs at least two particles: with one particle there "
+                "The temperature needs at least two atoms: with one atom there "
                 "is no thermal motion once the centre-of-mass velocity is removed."
             )
-        return self.kinetic_energy() / ((self.number_of_particles - 1) * BOLTZMANN)
+        return self.kinetic_energy() / ((self.number_of_atoms - 1) * BOLTZMANN)
 
     def msd(self, initial: "MDConfiguration") -> float:
         """Return the mean squared displacement since an earlier configuration.
 
-        The unwrapped positions are used, so a particle that crosses the edge
+        The unwrapped positions are used, so an atom that crosses the edge
         of the box and reappears on the other side counts as having travelled
         the whole way.
 

@@ -12,7 +12,7 @@ from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL, WELL_MOD
 
 
 def two_argon(velocity, box=8e-10):
-    """Two argon particles at (2, 2) and (2, 6) Angstrom with the given velocities."""
+    """Two argon atoms at (2, 2) and (2, 6) Angstrom with the given velocities."""
     position = np.array([[2e-10, 2e-10], [2e-10, 6e-10]])
     return MDConfiguration(
         position=position,
@@ -32,10 +32,10 @@ def kinetic_plus_potential(sim):
 
 class TestInitialise(unittest.TestCase):
     def test_square_lattice_in_a_converted_box(self):
-        a = MDSimulation.initialise(2, 300, 8, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=2, temperature=300, box=8, **ARGON_MODEL)
         c = a.configuration
         self.assertIsInstance(c, MDConfiguration)
-        self.assertEqual(c.number_of_particles, 2)
+        self.assertEqual(c.number_of_atoms, 2)
         assert_almost_equal(c.box, 8e-10)
         assert_almost_equal(c.position * 1e10, [[2, 2], [2, 6]])
         assert_almost_equal(c.unwrapped, c.position)
@@ -45,25 +45,25 @@ class TestInitialise(unittest.TestCase):
         self.assertEqual(a.time, 0.0)
 
     def test_forces_are_valid_after_construction(self):
-        a = MDSimulation.initialise(2, 300, 8, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=2, temperature=300, box=8, **ARGON_MODEL)
         assert_allclose(a.forces, a.configuration.forces(a.pair_potentials, a.cut_off))
         self.assertNotEqual(a.forces[0, 1], 0.0)
 
     def test_velocities_have_no_net_momentum(self):
-        a = MDSimulation.initialise(25, 100, 40, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=25, temperature=100, box=40, **ARGON_MODEL)
         thermal_speed = np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
         momentum = a.configuration.velocity.sum(axis=0)
         self.assertLess(abs(momentum[0]), 1e-12 * thermal_speed)
         self.assertLess(abs(momentum[1]), 1e-12 * thermal_speed)
 
     def test_velocities_match_the_requested_temperature(self):
-        a = MDSimulation.initialise(25, 100, 40, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=25, temperature=100, box=40, **ARGON_MODEL)
         assert_almost_equal(a.configuration.temperature(), 100)
 
     def test_two_species_have_no_net_momentum_at_the_temperature(self):
         # The centre-of-mass velocity is mass weighted, so with unequal
         # masses the total momentum is zero and the temperature exact.
-        a = MDSimulation.initialise(24, 100, 60, **MIXTURE_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=24, temperature=100, box=60, **MIXTURE_MODEL)
         c = a.configuration
         assert_allclose(c.masses[:4], np.array([39.948, 80.0, 39.948, 80.0]) * ATOMIC_MASS_UNIT)
         momentum_scale = ARGON.mass * np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
@@ -72,12 +72,14 @@ class TestInitialise(unittest.TestCase):
         self.assertLess(abs(momentum[1]), 1e-12 * momentum_scale)
         assert_almost_equal(c.temperature(), 100)
 
-    def test_heavier_particles_move_more_slowly(self):
+    def test_heavier_atoms_move_more_slowly(self):
         # Each species gets its own thermal width: the mean square speed of
-        # a species is 2 k_B T / m, so the argon particles move faster than
-        # the heavier ones. A thousand particles keep the sampling noise
+        # a species is 2 k_B T / m, so the argon atoms move faster than
+        # the heavier ones. A thousand atoms keep the sampling noise
         # to a few per cent.
-        c = MDSimulation.initialise(1000, 100, 320, seed=0, **MIXTURE_MODEL).configuration
+        c = MDSimulation.initialise(
+            number_of_atoms=1000, temperature=100, box=320, seed=0, **MIXTURE_MODEL
+        ).configuration
         for index, species in enumerate((ARGON, LARGER)):
             speeds_squared = np.sum(c.velocity[c.species_index == index] ** 2, axis=1)
             expected = 2 * BOLTZMANN * 100 / (species.mass * ATOMIC_MASS_UNIT)
@@ -85,12 +87,17 @@ class TestInitialise(unittest.TestCase):
 
     def test_refuses_a_potential_with_no_force(self):
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
-            MDSimulation.initialise(2, 300, 8, **WELL_MODEL)
+            MDSimulation.initialise(number_of_atoms=2, temperature=300, box=8, **WELL_MODEL)
 
     def test_is_reproducible_with_a_seed(self):
         def build(seed):
             return MDSimulation.initialise(
-                10, 100, 40, init_conf="metropolis", seed=seed, **ARGON_MODEL
+                number_of_atoms=10,
+                temperature=100,
+                box=40,
+                init_conf="metropolis",
+                seed=seed,
+                **ARGON_MODEL,
             )
 
         first, second, other = build(3), build(3), build(4)
@@ -104,9 +111,9 @@ class TestInitialise(unittest.TestCase):
         # 50 argon in a 27 Angstrom box cannot be placed at 1 K.
         with self.assertRaisesRegex(ValueError, "Could not place"):
             MDSimulation.initialise(
-                50,
-                100,
-                27,
+                number_of_atoms=50,
+                temperature=100,
+                box=27,
                 init_conf="metropolis",
                 placement_temperature=1.0,
                 seed=0,
@@ -114,22 +121,26 @@ class TestInitialise(unittest.TestCase):
             )
 
     def test_passes_the_timestep_and_cut_off_through(self):
-        a = MDSimulation.initialise(2, 300, 40, timestep=2e-15, cut_off=10, **ARGON_MODEL)
+        a = MDSimulation.initialise(
+            number_of_atoms=2, temperature=300, box=40, timestep=2e-15, cut_off=10, **ARGON_MODEL
+        )
         assert_almost_equal(a.timestep, 2e-15)
         assert_almost_equal(a.cut_off * 1e10, 10)
 
-    def test_one_particle_raises(self):
-        with self.assertRaisesRegex(ValueError, "at least two particles"):
-            MDSimulation.initialise(1, 300, 8, **ARGON_MODEL)
+    def test_one_atom_raises(self):
+        with self.assertRaisesRegex(ValueError, "at least two atoms"):
+            MDSimulation.initialise(number_of_atoms=1, temperature=300, box=8, **ARGON_MODEL)
 
     def test_rejects_a_non_positive_or_infinite_temperature(self):
         for temperature in (0, -10, np.inf):
             with self.assertRaisesRegex(ValueError, "temperature must be positive"):
-                MDSimulation.initialise(2, temperature, 8, **ARGON_MODEL)
+                MDSimulation.initialise(
+                    number_of_atoms=2, temperature=temperature, box=8, **ARGON_MODEL
+                )
 
     def test_refuses_an_overlapping_lattice(self):
         with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
-            MDSimulation.initialise(16, 300, 10, **ARGON_MODEL)
+            MDSimulation.initialise(number_of_atoms=16, temperature=300, box=10, **ARGON_MODEL)
 
 
 class TestConstructor(unittest.TestCase):
@@ -171,7 +182,7 @@ class TestConstructor(unittest.TestCase):
 
 class TestStep(unittest.TestCase):
     def test_step_advances_the_clock(self):
-        a = MDSimulation.initialise(4, 100, 20, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=4, temperature=100, box=20, **ARGON_MODEL)
         a.step()
         a.step()
         self.assertEqual(a.steps, 2)
@@ -182,14 +193,14 @@ class TestStep(unittest.TestCase):
             def integrate(self):
                 pass
 
-        a = Frozen.initialise(4, 100, 20, **ARGON_MODEL)
+        a = Frozen.initialise(number_of_atoms=4, temperature=100, box=20, **ARGON_MODEL)
         before = a.configuration
         a.step()
         self.assertIs(a.configuration, before)
         self.assertEqual(a.steps, 1)
 
     def test_integrate_replaces_the_configuration_and_the_forces(self):
-        a = MDSimulation.initialise(4, 100, 20, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=4, temperature=100, box=20, **ARGON_MODEL)
         before, forces_before = a.configuration, a.forces
         a.integrate()
         self.assertIsNot(a.configuration, before)
@@ -201,8 +212,8 @@ class TestStep(unittest.TestCase):
 
 class TestVelocityVerlet(unittest.TestCase):
     def test_advances_the_unwrapped_positions(self):
-        # A y velocity of 3e4 m/s moves each particle by 3 Angstrom in one
-        # 1e-14 s step, so the second particle crosses the boundary of the 8
+        # A y velocity of 3e4 m/s moves each atom by 3 Angstrom in one
+        # 1e-14 s step, so the second atom crosses the boundary of the 8
         # Angstrom box: its wrapped position comes back in and its unwrapped
         # one does not. The forces are zeroed so the motion is the drift.
         c = two_argon([[0.0, 3e4], [0.0, 3e4]])
@@ -214,7 +225,7 @@ class TestVelocityVerlet(unittest.TestCase):
         assert_allclose(forces, moved.forces(ARGON_MODEL["pair_potentials"], 15e-10))
 
     def test_matches_the_hand_computed_step(self):
-        # A pair 4 Angstrom apart, inside the cut-off, one particle drifting
+        # A pair 4 Angstrom apart, inside the cut-off, one atom drifting
         # in x: the attraction acts along y, so the positions advance by
         # v dt + a dt^2 / 2 and the velocities by the mean acceleration
         # times dt, with the forces at the new positions evaluated afresh.
@@ -257,7 +268,9 @@ class TestVelocityVerlet(unittest.TestCase):
         # mass. Measured for argon: 1.6e-4 at 1e-14 s, 3.9e-5 at 5e-15 s;
         # for the mixture: 3.0e-3 and 7.6e-4.
         def worst_drift(model, box, timestep, steps):
-            a = MDSimulation.initialise(25, 100, box, timestep=timestep, seed=0, **model)
+            a = MDSimulation.initialise(
+                number_of_atoms=25, temperature=100, box=box, timestep=timestep, seed=0, **model
+            )
             a.cut_off = 1e-8
             a.forces = a.configuration.forces(a.pair_potentials, a.cut_off)
             initial = kinetic_plus_potential(a)
@@ -283,7 +296,9 @@ class TestVelocityVerlet(unittest.TestCase):
             * np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
         )
         for model, box in ((ARGON_MODEL, 20), (MIXTURE_MODEL, 30)):
-            a = MDSimulation.initialise(25, 100, box, seed=0, **model)
+            a = MDSimulation.initialise(
+                number_of_atoms=25, temperature=100, box=box, seed=0, **model
+            )
             for _ in range(200):
                 a.step()
             c = a.configuration
@@ -291,28 +306,30 @@ class TestVelocityVerlet(unittest.TestCase):
             self.assertLess(abs(momentum[0]), 1e-12 * momentum_scale)
             self.assertLess(abs(momentum[1]), 1e-12 * momentum_scale)
 
-    def test_refuses_a_step_that_moves_a_particle_past_half_the_cut_off(self):
-        # A timestep a thousand times too long carries a particle tens of
+    def test_refuses_a_step_that_moves_a_atom_past_half_the_cut_off(self):
+        # A timestep a thousand times too long carries an atom tens of
         # Angstrom in one step; the integrator refuses rather than continue
         # from a configuration it cannot trust.
-        a = MDSimulation.initialise(25, 100, 20, timestep=1e-11, seed=0, **ARGON_MODEL)
+        a = MDSimulation.initialise(
+            number_of_atoms=25, temperature=100, box=20, timestep=1e-11, seed=0, **ARGON_MODEL
+        )
         with self.assertRaisesRegex(ValueError, "half the cut-off"):
             a.step()
 
 
 class TestMSD(unittest.TestCase):
     def test_is_zero_before_the_first_step(self):
-        a = MDSimulation.initialise(16, 300, 20, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=16, temperature=300, box=20, **ARGON_MODEL)
         self.assertEqual(a.configuration.msd(a.initial_configuration), 0.0)
 
     def test_with_sparse_sampling(self):
-        # Both particles are driven in -x at 1e4 m/s, 1 Angstrom per step, so
+        # Both atoms are driven in -x at 1e4 m/s, 1 Angstrom per step, so
         # each crosses the periodic boundary of the 8 Angstrom box several
         # times in 60 steps with no sampling in between. Both share the same
         # x, so the pair force acts only along y and the x motion is the
         # imposed drift. The oracle accumulates the minimum-image
         # displacement between consecutive steps, which is exact while a
-        # particle moves less than half a box per step.
+        # atom moves less than half a box per step.
         a = MDSimulation(two_argon([[-1e4, 0.0], [-1e4, 0.0]]), ARGON_MODEL["pair_potentials"])
         box = a.configuration.box
         total = np.zeros((2, 2))
@@ -328,12 +345,12 @@ class TestMSD(unittest.TestCase):
 
 class TestHeatBath(unittest.TestCase):
     def test_rescales_to_the_bath_temperature(self):
-        a = MDSimulation.initialise(10, 300, 20, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=10, temperature=300, box=20, **ARGON_MODEL)
         a.heat_bath(250.0)
         assert_almost_equal(a.configuration.temperature() / 250.0, 1.0)
 
     def test_preserves_velocity_directions_and_the_forces(self):
-        a = MDSimulation.initialise(10, 300, 20, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=10, temperature=300, box=20, **ARGON_MODEL)
         old = a.configuration.velocity
         forces = a.forces
         a.heat_bath(250.0)
@@ -342,11 +359,13 @@ class TestHeatBath(unittest.TestCase):
         self.assertIs(a.forces, forces)
 
     def test_two_calls_each_hit_their_own_target(self):
-        c = MDSimulation.initialise(10, 300, 20, **ARGON_MODEL).configuration
+        c = MDSimulation.initialise(
+            number_of_atoms=10, temperature=300, box=20, **ARGON_MODEL
+        ).configuration
         c = md.heat_bath(md.heat_bath(c, 250.0), 100.0)
         assert_almost_equal(c.temperature() / 100.0, 1.0)
 
-    def test_raises_when_the_particles_are_at_rest(self):
+    def test_raises_when_the_atoms_are_at_rest(self):
         with self.assertRaisesRegex(ValueError, "at rest"):
             md.heat_bath(two_argon(np.zeros((2, 2))), 250.0)
 
@@ -364,7 +383,7 @@ class TestHeatBath(unittest.TestCase):
 
 class TestSample(unittest.TestCase):
     def test_records_the_step_and_the_thermodynamics(self):
-        a = MDSimulation.initialise(2, 300, 8, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=2, temperature=300, box=8, **ARGON_MODEL)
         for _ in range(3):
             a.step()
         a.sample()
@@ -378,7 +397,9 @@ class TestSample(unittest.TestCase):
         self.assertEqual(a.samples.total_energy.size, 2)
 
     def test_measures_the_current_configuration(self):
-        a = MDSimulation.initialise(20, 300, 20, seed=0, **ARGON_MODEL)
+        a = MDSimulation.initialise(
+            number_of_atoms=20, temperature=300, box=20, seed=0, **ARGON_MODEL
+        )
         for _ in range(5):
             a.step()
         a.sample()
@@ -405,7 +426,7 @@ class TestRestart(unittest.TestCase):
             a.sample()
 
     def test_starts_a_fresh_record_from_the_current_state(self):
-        a = MDSimulation.initialise(4, 300, 12, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=4, temperature=300, box=12, **ARGON_MODEL)
         self.run_and_sample(a, 5)
         production = a.restart()
         self.assertIsNot(production, a)
@@ -428,7 +449,7 @@ class TestRestart(unittest.TestCase):
         self.assertGreater(production.samples.msd[-1], 0.0)
 
     def test_leaves_the_source_alone(self):
-        a = MDSimulation.initialise(4, 300, 12, **ARGON_MODEL)
+        a = MDSimulation.initialise(number_of_atoms=4, temperature=300, box=12, **ARGON_MODEL)
         self.run_and_sample(a, 3)
         source = a.configuration
         production = a.restart()
