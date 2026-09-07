@@ -291,11 +291,11 @@ class _SeriesPane(Pane):
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
-        ax.set_xlabel("Time/s", fontsize=LABEL_SIZE)
+        ax.set_xlabel("Time/ps", fontsize=LABEL_SIZE)
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set
-        x = simulation.samples.step * simulation.timestep
+        x = simulation.samples.step * simulation.timestep * 1e12
         y = getattr(simulation.samples, self.attribute)
         ax.lines[0].set_data(x, y)
         _fit_axes(ax, x, y, y_from_zero=self.y_from_zero)
@@ -332,14 +332,15 @@ def _energy_series(
         simulation: The simulation being visualised.
 
     Returns:
-        Time and the total energy for a molecular dynamics simulation; step
-        and the potential energy for a Monte Carlo one.
+        Time in picoseconds and the total energy for a molecular dynamics
+        simulation; step and the potential energy for a Monte Carlo one.
 
     Raises:
         TypeError: If the simulation records no energy.
     """
     if isinstance(simulation, MDSimulation):
-        return simulation.samples.step * simulation.timestep, simulation.samples.total_energy
+        time = simulation.samples.step * simulation.timestep * 1e12
+        return time, simulation.samples.total_energy
     if isinstance(simulation, MCSimulation):
         return simulation.samples.step, simulation.samples.potential_energy
     raise TypeError(
@@ -358,7 +359,7 @@ class EnergyPane(Pane):
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel("Energy/J", fontsize=LABEL_SIZE)
-        xlabel = "Time/s" if isinstance(simulation, MDSimulation) else "Step"
+        xlabel = "Time/ps" if isinstance(simulation, MDSimulation) else "Step"
         ax.set_xlabel(xlabel, fontsize=LABEL_SIZE)
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
@@ -381,9 +382,9 @@ class RDFPane(_HistoryPane):
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_xlim(0, simulation.configuration.box / 2)
+        ax.set_xlim(0, simulation.configuration.box / 2 * 1e10)
         ax.set_ylabel("RDF", fontsize=LABEL_SIZE)
-        ax.set_xlabel("r/m", fontsize=LABEL_SIZE)
+        ax.set_xlabel("r/Angstrom", fontsize=LABEL_SIZE)
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         configuration = simulation.configuration
@@ -404,10 +405,10 @@ class RDFPane(_HistoryPane):
         # the box, in a 2D shell of area 2 pi r dr at radius r.
         ideal = pairs * 2 * np.pi * r * dr / box**2
         gr = counts / ideal
-        self.r = r
+        self.r = r * 1e10
         self.history.append(gr)
-        ax.lines[0].set_data(r, gr)
-        _fit_axes(ax, r, gr, y_from_zero=True)
+        ax.lines[0].set_data(self.r, gr)
+        _fit_axes(ax, self.r, gr, y_from_zero=True)
 
     def average(self, ax: Axes) -> None:
         """Replace the current g(r) with the mean of every update so far.

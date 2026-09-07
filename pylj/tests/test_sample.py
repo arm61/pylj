@@ -248,7 +248,8 @@ def test_time_panes_handle_empty_and_sparse_samples(pane_cls):
     run_md_loop(simulation, steps=9, every=3)
     pane.update(ax, simulation)
     fig.canvas.draw()
-    assert_allclose(ax.lines[0].get_xdata(), np.array([3, 6, 9]) * simulation.timestep)
+    assert_allclose(ax.lines[0].get_xdata(), np.array([3, 6, 9]) * simulation.timestep * 1e12)
+    assert ax.get_xlabel() == "Time/ps"
     if pane_cls in SERIES_PANES:
         attribute, ylabel = SERIES_PANES[pane_cls]
         assert_allclose(ax.lines[0].get_ydata(), getattr(simulation.samples, attribute))
@@ -268,8 +269,10 @@ def test_energy_pane_md_plots_the_total_energy():
     potential = c.potential_energy(simulation.pair_potentials, simulation.cut_off)
     assert_allclose(ax.lines[0].get_ydata()[-1], potential + c.kinetic_energy())
     assert_allclose(ax.lines[0].get_ydata(), simulation.samples.total_energy)
-    assert_allclose(ax.lines[0].get_xdata(), simulation.samples.step * simulation.timestep)
-    assert ax.get_xlabel() == "Time/s"
+    assert_allclose(
+        ax.lines[0].get_xdata(), simulation.samples.step * simulation.timestep * 1e12
+    )
+    assert ax.get_xlabel() == "Time/ps"
     plt.close(fig)
 
 
@@ -339,11 +342,24 @@ def test_rdf_pane_x_values_are_the_bin_centres():
     pane = RDFPane()
     pane.setup(ax, simulation)
     pane.update(ax, simulation)
-    dr = simulation.configuration.box / 2 / RDFPane.BINS
+    dr = simulation.configuration.box / 2 / RDFPane.BINS * 1e10
     r = ax.lines[0].get_xdata()
     assert r.size == RDFPane.BINS
     assert_allclose(r[0], dr / 2)
     assert_allclose(r, np.arange(RDFPane.BINS) * dr + dr / 2)
+    plt.close(fig)
+
+
+def test_rdf_pane_axes_are_in_angstrom_with_visible_y_ticks():
+    simulation = MDSimulation.initialise(4, 100, 20, **ARGON_MODEL)
+    fig, ax = environment(1)
+    pane = RDFPane()
+    pane.setup(ax, simulation)
+    pane.update(ax, simulation)
+    assert ax.get_xlabel() == "r/Angstrom"
+    r = ax.lines[0].get_xdata()
+    assert 1 < r.max() < 20
+    assert len(ax.get_yticks()) > 0
     plt.close(fig)
 
 
