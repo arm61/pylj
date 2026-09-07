@@ -19,7 +19,7 @@ simulation = MDSimulation.initialise(
 )
 ```
 
-Every argument is given by keyword. `number_of_atoms`, `temperature` in kelvin and `box`, the side of the square periodic box in Angstrom, are required, as are `species`, a sequence of `Species`, and `pair_potentials`, a mapping from each pair of species to the potential between them. `init_conf` is `"square"`, a square lattice, or `"metropolis"`, Metropolis insertion of one atom at a time at `placement_temperature`, which defaults to `temperature`. `timestep` is in seconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
+Every argument is given by keyword. Five are required: `number_of_atoms`; `temperature`, in kelvin; `box`, the side of the square periodic box in Angstrom; `species`, a sequence of `Species`; and `pair_potentials`, a mapping from each pair of species to the potential between them. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `timestep` is in seconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
 
 A configuration whose pair energy is not finite or exceeds ten $k_B T$ per atom is refused with `ValueError`, as is a potential whose energy at the cut-off is larger than $k_B T$.
 
