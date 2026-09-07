@@ -13,13 +13,13 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-Molecular dynamics follows the particles through time by solving Newton's equations of motion. The loop is short: find the force on each particle from the potential, move every particle forward by one small timestep, and repeat. This chapter builds the loop one piece at a time, writes the integration step by hand, and then shows the same step inside pylj.
+Molecular dynamics follows the atoms through time by solving Newton's equations of motion. The loop is short: find the force on each atom from the potential, move every atom forward by one small timestep, and repeat. This chapter builds the loop one piece at a time, writes the integration step by hand, and then shows the same step inside pylj.
 
 The algorithm:
 
-1. Place the particles and give them velocities at the chosen temperature.
-2. Calculate the force on each particle.
-3. Move the particles forward by one timestep.
+1. Place the atoms and give them velocities at the chosen temperature.
+2. Calculate the force on each atom.
+3. Move the atoms forward by one timestep.
 4. Sample whatever is being measured.
 5. Go to step 2.
 
@@ -40,44 +40,48 @@ model = dict(species=[argon], pair_potentials={(argon, argon): lj})
 
 ### Positions
 
-The particles start on a square lattice by default. Sixteen particles in a 50 Angstrom box sit on a four-by-four grid.
+The atoms start on a square lattice by default. Sixteen atoms in a 50 Angstrom box sit on a four-by-four grid.
 
 ```{code-cell} python
-simulation = MDSimulation.initialise(16, 300, 50, seed=0, **model)
+simulation = MDSimulation.initialise(number_of_atoms=16, temperature=300, box=50, seed=0, **model)
 viewer = sample.JustCell(simulation)
 ```
 
-A lattice is a safe start because no two particles are close enough to repel strongly. The alternative, `init_conf="metropolis"`, places the particles one at a time at random positions and accepts each position according to its interaction energy with the particles already placed, using the Monte Carlo rule of the next chapter. Placing the particles purely at random, with no regard to their energy, would sometimes put two almost on top of each other. The force between them would then be enormous, the first step would fling them apart at a speed the timestep cannot follow, and the run would be meaningless from its first step. pylj refuses a starting configuration that stores more than ten $k_B T$ of potential energy per particle for this reason.
+A lattice is a safe start because no two atoms are close enough to repel strongly. The alternative, `init_conf="metropolis"`, places the atoms one at a time at random positions and accepts each position according to its interaction energy with the atoms already placed, using the Monte Carlo rule of the next chapter. Placing the atoms purely at random, with no regard to their energy, would sometimes put two almost on top of each other. The force between them would then be enormous, the first step would fling them apart at a speed the timestep cannot follow, and the run would be meaningless from its first step. pylj refuses a starting configuration that stores more than ten $k_B T$ of potential energy per atom for this reason.
 
 ```{code-cell} python
-placed = MDSimulation.initialise(16, 300, 50, init_conf="metropolis", seed=0, **model)
+placed = MDSimulation.initialise(
+    number_of_atoms=16, temperature=300, box=50, init_conf="metropolis", seed=0, **model
+)
 viewer = sample.JustCell(placed)
 ```
 
 ### Velocities
 
-Each component of each velocity is drawn from a normal distribution of width $\sqrt{k_B T / m}$, the thermal speed of a particle of mass $m$ at temperature $T$. Two corrections follow. The velocity of the centre of mass is subtracted, so the box as a whole does not drift. Then every velocity is scaled by one factor so that the temperature of the sample is exactly the one asked for.
+Each component of each velocity is drawn from a normal distribution of width $\sqrt{k_B T / m}$, the thermal speed of an atom of mass $m$ at temperature $T$. Two corrections follow. The velocity of the centre of mass is subtracted, so the box as a whole does not drift. Then every velocity is scaled by one factor so that the temperature of the sample is exactly the one asked for.
 
 ```{code-cell} python
 configuration = simulation.configuration
 thermal_speed = np.sqrt(BOLTZMANN * 300 / configuration.masses[0])
 print(f"thermal speed {thermal_speed:.0f} m/s")
-print(f"root mean square speed {np.sqrt(np.mean(np.sum(configuration.velocity**2, axis=1))):.0f} m/s")
+print(
+    f"root mean square speed {np.sqrt(np.mean(np.sum(configuration.velocity**2, axis=1))):.0f} m/s"
+)
 print(f"centre of mass velocity {np.abs(configuration.velocity.mean(axis=0)).max():.1e} m/s")
 print(f"temperature {configuration.temperature():.1f} K")
 ```
 
-The temperature is the kinetic energy divided by $(N - 1) k_B$, where $N$ is the number of particles, not by $N k_B$. With the centre of mass at rest, two of the $2N$ velocity components are fixed, and the remaining $2N - 2$ each carry $k_B T / 2$ on average. Each particle has two velocity components, so the root mean square speed is $\sqrt{2 (N - 1) / N}$ times the thermal speed, which tends to $\sqrt{2}$ for many particles; for sixteen it is 1.37.
+The temperature is the kinetic energy divided by $(N - 1) k_B$, where $N$ is the number of atoms, not by $N k_B$. With the centre of mass at rest, two of the $2N$ velocity components are fixed, and the remaining $2N - 2$ each carry $k_B T / 2$ on average. Each atom has two velocity components, so the root mean square speed is $\sqrt{2 (N - 1) / N}$ times the thermal speed, which tends to $\sqrt{2}$ for many atoms; for sixteen it is 1.37.
 
 ## Forces
 
-The force on a pair is minus the slope of the pair energy, which the previous chapter plotted. The net force on a particle is the sum of the pair forces from every other particle, each pointing along the line between them. The configuration does that sum. The code below is pylj's own, shown as it is in the source. The annotations after the colons, such as `NDArray[np.float64]`, and the return type after the arrow, document the types; they are not something you type to use the function.
+The force on a pair is minus the slope of the pair energy, which the previous chapter plotted. The net force on an atom is the sum of the pair forces from every other atom, each pointing along the line between them. The configuration does that sum. The code below is pylj's own, shown as it is in the source. The annotations after the colons, such as `NDArray[np.float64]`, and the return type after the arrow, document the types; they are not something you type to use the function.
 
 ```{literalinclude} ../../pylj/configuration.py
 :pyobject: Configuration.forces
 ```
 
-`pairs` evaluates every pair once, with the particle of lower index first. The radial force times the unit separation vector is the force that pair exerts on its first particle; the second particle feels the opposite. `np.add.at` accumulates those onto the particles. The simulation holds the result as `forces`, one two-component vector per particle, and Newton's second law turns it into accelerations. On the square lattice every particle's four nearest neighbours pull equally in four directions and the net force is zero, so the accelerations below are those of the Metropolis-placed configuration, whose particles have uneven surroundings:
+`pairs` evaluates every pair once, with the atom of lower index first. The radial force times the unit separation vector is the force that pair exerts on its first atom; the second atom feels the opposite. `np.add.at` accumulates those onto the atoms. The simulation holds the result as `forces`, one two-component vector per atom, and Newton's second law turns it into accelerations. On the square lattice every atom's four nearest neighbours pull equally in four directions and the net force is zero, so the accelerations below are those of the Metropolis-placed configuration, whose atoms have uneven surroundings:
 
 ```{code-cell} python
 configuration = placed.configuration
@@ -87,7 +91,7 @@ print(f"largest acceleration {np.abs(accelerations).max():.2e} m/s^2")
 
 ## Integration
 
-Knowing the positions, velocities and accelerations, the particles can be moved forward in time. The integrator pylj uses is Velocity-Verlet. The positions advance with the current velocity and acceleration,
+Knowing the positions, velocities and accelerations, the atoms can be moved forward in time. The integrator pylj uses is Velocity-Verlet. The positions advance with the current velocity and acceleration,
 
 $$
 \mathbf{x}(t + \Delta t) = \mathbf{x}(t) + \mathbf{v}(t)\,\Delta t + \tfrac{1}{2}\mathbf{a}(t)\,\Delta t^2,
@@ -114,7 +118,7 @@ def verlet_step(configuration, forces, timestep, pair_potentials, cut_off):
     return moved.replace(velocity=velocity), next_forces
 ```
 
-`update_positions` returns two arrays because the configuration keeps two copies of the positions: `position`, wrapped back into the box when a particle crosses an edge, and `unwrapped`, which is not, so that the distance a particle has travelled can be measured later. `replace` makes a new configuration with some arrays changed; a configuration is never edited in place, so the state before the step is still there to compare against.
+`update_positions` returns two arrays because the configuration keeps two copies of the positions: `position`, wrapped back into the box when an atom crosses an edge, and `unwrapped`, which is not, so that the distance an atom has travelled can be measured later. `replace` makes a new configuration with some arrays changed; a configuration is never edited in place, so the state before the step is still there to compare against.
 
 pylj's own step is the same code, with one addition:
 
@@ -122,7 +126,7 @@ pylj's own step is the same code, with one addition:
 :pyobject: velocity_verlet
 ```
 
-If a particle moves further than half the cut-off in one step, the timestep is too long or the run has already diverged, and the integrator stops with a message that says so. The forces evaluated at the new positions are returned and kept for the next step, which is why the simulation stores `forces` beside the configuration; step 2 of the algorithm is the last thing step 3 does. Running both on the same configuration gives the same result:
+If an atom moves further than half the cut-off in one step, the timestep is too long or the run has already diverged, and the integrator stops with a message that says so. The forces evaluated at the new positions are returned and kept for the next step, which is why the simulation stores `forces` beside the configuration; step 2 of the algorithm is the last thing step 3 does. Running both on the same configuration gives the same result:
 
 ```{code-cell} python
 ours, our_forces = verlet_step(
@@ -133,17 +137,19 @@ theirs, their_forces = md.velocity_verlet(
 )
 assert np.array_equal(ours.position, theirs.position)
 assert np.array_equal(ours.velocity, theirs.velocity)
-print(f"the fastest particle moved {np.linalg.norm(ours.position - configuration.position, axis=1).max() * 1e10:.4f} Angstrom")
+print(
+    f"the fastest atom moved {np.linalg.norm(ours.position - configuration.position, axis=1).max() * 1e10:.4f} Angstrom"
+)
 ```
 
-The timestep is ten femtoseconds by default. A particle at the thermal speed moves about 0.025 Angstrom in that time, and the fastest particle about twice that, a small fraction of the distance over which the force changes, which is what the integrator needs.
+The timestep is ten femtoseconds by default. An atom at the thermal speed moves about 0.025 Angstrom in that time, and the fastest atom about twice that, a small fraction of the distance over which the force changes, which is what the integrator needs.
 
 ## The loop
 
 `step()` integrates one timestep and advances the clock; `sample()` records the temperature, pressure, potential and kinetic energies and the mean squared displacement at the current step. The viewer redraws on request, and drawing is the slowest part, so the loop draws every fiftieth step.
 
 ```{code-cell} python
-simulation = MDSimulation.initialise(16, 300, 50, seed=0, **model)
+simulation = MDSimulation.initialise(number_of_atoms=16, temperature=300, box=50, seed=0, **model)
 viewer = sample.Interactions(simulation)
 for _ in range(2000):
     simulation.step()
@@ -175,7 +181,7 @@ print(f"mean temperature {s.temperature.mean():.0f} K")
 
 ## Sampling
 
-`samples` holds one array per measured quantity, and `step` says when each was taken, so a loop may sample as often or as rarely as it likes. The mean squared displacement measures how far particles have travelled from where they started, using the unwrapped positions. While a particle flies freely its displacement grows with time, so the mean squared displacement grows with time squared and the curve bends upward. Once the particles have collided many times the curve straightens into a line whose slope gives the diffusion coefficient. In two dimensions the diffusion coefficient $D$ is the slope divided by four, because the mean squared displacement is $\mathrm{MSD} = 4 D t$. Sixteen particles in a 50 Angstrom box are dilute, and in these 20 picoseconds most have not yet collided, so the curve here is still bending upward.
+`samples` holds one array per measured quantity, and `step` says when each was taken, so a loop may sample as often or as rarely as it likes. The mean squared displacement measures how far atoms have travelled from where they started, using the unwrapped positions. While an atom flies freely its displacement grows with time, so the mean squared displacement grows with time squared and the curve bends upward. Once the atoms have collided many times the curve straightens into a line whose slope gives the diffusion coefficient. In two dimensions the diffusion coefficient $D$ is the slope divided by four, because the mean squared displacement is $\mathrm{MSD} = 4 D t$. Sixteen atoms in a 50 Angstrom box are dilute, and in these 20 picoseconds most have not yet collided, so the curve here is still bending upward.
 
 ```{code-cell} python
 fig, ax = plt.subplots(figsize=(4, 3))
@@ -187,7 +193,7 @@ fig.tight_layout()
 
 ## The thermostat
 
-The run above conserves energy, so its temperature drifts from 300 K as the particles leave the lattice and fall into each other's attractive wells, turning potential energy into kinetic. To hold a temperature, pylj rescales the velocities. `heat_bath(T)` multiplies every velocity by $\sqrt{T / T_{\text{now}}}$, which sets the instantaneous temperature to $T$ exactly:
+The run above conserves energy, so its temperature drifts from 300 K as the atoms leave the lattice and fall into each other's attractive wells, turning potential energy into kinetic. To hold a temperature, pylj rescales the velocities. `heat_bath(T)` multiplies every velocity by $\sqrt{T / T_{\text{now}}}$, which sets the instantaneous temperature to $T$ exactly:
 
 ```{literalinclude} ../../pylj/md.py
 :pyobject: heat_bath
@@ -196,7 +202,7 @@ The run above conserves energy, so its temperature drifts from 300 K as the part
 Called every step it is a crude thermostat: it removes the natural fluctuations of the temperature, and averages taken under it are close to, but not exactly, those of a system at that temperature. It is simple and it holds the target, which is what the ideal gas law chapter needs.
 
 ```{code-cell} python
-simulation = MDSimulation.initialise(16, 300, 50, seed=0, **model)
+simulation = MDSimulation.initialise(number_of_atoms=16, temperature=300, box=50, seed=0, **model)
 for _ in range(2000):
     simulation.step()
     simulation.heat_bath(300)
@@ -217,8 +223,9 @@ class HandWritten(MDSimulation):
             self.configuration, self.forces, self.timestep, self.pair_potentials, self.cut_off
         )
 
-ours = HandWritten.initialise(16, 300, 50, seed=0, **model)
-theirs = MDSimulation.initialise(16, 300, 50, seed=0, **model)
+
+ours = HandWritten.initialise(number_of_atoms=16, temperature=300, box=50, seed=0, **model)
+theirs = MDSimulation.initialise(number_of_atoms=16, temperature=300, box=50, seed=0, **model)
 for _ in range(100):
     ours.step()
     theirs.step()

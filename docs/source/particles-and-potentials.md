@@ -4,7 +4,7 @@ kernelspec:
   name: python3
 ---
 
-# Particles and potentials
+# Atoms and potentials
 
 ```{code-cell} python
 :tags: [remove-cell]
@@ -26,7 +26,7 @@ argon = Species(mass=39.948, name="argon")
 argon
 ```
 
-pylj calls this description a species, because one description serves every atom of the same kind. All the atoms in a simulation of argon share this one species. A simulation of a mixture of argon and xenon would have two. pylj's code calls the atoms particles, since it does not care whether they are atoms or something else.
+pylj calls this description a species, because one description serves every atom of the same kind. All the atoms in a simulation of argon share this one species. A simulation of a mixture of argon and xenon would have two.
 
 ## How the atoms interact
 
@@ -98,9 +98,11 @@ A simulation is built from the number of atoms, the temperature in kelvin, the b
 from pylj.md import MDSimulation
 
 model = dict(species=[argon], pair_potentials={(argon, argon): lj})
-simulation = MDSimulation.initialise(9, 300, 20, seed=0, **model)
+simulation = MDSimulation.initialise(number_of_atoms=9, temperature=300, box=20, seed=0, **model)
 configuration = simulation.configuration
-print(f"box {configuration.box * 1e10:.0f} Angstrom, cut-off {simulation.cut_off * 1e10:.0f} Angstrom")
+print(
+    f"box {configuration.box * 1e10:.0f} Angstrom, cut-off {simulation.cut_off * 1e10:.0f} Angstrom"
+)
 print(configuration.position[:3] * 1e10)
 ```
 

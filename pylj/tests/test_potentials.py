@@ -85,7 +85,7 @@ class TestLennardJones:
         assert lj.forces(np.array([3e-10, 4e-10])).shape == (2,)
 
     def test_is_infinite_at_zero_separation(self):
-        # Coincident particles cost infinite energy, so a Metropolis trial
+        # Coincident atoms cost infinite energy, so a Metropolis trial
         # there is rejected rather than compared as NaN.
         lj = LennardJones(epsilon=1.65e-21, sigma=3.4e-10)
         assert lj.energies(np.array([0.0]))[0] == np.inf

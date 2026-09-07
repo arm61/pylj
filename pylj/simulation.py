@@ -17,7 +17,7 @@ from pylj.constants import BOLTZMANN
 from pylj.pairwise import PairPotentials
 from pylj.potentials import PairPotential, Species, check_positive_finite
 
-#: Largest potential energy per particle, in units of k_B T, accepted for an
+#: Largest potential energy per atom, in units of k_B T, accepted for an
 #: initial configuration.
 INITIAL_ENERGY_LIMIT = 10.0
 
@@ -90,8 +90,7 @@ def _check_potentials_at_the_cut_off(
         potential = pairwise.pair_potential(pair_potentials, one, other)
         energy = float(potential.energies(np.array([cut_off]))[0])
         pair = (
-            f"{type(potential).__name__} between {one.name or 'particles'} and "
-            f"{other.name or 'particles'}"
+            f"{type(potential).__name__} between {one.name or 'atoms'} and {other.name or 'atoms'}"
         )
         if not np.isfinite(energy):
             raise ValueError(
@@ -105,40 +104,40 @@ def _check_potentials_at_the_cut_off(
             )
 
 
-def _check_initial_energy(energy: float, number_of_particles: int, temperature: float) -> None:
+def _check_initial_energy(energy: float, number_of_atoms: int, temperature: float) -> None:
     """Refuse a starting configuration that stores far more potential energy
     than thermal energy.
 
     Potential energy stored in an initial configuration is released as
     motion over the first steps and heats the run. A configuration holding
-    more than :data:`INITIAL_ENERGY_LIMIT` k_B T per particle has particles
+    more than :data:`INITIAL_ENERGY_LIMIT` k_B T per atom has atoms
     too close together for its temperature.
 
     Args:
         energy: The total pair energy of the configuration, in joules.
-        number_of_particles: The number of particles.
+        number_of_atoms: The number of atoms.
         temperature: The temperature of the run, in kelvin.
 
     Raises:
         ValueError: If the energy is not finite, or exceeds
-            :data:`INITIAL_ENERGY_LIMIT` k_B T per particle.
+            :data:`INITIAL_ENERGY_LIMIT` k_B T per atom.
     """
     remedy = (
-        "Use fewer particles or a larger box; init_conf='metropolis' places particles by "
+        "Use fewer atoms or a larger box; init_conf='metropolis' places atoms by "
         "energy, and a lower placement_temperature there keeps them further apart."
     )
-    if number_of_particles == 0:
+    if number_of_atoms == 0:
         return
     if not np.isfinite(energy):
         raise ValueError(
-            "The initial pair energy is not finite: particles sit inside a hard core, or a "
+            "The initial pair energy is not finite: atoms sit inside a hard core, or a "
             f"position is not a number. {remedy}"
         )
-    per_particle = energy / (number_of_particles * BOLTZMANN * temperature)
-    if per_particle > INITIAL_ENERGY_LIMIT:
+    per_atom = energy / (number_of_atoms * BOLTZMANN * temperature)
+    if per_atom > INITIAL_ENERGY_LIMIT:
         raise ValueError(
-            f"The initial configuration stores {per_particle:.3g} k_B T of potential energy "
-            f"per particle, above the limit of {INITIAL_ENERGY_LIMIT:g}: its particles are "
+            f"The initial configuration stores {per_atom:.3g} k_B T of potential energy "
+            f"per atom, above the limit of {INITIAL_ENERGY_LIMIT:g}: its atoms are "
             f"too close together for {temperature:g} K. {remedy}"
         )
 
@@ -213,7 +212,7 @@ class Simulation(ABC):
     ``MDSimulation`` and ``MCSimulation`` add ``step`` and ``sample`` to this
     class. The constructor takes a configuration that has already been built,
     in SI units. To start from a description of the system instead, how many
-    particles, which species and which potentials, use the ``initialise``
+    atoms, which species and which potentials, use the ``initialise``
     method of one of those subclasses, which builds the configuration for you.
 
     Args:

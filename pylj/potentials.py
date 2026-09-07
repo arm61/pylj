@@ -1,4 +1,4 @@
-"""The particle species and the pair potentials that act between them:
+"""The atom species and the pair potentials that act between them:
 Lennard-Jones, Buckingham and the square well."""
 
 from abc import ABC, abstractmethod
@@ -22,10 +22,10 @@ def check_positive_finite(name: str, value: float) -> None:
 
 @dataclass(frozen=True)
 class Species:
-    """A particle species.
+    """An atom species.
 
     Args:
-        mass: The particle mass, in atomic mass units.
+        mass: The atom mass, in atomic mass units.
         name: A label for the species, such as "argon".
 
     Raises:
@@ -42,9 +42,9 @@ class Species:
 class PairPotential(ABC):
     """The interface every pair potential implements.
 
-    A pair potential is a central potential: the energy of a pair of particles,
+    A pair potential is a central potential: the energy of a pair of atoms,
     and the force that follows from it, depend only on how far apart the two
-    particles are, and not on the direction from one to the other. Both
+    atoms are, and not on the direction from one to the other. Both
     ``energies`` and ``forces`` take an array of separations ``dr``, in metres,
     and return an array of the same shape.
 
@@ -113,11 +113,11 @@ class Buckingham(PairPotential):
 
     At short range the attractive term, minus C over r to the sixth, grows
     faster than the exponential repulsion. The energy therefore rises to a
-    barrier as the particles approach and then falls to minus infinity as
+    barrier as the atoms approach and then falls to minus infinity as
     the separation goes to zero. That collapse is a defect of the formula,
     not real physics. ``energies`` and ``forces`` return the formula at
     every separation, and ``min_separation`` is set to the separation at the
-    top of the barrier, so a simulation never lets two particles pass it.
+    top of the barrier, so a simulation never lets two atoms pass it.
 
     Args:
         a: The A parameter, an energy scale, in joules.
@@ -163,7 +163,7 @@ class Buckingham(PairPotential):
         if barrier == dr.size - 1:
             raise ValueError(
                 "The Buckingham energy is still rising at 100 Angstrom: the repulsion "
-                "A exp(-B r) is too weak to hold particles apart at any separation a "
+                "A exp(-B r) is too weak to hold atoms apart at any separation a "
                 "simulation could reach. Increase a or b, or reduce c."
             )
         return float(brentq(self._slope, dr[barrier - 1], dr[barrier + 1], xtol=1e-16))
@@ -184,9 +184,9 @@ class SquareWell(PairPotential):
     constant depth.
 
     The energy takes three values. When the separation is smaller than
-    ``sigma`` the particles overlap and the energy is ``max_val``, infinite
+    ``sigma`` the atoms overlap and the energy is ``max_val``, infinite
     by default. Between ``sigma`` and ``lambda_`` times ``sigma`` the
-    particles sit in the well and the energy is minus ``epsilon``. Beyond
+    atoms sit in the well and the energy is minus ``epsilon``. Beyond
     the well the energy is zero. Because the energy changes only in steps,
     the force is zero everywhere except at the two walls, where it is
     infinite. A potential without a finite force cannot drive molecular
@@ -216,7 +216,7 @@ class SquareWell(PairPotential):
         if not max_val > 0:
             raise ValueError(
                 f"max_val must be positive, not {max_val}: a hard core that lowers the "
-                "energy would draw particles into it"
+                "energy would draw atoms into it"
             )
         self.epsilon = epsilon
         self.sigma = sigma

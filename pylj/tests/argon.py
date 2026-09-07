@@ -15,7 +15,7 @@ class Model(TypedDict):
 
 
 ARGON = Species(mass=39.948, name="argon")
-# A heavier particle with a 5 Angstrom core and the argon well depth.
+# A heavier atom with a 5 Angstrom core and the argon well depth.
 LARGER = Species(mass=80.0, name="larger")
 
 LJ_ARGON = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)

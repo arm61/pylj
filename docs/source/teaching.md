@@ -21,20 +21,20 @@ The `%matplotlib inline` line selects the figure backend the viewers draw throug
 
 ## What it does and does not do
 
-pylj simulates particles in two dimensions, in a square box with periodic boundaries. The box may be from 4 to 600 Angstrom on a side: below 4 Angstrom the box holds only one particle, and above 600 Angstrom the particles are too small to see.
+pylj simulates atoms in two dimensions, in a square box with periodic boundaries. The box may be from 4 to 600 Angstrom on a side: below 4 Angstrom the box holds only one atom, and above 600 Angstrom the atoms are too small to see.
 
-The particles interact through pair potentials and nothing else. pylj packages the Lennard-Jones, Buckingham and square-well potentials, and a student can write their own in a short class, as the *Bring your own potential* chapter shows. A simulation may hold one species or a mixture of several.
+The atoms interact through pair potentials and nothing else. pylj packages the Lennard-Jones, Buckingham and square-well potentials, and a student can write their own in a short class, as the *Bring your own potential* chapter shows. A simulation may hold one species or a mixture of several.
 
-Molecular dynamics integrates the motion with Velocity-Verlet, and the only thermostat is velocity rescaling: `heat_bath` sets the kinetic energy to the temperature asked for. Monte Carlo makes one kind of move, which relocates a single particle to a uniformly random position in the box. There are no bonds, no charges, no walls and no pressure control, so pylj cannot run molecules, ionic systems, surfaces or a constant-pressure ensemble.
+Molecular dynamics integrates the motion with Velocity-Verlet, and the only thermostat is velocity rescaling: `heat_bath` sets the kinetic energy to the temperature asked for. Monte Carlo makes one kind of move, which relocates a single atom to a uniformly random position in the box. There are no bonds, no charges, no walls and no pressure control, so pylj cannot run molecules, ionic systems, surfaces or a constant-pressure ensemble.
 
-The practical ceiling is about a hundred particles, which run at about a thousand steps a second on a laptop; twenty particles run at several thousand. Drawing is the slow part, not the physics, so a viewer should be updated every fifty to a hundred steps rather than every step.
+The practical ceiling is about a hundred atoms, which run at about a thousand steps a second on a laptop; twenty atoms run at several thousand. Drawing is the slow part, not the physics, so a viewer should be updated every fifty to a hundred steps rather than every step.
 
 ## Which chapters need what
 
 The chapters build on each other, and each is one notebook to run from top to bottom.
 
 - **pylj**, the opening chapter, needs no Python beyond reading a `for` loop, and no physics beyond the idea that atoms attract and repel.
-- **Particles and potentials** needs functions, array arithmetic in numpy, and the `**model` idiom for passing a dictionary of keyword arguments, which it explains and every later chapter uses. It assumes the reader has seen a potential energy curve, and introduces the Lennard-Jones form, the periodic box and the minimum image convention.
+- **Atoms and potentials** needs functions, array arithmetic in numpy, and the `**model` idiom for passing a dictionary of keyword arguments, which it explains and every later chapter uses. It assumes the reader has seen a potential energy curve, and introduces the Lennard-Jones form, the periodic box and the minimum image convention.
 - **Molecular dynamics** needs functions, loops and f-strings. It assumes Newton's second law and the idea of kinetic energy, and builds the Velocity-Verlet integrator and a thermostat from them.
 - **Monte Carlo** needs the same Python. It assumes the Boltzmann distribution, and builds the Metropolis rule from it.
 - **The ideal gas law** needs loops, f-strings and a helper function with default arguments. Its physics is the Maxwell-Boltzmann distribution, the radial distribution function, the virial pressure, the second virial coefficient and the van der Waals equation. It uses `scipy.integrate.quad`, `scipy.optimize.brentq` and `scipy.optimize.curve_fit`, each explained where it appears.
@@ -44,15 +44,15 @@ The chapters build on each other, and each is one notebook to run from top to bo
 
 ## Parameters that are safe to vary, and the guards
 
-The chapters run at temperatures from 100 to 1000 K, in boxes from 20 to 150 Angstrom, with 9 to 100 particles. Those ranges are safe to explore in any combination that keeps the particles from being packed shoulder to shoulder. The cut-off is 15 Angstrom by default, or half the box when the box is smaller than 30 Angstrom, and may be set to anything up to half the box.
+The chapters run at temperatures from 100 to 1000 K, in boxes from 20 to 150 Angstrom, with 9 to 100 atoms. Those ranges are safe to explore in any combination that keeps the atoms from being packed shoulder to shoulder. The cut-off is 15 Angstrom by default, or half the box when the box is smaller than 30 Angstrom, and may be set to anything up to half the box.
 
 Three guards refuse a run rather than let it produce nonsense. Each raises `ValueError` with a message that names the remedy.
 
-The first is the initial energy limit. A starting configuration holding more than ten $k_B T$ of potential energy per particle is refused, because that energy is released as motion over the first few steps and heats the run. The message says how much energy per particle the configuration holds and that its particles are too close together for the temperature. A student meets it when they ask for too many particles in too small a box, or place particles at too low a temperature. The remedies are fewer particles, a larger box, or `init_conf='metropolis'`, which places particles one at a time by energy rather than on a lattice.
+The first is the initial energy limit. A starting configuration holding more than ten $k_B T$ of potential energy per atom is refused, because that energy is released as motion over the first few steps and heats the run. The message says how much energy per atom the configuration holds and that its atoms are too close together for the temperature. A student meets it when they ask for too many atoms in too small a box, or place atoms at too low a temperature. The remedies are fewer atoms, a larger box, or `init_conf='metropolis'`, which places atoms one at a time by energy rather than on a lattice.
 
 The second is the cut-off check. Truncating the interaction at the cut-off assumes it has died away there, so pylj checks that each pair energy at the cut-off is finite and within $k_B T$ of zero. The message says how many $k_B T$ the potential still is at the cut-off and asks the reader to check the parameter units. That is almost always the cause: a well depth in kilojoules per mole, or a separation in Angstrom where metres and joules are expected. When the cut-off is already half the box, the only remedy is a larger box.
 
-The third is the displacement check, made on every molecular dynamics step. If any particle moves further than half the cut-off in one step, the run is refused. The message gives the distance moved and the timestep, and says the timestep is too long or the run has already diverged. The default timestep of ten femtoseconds is safe for argon at the temperatures the chapters use; a student who raises it, or who runs a much lighter species, will meet this guard.
+The third is the displacement check, made on every molecular dynamics step. If any atom moves further than half the cut-off in one step, the run is refused. The message gives the distance moved and the timestep, and says the timestep is too long or the run has already diverged. The default timestep of ten femtoseconds is safe for argon at the temperatures the chapters use; a student who raises it, or who runs a much lighter species, will meet this guard.
 
 ## Compute times
 

@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-The previous chapter measured the pressure of a simulated gas and compared it with $pA = N k_B T$. This chapter derives that law from the partition function of $N$ particles that do not interact, first in three dimensions and then in two.
+The previous chapter measured the pressure of a simulated gas and compared it with $pA = N k_B T$. This chapter derives that law from the partition function of $N$ atoms that do not interact, first in three dimensions and then in two.
 
 ## The partition function
 
-For $N$ identical particles of mass $m$ in a volume $V$ at temperature $T$, with no interactions, the partition function is
+For $N$ identical atoms of mass $m$ in a volume $V$ at temperature $T$, with no interactions, the partition function is
 
 $$
 Q = \frac{V^N}{N!\,\Lambda^{3N}},
@@ -55,7 +55,7 @@ $$
 \ln Q = N \ln V - \ln N! - 3N \ln \Lambda.
 $$
 
-The $N!$ counts the ways of labelling identical particles, which do not give distinct states. It is the first term that matters here, because it is the only one that depends on the volume. The pressure is
+The $N!$ counts the ways of labelling identical atoms, which do not give distinct states. It is the first term that matters here, because it is the only one that depends on the volume. The pressure is
 
 $$
 p = k_B T \left(\frac{\partial \ln Q}{\partial V}\right)_T = k_B T \frac{N}{V},
@@ -65,7 +65,7 @@ which is the ideal gas law, $pV = N k_B T$.
 
 ## Two dimensions
 
-In two dimensions a particle has two translational degrees of freedom instead of three. The volume becomes an area $A$, and $\Lambda^3$ becomes $\Lambda^2$, because the power of $\Lambda$ counts the momentum integrals, one for each velocity component:
+In two dimensions an atom has two translational degrees of freedom instead of three. The volume becomes an area $A$, and $\Lambda^3$ becomes $\Lambda^2$, because the power of $\Lambda$ counts the momentum integrals, one for each velocity component:
 
 $$
 Q = \frac{A^N}{N!\,\Lambda^{2N}}, \qquad
@@ -87,8 +87,8 @@ def ideal_pressure(number, temperature, area):
 
 area = (150e-10) ** 2
 number = round((1.784 / (39.948 * ATOMIC_MASS_UNIT)) ** (2 / 3) * area)
-print(f"{number} particles: {ideal_pressure(number, 273.15, area):.3e} N/m")
-print(f"{number - 1} particles: {ideal_pressure(number - 1, 273.15, area):.3e} N/m")
+print(f"{number} atoms: {ideal_pressure(number, 273.15, area):.3e} N/m")
+print(f"{number - 1} atoms: {ideal_pressure(number - 1, 273.15, area):.3e} N/m")
 ```
 
-These are the two ideal lines the previous chapter printed, and its measured pressure sat on the second. The derivation assumed the particles do not interact and have no size. Both assumptions fail for the Lennard-Jones argon of the previous chapter as the density rises, which is where its measured pressures left the law.
+These are the two ideal lines the previous chapter printed, and its measured pressure sat on the second. The derivation assumed the atoms do not interact and have no size. Both assumptions fail for the Lennard-Jones argon of the previous chapter as the density rises, which is where its measured pressures left the law.

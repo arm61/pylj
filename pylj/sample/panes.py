@@ -168,7 +168,7 @@ def _potential_minimum(potential: PairPotential) -> float:
     if well == r.size - 1:
         raise ValueError(
             f"{type(potential).__name__} has no minimum between 0.1 and 50 Angstrom to "
-            "size the particles by; pass diameter= to the pane or the viewer."
+            "size the atoms by; pass diameter= to the pane or the viewer."
         )
     return float(r[well])
 
@@ -223,16 +223,16 @@ def _drawn_diameters(
 def _with_periodic_images(
     position: NDArray[np.float64], box: float, radius: float
 ) -> NDArray[np.float64]:
-    """Return the positions with a copy of each particle that overhangs an edge.
+    """Return the positions with a copy of each atom that overhangs an edge.
 
-    A particle whose centre is within ``radius`` of an edge of the box is
+    An atom whose centre is within ``radius`` of an edge of the box is
     drawn again one box length away, so the part of its disc that hangs over
     the edge appears at the opposite edge, where it belongs.
 
     Args:
-        position: The particle positions, shape ``(N, 2)``, in metres.
+        position: The atom positions, shape ``(N, 2)``, in metres.
         box: The side length of the box, in metres.
-        radius: The drawn radius of the particles, in metres.
+        radius: The drawn radius of the atoms, in metres.
 
     Returns:
         The positions followed by the images, shape ``(N + images, 2)``.
@@ -249,17 +249,17 @@ def _with_periodic_images(
 
 
 class CellPane(Pane):
-    """The particles drawn to scale inside the simulation cell.
+    """The atoms drawn to scale inside the simulation cell.
 
     Each species is drawn with its own marker. The drawn diameter is a
     display choice; by default it is the separation at the minimum of the
     species' own pair energy, which for a Lennard-Jones potential is
-    2^(1/6) sigma. A particle that overhangs an edge of the box is drawn
+    2^(1/6) sigma. An atom that overhangs an edge of the box is drawn
     again at the opposite edge, since the box is periodic and that is where
     the overhanging part of it is.
 
     Args:
-        diameter: Drawn diameter of the particles, in Angstrom: one value
+        diameter: Drawn diameter of the atoms, in Angstrom: one value
             for every species, or one per species in the order of
             ``Configuration.species``. Each value must be positive and at
             least 0.01, as smaller values are metres mistaken for Angstrom.
@@ -430,10 +430,10 @@ class RDFPane(_HistoryPane):
         r = edges[:-1] + dr / 2
         distance, _ = pairwise.dist(configuration.position, box)
         counts, _ = np.histogram(distance, bins=edges)
-        n = configuration.number_of_particles
+        n = configuration.number_of_atoms
         pairs = n * (n - 1) / 2
         if pairs == 0:
-            # A single particle has no pairs, and so no radial distribution
+            # A single atom has no pairs, and so no radial distribution
             # function to draw or to average.
             ax.lines[0].set_data([], [])
             return
@@ -461,7 +461,7 @@ class RDFPane(_HistoryPane):
 class ScatteringPane(_HistoryPane):
     """Scattering profile I(q) from the Debye sum over pair distances.
 
-    The Debye sum for ``N`` identical scatterers is ``N`` from each particle
+    The Debye sum for ``N`` identical scatterers is ``N`` from each atom
     scattering on its own, plus ``2 sin(q r) / (q r)`` for each pair at
     distance ``r``.
 
@@ -469,7 +469,7 @@ class ScatteringPane(_HistoryPane):
     """
 
     # An empirical upper limit, in 1/m, that shows the first few peaks for
-    # argon-sized particles.
+    # argon-sized atoms.
     Q_MAX = 1e11
     POINTS = 1000
     SKIP = 20  # lowest-q points, where the box periodicity dominates
@@ -496,7 +496,7 @@ class ScatteringPane(_HistoryPane):
             block = q[start : start + self.BLOCK]
             qr = np.outer(block, distance)
             intensity[start : start + self.BLOCK] = np.sum(np.sinc(qr / np.pi), axis=1)
-        intensity = configuration.number_of_particles + 2 * intensity
+        intensity = configuration.number_of_atoms + 2 * intensity
         self.q = q
         self.history.append(intensity)
         ax.lines[0].set_data(q, intensity)
@@ -515,7 +515,7 @@ class ScatteringPane(_HistoryPane):
 
 
 class MaxwellBoltzmannPane(Pane):
-    """Histogram of the speeds of every particle at every update so far.
+    """Histogram of the speeds of every atom at every update so far.
 
     The histogram already pools every update, so there is no separate history
     to average and this pane has no average to show."""

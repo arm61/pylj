@@ -43,7 +43,7 @@ class Proposal:
     still the current one.
 
     Attributes:
-        position: The proposed position of every particle, shape ``(N, 2)``,
+        position: The proposed position of every atom, shape ``(N, 2)``,
             in metres.
         energy_change: The energy of the proposed configuration minus that
             of ``source``, in joules.
@@ -119,7 +119,7 @@ class MCSimulation(Simulation):
         ValueError: If the temperature is not positive and finite, a pair
             potential has not died away at the cut-off, the configuration
             stores more than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of
-            potential energy per particle, or for anything
+            potential energy per atom, or for anything
             :class:`Simulation` rejects.
     """
 
@@ -145,17 +145,17 @@ class MCSimulation(Simulation):
             configuration.box,
         )
         self.energy = configuration.potential_energy(self.pair_potentials, self.cut_off)
-        _check_initial_energy(self.energy, configuration.number_of_particles, temperature)
+        _check_initial_energy(self.energy, configuration.number_of_atoms, temperature)
         self.accepted = 0
         self.samples = MCSamples()
 
     @classmethod
     def initialise(
         cls,
-        number_of_particles: int,
+        *,
+        number_of_atoms: int,
         temperature: float,
         box: float,
-        *,
         species: Sequence[Species],
         pair_potentials: PairPotentials,
         init_conf: str = "square",
@@ -163,14 +163,14 @@ class MCSimulation(Simulation):
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> Self:
-        """Build a simulation from a model: place the particles and set the
+        """Build a simulation from a model: place the atoms and set the
         temperature.
 
         Args:
-            number_of_particles: The number of particles.
+            number_of_atoms: The number of atoms.
             temperature: The temperature of the simulation, in kelvin.
             box: The side length of the box, in Angstrom, from 4 to 600.
-            species: The species; particles are assigned to them in turn.
+            species: The species; atoms are assigned to them in turn.
             pair_potentials: The potential between each pair of species.
             init_conf: ``'square'`` for a lattice or ``'metropolis'`` for
                 sequential Metropolis insertion.
@@ -193,7 +193,7 @@ class MCSimulation(Simulation):
         """
         rng = np.random.default_rng(seed)
         configuration, cut_off_metres = place(
-            number_of_particles,
+            number_of_atoms,
             temperature,
             box,
             species=species,
@@ -208,27 +208,27 @@ class MCSimulation(Simulation):
         return simulation
 
     def propose(self) -> Proposal:
-        """Propose a move: one particle relocated at random.
+        """Propose a move: one atom relocated at random.
 
-        A particle is chosen at random and given a uniform trial position in
-        the box. The energy change is that particle's interaction energy at
+        An atom is chosen at random and given a uniform trial position in
+        the box. The energy change is that atom's interaction energy at
         the trial position minus that at its current position, with every
-        other particle. The configuration is not changed.
+        other atom. The configuration is not changed.
 
         Returns:
             The proposed configuration and its energy change.
         """
         configuration = self.configuration
-        particle = int(self.rng.integers(configuration.number_of_particles))
+        atom = int(self.rng.integers(configuration.number_of_atoms))
         trial = self.rng.uniform(0, configuration.box, size=2)
-        current = configuration.position[particle]
-        species_index = int(configuration.species_index[particle])
-        others = configuration.without(particle)
+        current = configuration.position[atom]
+        species_index = int(configuration.species_index[atom])
+        others = configuration.without(atom)
         energy_change = others.insertion_energy(
             trial, species_index, self.pair_potentials, self.cut_off
         ) - others.insertion_energy(current, species_index, self.pair_potentials, self.cut_off)
         position = configuration.position.copy()
-        position[particle] = trial
+        position[atom] = trial
         return Proposal(position, energy_change, configuration)
 
     def apply(self, proposal: Proposal) -> None:

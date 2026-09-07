@@ -19,16 +19,16 @@ This chapter shows what the viewers draw, how to combine their panes, and how to
 
 pylj comes with eight viewers, each a live figure that redraws when its `update(simulation)` method is called:
 
-- `JustCell`: the particle positions
+- `JustCell`: the atom positions
 - `Energy`: positions and the energy. For molecular dynamics that is the total energy, potential plus kinetic; for Monte Carlo it is the potential energy.
-- `MaxBolt`: positions and a histogram of particle speeds
+- `MaxBolt`: positions and a histogram of atom speeds
 - `RDF`: positions and the radial distribution function
 - `CellPlus`: positions and one plot of data you supply
 - `Interactions`: positions, temperature, pressure and total energy
 - `Phase`: positions, total energy, mean squared displacement and the radial distribution function
 - `Scattering`: positions, the radial distribution function, mean squared displacement and the scattering profile
 
-The `MaxBolt`, `Interactions`, `Phase` and `Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo simulation before they build their figure, naming themselves in the error. Every viewer takes the `MDSimulation` or `MCSimulation`, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the particles at, in Angstrom; `CellPlus` takes the axis labels of its custom plot as well, and its `update(simulation, xdata, ydata)` takes the data to draw. Every viewer has an `average()` method that replaces the latest curve with the mean of every update so far; it raises `ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the {doc}`sample` module documentation.
+The `MaxBolt`, `Interactions`, `Phase` and `Scattering` viewers plot quantities that only a molecular dynamics run records, and refuse a Monte Carlo simulation before they build their figure, naming themselves in the error. Every viewer takes the `MDSimulation` or `MCSimulation`, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` takes the axis labels of its custom plot as well, and its `update(simulation, xdata, ydata)` takes the data to draw. Every viewer has an `average()` method that replaces the latest curve with the mean of every update so far; it raises `ValueError` unless one of the viewer's panes keeps a history, which the radial distribution function and scattering panes do. Full details are in the {doc}`sample` module documentation.
 
 The viewers use the inline matplotlib backend. Start notebooks with `%matplotlib inline`.
 
@@ -49,7 +49,12 @@ from pylj.potentials import LennardJones, Species
 argon = Species(mass=39.948, name="argon")
 lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
 simulation = MDSimulation.initialise(
-    16, 300, 30, species=[argon], pair_potentials={(argon, argon): lj}, seed=0
+    number_of_atoms=16,
+    temperature=300,
+    box=30,
+    species=[argon],
+    pair_potentials={(argon, argon): lj},
+    seed=0,
 )
 ```
 
@@ -69,12 +74,13 @@ for _ in range(300):
 
 A viewer composed this way takes the drawn diameter on its cell pane, `CellPane(diameter)`, in Angstrom; a purely repulsive potential needs one, as the previous chapter showed.
 
-To plot a new quantity, write a pane. This one plots the x velocity of the first particle against time; it reads velocities and a time, which only a molecular dynamics simulation has, so it sets `needs_md` and the viewer refuses a Monte Carlo simulation with a message rather than an `AttributeError`:
+To plot a new quantity, write a pane. This one plots the x velocity of the first atom against time; it reads velocities and a time, which only a molecular dynamics simulation has, so it sets `needs_md` and the viewer refuses a Monte Carlo simulation with a message rather than an `AttributeError`:
 
 ```{code-cell} python
 from pylj.sample import Pane, Viewer, CellPane
 
-class FirstParticlePane(Pane):
+
+class FirstAtomPane(Pane):
     needs_md = True
 
     def __init__(self):
@@ -93,10 +99,16 @@ class FirstParticlePane(Pane):
         ax.relim()
         ax.autoscale_view()
 
+
 simulation = MDSimulation.initialise(
-    16, 300, 30, species=[argon], pair_potentials={(argon, argon): lj}, seed=0
+    number_of_atoms=16,
+    temperature=300,
+    box=30,
+    species=[argon],
+    pair_potentials={(argon, argon): lj},
+    seed=0,
 )
-viewer = Viewer(simulation, [CellPane(), FirstParticlePane()])
+viewer = Viewer(simulation, [CellPane(), FirstAtomPane()])
 for _ in range(300):
     simulation.step()
     if simulation.steps % 10 == 0:

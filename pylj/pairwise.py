@@ -1,5 +1,5 @@
-"""Calculations over every pair of particles at once: finding the potential
-that acts between two species, grouping the particle pairs by the species they
+"""Calculations over every pair of atoms at once: finding the potential
+that acts between two species, grouping the atom pairs by the species they
 join, applying the minimum image convention, and getting the pressure from the
 virial."""
 
@@ -42,7 +42,7 @@ def pair_potential(
 def species_pairs(
     species_index: NDArray[np.int64],
 ) -> Iterator[tuple[NDArray[np.bool_], int, int]]:
-    """Group the particle pairs by the two species they join.
+    """Group the atom pairs by the two species they join.
 
     Each pair of species present is yielded once, because species 0 with
     species 1 is the same pair as species 1 with species 0. Each comes with a
@@ -50,7 +50,7 @@ def species_pairs(
     :func:`dist` that join those two species.
 
     Args:
-        species_index: The species index of each particle.
+        species_index: The species index of each atom.
 
     Yields:
         The mask, the lower species index and the upper species index.
@@ -82,7 +82,7 @@ def dist(
     """Return the minimum-image distance and separation of every pair.
 
     Args:
-        position: The position of each particle, shape ``(N, 2)``, in
+        position: The position of each atom, shape ``(N, 2)``, in
             metres.
         box: The side length of the square periodic box, in metres.
 
@@ -90,7 +90,7 @@ def dist(
         The distance between each pair, shape ``(M,)``, and the separation
         ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in metres. Each of
         the ``M = N (N - 1) / 2`` pairs appears once, ordered by the lower
-        particle index and then the higher.
+        atom index and then the higher.
     """
     i, j = np.triu_indices(position.shape[0], 1)
     separation = minimum_image(position[i] - position[j], box)
@@ -103,10 +103,10 @@ def calculate_pressure(virial: float, box: float, kinetic_energy: float) -> floa
     .. math::
         p = \frac{1}{2 L^2} \left( 2 K + \sum_{i} \sum_{j > i} f_{ij} r_{ij} \right)
 
-    The kinetic term is the momentum the particles carry across a line in
+    The kinetic term is the momentum the atoms carry across a line in
     the cell. The centre of mass is held at rest, so over a run at
     temperature ``T`` the kinetic energy averages ``(N - 1) k_B T`` and this
-    term averages ``(N - 1) k_B T / L^2``, one particle short of the
+    term averages ``(N - 1) k_B T / L^2``, one atom short of the
     ideal-gas pressure ``N k_B T / L^2``.
 
     Args:
