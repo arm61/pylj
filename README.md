@@ -1,6 +1,6 @@
-<a href="http://pythoninchemistry.org/pylj"><img src="https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true" width= "60%"/></a>
+<a href="https://pylj.readthedocs.io/"><img src="https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true" width= "60%"/></a>
 
-## Visit the [pylj](http://pythoninchemistry.org/pylj) webpage for more information about pylj.
+## Visit the [pylj](https://pylj.readthedocs.io/) documentation for more information about pylj.
 
 To build from source:
 
@@ -11,7 +11,7 @@ pip install -e ".[dev]"
 ```
 Check out our publication in the [Journal of Open Source Education](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d) to find out more about pylj.
 
-Be aware! pylj runs within a [Jupyter notebook](http://jupyter.org/), and therefore requires this to run. We advise installing [anaconda python](https://anaconda.org/) as this includes many required libraries as well as the Jupyter notebooks framework.
+pylj runs inside a [Jupyter notebook](http://jupyter.org/) and needs Python 3.11 or later. `pip install jupyterlab` provides Jupyter if you do not have it.
 
 If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom](https://gitter.im/pylj/HELP).
 
@@ -66,14 +66,6 @@ The [documentation](https://pylj.readthedocs.io/) is a textbook of worked exampl
       <a href="https://github.com/arm61/pylj/actions">
         <img src="https://github.com/arm61/pylj/actions/workflows/ci.yml/badge.svg" alt="Build Status" />
       </a>
-  </tr>
-  <tr>
-    <td>Coverage Status</td>
-    <td>
-      <a href="https://codeclimate.com/github/arm61/pylj/test_coverage">
-        <img src="https://api.codeclimate.com/v1/badges/770882d2010bb099b241/test_coverage" />
-      </a>
-    </td>
   </tr>
   <tr>
     <td>Gitter</td>

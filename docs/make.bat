@@ -10,7 +10,7 @@ if "%SPHINXBUILD%" == "" (
 set SOURCEDIR=source
 set BUILDDIR=build
 set SPHINXPROJ=pylj
-set SPHINXOPTS=-W --keep-going
+set SPHINXOPTS=-W
 
 if "%1" == "" goto help
 
