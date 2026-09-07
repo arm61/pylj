@@ -14,7 +14,7 @@ All notable changes to pylj are recorded here. The format follows
 - `pylj.sample` is a package: pane classes, one per plot, and a `Viewer` that lays out a list of panes. The eight viewer names are subclasses of it, and custom viewers combine panes or add a new one.
 - `samples.step` on every simulation, recorded by `sample()`, so viewers work at any sampling cadence.
 - `pylj.constants`, taking the Boltzmann constant and the atomic mass unit from `scipy.constants`.
-- ruff and mypy configuration in `pyproject.toml`, a `dev` extra, and continuous integration on Python 3.11 to 3.14.
+- ruff and mypy configuration in `pyproject.toml`, `dev` and `docs` extras, and continuous integration on Python 3.11 to 3.14.
 - `seed` on `MDSimulation.initialise`, `MCSimulation.initialise` and the simulation constructors, and `Simulation.rng`, the `numpy.random.Generator` that places an initial configuration, draws the initial velocities and makes Monte Carlo moves. The same seed reproduces the same run.
 - `pylj.potentials`: `Species`, a frozen dataclass of mass and name; the `PairPotential` interface, `energies(dr)` and `forces(dr)` on an array of separations, the force being the signed radial `-dE/dr`; and `LennardJones(*, epsilon, sigma)`, `Buckingham(*, a, b, c)` and `SquareWell(*, epsilon, sigma, lambda_, max_val)`, keyword-only with physical parameters (#57). `Species` rejects a non-positive or non-finite mass, `potentials.check_positive_finite` is the shared check, and each potential rejects a parameter that is not positive and finite (`Buckingham` allows `c` of zero, and `SquareWell` needs `lambda_` greater than one and a positive `max_val`). `LennardJones` is infinite at zero separation. Every potential has `min_separation`, the separation below which it is not to be trusted, zero unless the potential sets it; a configuration gives a pair closer than that infinite energy, and raises if asked for its force. `Buckingham` sets it to the top of its short-range barrier, below which the formula falls to minus infinity, and its `energies` and `forces` are the formula at every separation; a `Buckingham` whose energy is still rising at 100 Angstrom, so that no barrier holds its atoms apart, raises `ValueError`.
 - `pairwise.pair_potential`, `pairwise.species_pairs` and `pairwise.minimum_image`.
@@ -26,6 +26,7 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Changed
 
+- The documentation is a set of pages on running a simulation, custom potentials and viewers, with the module reference, built with Sphinx and myst-nb (#85, #58).
 - A box length outside 4 to 600 Angstrom raises `ValueError` rather than `AttributeError`.
 - `md.heat_bath(configuration, bath_temperature)` returns the configuration with its velocities rescaled so that the instantaneous temperature is the bath temperature; it previously took the temperature sample array and rescaled towards its cumulative mean. A non-positive bath temperature, or a configuration at rest or with a non-finite temperature, raises `ValueError` (#76).
 - Python 3.11 or later is required. scipy is a dependency; Cython is not.
@@ -68,6 +69,7 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Removed
 
+- The example notebooks under `examples/`, the root `requirements.txt` and `docs/update_docs.sh`; the documentation is built from the `docs` extra.
 - `pylj.util` and `System`; the structured atom array and `particle_dt`, whose integer `types` field `Configuration.species_index` replaces.
 - `md.initialise`, `mc.initialise`, `md.initialize`, `mc.initialize`, `md.sample` and `mc.sample`; `md.calculate_temperature` and `md.calculate_msd`, which are methods on the configuration now.
 - `pairwise.compute_force`, `pairwise.update_accelerations` and `pairwise.heat_bath`.
