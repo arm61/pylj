@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-A pylj simulation is a set of particles in a periodic box, with a rule for the energy between every pair. This chapter builds those three pieces and reads the Lennard-Jones potential for argon, which every later chapter uses.
+A pylj simulation holds a few tens of particles in a square box. Any two particles interact: they have a potential energy that depends on how far apart they are, and the formula that gives it is called a pair potential. This chapter introduces the particles, the pair potential for argon that every later chapter uses, and the box.
 
 ## Species
 
