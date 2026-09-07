@@ -8,6 +8,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pylj import pairwise
+from pylj.configuration import Configuration
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.potentials import PairPotential
@@ -128,6 +129,33 @@ def test_cell_pane_draws_each_type_separately():
     x = simulation.configuration.position[:, 0]
     assert_allclose(ax.lines[0].get_xdata(), x[[0, 2]])
     assert_allclose(ax.lines[1].get_xdata(), x[[1, 3]])
+    plt.close(fig)
+
+
+def test_cell_pane_draws_periodic_images_of_particles_at_the_edges():
+    # In a 20 Angstrom box with a 4 Angstrom drawn diameter: a particle at
+    # x = 0.5 overhangs the left edge and is drawn again at x = 20.5; one in
+    # the corner is drawn four times; one in the middle once.
+    position = np.array([[0.5e-10, 10e-10], [0.5e-10, 0.5e-10], [10e-10, 10e-10]])
+    configuration = Configuration(position, (ARGON,), np.zeros(3, dtype=np.int64), 20e-10)
+    simulation = MCSimulation(configuration, ARGON_MODEL["pair_potentials"], 100)
+    fig, ax = environment(1)
+    pane = CellPane(diameter=4.0)
+    pane.setup(ax, simulation)
+    pane.update(ax, simulation)
+    drawn = sorted(zip(ax.lines[0].get_xdata() * 1e10, ax.lines[0].get_ydata() * 1e10, strict=True))
+    assert_allclose(
+        drawn,
+        [
+            (0.5, 0.5),
+            (0.5, 10.0),
+            (0.5, 20.5),
+            (10.0, 10.0),
+            (20.5, 0.5),
+            (20.5, 10.0),
+            (20.5, 20.5),
+        ],
+    )
     plt.close(fig)
 
 
@@ -269,9 +297,7 @@ def test_energy_pane_md_plots_the_total_energy():
     potential = c.potential_energy(simulation.pair_potentials, simulation.cut_off)
     assert_allclose(ax.lines[0].get_ydata()[-1], potential + c.kinetic_energy())
     assert_allclose(ax.lines[0].get_ydata(), simulation.samples.total_energy)
-    assert_allclose(
-        ax.lines[0].get_xdata(), simulation.samples.step * simulation.timestep * 1e12
-    )
+    assert_allclose(ax.lines[0].get_xdata(), simulation.samples.step * simulation.timestep * 1e12)
     assert ax.get_xlabel() == "Time/ps"
     plt.close(fig)
 

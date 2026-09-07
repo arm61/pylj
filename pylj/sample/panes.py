@@ -12,6 +12,7 @@ from collections.abc import Iterable
 import numpy as np
 import numpy.typing as npt
 from matplotlib.axes import Axes
+from numpy.typing import NDArray
 
 from pylj import pairwise
 from pylj.mc import MCSimulation
@@ -219,13 +220,43 @@ def _drawn_diameters(
     return [value * 1e-10 for value in values]
 
 
+def _with_periodic_images(
+    position: NDArray[np.float64], box: float, radius: float
+) -> NDArray[np.float64]:
+    """Return the positions with a copy of each particle that overhangs an edge.
+
+    A particle whose centre is within ``radius`` of an edge of the box is
+    drawn again one box length away, so the part of its disc that hangs over
+    the edge appears at the opposite edge, where it belongs.
+
+    Args:
+        position: The particle positions, shape ``(N, 2)``, in metres.
+        box: The side length of the box, in metres.
+        radius: The drawn radius of the particles, in metres.
+
+    Returns:
+        The positions followed by the images, shape ``(N + images, 2)``.
+    """
+    images = [position]
+    for shift_x in (-box, 0.0, box):
+        for shift_y in (-box, 0.0, box):
+            if shift_x == 0.0 and shift_y == 0.0:
+                continue
+            shifted = position + np.array([shift_x, shift_y])
+            overhangs = np.all((shifted > -radius) & (shifted < box + radius), axis=1)
+            images.append(shifted[overhangs])
+    return np.concatenate(images)
+
+
 class CellPane(Pane):
     """The particles drawn to scale inside the simulation cell.
 
     Each species is drawn with its own marker. The drawn diameter is a
     display choice; by default it is the separation at the minimum of the
     species' own pair energy, which for a Lennard-Jones potential is
-    2^(1/6) sigma.
+    2^(1/6) sigma. A particle that overhangs an edge of the box is drawn
+    again at the opposite edge, since the box is periodic and that is where
+    the overhanging part of it is.
 
     Args:
         diameter: Drawn diameter of the particles, in Angstrom: one value
@@ -265,7 +296,8 @@ class CellPane(Pane):
         for index, diameter in enumerate(self.diameters):
             line = ax.lines[index]
             position = configuration.position[configuration.species_index == index]
-            line.set_data(position[:, 0], position[:, 1])
+            drawn = _with_periodic_images(position, self.box, diameter / 2)
+            line.set_data(drawn[:, 0], drawn[:, 1])
             line.set_markersize(diameter / self.box * axes_width_points)
 
 
