@@ -80,11 +80,11 @@ Whether two atoms stay bound depends on how the well depth compares with the the
 
 ## The box
 
-The atoms are confined to a square box, but its edges are not walls. An atom that moves out through the right-hand edge comes back in through the left, and an atom near the right-hand edge interacts with one near the left-hand edge as if they were neighbours. The box behaves as one cell of a pattern that repeats endlessly in both directions, so the simulation has no walls and no surface, and a few tens of atoms stand in for a much larger sample. Boundaries of this kind are called periodic.
+A real sample of argon contains something like $10^{23}$ atoms. A simulation contains a few tens. Left to themselves, a few tens of atoms would form a droplet with a surface, and most of them would be on it. To make them behave like atoms deep inside a large sample instead, the simulation uses periodic boundary conditions. The square box is treated as one cell of a pattern that repeats without end in every direction. An atom that leaves through the right-hand side of the box re-enters through the left, and an atom near the right-hand side interacts with atoms near the left-hand side as though they were next to it. There are no walls and no surface.
 
-Because the pattern repeats, every atom has infinitely many copies, one in each cell. When `pylj` needs the distance between two atoms it takes the shortest distance to any copy of the second atom. That shortest distance is called the minimum image.
+In a repeating pattern every atom has a copy in every cell. When `pylj` calculates the distance between two atoms it uses the distance to the nearest copy of the second atom. That distance is called the minimum image.
 
-The attraction between two argon atoms has faded to nothing by about 8 Angstrom, so beyond some distance a pair contributes nothing worth computing. `pylj` therefore ignores pairs of atoms further apart than a cut-off distance, and sets their energy and force to zero. The default cut-off is 15 Angstrom, or half the box side if the box is smaller than 30 Angstrom.
+The attraction between two argon atoms has fallen to nothing by about 8 Angstrom, so a pair of atoms further apart than that adds nothing to the energy. `pylj` therefore counts only pairs closer than a cut-off distance, and sets the energy and force of every other pair to zero. The default cut-off is 15 Angstrom, or half the box side if the box is smaller than 30 Angstrom.
 
 If the cut-off were larger than half the box side, an atom could be within the cut-off distance of two copies of the same neighbour, one on each side of it, while the minimum image counts only the nearer copy. The cut-off is therefore never allowed to exceed half the box side.
 
