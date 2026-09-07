@@ -90,8 +90,6 @@ If the cut-off were larger than half the box side, an atom could be within the c
 
 Two details of the cut-off matter to anyone comparing with other simulation codes. The energy is set to zero at the cut-off with no adjustment for the small interaction that remains, and pylj refuses a potential whose energy at the cut-off is still larger than $k_B T$.
 
-The box side must lie between 4 and 600 Angstrom. A smaller box has room for one atom at most, and in a larger one the atoms are too small to see.
-
 ## Building a simulation
 
 A simulation is built from the number of atoms, the temperature in kelvin, the box side in Angstrom, and the model: the species present, and the potential that acts between each pair of species. The cell below builds nine argon atoms in a 20 Angstrom box at 300 K:
