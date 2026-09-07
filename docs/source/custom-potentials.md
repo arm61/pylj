@@ -35,7 +35,7 @@ class SoftSphere(PairPotential):
         return 12 * self.epsilon * (self.sigma / dr) ** 12 / dr
 ```
 
-`energies(dr)` takes an array of pair separations in metres and returns the pair energy of each in joules. `forces(dr)` returns the radial force in newtons, minus the derivative of the energy with respect to the separation, so positive where the pair repels and negative where it attracts. A potential with no finite force, such as `SquareWell`, raises `ValueError` from `forces` and can drive only Monte Carlo. The constructor is yours; the built-in potentials use keyword-only parameters named after the physical quantities.
+`energies(dr)` takes an array of pair separations in metres and returns the pair energy of each in joules. `forces(dr)` returns the radial force in newtons, minus the derivative of the energy with respect to the separation, so positive where the pair repels and negative where it attracts. A potential with no finite force, such as `SquareWell`, raises `ValueError` from `forces` and can drive only Monte Carlo. The constructor takes whatever parameters the potential needs; the built-in potentials use keyword-only parameters named after the physical quantities.
 
 `min_separation`, a class attribute defaulting to `0.0`, is the separation below which the formula is not to be trusted. A configuration gives a pair closer than it infinite energy, so placement and Monte Carlo never accept such a pair, and raises `ValueError` if asked for its forces. `Buckingham` sets it to the top of its short-range barrier in its constructor.
 
