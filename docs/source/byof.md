@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
+This chapter shows how to give pylj a pair potential of your own. It needs a short Python class with two methods.
+
 ## The interface
 
 A pylj simulation is built from the species it contains and the pair potential acting between each pair of species:
@@ -84,7 +86,7 @@ for _ in range(300):
 
 If the formula stops being physical below some separation, as the Buckingham potential's does inside its short-range barrier, set `min_separation` to that separation in the constructor, as `Buckingham` does with `self.min_separation = ...`: a simulation then treats any pair closer than it as forbidden, and the formula itself is left as it is.
 
-The constructor is yours to define; keyword-only parameters named after the physical quantities, as in `SoftSphere`, keep a swapped pair of numbers from becoming a silently wrong model.
+The constructor is yours to define.
 
 ## A mixture
 

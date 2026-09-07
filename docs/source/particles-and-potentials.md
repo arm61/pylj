@@ -26,7 +26,7 @@ argon = Species(mass=39.948, name="argon")
 argon
 ```
 
-Masses go in as atomic mass units because that is the number in a data book. Once the particles are in a simulation, their masses are stored in kilograms.
+Masses go in as atomic mass units because that is the number in a data book. Once the particles are in a simulation, `masses` reports them in kilograms.
 
 ## The pair potential
 
@@ -44,7 +44,7 @@ from pylj.potentials import LennardJones
 lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
 ```
 
-in joules and metres. Keyword-only arguments mean a swapped pair of numbers is an error rather than a silently wrong model.
+in joules and metres.
 
 A potential has two methods, `energies` and `forces`. Both take a separation in metres, or an array of them, and return a value of the same shape. `forces` returns minus the derivative of the energy with respect to the separation, so it is positive where the pair repels and negative where it attracts.
 
@@ -66,7 +66,7 @@ force_ax.set_ylabel("f / pN")
 fig.tight_layout()
 ```
 
-Reading the two curves from left to right: below 3.37 Angstrom the energy is positive and rises steeply, and the force is positive, so the pair is pushed apart. The repulsive force grows so fast that the plot cuts it off at 60 pN; at 3 Angstrom it is nearly 800 pN. The energy crosses zero at $\sigma$ and reaches its minimum of $-\epsilon$ where the force is zero:
+The energy is plotted in zeptojoules, one zeptojoule being $10^{-21}$ J, and the force in piconewtons, one piconewton being $10^{-12}$ N. Reading the two curves from left to right: below 3.37 Angstrom the energy is positive and rises steeply, and the force is positive, so the pair is pushed apart. The repulsive force grows so fast that the plot cuts it off at 60 pN; at 3 Angstrom it is nearly 800 pN. The energy crosses zero at $\sigma$ and reaches its minimum of $-\epsilon$ where the force is zero:
 
 ```{code-cell} python
 r_min = 2 ** (1 / 6) * lj.sigma
@@ -74,7 +74,7 @@ print(f"minimum at {r_min * 1e10:.2f} Angstrom, energy {lj.energies(r_min) * 1e2
 print(f"force there {lj.forces(r_min) * 1e12:.3f} pN")
 ```
 
-Beyond the minimum the force is negative, pulling the pair together, and it fades to nothing by about 8 Angstrom. The well depth of 1.58 zeptojoules is about 0.4 $k_B T$ at room temperature and 1.3 $k_B T$ at 87 K, which is why argon is a gas at room temperature and boils at 87 K.
+Beyond the minimum the force is negative, pulling the pair together, and it fades to nothing by about 8 Angstrom. The well depth of 1.58 zeptojoules is about 0.4 of the thermal energy $k_B T$ at room temperature, where $k_B$ is the Boltzmann constant and $T$ the temperature, and 1.3 $k_B T$ at 87 K, so pairs do not stay bound at room temperature; the well is comparable with $k_B T$ only near 87 K, where argon boils.
 
 The Lennard-Jones potential is the model for a rare gas. Two other forms are available for other physics: `Buckingham`, an exponential repulsion with the same $r^{-6}$ attraction, and `SquareWell`, a hard core surrounded by a well of constant depth. The square well has no finite force, so only Monte Carlo can use it; the Monte Carlo chapter does.
 
@@ -82,9 +82,11 @@ The Lennard-Jones potential is the model for a rare gas. Two other forms are ava
 
 The particles live in a square box with periodic boundaries. A particle that leaves through the right-hand edge comes back in through the left, and a pair near opposite edges interacts across the boundary as if they were neighbours. The box is therefore a small piece of an endless, repeating system, with no walls and no surface. The rule for the distance between two particles is to take the nearest of the periodic copies, the minimum image.
 
-Beyond a cut-off separation the pair energy is set to zero, because the Lennard-Jones interaction has faded to nothing by then. pylj's default cut-off is 15 Angstrom, or half the box if the box is smaller than 30 Angstrom. Half the box is the largest cut-off the minimum image rule allows. Beyond it, two periodic copies of the same neighbour could both lie inside the cut-off, and the rule counts only the nearer one.
+Beyond a cut-off separation the pair energy is set to zero, because the Lennard-Jones interaction has faded to nothing by then. pylj's default cut-off is 15 Angstrom, or half the box if the box is smaller than 30 Angstrom. Half the box is the largest cut-off the minimum image rule allows. Beyond it, two periodic copies of the same neighbour could both lie inside the cut-off, and the rule counts only the nearer one. The energy is cut to zero at the cut-off without being shifted, and nothing is added back for the pairs beyond it. A simulation checks that the pair energy at the cut-off is small, at most $k_B T$; a potential that has not died away by then is refused.
 
 A box between 4 and 600 Angstrom is accepted: a smaller box holds at most one particle, and in a larger one the particles are too small to see.
+
+The species and the potentials are collected in a dictionary, `model`, and `**model` in a call passes its entries as the keyword arguments `species=` and `pair_potentials=`; every later chapter builds its simulations this way.
 
 ```{code-cell} python
 from pylj.md import MDSimulation

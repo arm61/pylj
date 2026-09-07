@@ -71,7 +71,7 @@ The temperature is the kinetic energy divided by $(N - 1) k_B$, where $N$ is the
 
 ## Forces
 
-The force on a pair is minus the slope of the pair energy, which the previous chapter plotted. The net force on a particle is the sum of the pair forces from every other particle, each pointing along the line between them. The configuration does that sum:
+The force on a pair is minus the slope of the pair energy, which the previous chapter plotted. The net force on a particle is the sum of the pair forces from every other particle, each pointing along the line between them. The configuration does that sum. The code below is pylj's own, shown as it is in the source. The annotations after the colons, such as `NDArray[np.float64]`, and the return type after the arrow, document the types; they are not something you type to use the function.
 
 ```{literalinclude} ../../pylj/configuration.py
 :pyobject: Configuration.forces
@@ -175,7 +175,7 @@ print(f"mean temperature {s.temperature.mean():.0f} K")
 
 ## Sampling
 
-`samples` holds one array per measured quantity, and `step` says when each was taken, so a loop may sample as often or as rarely as it likes. The mean squared displacement measures how far particles have travelled from where they started, using the unwrapped positions. While a particle flies freely its displacement grows with time, so the mean squared displacement grows with time squared and the curve bends upward. Once the particles have collided many times the curve straightens into a line whose slope gives the diffusion coefficient. Sixteen particles in a 50 Angstrom box are dilute, and in these 20 picoseconds most have not yet collided, so the curve here is still bending upward.
+`samples` holds one array per measured quantity, and `step` says when each was taken, so a loop may sample as often or as rarely as it likes. The mean squared displacement measures how far particles have travelled from where they started, using the unwrapped positions. While a particle flies freely its displacement grows with time, so the mean squared displacement grows with time squared and the curve bends upward. Once the particles have collided many times the curve straightens into a line whose slope gives the diffusion coefficient. In two dimensions the diffusion coefficient $D$ is the slope divided by four, because the mean squared displacement is $\mathrm{MSD} = 4 D t$. Sixteen particles in a 50 Angstrom box are dilute, and in these 20 picoseconds most have not yet collided, so the curve here is still bending upward.
 
 ```{code-cell} python
 fig, ax = plt.subplots(figsize=(4, 3))
@@ -206,6 +206,8 @@ print(f"mean temperature {simulation.samples.temperature.mean():.1f} K")
 
 ## Your own integrator
 
+This section writes a Python class. Skip it on a first reading; nothing later depends on it.
+
 The integrator is one method on the simulation, `integrate`, which replaces the configuration and the forces. A subclass that overrides it runs any integrator under the same loop, viewers and samples. The hand-written step from above, installed this way, runs in place of pylj's:
 
 ```{code-cell} python
@@ -224,6 +226,6 @@ assert np.array_equal(ours.configuration.position, theirs.configuration.position
 print("100 steps, identical trajectories")
 ```
 
-`verlet_step` has no half-cut-off check, so a run that goes wrong under `HandWritten` continues until the potential itself raises an error.
+`verlet_step` has no half-cut-off check, so a run that goes wrong under `HandWritten` does not stop: the positions become meaningless and nothing raises an error unless the potential sets `min_separation`, as `Buckingham` does.
 
 The ideal gas law chapter uses this loop to measure the pressure of argon and test the ideal gas law. The next chapter reaches equilibrium properties by a different route, with no velocities and no clock.

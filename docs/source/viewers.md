@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
+This chapter shows what the viewers draw, how to combine their panes, and how to write a pane of your own, which needs a short Python class.
+
 ## Existing viewers
 
 pylj comes with eight viewers, each a live figure that redraws when its `update(simulation)` method is called:
@@ -34,7 +36,7 @@ The viewers use the inline matplotlib backend. Start notebooks with `%matplotlib
 
 A viewer is a grid of panes. A pane draws one quantity into one matplotlib axes and has two methods: `setup(ax, simulation)` creates the line and labels once, and `update(ax, simulation)` pushes the current state of the simulation into that line. A pane whose curve can be averaged sets `keeps_history = True` and overrides `average(ax)`; the radial distribution function pane is the model to copy. The panes that exist are `CellPane`, `EnergyPane`, `TemperaturePane`, `PressurePane`, `MSDPane`, `RDFPane`, `ScatteringPane`, `MaxwellBoltzmannPane` and `CustomPane`.
 
-Panes that plot a quantity against time read it from the sample arrays on the simulation, which `sample()` fills. Each call records the current step in `samples.step`, so a loop may sample as often or as rarely as it likes. A molecular dynamics pane plots against `samples.step` times the timestep; a Monte Carlo pane plots against the step, since a Monte Carlo simulation has no timestep. The radial distribution function pane shows its distance axis in metres.
+Panes that plot a quantity against time read it from the sample arrays on the simulation, which `sample()` fills. Each call records the current step in `samples.step`, so a loop may sample as often or as rarely as it likes. A molecular dynamics pane plots against `samples.step` times the timestep; a Monte Carlo pane plots against the step, since a Monte Carlo simulation has no timestep. The panes label their axes in the units the book uses: Angstrom, picoseconds, kelvin, joules and newtons per metre.
 
 ## Building your own viewer
 
@@ -81,11 +83,11 @@ class FirstParticlePane(Pane):
 
     def setup(self, ax, simulation):
         ax.plot([], [])
-        ax.set_xlabel("Time/s")
+        ax.set_xlabel("Time/ps")
         ax.set_ylabel("x velocity/m s$^{-1}$")
 
     def update(self, ax, simulation):
-        self.times.append(simulation.time)
+        self.times.append(simulation.time * 1e12)
         self.velocities.append(simulation.configuration.velocity[0, 0])
         ax.lines[0].set_data(self.times, self.velocities)
         ax.relim()

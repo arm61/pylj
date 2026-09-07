@@ -45,12 +45,14 @@ def run(number_of_particles, temperature, box, steps, viewer_class=None, draw_ev
             production.sample()
         if viewer and production.steps % draw_every == 0:
             viewer.update(production)
-    if viewer and any(pane.keeps_history for pane in viewer.panes):
+    if viewer_class is sample.RDF:
         viewer.average()
     return production
 ```
 
-The thermostat holds the temperature from the first step, but the square lattice the particles start on is not a fluid. The settling steps let it relax into one while the thermostat absorbs the potential energy released; `restart` then begins a fresh record, and the viewer is built after it so its history covers only the settled run. Sampling every fifth step is enough, because consecutive steps are almost the same configuration.
+Several of the arguments have a default value, so a call may leave them out. `viewer_class` is a viewer such as `sample.RDF`, passed by name and without brackets, so that `run` can build it after the settling steps. `steps // 5` is division that keeps the whole number and throws away the remainder. `if viewer` is true when a viewer was built and false when `viewer_class` was left out.
+
+The thermostat holds the temperature from the first step, but the square lattice the particles start on is not a fluid. The settling steps let it relax into one while the thermostat absorbs the potential energy released; `restart` then begins a fresh record, and the viewer is built after it so its history covers only the settled run. The settling steps are what simulators call equilibration, and the sampled steps the production run. Sampling every fifth step is enough, because consecutive steps are almost the same configuration.
 
 ## Temperature and the speed distribution
 
@@ -106,7 +108,7 @@ dilute = run(20, 100, 40, 20000, sample.RDF, draw_every=200)
 dense = run(100, 100, 40, 2000, sample.RDF, draw_every=20)
 ```
 
-With twenty particles there is one peak, at the minimum of the potential, and beyond it $g(r)$ settles to one: a particle has a neighbour at the well minimum more often than chance, and no order beyond that. In the dilute limit the height of the peak is the Boltzmann factor of the well depth, $\exp(\epsilon / k_B T)$, which is 3.1 at 100 K; the run gives a little more, because twenty particles in this box are not quite the dilute limit. The dilute run is long because a curve from twenty particles takes many frames to converge. With a hundred particles in the same box a second and third peak appear at twice and three times the distance, and the first is pushed a little lower as the shells crowd it. These are the shells of neighbours of a liquid. The axis is in metres, with a factor of 1e-9 printed in its corner.
+With twenty particles the first peak sits at the minimum of the potential, and a weaker second bump at twice that distance shows pairs of neighbours; beyond it $g(r)$ settles to one. In the dilute limit the height of the peak is the Boltzmann factor of the well depth, $\exp(\epsilon / k_B T)$, which is 3.1 at 100 K; the run gives a little more, because twenty particles in this box are not quite the dilute limit. The dilute run is long because a curve from twenty particles takes many frames to converge. With a hundred particles in the same box a second and third peak appear at twice and three times the distance, and the first is pushed a little lower as the shells crowd it. These are the shells of neighbours of a liquid.
 
 ## Argon at standard temperature and pressure
 
@@ -120,19 +122,19 @@ number = round(n2 * (box * 1e-10) ** 2)
 print(f"{n2 * 1e-20:.2e} particles per square Angstrom: {number} particles in a {box} Angstrom box")
 ```
 
-At that density a 40 Angstrom box would hold one particle, so the box is 150 Angstrom.
+At that density a 40 Angstrom box would hold one particle, so the box is 150 Angstrom. The thermostat sets the kinetic energy to $(N - 1) k_B T$ at every step, so the kinetic term of the pressure is fixed and only the virial term is measured; the comparison below is a test of that virial.
 
 ```{code-cell} python
 stp = run(number, 273.15, box, 2000, sample.JustCell)
-area = (box * 1e-10) ** 2
+stp_area = (box * 1e-10) ** 2
 measured = stp.samples.pressure.mean()
 print(f"measured pressure {measured:.3e} N/m")
-print(f"ideal gas law with N particles {number * BOLTZMANN * 273.15 / area:.3e} N/m")
-print(f"ideal gas law with N - 1 particles {(number - 1) * BOLTZMANN * 273.15 / area:.3e} N/m")
+print(f"ideal gas law with N particles {number * BOLTZMANN * 273.15 / stp_area:.3e} N/m")
+print(f"ideal gas law with N - 1 particles {(number - 1) * BOLTZMANN * 273.15 / stp_area:.3e} N/m")
 print(f"mean potential energy per particle {stp.samples.potential_energy.mean() / number / (BOLTZMANN * 273.15):.3f} k_B T")
 ```
 
-The particles rarely come within range of each other, and the potential energy is a small fraction of $k_B T$ per particle. The measured pressure sits on the second of the two ideal lines, not the first. The simulation holds the centre of mass at rest, so the kinetic energy of $N$ particles is $(N - 1) k_B T$ rather than $N k_B T$, and the kinetic term of the pressure is one particle short; the next section returns to this. Allowing for it, argon at STP is an ideal gas to a fraction of a per cent, because it is dilute.
+The particles rarely come within range of each other, and the potential energy is a small fraction of $k_B T$ per particle. The virial is small enough to leave the pressure at the fixed kinetic term, which is the second of the two ideal lines rather than the first. The simulation holds the centre of mass at rest, so the kinetic energy of $N$ particles is $(N - 1) k_B T$ rather than $N k_B T$, and the kinetic term of the pressure is one particle short. Argon at STP is an ideal gas to a fraction of a per cent, because it is dilute.
 
 ## Pressure against density
 
@@ -168,28 +170,31 @@ for n, r in zip(numbers, ratio):
 
 The right-hand panel divides the measured pressure by the ideal one. At the lowest densities the ratio is a few per cent above one. The excess grows steeply with $N$, and at 100 particles the pressure is several times ideal: the particles take up a large fraction of the box, their repulsive cores push on each other, and the virial is large and positive.
 
-In these runs the pressure never falls below the ideal line. The Lennard-Jones well is attractive, and at low enough temperature the attraction wins at low density and pulls the pressure under the line. The temperature at which the two effects balance is where the second virial coefficient changes sign:
+In these runs the pressure never falls below the ideal line. The Lennard-Jones well is attractive, and at low enough temperature the attraction wins at low density and pulls the pressure under the line. The temperature at which the two effects balance is where the second virial coefficient changes sign, which is called the Boyle temperature. `quad` integrates a function numerically between two limits, and `brentq` finds where a function crosses zero between two temperatures that bracket it.
 
 ```{code-cell} python
 def second_virial(temperature):
     kt = BOLTZMANN * temperature
-    integrand = lambda r: (np.exp(-lj.energies(r) / kt) - 1) * 2 * np.pi * r
+
+    def integrand(r):
+        return (np.exp(-lj.energies(r) / kt) - 1) * 2 * np.pi * r
+
     return -0.5 * quad(integrand, 0, 15e-10, points=[2.5e-10, 3.4e-10, 5e-10], limit=200)[0]
 
 
 boyle = brentq(second_virial, 50, 500)
 print(f"second virial coefficient at 273 K: {second_virial(273) * 1e20:+.2f} Angstrom^2")
-print(f"it changes sign at {boyle:.0f} K")
+print(f"the Boyle temperature, where it changes sign, is {boyle:.0f} K")
 ```
 
-At 273 K the well is only $0.42\,k_B T$ deep and the coefficient is positive: repulsion wins at every density. Below the temperature printed above the coefficient is negative, and a run at 100 K, where the earlier sections found pairs lingering in the well, would show the pressure dip below the line at low density.
+At 273 K the well is only $0.42\,k_B T$ deep and the coefficient is positive: repulsion wins at every density. Below the Boyle temperature printed above the coefficient is negative, and a run at 100 K, where the earlier sections found pairs lingering in the well, would show the pressure dip below the line at low density.
 
-At low density the excess is set by the second virial coefficient alone: the pressure is $(N - 1) k_B T / A$ plus $B_2 N^2 k_B T / A^2$, so the ratio is $1 + B_2 N^2 / (A (N - 1))$. A single run scatters by a few per cent about this, but the prediction and the measurements agree in size and sign:
+At low density the excess is set by the second virial coefficient alone. With $N (N - 1) / 2$ pairs the virial adds $B_2 N (N - 1) k_B T / A^2$ to the pressure, so the ratio to $(N - 1) k_B T / A$ is $1 + B_2 N / A$. A single run scatters by a few per cent about this, but the prediction and the measurements agree in size and sign:
 
 ```{code-cell} python
 b2 = second_virial(273)
 for n, r in zip(numbers[:3], ratio[:3]):
-    print(f"N = {n:3d}: predicted {1 + b2 * n**2 / (area * (n - 1)):.2f}, measured {r:.2f}")
+    print(f"N = {n:3d}: predicted {1 + b2 * n / area:.2f}, measured {r:.2f}")
 ```
 
 ## The van der Waals equation
@@ -200,7 +205,7 @@ $$
 p = \frac{k_B T}{v - b} - \frac{a}{v^2},
 $$
 
-with $b$ the area a particle excludes and $a$ the strength of the attraction. Expanded at low density it gives a second virial coefficient of $b - a / k_B T$. The fit is to the pressure $N$ particles would give with the measured virial, which adds the one missing particle's $k_B T / A$ back to the kinetic term:
+with $b$ the area a particle excludes and $a$ the strength of the attraction. Expanded at low density it gives a second virial coefficient of $b - a / k_B T$. The fit is to the pressure with the full $N k_B T / A$ kinetic term, since the equation is written for $N$ particles:
 
 ```{code-cell} python
 def van_der_waals(v, a, b):
