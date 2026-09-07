@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-You can give `pylj` a pair potential of your own in a few lines of Python. A potential is a subclass of `PairPotential` with two methods:
+Custom pair potentials can be defined in a few lines of Python. A potential is a subclass of `PairPotential` with two methods:
 
 ```{code-cell} python
 import numpy as np
