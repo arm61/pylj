@@ -9,6 +9,7 @@ kernelspec:
 ```{code-cell} python
 :tags: [remove-cell]
 %matplotlib inline
+%config InlineBackend.figure_format = "retina"
 import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
@@ -77,8 +78,8 @@ class FirstAtomPane(Pane):
 
     def setup(self, ax, simulation):
         ax.plot([], [])
-        ax.set_xlabel("Time/ps")
-        ax.set_ylabel("x velocity/m s$^{-1}$")
+        ax.set_xlabel("Time / ps")
+        ax.set_ylabel("x velocity / m s$^{-1}$")
 
     def update(self, ax, simulation):
         self.times.append(simulation.time * 1e12)

@@ -1,6 +1,6 @@
 # pylj
 
-`pylj` runs molecular dynamics and Metropolis Monte Carlo simulations of atoms interacting through pair potentials, in two dimensions, and draws them as they run. It is written for teaching: the code is short, in Python and NumPy, and meant to be read.
+`pylj` runs molecular dynamics and Metropolis Monte Carlo simulations of atoms interacting through pair potentials, in two dimensions, and draws them as they run. It is written for teaching, in Python and NumPy.
 
 ## Installation
 
@@ -12,7 +12,8 @@ pip install pylj
 
 ## Contents
 
-- [Running a simulation](running-a-simulation.md): a model, a molecular dynamics run and a Monte Carlo run.
+- [Getting started](getting-started.md): a model, a molecular dynamics run and a Monte Carlo run.
+- [Simulations](simulations.md): building a simulation, the configuration, the two `step()` methods, sampling and restarting.
 - [Custom potentials](custom-potentials.md): the `PairPotential` interface and mixtures.
 - [Viewers and panes](viewers.md): the viewers, and writing a pane.
 - [Modules](modules.rst): every class, function and argument, with units.
@@ -27,7 +28,8 @@ McCluskey, A. R., Morgan, B. J., Edler, K. J., and Parker, S. C. (2018). pylj: A
 ```{toctree}
 :hidden:
 
-running-a-simulation
+getting-started
+simulations
 custom-potentials
 viewers
 ```

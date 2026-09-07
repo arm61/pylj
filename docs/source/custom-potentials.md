@@ -9,11 +9,12 @@ kernelspec:
 ```{code-cell} python
 :tags: [remove-cell]
 %matplotlib inline
+%config InlineBackend.figure_format = "retina"
 import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-A pair potential is a subclass of `PairPotential` with two methods:
+You can give `pylj` a pair potential of your own in a few lines of Python. A potential is a subclass of `PairPotential` with two methods:
 
 ```{code-cell} python
 import numpy as np
