@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-pylj runs two-dimensional simulations of a few tens of particles, and draws them as they move. It runs molecular dynamics and Monte Carlo in a periodic box and shows the temperature, pressure, energy and structure as they are measured. It exists to teach how these methods work, so its code is short, in plain Python and NumPy, and written to be read. This book explains the methods with pylj as the vehicle and shows the code that does each step.
+pylj runs two-dimensional simulations of a few tens of particles, and draws them as they move. It runs molecular dynamics and Monte Carlo in a periodic box and shows the temperature, pressure, energy and structure as they are measured. It exists to teach how these methods work, so its code is short, in plain Python and NumPy, and written to be read. These pages explain the methods with pylj as the vehicle and show the code that does each step.
 
 pylj is for undergraduate chemistry and physics students meeting simulation for the first time, and for the lecturers who set them work. Every figure and printed number on these pages was produced by the code shown above it when the pages were built.
 
@@ -52,7 +52,7 @@ In a notebook the figure redraws ten times; on this page it shows the last frame
 
 `Species` gives the particles a mass, in atomic mass units, and a name. `LennardJones` is the pair potential, with the well depth in joules and the zero-crossing separation in metres; these are the standard values for argon. {class}`~pylj.md.MDSimulation`'s `initialise` takes the number of particles, the temperature in kelvin and the box side in Angstrom, then the species and the potential acting between each pair of species. Two units conventions meet here. `initialise` and the viewers take lengths in Angstrom: the box, the cut-off and a drawn diameter. Potentials take SI units, joules and metres, and `Species` takes the mass in atomic mass units. Everything a simulation reports back is in SI units.
 
-## What is in this book
+## What is in these pages
 
 *Particles and potentials* sets up the pieces every simulation shares: particles, the pair potential and the periodic box. *Molecular dynamics* and *Monte Carlo* build the two methods from those pieces, writing each step by hand before handing it to pylj. *The ideal gas law* uses molecular dynamics to test the law, and *The ideal gas law from first principles* derives it from the partition function. *Bring your own potential* and *Viewers and panes* show how to extend pylj with your own potential and your own plots. The reference at the end lists every class, function and argument, with units.
 

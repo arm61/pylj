@@ -1,6 +1,6 @@
 # Teaching with pylj
 
-This page is for lecturers setting work with pylj. It says what pylj needs, what it can and cannot simulate, what each chapter assumes of the reader, which parameters are safe to vary, and how long the book takes to run.
+This page is for lecturers setting work with pylj. It says what pylj needs, what it can and cannot simulate, what each chapter assumes of the reader, which parameters are safe to vary, and how long the chapters take to run.
 
 ## What pylj needs
 
@@ -56,7 +56,7 @@ The third is the displacement check, made on every molecular dynamics step. If a
 
 ## Compute times
 
-The whole book executes in about a minute on a laptop. The chapters divide that time as follows.
+All the chapters together execute in about a minute on a laptop. The chapters divide that time as follows.
 
 | Chapter | Time to execute |
 | --- | --- |

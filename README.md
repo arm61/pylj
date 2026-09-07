@@ -15,7 +15,7 @@ pylj runs inside a [Jupyter notebook](http://jupyter.org/) and needs Python 3.11
 
 If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom](https://gitter.im/pylj/HELP).
 
-The [documentation](https://pylj.readthedocs.io/) is a textbook of worked examples on molecular dynamics and Monte Carlo with pylj.
+The [documentation](https://pylj.readthedocs.io/) teaches molecular dynamics and Monte Carlo through worked examples, with every figure produced by the code on the page.
 
 ## Badges
 
