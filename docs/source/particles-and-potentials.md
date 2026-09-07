@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-`pylj` describes the system it simulates by three things: the atoms it contains, a pair potential, which gives the potential energy of two atoms as a function of the distance between them, and the box the atoms are confined to. This chapter introduces each of the three for argon, the atom every later chapter simulates, then builds a simulation from them and adds up its energy.
+`pylj` describes the system it simulates by three things: the atoms it contains, a pair potential, and the box the atoms are confined to. A potential is a formula for potential energy, and a pair potential gives the potential energy of two atoms as a function of the distance between them. This chapter introduces each of the three for argon, the atom every later chapter simulates, then builds a simulation from them and adds up its energy.
 
 Argon is the traditional first system to simulate because its atoms have no bonds, no charge and no shape. The interaction of two argon atoms is described well by a single pair potential, and the potential energy of a collection of argon atoms is, to a good approximation, the sum of that pair potential over every pair. Molecular dynamics and Monte Carlo themselves can work with any potential energy function of the atomic positions; a sum over pairs is the simplest kind, and it is the only kind `pylj` provides.
 
@@ -32,7 +32,7 @@ argon
 
 ## How the atoms interact
 
-Two argon atoms attract each other weakly when they are a few Angstrom apart, through the dispersion interaction, and repel each other strongly when they come close enough for their electron clouds to overlap. The potential energy of the pair therefore falls as the atoms approach from far away, reaches a minimum, the well, and then rises steeply. The Lennard-Jones potential is the simplest formula with this shape:
+Two argon atoms attract each other weakly when they are a few Angstrom apart, through the dispersion interaction, the weak attraction between any two atoms that arises from the momentary fluctuations of their electron clouds, and repel each other strongly when they come close enough for their electron clouds to overlap. The potential energy of the pair therefore falls as the atoms approach from far away, reaches a minimum, the well, and then rises steeply. The Lennard-Jones potential is the simplest formula with this shape:
 
 $$
 E(r) = 4 \epsilon \left[ \left(\frac{\sigma}{r}\right)^{12} - \left(\frac{\sigma}{r}\right)^{6} \right].

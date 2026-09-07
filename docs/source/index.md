@@ -19,7 +19,7 @@ plt.rcParams["figure.dpi"] = 100
 
 ## Installing pylj
 
-`pylj` runs inside a Jupyter notebook, because the figures redraw in place as a simulation runs. If you do not have Jupyter, `pip install jupyterlab` provides it. `pip install `pylj`` installs the latest release. This book describes the version on GitHub, which names `MDSimulation` on its first page; if the release you get does not have it, install from GitHub instead:
+`pylj` runs inside a Jupyter notebook, because the figures redraw in place as a simulation runs. If you do not have Jupyter, `pip install jupyterlab` provides it. `pip install pylj` installs the latest release. These pages describe the version on GitHub, which names `MDSimulation` on its first page; if the release you get does not have it, install from GitHub instead:
 
 ```bash
 pip install git+https://github.com/arm61/pylj
