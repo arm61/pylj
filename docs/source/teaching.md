@@ -34,11 +34,11 @@ The practical ceiling is about a hundred particles, which run at about a thousan
 The chapters build on each other, and each is one notebook to run from top to bottom.
 
 - **pylj**, the opening chapter, needs no Python beyond reading a `for` loop, and no physics beyond the idea that atoms attract and repel.
-- **Particles and potentials** needs functions and array arithmetic in numpy. It assumes the reader has seen a potential energy curve, and introduces the Lennard-Jones form, the periodic box and the minimum image convention.
+- **Particles and potentials** needs functions, array arithmetic in numpy, and the `**model` idiom for passing a dictionary of keyword arguments, which it explains and every later chapter uses. It assumes the reader has seen a potential energy curve, and introduces the Lennard-Jones form, the periodic box and the minimum image convention.
 - **Molecular dynamics** needs functions, loops and f-strings. It assumes Newton's second law and the idea of kinetic energy, and builds the Velocity-Verlet integrator and a thermostat from them.
 - **Monte Carlo** needs the same Python. It assumes the Boltzmann distribution, and builds the Metropolis rule from it.
-- **The ideal gas law** needs loops, f-strings and the `**model` idiom for passing a dictionary of keyword arguments. Its physics is the Maxwell-Boltzmann distribution, the radial distribution function, the virial pressure, the second virial coefficient and the van der Waals equation. It uses `scipy.integrate.quad`, `scipy.optimize.brentq` and `scipy.optimize.curve_fit`, each explained where it appears.
-- **The ideal gas law from first principles** has no code. It assumes the partition function of statistical mechanics and derives the law from it.
+- **The ideal gas law** needs loops, f-strings and a helper function with default arguments. Its physics is the Maxwell-Boltzmann distribution, the radial distribution function, the virial pressure, the second virial coefficient and the van der Waals equation. It uses `scipy.integrate.quad`, `scipy.optimize.brentq` and `scipy.optimize.curve_fit`, each explained where it appears.
+- **The ideal gas law from first principles** needs only two short functions. It assumes the partition function of statistical mechanics and derives the law from it.
 - **Bring your own potential** needs the reader to write a Python class with two methods. Its physics is a pair potential and its derivative.
 - **Viewers and panes** also needs a class. It assumes no physics beyond the earlier chapters, and its subject is matplotlib rather than simulation.
 
@@ -61,11 +61,11 @@ The whole book executes in about a minute on a laptop. The chapters divide that 
 | Chapter | Time to execute |
 | --- | --- |
 | The ideal gas law | about 25 s |
-| Monte Carlo | about 12 s |
+| Monte Carlo | about 20 s |
 | Molecular dynamics | about 8 s |
 | Each of the other five chapters | under 5 s |
 
-The longest single cells are the two radial distribution functions in *The ideal gas law*, at about 8 s each, and the pressure sweep in the same chapter, at about 6 s. A student running a chapter from top to bottom therefore waits well under a minute.
+The longest single cells are the comparison of the two methods in *Monte Carlo*, at about 10 s, the two radial distribution functions in *The ideal gas law*, at about 8 s each, and the pressure sweep in the same chapter, at about 6 s. A student running a chapter from top to bottom therefore waits well under a minute.
 
 ## Citing pylj
 

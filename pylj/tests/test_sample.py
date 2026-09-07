@@ -40,9 +40,9 @@ from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL, 
 NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering]
 
 SERIES_PANES = {
-    TemperaturePane: ("temperature", "Temperature/K"),
-    PressurePane: ("pressure", "Pressure/N m$^{-1}$"),
-    MSDPane: ("msd", "MSD/m$^2$"),
+    TemperaturePane: ("temperature", "Temperature/K", 1.0),
+    PressurePane: ("pressure", "Pressure/N m$^{-1}$", 1.0),
+    MSDPane: ("msd", "MSD/Angstrom$^2$", 1e20),
 }
 
 
@@ -251,8 +251,8 @@ def test_time_panes_handle_empty_and_sparse_samples(pane_cls):
     assert_allclose(ax.lines[0].get_xdata(), np.array([3, 6, 9]) * simulation.timestep * 1e12)
     assert ax.get_xlabel() == "Time/ps"
     if pane_cls in SERIES_PANES:
-        attribute, ylabel = SERIES_PANES[pane_cls]
-        assert_allclose(ax.lines[0].get_ydata(), getattr(simulation.samples, attribute))
+        attribute, ylabel, scale = SERIES_PANES[pane_cls]
+        assert_allclose(ax.lines[0].get_ydata(), getattr(simulation.samples, attribute) * scale)
         assert ax.get_ylabel() == ylabel
     if pane_cls is MSDPane:
         assert ax.get_ylim()[0] == 0

@@ -65,7 +65,6 @@ pylj is developed on [GitHub](https://github.com/arm61/pylj). If you use it in t
 :caption: Getting started
 
 particles-and-potentials
-teaching
 ```
 
 ```{toctree}
@@ -90,6 +89,13 @@ first-principles
 
 byof
 viewers
+```
+
+```{toctree}
+:hidden:
+:caption: For lecturers
+
+teaching
 ```
 
 ```{toctree}

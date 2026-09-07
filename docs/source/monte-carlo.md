@@ -93,7 +93,7 @@ $$
 
 by drawing a uniform random number $n$ between 0 and 1 and accepting if $n$ is below that probability.
 
-The rule works because of detailed balance: for every pair of configurations, the rate of moving from one to the other equals the rate of moving back, once each is weighted by its Boltzmann factor. That holds only if a move and its reverse are proposed with equal probability. pylj's uniform relocation of one particle is symmetric in this way; a move that is not symmetric samples the wrong distribution, silently.
+The rule works because of detailed balance: for every pair of configurations, the rate of moving from one to the other equals the rate of moving back, once each is weighted by its Boltzmann factor. The rule as written holds only if a move and its reverse are proposed with equal probability. pylj's uniform relocation of one particle is symmetric in this way; a move that is not symmetric samples the wrong distribution, silently.
 
 The rule is short:
 
@@ -158,7 +158,7 @@ The two runs accept the same number of moves because they draw the same random n
 
 ## The two methods agree
 
-The molecular dynamics chapter held a temperature with a thermostat; the Monte Carlo rule holds it by construction. Run both on the same sixteen particles in the same box at 300 K, discard the settling steps, and compare the mean potential energy over the rest. A Monte Carlo step moves one particle; $N$ of them, one per particle on average, make a sweep, the counterpart of one dynamics step. The Monte Carlo run is given 20000 moves, which is 1250 sweeps of sixteen particles, against 10000 dynamics steps:
+The molecular dynamics chapter held a temperature with a thermostat; the Monte Carlo rule holds it by construction. Run both on the same sixteen particles in the same box at 300 K, discard the settling steps, and compare the mean potential energy over the rest. A Monte Carlo step moves one particle; $N$ of them, one per particle on average, make a sweep, the counterpart of one dynamics step. Both runs are given 10000 of their unit: 10000 dynamics steps, and 10000 sweeps, which for sixteen particles is 160000 moves:
 
 ```{code-cell} python
 from pylj.md import MDSimulation
@@ -179,7 +179,7 @@ monte_carlo = MCSimulation.initialise(16, 300, 20, seed=0, **model)
 for _ in range(2000):
     monte_carlo.step()
 monte_carlo_run = monte_carlo.restart()
-for _ in range(20000):
+for _ in range(160000):
     monte_carlo_run.step()
     if monte_carlo_run.steps % 10 == 0:
         monte_carlo_run.sample()

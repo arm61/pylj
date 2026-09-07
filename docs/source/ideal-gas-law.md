@@ -144,7 +144,7 @@ $$
 p = \frac{1}{2A}\left(2K + \sum_{\text{pairs}} f_{ij}\, r_{ij}\right),
 $$
 
-where $K$ is the kinetic energy and the sum runs over the radial force times the distance for every pair. The thermostat sets $K$ to $(N - 1) k_B T$ at every step, so the first term is fixed and only the second, the virial, is measured. With no forces the virial vanishes and the pressure is $(N - 1) k_B T / A$.
+where $K$ is the kinetic energy and the sum runs over the radial force times the distance for every pair. As at STP, the thermostat fixes the first term and only the virial is measured. With no forces the virial vanishes and the pressure is $(N - 1) k_B T / A$.
 
 ```{code-cell} python
 numbers = np.array([9, 16, 25, 36, 49, 64, 81, 100])

@@ -279,6 +279,8 @@ class _SeriesPane(Pane):
         attribute: Name of the ``MDSamples`` attribute holding the sample
             array to plot on the y axis.
         ylabel: Label for the y axis.
+        scale: Factor the sample values are multiplied by before plotting,
+            to convert from SI to the unit named in ``ylabel``.
         y_from_zero: Whether the y axis should start at zero rather than
             below the minimum of the data.
     """
@@ -286,6 +288,7 @@ class _SeriesPane(Pane):
     needs_md = True
     attribute: str
     ylabel: str
+    scale: float = 1.0
     y_from_zero: bool = False
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
@@ -296,7 +299,7 @@ class _SeriesPane(Pane):
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set
         x = simulation.samples.step * simulation.timestep * 1e12
-        y = getattr(simulation.samples, self.attribute)
+        y = getattr(simulation.samples, self.attribute) * self.scale
         ax.lines[0].set_data(x, y)
         _fit_axes(ax, x, y, y_from_zero=self.y_from_zero)
 
@@ -319,7 +322,8 @@ class MSDPane(_SeriesPane):
     """Mean squared displacement against time."""
 
     attribute = "msd"
-    ylabel = "MSD/m$^2$"
+    ylabel = "MSD/Angstrom$^2$"
+    scale = 1e20
     y_from_zero = True
 
 
