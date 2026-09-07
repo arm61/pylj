@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-Before we can simulate argon, we need to answer three questions. How do we describe an argon atom? How do two argon atoms interact? And where do the atoms live, given that a simulation cannot contain a whole beaker of gas? This chapter takes each question in turn, then builds a simulation and computes its energy.
+Throughout these pages our example system is argon. Argon is the traditional first system to simulate. Its atoms have no bonds, no charge and no shape, so the only thing we have to describe is how two argon atoms attract and repel each other, and yet a box of argon atoms shows everything we want to study: how atoms move, how they arrange themselves, and what pressure they exert.
+
+To simulate argon we need to answer three questions. How do we describe an argon atom? How do two argon atoms interact? And where do the atoms live, given that a simulation cannot contain a whole beaker of gas? This chapter takes each question in turn, then builds a simulation and computes its energy.
 
 ## Describing an atom
 
@@ -39,8 +41,6 @@ E(r) = 4 \epsilon \left[ \left(\frac{\sigma}{r}\right)^{12} - \left(\frac{\sigma
 $$
 
 where $r$ is the distance between the two atoms. The formula has two parameters. $\epsilon$ sets the depth of the well: it is the energy needed to pull a bound pair apart. $\sigma$ sets the distance at which the energy passes through zero, which is slightly less than the diameter of the atom. For argon, $\epsilon = 1.577$ zJ (a zeptojoule is $10^{-21}$ J) and $\sigma = 3.372$ Angstrom.
-
-Why is one pair potential enough? Argon atoms have no bonds, no charge and no shape, so there is nothing else for their interaction to depend on. For most molecules the interaction is far more complicated, which is one reason argon is the traditional first system to simulate.
 
 In `pylj` this formula is a `LennardJones` object, built from $\epsilon$ in joules and $\sigma$ in metres:
 
