@@ -32,7 +32,7 @@ argon
 
 ## How the atoms interact
 
-Two argon atoms attract each other weakly when they are a few Angstrom apart, through the dispersion interaction, the weak attraction between any two atoms that arises from the momentary fluctuations of their electron clouds, and repel each other strongly when they come close enough for their electron clouds to overlap. The potential energy of the pair therefore falls as the atoms approach from far away, reaches a minimum, the well, and then rises steeply. The Lennard-Jones potential is the simplest formula with this shape:
+Two argon atoms attract each other weakly when they are a few Angstrom apart, where an Angstrom is $10^{-10}$ m, about the size of an atom, through the dispersion interaction, the weak attraction between any two atoms that arises from the momentary fluctuations of their electron clouds, and repel each other strongly when they come close enough for their electron clouds to overlap. The potential energy of the pair therefore falls as the atoms approach from far away, reaches a minimum, the well, and then rises steeply. The Lennard-Jones potential is the simplest formula with this shape:
 
 $$
 E(r) = 4 \epsilon \left[ \left(\frac{\sigma}{r}\right)^{12} - \left(\frac{\sigma}{r}\right)^{6} \right].
@@ -112,7 +112,9 @@ The species and the pair potentials are collected in a dictionary called `model`
 
 With one species, `pair_potentials` has a single entry. A mixture of argon and xenon would need three: argon with argon, xenon with xenon, and argon with xenon.
 
-The simulation starts by placing the atoms on a square lattice, and `configuration` records where they are. `pylj` reports every quantity in SI units, so the positions are in metres; the cell above converts them to Angstrom for printing.
+The simulation starts by placing the atoms on a square lattice, and `configuration` records where they are.
+
+Two units conventions meet in this cell. `initialise` takes its lengths in Angstrom; the potential takes SI units, joules and metres; and `Species` takes the mass in atomic mass units. Everything a simulation reports back is in SI units, so the positions above are in metres, and the cell converts them to Angstrom for printing.
 
 ## The energy of the whole box
 
