@@ -13,13 +13,13 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-pylj runs two-dimensional simulations of a few tens of atoms, and draws them as they move. It runs molecular dynamics and Monte Carlo in a periodic box and shows the temperature, pressure, energy and structure as they are measured. It exists to teach how these methods work, so its code is short, in plain Python and NumPy, and written to be read. These pages explain the two methods and show, in pylj's own code, how each step is done.
+`pylj` is code for running molecular dynamics and Metropolis Monte Carlo simulations of simple systems in two dimensions. It draws the atoms as they move, and reports the temperature, the pressure, the energy and how the atoms are arranged, measuring each as the simulation runs. It exists to teach how these methods work, so its code is short, in plain Python and NumPy, and written to be read. These pages explain the two methods and show, in `pylj`'s own code, how each step is done.
 
-pylj is for undergraduate chemistry and physics students meeting simulation for the first time, and for the lecturers who set them work. Every figure and printed number on these pages was produced by the code shown above it when the pages were built.
+`pylj` is for undergraduate chemistry and physics students meeting simulation for the first time, and for the lecturers who set them work. Every figure and printed number on these pages was produced by the code shown above it when the pages were built.
 
 ## Installing pylj
 
-pylj runs inside a Jupyter notebook, because the figures redraw in place as a simulation runs. If you do not have Jupyter, `pip install jupyterlab` provides it. `pip install pylj` installs the latest release. This book describes the version on GitHub, which names `MDSimulation` on its first page; if the release you get does not have it, install from GitHub instead:
+`pylj` runs inside a Jupyter notebook, because the figures redraw in place as a simulation runs. If you do not have Jupyter, `pip install jupyterlab` provides it. `pip install `pylj`` installs the latest release. This book describes the version on GitHub, which names `MDSimulation` on its first page; if the release you get does not have it, install from GitHub instead:
 
 ```bash
 pip install git+https://github.com/arm61/pylj
@@ -59,11 +59,11 @@ In a notebook the figure redraws ten times; on this page it shows the last frame
 
 ## What is in these pages
 
-*Atoms and potentials* introduces what every simulation contains: atoms, the potential energy between them, and the box. *Molecular dynamics* and *Monte Carlo* explain the two methods, writing each step by hand before handing it to pylj. *The ideal gas law* uses molecular dynamics to test the law, and *The ideal gas law from first principles* derives it from the partition function. *Bring your own potential* and *Viewers and panes* show how to extend pylj with your own potential and your own plots. The reference at the end lists every class, function and argument, with units.
+*Atoms and potentials* introduces what every simulation contains: the atoms, the potential energy of a pair of atoms as a function of their separation, and the box. *Molecular dynamics* and *Monte Carlo* explain the two methods, writing each step by hand before handing it to `pylj`. *The ideal gas law* uses molecular dynamics to test the law, and *The ideal gas law from first principles* derives it from the partition function. *Bring your own potential* and *Viewers and panes* show how to extend `pylj` with your own potential and your own plots. The reference at the end lists every class, function and argument, with units.
 
-The first six chapters are for students, and each is one notebook to run from top to bottom: later cells use names defined in earlier ones. The two chapters on extending pylj are for readers who want to write their own potential or plot, and each needs a short Python class. *Teaching with pylj* is for lecturers: what pylj needs, what it can and cannot do, and which parameters are safe to vary.
+The first six chapters are for students, and each is one notebook to run from top to bottom: later cells use names defined in earlier ones. The two chapters on extending `pylj` are for readers who want to write their own potential or plot, and each needs a short Python class. *Teaching with pylj* is for lecturers: what `pylj` needs, what it can and cannot do, and which parameters are safe to vary.
 
-pylj is developed on [GitHub](https://github.com/arm61/pylj). If you use it in teaching, please cite the [paper in the Journal of Open Source Education](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d); `pylj.__cite__()` opens it.
+`pylj` is developed on [GitHub](https://github.com/arm61/pylj). If you use it in teaching, please cite the [paper in the Journal of Open Source Education](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d); `pylj.__cite__()` opens it.
 
 ```{toctree}
 :hidden:

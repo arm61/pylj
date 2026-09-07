@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-Molecular dynamics follows the atoms through time by solving Newton's equations of motion. The loop is short: find the force on each atom from the potential, move every atom forward by one small timestep, and repeat. This chapter builds the loop one piece at a time, writes the integration step by hand, and then shows the same step inside pylj.
+Molecular dynamics follows the atoms through time by solving Newton's equations of motion. The loop is short: find the force on each atom from the potential, move every atom forward by one small timestep, and repeat. This chapter builds the loop one piece at a time, writes the integration step by hand, and then shows the same step inside `pylj`.
 
 The algorithm:
 
@@ -47,7 +47,7 @@ simulation = MDSimulation.initialise(number_of_atoms=16, temperature=300, box=50
 viewer = sample.JustCell(simulation)
 ```
 
-A lattice is a safe start because no two atoms are close enough to repel strongly. The alternative, `init_conf="metropolis"`, places the atoms one at a time at random positions and accepts each position according to its interaction energy with the atoms already placed, using the Monte Carlo rule of the next chapter. Placing the atoms purely at random, with no regard to their energy, would sometimes put two almost on top of each other. The force between them would then be enormous, the first step would fling them apart at a speed the timestep cannot follow, and the run would be meaningless from its first step. pylj refuses a starting configuration that stores more than ten $k_B T$ of potential energy per atom for this reason.
+A lattice is a safe start because no two atoms are close enough to repel strongly. The alternative, `init_conf="metropolis"`, places the atoms one at a time at random positions and accepts each position according to its interaction energy with the atoms already placed, using the Monte Carlo rule of the next chapter. Placing the atoms purely at random, with no regard to their energy, would sometimes put two almost on top of each other. The force between them would then be enormous, the first step would fling them apart at a speed the timestep cannot follow, and the run would be meaningless from its first step. `pylj` refuses a starting configuration that stores more than ten $k_B T$ of potential energy per atom for this reason.
 
 ```{code-cell} python
 placed = MDSimulation.initialise(
@@ -75,7 +75,7 @@ The temperature is the kinetic energy divided by $(N - 1) k_B$, where $N$ is the
 
 ## Forces
 
-The force on a pair is minus the slope of the pair energy, which the previous chapter plotted. The net force on an atom is the sum of the pair forces from every other atom, each pointing along the line between them. The configuration does that sum. The code below is pylj's own, shown as it is in the source. The annotations after the colons, such as `NDArray[np.float64]`, and the return type after the arrow, document the types; they are not something you type to use the function.
+The force on a pair is minus the slope of the pair energy, which the previous chapter plotted. The net force on an atom is the sum of the pair forces from every other atom, each pointing along the line between them. The configuration does that sum. The code below is `pylj`'s own, shown as it is in the source. The annotations after the colons, such as `NDArray[np.float64]`, and the return type after the arrow, document the types; they are not something you type to use the function.
 
 ```{literalinclude} ../../pylj/configuration.py
 :pyobject: Configuration.forces
@@ -91,7 +91,7 @@ print(f"largest acceleration {np.abs(accelerations).max():.2e} m/s^2")
 
 ## Integration
 
-Knowing the positions, velocities and accelerations, the atoms can be moved forward in time. The integrator pylj uses is Velocity-Verlet. The positions advance with the current velocity and acceleration,
+Knowing the positions, velocities and accelerations, the atoms can be moved forward in time. The integrator `pylj` uses is Velocity-Verlet. The positions advance with the current velocity and acceleration,
 
 $$
 \mathbf{x}(t + \Delta t) = \mathbf{x}(t) + \mathbf{v}(t)\,\Delta t + \tfrac{1}{2}\mathbf{a}(t)\,\Delta t^2,
@@ -103,7 +103,7 @@ $$
 \mathbf{v}(t + \Delta t) = \mathbf{v}(t) + \tfrac{1}{2}\left[\mathbf{a}(t) + \mathbf{a}(t + \Delta t)\right]\Delta t.
 $$
 
-Written by hand from pylj's two update functions, one step is:
+Written by hand from `pylj`'s two update functions, one step is:
 
 ```{code-cell} python
 def verlet_step(configuration, forces, timestep, pair_potentials, cut_off):
@@ -120,7 +120,7 @@ def verlet_step(configuration, forces, timestep, pair_potentials, cut_off):
 
 `update_positions` returns two arrays because the configuration keeps two copies of the positions: `position`, wrapped back into the box when an atom crosses an edge, and `unwrapped`, which is not, so that the distance an atom has travelled can be measured later. `replace` makes a new configuration with some arrays changed; a configuration is never edited in place, so the state before the step is still there to compare against.
 
-pylj's own step is the same code, with one addition:
+`pylj`'s own step is the same code, with one addition:
 
 ```{literalinclude} ../../pylj/md.py
 :pyobject: velocity_verlet
@@ -193,7 +193,7 @@ fig.tight_layout()
 
 ## The thermostat
 
-The run above conserves energy, so its temperature drifts from 300 K as the atoms leave the lattice and fall into each other's attractive wells, turning potential energy into kinetic. To hold a temperature, pylj rescales the velocities. `heat_bath(T)` multiplies every velocity by $\sqrt{T / T_{\text{now}}}$, which sets the instantaneous temperature to $T$ exactly:
+The run above conserves energy, so its temperature drifts from 300 K as the atoms leave the lattice and fall into each other's attractive wells, turning potential energy into kinetic. To hold a temperature, `pylj` rescales the velocities. `heat_bath(T)` multiplies every velocity by $\sqrt{T / T_{\text{now}}}$, which sets the instantaneous temperature to $T$ exactly:
 
 ```{literalinclude} ../../pylj/md.py
 :pyobject: heat_bath
@@ -214,7 +214,7 @@ print(f"mean temperature {simulation.samples.temperature.mean():.1f} K")
 
 This section writes a Python class. Skip it on a first reading; nothing later depends on it.
 
-The integrator is one method on the simulation, `integrate`, which replaces the configuration and the forces. A subclass that overrides it runs any integrator under the same loop, viewers and samples. The hand-written step from above, installed this way, runs in place of pylj's:
+The integrator is one method on the simulation, `integrate`, which replaces the configuration and the forces. A subclass that overrides it runs any integrator under the same loop, viewers and samples. The hand-written step from above, installed this way, runs in place of `pylj`'s:
 
 ```{code-cell} python
 class HandWritten(MDSimulation):

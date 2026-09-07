@@ -17,7 +17,7 @@ This chapter shows what the viewers draw, how to combine their panes, and how to
 
 ## Existing viewers
 
-pylj comes with eight viewers, each a live figure that redraws when its `update(simulation)` method is called:
+`pylj` comes with eight viewers, each a live figure that redraws when its `update(simulation)` method is called:
 
 - `JustCell`: the atom positions
 - `Energy`: positions and the energy. For molecular dynamics that is the total energy, potential plus kinetic; for Monte Carlo it is the potential energy.

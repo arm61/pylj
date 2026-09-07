@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-This chapter shows how to give pylj a pair potential of your own. It needs a short Python class with two methods.
+This chapter shows how to give `pylj` a pair potential of your own. It needs a short Python class with two methods.
 
 ## The interface
 
-A pylj simulation is built from the species it contains and the pair potential acting between each pair of species:
+A `pylj` simulation is built from the species it contains and the pair potential acting between each pair of species:
 
 ```{code-cell} python
 from pylj import sample

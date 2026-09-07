@@ -144,7 +144,7 @@ The atoms rarely come within range of each other, and the potential energy is a 
 
 ## Pressure against density
 
-Keeping the box at 40 Angstrom and the temperature at 273 K, and raising the number of atoms from 9 to 100, takes the gas from dilute to dense. The pressure pylj measures is the virial pressure,
+Keeping the box at 40 Angstrom and the temperature at 273 K, and raising the number of atoms from 9 to 100, takes the gas from dilute to dense. The pressure `pylj` measures is the virial pressure,
 
 $$
 p = \frac{1}{2A}\left(2K + \sum_{\text{pairs}} f_{ij}\, r_{ij}\right),

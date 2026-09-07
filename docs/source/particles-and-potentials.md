@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-pylj simulates a small number of atoms moving in two dimensions. The atoms in these chapters are argon. Argon atoms interact only weakly, so their behaviour is simple enough to follow, and yet a simulation of them shows the things a simulation measures: how fast the atoms move, how they arrange themselves, and what pressure they exert. Before the two simulation methods are introduced, this chapter sets out what a simulation needs to know about its atoms, how heavy they are, how they interact and where they are confined, then builds a simulation from those three things and adds up the energy of the atoms in it.
+A molecular dynamics or Monte Carlo simulation needs three things before it can start: the atoms it contains, the potential energy of a pair of those atoms as a function of their separation, and the box the atoms are confined to. This chapter introduces each of the three for argon, the atom every later chapter simulates, then builds a simulation from them and adds up its energy. Argon is the usual first choice: its atoms interact only weakly, so their behaviour is simple enough to follow, and yet a simulation of them shows the things a simulation measures, how fast the atoms move, how they arrange themselves, and what pressure they exert.
 
 ## The atoms
 
-pylj describes an atom by two things, its mass and a name. The mass is given in atomic mass units, the unit used in data tables, so for argon it is 39.948:
+`pylj` describes an atom by two things, its mass and a name. The mass is given in atomic mass units, the unit used in data tables, so for argon it is 39.948:
 
 ```{code-cell} python
 from pylj.potentials import Species
@@ -26,7 +26,7 @@ argon = Species(mass=39.948, name="argon")
 argon
 ```
 
-pylj calls this description a species, because one description serves every atom of the same kind. All the atoms in a simulation of argon share this one species. A simulation of a mixture of argon and xenon would have two.
+`pylj` calls this description a species, because one description serves every atom of the same kind. All the atoms in a simulation of argon share this one species. A simulation of a mixture of argon and xenon would have two.
 
 ## How the atoms interact
 
@@ -38,7 +38,7 @@ $$
 
 Here $r$ is the distance between the two atoms. The well depth $\epsilon$ is the energy at the bottom of the well, which is the energy needed to pull a bound pair apart. The length $\sigma$ is the distance at which the energy passes through zero, a little less than the diameter of the atom. For argon, $\epsilon$ is 1.577 zJ, where a zeptojoule is $10^{-21}$ J, and $\sigma$ is 3.372 Angstrom.
 
-In pylj the formula is represented by an object. `LennardJones` takes $\epsilon$ in joules and $\sigma$ in metres:
+In `pylj` the formula is represented by an object. `LennardJones` takes $\epsilon$ in joules and $\sigma$ in metres:
 
 ```{code-cell} python
 from pylj.potentials import LennardJones
@@ -82,13 +82,13 @@ Whether two atoms stay bound depends on how the well depth compares with the the
 
 The atoms are confined to a square box, but its edges are not walls. An atom that moves out through the right-hand edge comes back in through the left, and an atom near the right-hand edge interacts with one near the left-hand edge as if they were neighbours. The box behaves as one cell of a pattern that repeats endlessly in both directions, so the simulation has no walls and no surface, and a few tens of atoms stand in for a much larger sample. Boundaries of this kind are called periodic.
 
-Because the pattern repeats, every atom has infinitely many copies, one in each cell. When pylj needs the distance between two atoms it takes the shortest distance to any copy of the second atom. That shortest distance is called the minimum image.
+Because the pattern repeats, every atom has infinitely many copies, one in each cell. When `pylj` needs the distance between two atoms it takes the shortest distance to any copy of the second atom. That shortest distance is called the minimum image.
 
-The attraction between two argon atoms has faded to nothing by about 8 Angstrom, so beyond some distance a pair contributes nothing worth computing. pylj therefore ignores pairs of atoms further apart than a cut-off distance, and sets their energy and force to zero. The default cut-off is 15 Angstrom, or half the box side if the box is smaller than 30 Angstrom.
+The attraction between two argon atoms has faded to nothing by about 8 Angstrom, so beyond some distance a pair contributes nothing worth computing. `pylj` therefore ignores pairs of atoms further apart than a cut-off distance, and sets their energy and force to zero. The default cut-off is 15 Angstrom, or half the box side if the box is smaller than 30 Angstrom.
 
 If the cut-off were larger than half the box side, an atom could be within the cut-off distance of two copies of the same neighbour, one on each side of it, while the minimum image counts only the nearer copy. The cut-off is therefore never allowed to exceed half the box side.
 
-Two details of the cut-off matter to anyone comparing with other simulation codes. The energy is set to zero at the cut-off with no adjustment for the small interaction that remains, and pylj refuses a potential whose energy at the cut-off is still larger than $k_B T$.
+Two details of the cut-off matter to anyone comparing with other simulation codes. The energy is set to zero at the cut-off with no adjustment for the small interaction that remains, and `pylj` refuses a potential whose energy at the cut-off is still larger than $k_B T$.
 
 ## Building a simulation
 
@@ -110,7 +110,7 @@ The species and the pair potentials are collected in a dictionary called `model`
 
 With one species, `pair_potentials` has a single entry. A mixture of argon and xenon would need three: argon with argon, xenon with xenon, and argon with xenon.
 
-The simulation starts by placing the atoms on a square lattice, and `configuration` records where they are. pylj reports every quantity in SI units, so the positions are in metres; the cell above converts them to Angstrom for printing.
+The simulation starts by placing the atoms on a square lattice, and `configuration` records where they are. `pylj` reports every quantity in SI units, so the positions are in metres; the cell above converts them to Angstrom for printing.
 
 ## The energy of the whole box
 

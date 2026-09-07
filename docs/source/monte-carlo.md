@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-Monte Carlo reaches the same equilibrium properties as molecular dynamics by a different route. There are no velocities and no clock. Instead the method proposes a change to the configuration, accepts or rejects it by a rule that depends on the change in energy and the temperature, and repeats. The configurations it visits are distributed according to the Boltzmann probability, so averages over them are equilibrium averages. This chapter builds the loop from the energy up, and then shows it inside pylj.
+Monte Carlo reaches the same equilibrium properties as molecular dynamics by a different route. There are no velocities and no clock. Instead the method proposes a change to the configuration, accepts or rejects it by a rule that depends on the change in energy and the temperature, and repeats. The configurations it visits are distributed according to the Boltzmann probability, so averages over them are equilibrium averages. This chapter builds the loop from the energy up, and then shows it inside `pylj`.
 
 The algorithm:
 
@@ -66,7 +66,7 @@ print(f"stored energy {simulation.energy * 1e21:.2f} zJ")
 
 ## A proposal
 
-The change pylj proposes is the simplest: one atom, chosen at random, is given a new position drawn uniformly from the box. `propose` returns the proposed positions and the energy change the move would cause, and leaves the configuration untouched. It does steps 3 and 4 of the algorithm together.
+The change `pylj` proposes is the simplest: one atom, chosen at random, is given a new position drawn uniformly from the box. `propose` returns the proposed positions and the energy change the move would cause, and leaves the configuration untouched. It does steps 3 and 4 of the algorithm together.
 
 ```{literalinclude} ../../pylj/mc.py
 :pyobject: MCSimulation.propose
@@ -95,7 +95,7 @@ $$
 
 by drawing a uniform random number $n$ between 0 and 1 and accepting if $n$ is below that probability.
 
-The rule works because of detailed balance: for every pair of configurations, the rate of moving from one to the other equals the rate of moving back, once each is weighted by its Boltzmann factor. The rule as written holds only if a move and its reverse are proposed with equal probability. pylj's uniform relocation of one atom is symmetric in this way; a move that is not symmetric samples the wrong distribution, silently.
+The rule works because of detailed balance: for every pair of configurations, the rate of moving from one to the other equals the rate of moving back, once each is weighted by its Boltzmann factor. The rule as written holds only if a move and its reverse are proposed with equal probability. `pylj`'s uniform relocation of one atom is symmetric in this way; a move that is not symmetric samples the wrong distribution, silently.
 
 The rule is short:
 
