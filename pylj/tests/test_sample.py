@@ -23,6 +23,7 @@ from pylj.sample import (
     Scattering,
     Viewer,
     environment,
+    panes,
 )
 from pylj.sample.panes import (
     CellPane,
@@ -41,9 +42,9 @@ from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL, 
 NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering]
 
 SERIES_PANES = {
-    TemperaturePane: ("temperature", "Temperature/K", 1.0),
-    PressurePane: ("pressure", "Pressure/N m$^{-1}$", 1.0),
-    MSDPane: ("msd", "MSD/Angstrom$^2$", 1e20),
+    TemperaturePane: ("temperature", "Temperature / K", 1.0),
+    PressurePane: ("pressure", "Pressure / N m$^{-1}$", 1.0),
+    MSDPane: ("msd", "MSD / Angstrom$^2$", 1e20),
 }
 
 
@@ -296,7 +297,7 @@ def test_time_panes_handle_empty_and_sparse_samples(pane_cls):
     pane.update(ax, simulation)
     fig.canvas.draw()
     assert_allclose(ax.lines[0].get_xdata(), np.array([3, 6, 9]) * simulation.timestep * 1e12)
-    assert ax.get_xlabel() == "Time/ps"
+    assert ax.get_xlabel() == "Time / ps"
     if pane_cls in SERIES_PANES:
         attribute, ylabel, scale = SERIES_PANES[pane_cls]
         assert_allclose(ax.lines[0].get_ydata(), getattr(simulation.samples, attribute) * scale)
@@ -317,7 +318,7 @@ def test_energy_pane_md_plots_the_total_energy():
     assert_allclose(ax.lines[0].get_ydata()[-1], potential + c.kinetic_energy())
     assert_allclose(ax.lines[0].get_ydata(), simulation.samples.total_energy)
     assert_allclose(ax.lines[0].get_xdata(), simulation.samples.step * simulation.timestep * 1e12)
-    assert ax.get_xlabel() == "Time/ps"
+    assert ax.get_xlabel() == "Time / ps"
     plt.close(fig)
 
 
@@ -401,7 +402,7 @@ def test_rdf_pane_axes_are_in_angstrom_with_visible_y_ticks():
     pane = RDFPane()
     pane.setup(ax, simulation)
     pane.update(ax, simulation)
-    assert ax.get_xlabel() == "r/Angstrom"
+    assert ax.get_xlabel() == "r / Angstrom"
     r = ax.lines[0].get_xdata()
     assert 1 < r.max() < 20
     assert len(ax.get_yticks()) > 0
@@ -699,3 +700,19 @@ def test_md_only_message_names_the_offending_panes(drawing_display):
 
     with pytest.raises(ValueError, match=r"Viewer plots .*\(TemperaturePane\)"):
         Viewer(sampled_mc_simulation(steps=1), [CellPane(), TemperaturePane()])
+
+
+def test_fit_axes_pads_a_constant_series_and_hides_the_offset():
+    # A temperature held at exactly 300 K by a thermostat spans only rounding
+    # error; the axis is padded to a readable fraction of the value and no
+    # offset such as "300.00000000000" is printed.
+    fig, ax = environment(1)
+    ax.plot([], [])
+    y = np.full(50, 300.0) + np.linspace(-1e-13, 1e-13, 50)
+    panes._fit_axes(ax, np.arange(50.0), y)
+    low, high = ax.get_ylim()
+    assert high - low > 1.0
+    assert low < 300 < high
+    fig.canvas.draw()
+    assert ax.yaxis.get_major_formatter().get_offset() == ""
+    plt.close(fig)

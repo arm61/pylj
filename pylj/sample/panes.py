@@ -21,7 +21,6 @@ from pylj.potentials import PairPotential
 from pylj.simulation import Simulation
 
 LINE_COLOUR = "#34a5daff"
-LABEL_SIZE = 16
 
 
 def _fit_axes(
@@ -63,8 +62,16 @@ def _fit_axes(
         ax.set_xlim(x_low, float(x.max()))
     y_low = 0.0 if y_from_zero else float(y.min())
     y_high = float(y.max())
-    span = y_high - y_low if y_high > y_low else (abs(y_high) or 1.0)
-    ax.set_ylim(y_low if y_from_zero else y_low - 0.05 * span, y_high + 0.05 * span)
+    span = y_high - y_low
+    if span <= 1e-6 * max(abs(y_high), abs(y_low)):
+        # A series held constant by a thermostat spans only rounding error;
+        # show it with a margin of one per cent of its value rather than
+        # magnifying the noise.
+        margin = 0.01 * abs(y_high) or 1.0
+    else:
+        margin = 0.05 * span
+    ax.set_ylim(y_low if y_from_zero else y_low - margin, y_high + margin)
+    ax.ticklabel_format(axis="y", useOffset=False)
 
 
 class Pane:
@@ -325,8 +332,8 @@ class _SeriesPane(Pane):
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
-        ax.set_xlabel("Time/ps", fontsize=LABEL_SIZE)
+        ax.set_ylabel(self.ylabel)
+        ax.set_xlabel("Time / ps")
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set
@@ -340,21 +347,21 @@ class TemperaturePane(_SeriesPane):
     """Instantaneous temperature against time."""
 
     attribute = "temperature"
-    ylabel = "Temperature/K"
+    ylabel = "Temperature / K"
 
 
 class PressurePane(_SeriesPane):
     """Instantaneous two-dimensional pressure against time."""
 
     attribute = "pressure"
-    ylabel = "Pressure/N m$^{-1}$"
+    ylabel = "Pressure / N m$^{-1}$"
 
 
 class MSDPane(_SeriesPane):
     """Mean squared displacement against time."""
 
     attribute = "msd"
-    ylabel = "MSD/Angstrom$^2$"
+    ylabel = "MSD / Angstrom$^2$"
     scale = 1e20
     y_from_zero = True
 
@@ -394,9 +401,9 @@ class EnergyPane(Pane):
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_ylabel("Energy/J", fontsize=LABEL_SIZE)
-        xlabel = "Time/ps" if isinstance(simulation, MDSimulation) else "Step"
-        ax.set_xlabel(xlabel, fontsize=LABEL_SIZE)
+        ax.set_ylabel("Energy / J")
+        xlabel = "Time / ps" if isinstance(simulation, MDSimulation) else "Step"
+        ax.set_xlabel(xlabel)
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         x, y = _energy_series(simulation)
@@ -419,8 +426,8 @@ class RDFPane(_HistoryPane):
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_xlim(0, simulation.configuration.box / 2 * 1e10)
-        ax.set_ylabel("RDF", fontsize=LABEL_SIZE)
-        ax.set_xlabel("r/Angstrom", fontsize=LABEL_SIZE)
+        ax.set_ylabel("g(r)")
+        ax.set_xlabel("r / Angstrom")
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         configuration = simulation.configuration
@@ -484,8 +491,8 @@ class ScatteringPane(_HistoryPane):
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_yticks([])
-        ax.set_ylabel("I(q)", fontsize=LABEL_SIZE)
-        ax.set_xlabel("q/m$^{-1}$", fontsize=LABEL_SIZE)
+        ax.set_ylabel("I(q)")
+        ax.set_xlabel("q / m$^{-1}$")
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         configuration = simulation.configuration
@@ -528,8 +535,8 @@ class MaxwellBoltzmannPane(Pane):
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.step([], [], where="post", color=LINE_COLOUR)
-        ax.set_ylabel("PDF", fontsize=LABEL_SIZE)
-        ax.set_xlabel("Speed/m s$^{-1}$", fontsize=LABEL_SIZE)
+        ax.set_ylabel("PDF")
+        ax.set_xlabel("Speed / m s$^{-1}$")
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set
@@ -574,8 +581,8 @@ class CustomPane(Pane):
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_xlabel(self.xlabel, fontsize=LABEL_SIZE)
-        ax.set_ylabel(self.ylabel, fontsize=LABEL_SIZE)
+        ax.set_xlabel(self.xlabel)
+        ax.set_ylabel(self.ylabel)
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         ax.lines[0].set_data(self.x, self.y)
