@@ -29,7 +29,7 @@ Start each notebook with `%matplotlib inline`, which selects the figure backend 
 
 ## A first simulation
 
-The first simulation is sixteen argon atoms in a box 30 Angstrom on a side, at 300 K, interacting through a Lennard-Jones potential. A few lines build the simulation and one loop runs it, redrawing the box every fifty steps.
+The first simulation is sixteen argon atoms in a box 30 Angstrom on a side, where an Angstrom is $10^{-10}$ m, about the size of an atom, at 300 K, interacting through a Lennard-Jones potential. A few lines build the simulation and one loop runs it, redrawing the box every fifty steps.
 
 ```{code-cell} python
 from pylj import sample
