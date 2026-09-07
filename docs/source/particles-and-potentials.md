@@ -17,7 +17,7 @@ A simulation of argon starts from three pieces of information: the mass of an ar
 
 ## The atoms
 
-`pylj` describes an atom by two things, its mass and a name. The mass is given in atomic mass units, the unit used in data tables, so for argon it is 39.948:
+`pylj` describes an atom by its mass and a name. The mass is in atomic mass units, the unit used in data tables, so for argon it is 39.948:
 
 ```{code-cell} python
 from pylj.potentials import Species
@@ -26,19 +26,19 @@ argon = Species(mass=39.948, name="argon")
 argon
 ```
 
-`pylj` calls this description a species, because one description serves every atom of the same kind. All the atoms in a simulation of argon share this one species. A simulation of a mixture of argon and xenon would have two.
+`pylj` calls this description a species. One species serves every atom of the same kind, so a simulation of argon has one species and a simulation of argon mixed with xenon has two.
 
 ## How the atoms interact
 
-Two argon atoms attract each other weakly when they are a few Angstrom apart, where an Angstrom is $10^{-10}$ m, about the size of an atom, through the dispersion interaction, the weak attraction between any two atoms that arises from the momentary fluctuations of their electron clouds, and repel each other strongly when they come close enough for their electron clouds to overlap. The potential energy of the pair therefore falls as the atoms approach from far away, reaches a minimum, the well, and then rises steeply. The Lennard-Jones potential is the simplest formula with this shape, and because argon atoms have no bonds, no charge and no shape of their own, this one formula describes their interaction well:
+An Angstrom is $10^{-10}$ m, about the size of an atom. Two argon atoms a few Angstrom apart attract each other weakly. The attraction is the dispersion interaction, which arises from momentary fluctuations in the electron clouds of the two atoms and acts between any two atoms whatever they are. When the atoms come close enough for their electron clouds to overlap, they repel each other strongly. The potential energy of the pair therefore falls as the atoms approach from far away, reaches a minimum, and then rises steeply. The minimum is called the well. The Lennard-Jones potential is the simplest formula with this shape:
 
 $$
 E(r) = 4 \epsilon \left[ \left(\frac{\sigma}{r}\right)^{12} - \left(\frac{\sigma}{r}\right)^{6} \right].
 $$
 
-Here $r$ is the distance between the two atoms. The well depth $\epsilon$ is the energy at the bottom of the well, which is the energy needed to pull a bound pair apart. The length $\sigma$ is the distance at which the energy passes through zero, a little less than the diameter of the atom. For argon, $\epsilon$ is 1.577 zJ, where a zeptojoule is $10^{-21}$ J, and $\sigma$ is 3.372 Angstrom.
+$r$ is the distance between the two atoms. $\epsilon$ is the depth of the well, which is the energy needed to pull a bound pair apart. $\sigma$ is the distance at which the energy passes through zero, a little less than the diameter of the atom. For argon, $\epsilon$ is 1.577 zJ, where a zeptojoule is $10^{-21}$ J, and $\sigma$ is 3.372 Angstrom. Argon atoms have no bonds, no charge and no shape of their own, so this one formula describes their interaction well.
 
-In `pylj` the formula is represented by an object. `LennardJones` takes $\epsilon$ in joules and $\sigma$ in metres:
+`LennardJones` is `pylj`'s version of the formula. It takes $\epsilon$ in joules and $\sigma$ in metres:
 
 ```{code-cell} python
 from pylj.potentials import LennardJones
@@ -46,7 +46,7 @@ from pylj.potentials import LennardJones
 lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
 ```
 
-The object evaluates the formula at any distance, or at a whole array of distances at once, through its `energies` method. Its `forces` method gives the force between the two atoms, which is minus the slope of the energy: positive where the atoms repel and negative where they attract. Plotting both from 3 to 8 Angstrom:
+`lj.energies(r)` gives the energy at a distance `r`, or at every distance in an array. `lj.forces(r)` gives the force, which is minus the slope of the energy: positive where the atoms repel and negative where they attract. The cell below plots both between 3 and 8 Angstrom.
 
 ```{code-cell} python
 import numpy as np
@@ -66,7 +66,7 @@ force_ax.set_ylabel("f / pN")
 fig.tight_layout()
 ```
 
-The left-hand curve is the potential energy and the right-hand curve the force, in piconewtons, where a piconewton is $10^{-12}$ N. Below 3.37 Angstrom the energy rises steeply as the atoms are pushed together, and the force is large and repulsive; at 3 Angstrom it is nearly 800 pN, far above the top of the plot. The energy passes through zero at $\sigma$ and reaches its minimum of $-\epsilon$ at 3.78 Angstrom, where the force is zero:
+The force is in piconewtons, where a piconewton is $10^{-12}$ N. Below 3.37 Angstrom the energy rises steeply and the force is large and repulsive: at 3 Angstrom the force is nearly 800 pN, far above the top of the plot. The energy passes through zero at $\sigma$ and reaches its minimum of $-\epsilon$ at 3.78 Angstrom, where the force is zero:
 
 ```{code-cell} python
 r_min = 2 ** (1 / 6) * lj.sigma
@@ -74,9 +74,9 @@ print(f"minimum at {r_min * 1e10:.2f} Angstrom, energy {lj.energies(r_min) * 1e2
 print(f"force there {lj.forces(r_min) * 1e12:.3f} pN")
 ```
 
-Beyond the minimum the atoms attract each other, and the attraction fades to nothing by about 8 Angstrom.
+Beyond the minimum the atoms attract each other, and the attraction has fallen to nothing by about 8 Angstrom.
 
-Whether two atoms stay bound depends on how the well depth compares with the thermal energy $k_B T$, where $k_B$ is the Boltzmann constant and $T$ the temperature. At room temperature the argon well is only 0.4 $k_B T$ deep, so collisions break a pair apart almost as soon as it forms, and argon is a gas. At 87 K the well is 1.3 $k_B T$ deep, deep enough for atoms to stick together, and argon condenses; 87 K is its boiling point.
+Whether two atoms stay bound depends on how the depth of the well compares with the thermal energy $k_B T$, where $k_B$ is the Boltzmann constant and $T$ the temperature. At room temperature the argon well is 0.4 $k_B T$ deep, so a collision breaks a pair apart almost as soon as it forms, and argon is a gas. At 87 K, the boiling point of argon, the well is 1.3 $k_B T$ deep and atoms stick together.
 
 ## The box
 
@@ -86,13 +86,13 @@ In a repeating pattern every atom has a copy in every cell. When `pylj` calculat
 
 The attraction between two argon atoms has fallen to nothing by about 8 Angstrom, so a pair of atoms further apart than that adds nothing to the energy. `pylj` therefore counts only pairs closer than a cut-off distance, and sets the energy and force of every other pair to zero. The default cut-off is 15 Angstrom, or half the box side if the box is smaller than 30 Angstrom.
 
-If the cut-off were larger than half the box side, an atom could be within the cut-off distance of two copies of the same neighbour, one on each side of it, while the minimum image counts only the nearer copy. The cut-off is therefore never allowed to exceed half the box side.
+The cut-off can never be more than half the box side. If it were, an atom could be within the cut-off distance of two copies of the same neighbour, one on each side of it, while the minimum image counts only the nearer copy.
 
-Two details of the cut-off matter to anyone comparing with other simulation codes. The energy is set to zero at the cut-off with no adjustment for the small interaction that remains, and `pylj` refuses a potential whose energy at the cut-off is still larger than $k_B T$.
+The energy is cut to zero at the cut-off, and nothing is added back for the small interaction that remains beyond it. `pylj` refuses a potential whose energy at the cut-off is still larger than $k_B T$.
 
 ## Building a simulation
 
-A simulation is built from the number of atoms, the temperature in kelvin, the box side in Angstrom, and the model: the species present, and the potential that acts between each pair of species. The cell below builds nine argon atoms in a 20 Angstrom box at 300 K:
+A simulation is built from the number of atoms, the temperature in kelvin, the box side in Angstrom, and the model: the species present and the potential that acts between each pair of species. The cell below builds nine argon atoms in a 20 Angstrom box at 300 K, and prints the box, the cut-off and the positions of the first three atoms:
 
 ```{code-cell} python
 from pylj.md import MDSimulation
@@ -106,13 +106,9 @@ print(
 print(configuration.position[:3] * 1e10)
 ```
 
-The species and the pair potentials are collected in a dictionary called `model`. Writing `**model` in the call passes its two entries as the keyword arguments `species=` and `pair_potentials=`. Every later chapter builds its simulations this way, so that the model is written once.
+The atoms start on a square lattice, and `configuration` records where they are. `pylj` reports every quantity in SI units, so the positions are in metres, and the cell converts them to Angstrom for printing. The inputs are in mixed units: `initialise` takes the box in Angstrom, `LennardJones` takes joules and metres, and `Species` takes atomic mass units.
 
-With one species, `pair_potentials` has a single entry. A mixture of argon and xenon would need three: argon with argon, xenon with xenon, and argon with xenon.
-
-The simulation starts by placing the atoms on a square lattice, and `configuration` records where they are.
-
-Two units conventions meet in this cell. `initialise` takes its lengths in Angstrom; the potential takes SI units, joules and metres; and `Species` takes the mass in atomic mass units. Everything a simulation reports back is in SI units, so the positions above are in metres, and the cell converts them to Angstrom for printing.
+The species and the pair potentials are collected in a dictionary called `model`, and `**model` in the call passes its two entries as the keyword arguments `species=` and `pair_potentials=`. Every later chapter builds its simulations this way, so that the model is written once. With one species, `pair_potentials` has a single entry. A mixture of argon and xenon would need three: argon with argon, xenon with xenon, and argon with xenon.
 
 ## The energy of the whole box
 
