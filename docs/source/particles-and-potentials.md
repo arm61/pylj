@@ -80,7 +80,7 @@ Whether two atoms stay bound depends on how the well depth compares with the the
 
 ## The box
 
-A real sample of argon contains something like $10^{23}$ atoms. A simulation contains a few tens. Left to themselves, a few tens of atoms would form a droplet with a surface, and most of them would be on it. To make them behave like atoms deep inside a large sample instead, the simulation uses periodic boundary conditions. The square box is treated as one cell of a pattern that repeats without end in every direction. An atom that leaves through the right-hand side of the box re-enters through the left, and an atom near the right-hand side interacts with atoms near the left-hand side as though they were next to it. There are no walls and no surface.
+We want to simulate a bulk material, which contains around $10^{26}$ atoms, but we can only simulate somewhere between $10^{3}$ and $10^{6}$, and in `pylj` a few tens. Even in a large simulation, most of the atoms would then be near the edges of the sample rather than in a bulk environment. Periodic boundary conditions remove the edges. The square box is treated as one cell of a pattern that repeats without end in every direction: an atom that leaves through the right-hand side of the box re-enters through the left, and an atom near the right-hand side interacts with atoms near the left-hand side as though they were next to it. There are no walls and no surface.
 
 In a repeating pattern every atom has a copy in every cell. When `pylj` calculates the distance between two atoms it uses the distance to the nearest copy of the second atom. That distance is called the minimum image.
 
