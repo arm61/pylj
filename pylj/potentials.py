@@ -50,8 +50,8 @@ class PairPotential(ABC):
 
     Attributes:
         min_separation: The separation, in metres, below which the potential
-            is not valid. Zero, the default, means the potential is valid at
-            every separation. A configuration treats any pair closer
+            is unphysical. Zero, the default, means the potential is physical
+            at every separation. A configuration treats any pair closer
             than this as forbidden: its energy is infinite, and asking for
             its force raises an error.
     """

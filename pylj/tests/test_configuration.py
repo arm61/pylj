@@ -217,7 +217,7 @@ class TestConfiguration(unittest.TestCase):
         energy = c.insertion_energy((0.0, 0.0), 0, ARGON_MODEL["pair_potentials"], 6e-10)
         assert_allclose(energy, LJ_ARGON.energies(np.array([1e-10]))[0], rtol=1e-12)
 
-    def test_pairs_forbid_a_separation_where_the_potential_is_not_valid(self):
+    def test_pairs_forbid_a_separation_where_the_potential_is_unphysical(self):
         # Two argon 0.5 Angstrom apart, inside the Buckingham barrier: the
         # formula there is a deep negative number, but the pair is forbidden,
         # so the energy is infinite and asking for the force raises.
@@ -231,7 +231,7 @@ class TestConfiguration(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "collapsed"):
             c.virial(potentials, 15e-10)
 
-    def test_insertion_energy_forbids_a_separation_where_the_potential_is_not_valid(self):
+    def test_insertion_energy_forbids_a_separation_where_the_potential_is_unphysical(self):
         c = configuration([[0.0, 0.0]])
         energy = c.insertion_energy((0.5e-10, 0.0), 0, BUCKINGHAM_MODEL["pair_potentials"], 15e-10)
         self.assertEqual(energy, np.inf)

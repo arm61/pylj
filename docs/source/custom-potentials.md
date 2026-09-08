@@ -37,7 +37,7 @@ class SoftSphere(PairPotential):
 
 `energies(dr)` takes an array of pair separations in metres and returns the pair energy of each in joules. `forces(dr)` returns the radial force in newtons, minus the derivative of the energy with respect to the separation, so positive where the pair repels and negative where it attracts. A potential with no finite force, such as `SquareWell`, raises `ValueError` from `forces` and can drive only Monte Carlo. The constructor takes whatever parameters the potential needs; the built-in potentials use keyword-only parameters named after the physical quantities.
 
-`min_separation` is the separation below which the formula is not valid. It is a class attribute and defaults to `0.0`, meaning the formula is valid at every separation. A configuration gives a pair closer than it infinite energy, so placement and Monte Carlo never accept such a pair, and raises `ValueError` if asked for its forces. `Buckingham` sets it to the top of its short-range barrier in its constructor.
+`min_separation` is the separation below which the formula gives unphysical energies. It is a class attribute and defaults to `0.0`, meaning the formula is physical at every separation. A configuration gives a pair closer than it infinite energy, so placement and Monte Carlo never accept such a pair, and raises `ValueError` if asked for its forces. `Buckingham` sets it to the top of its short-range barrier in its constructor.
 
 A purely repulsive potential has no energy minimum for a viewer to size the atoms by, so the viewer is given a `diameter` in Angstrom:
 
