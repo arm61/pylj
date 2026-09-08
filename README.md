@@ -1,78 +1,89 @@
-<a href="https://pylj.readthedocs.io/"><img src="https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true" width= "60%"/></a>
+<a href="https://pylj.readthedocs.io/"><img src="https://github.com/arm61/pylj/blob/master/logo/logo.png?raw=true" width="60%"/></a>
 
-## Visit the [pylj](https://pylj.readthedocs.io/) documentation for more information about pylj.
+[![JOSE](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d/status.svg)](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d)
+[![PyPI](https://badge.fury.io/py/pylj.svg)](https://badge.fury.io/py/pylj)
+[![DOI](https://zenodo.org/badge/119863480.svg)](https://zenodo.org/badge/latestdoi/119863480)
+[![Documentation](https://readthedocs.org/projects/pylj/badge/?version=latest)](https://pylj.readthedocs.io/en/latest/)
+[![Build](https://github.com/arm61/pylj/actions/workflows/ci.yml/badge.svg)](https://github.com/arm61/pylj/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-To build from source:
+`pylj` runs molecular dynamics and Metropolis Monte Carlo simulations of atoms interacting through pair potentials, in two dimensions, and draws them as they run. It is written for teaching, in Python and NumPy, and it runs inside a Jupyter notebook.
+
+## Installation
 
 ```bash
-
-pip install -e ".[dev]"
-
+pip install pylj
 ```
-Check out our publication in the [Journal of Open Source Education](http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d) to find out more about pylj.
 
-pylj runs inside a [Jupyter notebook](http://jupyter.org/) and needs Python 3.11 or later. `pip install jupyterlab` provides Jupyter if you do not have it.
+`pylj` needs Python 3.11 or later and a Jupyter notebook to draw in; `pip install jupyterlab` provides one. Start each notebook with `%matplotlib inline`.
 
-If you need any help using pylj contact arm61 in the [pylj/HELP gitter chatroom](https://gitter.im/pylj/HELP).
+## Example
 
-The [documentation](https://pylj.readthedocs.io/) teaches molecular dynamics and Monte Carlo through worked examples, with every figure produced by the code on the page.
+Twenty-five argon atoms at 300 K, run with molecular dynamics and drawn as they go:
 
-## Badges
+```python
+from pylj import sample
+from pylj.md import MDSimulation
+from pylj.potentials import LennardJones, Species
 
-<table>
-  <tr>
-    <td>JOSE DOI</td>
-    <td>
-      <a href="http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d">
-      <img src="http://jose.theoj.org/papers/58daa1a1a564dc8e0f99ffcdae20eb1d/status.svg" alt="status" />
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>Latest Release</td>
-    <td>
-      <a href="https://badge.fury.io/py/pylj">
-      <img src="https://badge.fury.io/py/pylj.svg" alt="PyPi version" />
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td></td>
-    <td>
-      <a href="https://zenodo.org/badge/latestdoi/119863480">
-      <img src="https://zenodo.org/badge/119863480.svg" alt="DOI" />
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>Documentation</td>
-    <td>
-      <a href="http://pylj.readthedocs.io/en/latest/?badge=latest">
-      <img src="https://readthedocs.org/projects/pylj/badge/?version=latest" alt="Documentation Status" />
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>License</td>
-    <td>
-      <a href="https://opensource.org/licenses/MIT">
-      <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT" />
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td>Build Status</td>
-    <td>
-      <a href="https://github.com/arm61/pylj/actions">
-        <img src="https://github.com/arm61/pylj/actions/workflows/ci.yml/badge.svg" alt="Build Status" />
-      </a>
-  </tr>
-  <tr>
-    <td>Gitter</td>
-    <td>
-      <a href="https://gitter.im/pylj/Lobby#">
-      <img src="https://badges.gitter.im/gitterHQ/gitter.png" alt="Gitter chat" />
-      </a>
-    </td>
-  </tr>
-</table>
+argon = Species(mass=39.948, name="argon")
+lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
+simulation = MDSimulation.initialise(
+    number_of_atoms=25,
+    temperature=300,
+    box=40,
+    species=[argon],
+    pair_potentials={(argon, argon): lj},
+    seed=1,
+)
+viewer = sample.Interactions(simulation)
+for _ in range(2000):
+    simulation.step()
+    simulation.heat_bath(300)
+    simulation.sample()
+    if simulation.steps % 100 == 0:
+        viewer.update(simulation)
+```
+
+<img src="https://github.com/arm61/pylj/blob/master/docs/readme/interactions.png?raw=true" width="70%"/>
+
+`step()` advances one timestep, `heat_bath()` holds the temperature, and `sample()` records the temperature, pressure and energies in `simulation.samples` as NumPy arrays:
+
+```python
+simulation.samples.temperature.mean()  # K
+simulation.samples.pressure.mean()     # N/m, the two-dimensional pressure
+```
+
+The same model runs under Monte Carlo:
+
+```python
+from pylj.mc import MCSimulation
+
+simulation = MCSimulation.initialise(
+    number_of_atoms=25,
+    temperature=300,
+    box=40,
+    species=[argon],
+    pair_potentials={(argon, argon): lj},
+    seed=1,
+)
+viewer = sample.Energy(simulation)
+for _ in range(5000):
+    simulation.step()
+    if simulation.steps % 10 == 0:
+        simulation.sample()
+    if simulation.steps % 500 == 0:
+        viewer.update(simulation)
+```
+
+Custom pair potentials are subclasses of `PairPotential` with an `energies` method and a `forces` method; custom plots are panes composed into a `Viewer`. The [documentation](https://pylj.readthedocs.io/) describes the simulation classes, custom potentials, the viewers, and every module.
+
+## Contributing
+
+Bug reports and pull requests are welcome on [GitHub](https://github.com/arm61/pylj/issues). [CONTRIBUTING.md](CONTRIBUTING.md) describes the development setup and the checks a pull request needs to pass.
+
+## Citing pylj
+
+McCluskey, A. R., Morgan, B. J., Edler, K. J., and Parker, S. C. (2018). pylj: A teaching tool for classical atomistic simulation. *Journal of Open Source Education*, 1(2), 19. https://doi.org/10.21105/jose.00019
+
+`pylj.__cite__()` opens the paper in a browser.
