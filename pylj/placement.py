@@ -42,7 +42,6 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
 
 def place_metropolis(
     number_of_atoms: int,
-    species: tuple[Species, ...],
     box: float,
     model: Model,
     cut_off: float,
@@ -66,9 +65,9 @@ def place_metropolis(
 
     Args:
         number_of_atoms: The number of atoms.
-        species: The species, assigned to the atoms in turn.
         box: The side length of the box, in metres.
-        model: The species and the potential between each pair of them.
+        model: The species, assigned to the atoms in turn, and the potential
+            between each pair of them.
         cut_off: The cut-off, in metres.
         placement_temperature: The temperature of the acceptance, in kelvin.
         rng: The generator to draw trial positions and acceptances from.
@@ -87,6 +86,7 @@ def place_metropolis(
     # imported here rather than at the top of the module.
     from pylj.mc import accept
 
+    species = model.species
     species_index = np.arange(number_of_atoms) % len(species)
     placed = Configuration(np.zeros((0, 2)), species, species_index[:0], box)
     for i in range(number_of_atoms):
@@ -173,7 +173,6 @@ def place(
     elif init_conf == "metropolis":
         configuration = place_metropolis(
             number_of_atoms,
-            species,
             box_m,
             model,
             cut_off_m,

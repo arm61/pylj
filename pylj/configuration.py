@@ -53,9 +53,10 @@ class Configuration:
     """Where the atoms are: the state a Monte Carlo simulation evolves.
 
     A configuration cannot be changed once it is made, and it holds no
-    description of how the atoms interact. Each method that needs the
-    interaction is given a ``Model`` and ``cut_off`` when it is called, so the
-    same configuration can be evaluated under different potentials.
+    description of how the atoms interact. Each method that evaluates the
+    interactions between atoms is given a ``Model`` and a ``cut_off`` when it
+    is called, so the same configuration can be evaluated under different
+    potentials.
     Everything is in SI units.
 
     Attributes:
@@ -129,7 +130,7 @@ class Configuration:
         return dataclasses.replace(self, **arrays)
 
     def pairs(self, model: Model, cut_off: float, *, forces: bool = False) -> PairData:
-        """Evaluate every pair of atoms under the interaction law.
+        """Evaluate every pair of atoms under the model.
 
         Each pair is separated by its minimum-image distance, and the potential
         for the two species it joins gives its energy. A pair further apart

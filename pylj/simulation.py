@@ -166,7 +166,7 @@ class Samples:
 
 
 class Simulation(ABC):
-    """A simulation: a configuration, the interaction law, the numerical choices, and
+    """A simulation: a configuration, the model, the numerical choices, and
     the machinery that evolves the configuration and measures it.
 
     ``MDSimulation`` and ``MCSimulation`` add ``step`` and ``sample`` to this

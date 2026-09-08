@@ -3,12 +3,12 @@ import unittest
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
-from pylj import mc
+from pylj import mc, placement
 from pylj.constants import BOLTZMANN
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.pairwise import minimum_image
-from pylj.tests.argon import ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
+from pylj.tests.argon import ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
 
 
 def total_energy(sim):
@@ -120,12 +120,12 @@ class TestConstructor(unittest.TestCase):
         self.assertGreater(a.accepted, 0)
         assert_equal(a.configuration.velocity, md_simulation.configuration.velocity)
 
-    def test_validates_the_temperature_before_the_model(self):
-        c = MDSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=4, temperature=100, box=20
-        ).configuration
+    def test_validates_the_temperature_before_the_configuration(self):
+        # The configuration holds a species that ARGON_MODEL knows nothing
+        # about, so if the species check ran first it would raise instead.
+        c = placement.place_square(4, (LARGER,), 40e-10)
         with self.assertRaisesRegex(ValueError, "temperature must be positive"):
-            MCSimulation(c, {}, -1)
+            MCSimulation(c, ARGON_MODEL, -1)
 
 
 class TestMoves(unittest.TestCase):

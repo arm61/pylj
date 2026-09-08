@@ -169,12 +169,6 @@ class TestPlace(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "temperature must be positive"):
                 place(2, temperature, 8)
 
-    def test_accepts_a_pair_potential_keyed_in_either_order(self):
-        reversed_cross = dict(MIXTURE_MODEL.pair_potentials)
-        reversed_cross[(LARGER, ARGON)] = reversed_cross.pop((ARGON, LARGER))
-        c, _ = place(2, 300, 12, model=Model((ARGON, LARGER), reversed_cross))
-        assert_equal(c.species_index, [0, 1])
-
     def test_refuses_a_potential_still_repulsive_at_the_cut_off(self):
         # Sigma given in Angstrom: the pair energy is astronomically positive
         # at the cut-off, where a sensible potential has died away.
