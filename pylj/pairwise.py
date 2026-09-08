@@ -1,42 +1,11 @@
-"""Calculations over every pair of atoms at once: finding the potential
-that acts between two species, grouping the atom pairs by the species they
-join, applying the minimum image convention, and getting the pressure from the
-virial."""
+"""Calculations over every pair of atoms at once: grouping the atom pairs by
+the species they join, applying the minimum image convention, and getting the
+pressure from the virial."""
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator
 
 import numpy as np
 from numpy.typing import NDArray
-
-from pylj.potentials import PairPotential, Species
-
-#: The potential acting between each pair of species, keyed by the two
-#: species in either order.
-PairPotentials = Mapping[tuple[Species, Species], PairPotential]
-
-
-def pair_potential(
-    pair_potentials: PairPotentials, species_1: Species, species_2: Species
-) -> PairPotential:
-    """Return the potential acting between two species.
-
-    The mapping is keyed by unordered pairs, so the two species are looked
-    up in either order.
-
-    Args:
-        pair_potentials: The potential between each pair of species.
-        species_1: One species of the pair.
-        species_2: The other species of the pair.
-
-    Returns:
-        The potential for the pair.
-
-    Raises:
-        KeyError: If the mapping has no entry for the pair in either order.
-    """
-    if (species_1, species_2) in pair_potentials:
-        return pair_potentials[(species_1, species_2)]
-    return pair_potentials[(species_2, species_1)]
 
 
 def species_pairs(

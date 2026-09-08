@@ -4,7 +4,6 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import pairwise
-from pylj.tests.argon import ARGON, LARGER, LJ_ARGON_LARGER
 
 
 class TestPairwise(unittest.TestCase):
@@ -25,11 +24,6 @@ class TestPairwise(unittest.TestCase):
         assert_almost_equal(
             pairwise.minimum_image(separation, 10e-10) * 1e10, [[-1.0, 4.0], [4.0, 0.0]]
         )
-
-    def test_pair_potential_is_found_in_either_key_order(self):
-        pair_potentials = {(LARGER, ARGON): LJ_ARGON_LARGER}
-        self.assertIs(pairwise.pair_potential(pair_potentials, ARGON, LARGER), LJ_ARGON_LARGER)
-        self.assertIs(pairwise.pair_potential(pair_potentials, LARGER, ARGON), LJ_ARGON_LARGER)
 
     def test_species_pairs_yields_each_unordered_pair_once(self):
         # Atoms of species 0, 1, 0: pairs (0, 1), (0, 2), (1, 2) are

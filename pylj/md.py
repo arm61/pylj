@@ -2,7 +2,6 @@
 motion, the Velocity-Verlet integrator, and the velocity-rescaling
 thermostat."""
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Self
 
@@ -12,9 +11,9 @@ from numpy.typing import NDArray
 from pylj import pairwise
 from pylj.configuration import MDConfiguration
 from pylj.constants import BOLTZMANN
-from pylj.pairwise import PairPotentials
+from pylj.model import Model
 from pylj.placement import place
-from pylj.potentials import Species, check_positive_finite
+from pylj.potentials import check_positive_finite
 from pylj.simulation import (
     Samples,
     Simulation,
@@ -59,7 +58,7 @@ class MDSimulation(Simulation):
 
     Args:
         configuration: The starting configuration, with velocities.
-        pair_potentials: The potential between each pair of species.
+        model: The species and the potential between each pair of them.
         cut_off: The cut-off, in metres; see :class:`Simulation`.
         timestep: The length of each integration step, in seconds.
         seed: Seed for the random number generator.
@@ -90,7 +89,7 @@ class MDSimulation(Simulation):
     def __init__(
         self,
         configuration: MDConfiguration,
-        pair_potentials: PairPotentials,
+        model: Model,
         *,
         cut_off: float | None = None,
         timestep: float = 1e-14,
@@ -101,7 +100,7 @@ class MDSimulation(Simulation):
                 "MDSimulation needs an MDConfiguration, which carries velocities; build one "
                 "with MDSimulation.initialise(...) or construct an MDConfiguration."
             )
-        super().__init__(configuration, pair_potentials, cut_off=cut_off, seed=seed)
+        super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         check_positive_finite("timestep", timestep)
         self.timestep = timestep
         temperature = configuration.temperature()
@@ -115,31 +114,24 @@ class MDSimulation(Simulation):
                 f"The configuration's temperature is {temperature}: the simulation it came "
                 "from has diverged."
             )
-        _check_potentials_at_the_cut_off(
-            configuration.species,
-            self.pair_potentials,
-            self.cut_off,
-            temperature,
-            configuration.box,
-        )
+        _check_potentials_at_the_cut_off(self.model, self.cut_off, temperature, configuration.box)
         _check_initial_energy(
-            configuration.potential_energy(self.pair_potentials, self.cut_off),
+            configuration.potential_energy(self.model, self.cut_off),
             configuration.number_of_atoms,
             temperature,
         )
-        self.forces = configuration.forces(self.pair_potentials, self.cut_off)
+        self.forces = configuration.forces(self.model, self.cut_off)
         self.initial_configuration = configuration
         self.samples = MDSamples()
 
     @classmethod
     def initialise(
         cls,
+        model: Model,
         *,
         number_of_atoms: int,
         temperature: float,
         box: float,
-        species: Sequence[Species],
-        pair_potentials: PairPotentials,
         init_conf: str = "square",
         placement_temperature: float | None = None,
         timestep: float = 1e-14,
@@ -159,11 +151,11 @@ class MDSimulation(Simulation):
         stored: molecular dynamics measures it.
 
         Args:
+            model: The species, assigned to the atoms in turn, and the
+                potential between each pair of them.
             number_of_atoms: The number of atoms, at least two.
             temperature: The initial temperature, in kelvin.
             box: The side length of the box, in Angstrom, from 4 to 600.
-            species: The species; atoms are assigned to them in turn.
-            pair_potentials: The potential between each pair of species.
             init_conf: ``'square'`` for a lattice or ``'metropolis'`` for
                 sequential Metropolis insertion.
             placement_temperature: The temperature of the Metropolis
@@ -195,8 +187,7 @@ class MDSimulation(Simulation):
             number_of_atoms,
             temperature,
             box,
-            species=species,
-            pair_potentials=pair_potentials,
+            model=model,
             init_conf=init_conf,
             placement_temperature=placement_temperature,
             cut_off=cut_off,
@@ -217,7 +208,7 @@ class MDSimulation(Simulation):
             ),
             temperature,
         )
-        simulation = cls(configuration, pair_potentials, cut_off=cut_off_metres, timestep=timestep)
+        simulation = cls(configuration, model, cut_off=cut_off_metres, timestep=timestep)
         simulation.rng = rng
         return simulation
 
@@ -233,7 +224,7 @@ class MDSimulation(Simulation):
         A subclass with a different integrator overrides this method.
         """
         self.configuration, self.forces = velocity_verlet(
-            self.configuration, self.forces, self.timestep, self.pair_potentials, self.cut_off
+            self.configuration, self.forces, self.timestep, self.model, self.cut_off
         )
 
     def step(self) -> None:
@@ -265,7 +256,7 @@ class MDSimulation(Simulation):
         """
         configuration = self.configuration
         kinetic_energy = configuration.kinetic_energy()
-        pairs = configuration.pairs(self.pair_potentials, self.cut_off, forces=True)
+        pairs = configuration.pairs(self.model, self.cut_off, forces=True)
         self.samples.add(
             step=self.steps,
             temperature=configuration.temperature(),
@@ -292,7 +283,7 @@ def velocity_verlet(
     configuration: MDConfiguration,
     forces: NDArray[np.float64],
     timestep: float,
-    pair_potentials: PairPotentials,
+    model: Model,
     cut_off: float,
 ) -> tuple[MDConfiguration, NDArray[np.float64]]:
     """Move a configuration one timestep forward with the Velocity-Verlet
@@ -307,7 +298,7 @@ def velocity_verlet(
         forces: The net force on each atom at that configuration, shape
             ``(N, 2)``, in newtons.
         timestep: The length of the step, in seconds.
-        pair_potentials: The potential between each pair of species.
+        model: The species and the potential between each pair of them.
         cut_off: The cut-off, in metres.
 
     Returns:
@@ -330,7 +321,7 @@ def velocity_verlet(
             "the timestep is too long, or the simulation has diverged."
         )
     moved = configuration.replace(position=position, unwrapped=unwrapped)
-    next_forces = moved.forces(pair_potentials, cut_off)
+    next_forces = moved.forces(model, cut_off)
     next_accelerations = next_forces / masses
     velocity = update_velocities(
         configuration.velocity, accelerations, next_accelerations, timestep

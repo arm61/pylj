@@ -204,10 +204,7 @@ def _drawn_diameters(
     """
     species = simulation.configuration.species
     if diameter is None:
-        return [
-            _potential_minimum(pairwise.pair_potential(simulation.pair_potentials, one, one))
-            for one in species
-        ]
+        return [_potential_minimum(simulation.model.potential(one, one)) for one in species]
     if isinstance(diameter, Iterable):
         values = [float(d) for d in diameter]
     else:
