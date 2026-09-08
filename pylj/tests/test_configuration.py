@@ -226,7 +226,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertLess(BUCKINGHAM_ARGON.energies(np.array([0.5e-10]))[0], 0.0)
         self.assertEqual(c.pairs(potentials, 15e-10).energy[0], np.inf)
         self.assertEqual(c.potential_energy(potentials, 15e-10), np.inf)
-        with self.assertRaisesRegex(ValueError, "not valid"):
+        with self.assertRaisesRegex(ValueError, "unphysical"):
             c.forces(potentials, 15e-10)
         with self.assertRaisesRegex(ValueError, "collapsed"):
             c.virial(potentials, 15e-10)

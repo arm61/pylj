@@ -138,7 +138,7 @@ class Configuration:
         than the cut-off contributes nothing. A pair closer than its
         potential's ``min_separation`` is forbidden: its energy is infinite,
         and if forces are requested the evaluation raises, since the
-        simulation has entered a region where the model is not valid. The
+        simulation has entered a region where the model is unphysical. The
         forces are evaluated only when ``forces`` is requested, so a
         potential that has no finite force, such as the square well, can
         still be used here.
@@ -173,7 +173,7 @@ class Configuration:
                         f"{self.species[type_2].name or 'atoms'} is "
                         f"{distance[forbidden].min() * 1e10:.2f} Angstrom apart, closer than the "
                         f"{potential.min_separation * 1e10:.2f} Angstrom below which "
-                        f"{type(potential).__name__} is not valid: the simulation has collapsed."
+                        f"{type(potential).__name__} is unphysical: the simulation has collapsed."
                     )
                 energy[forbidden] = np.inf
             if force is not None:
