@@ -37,19 +37,14 @@ Panes that plot a quantity against time read it from `simulation.samples`, so th
 
 ```{code-cell} python
 from pylj.md import MDSimulation
+from pylj.model import Model
 from pylj.potentials import LennardJones, Species
 from pylj.sample import CellPane, TemperaturePane, Viewer
 
 argon = Species(mass=39.948, name="argon")
 lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
-simulation = MDSimulation.initialise(
-    number_of_atoms=16,
-    temperature=300,
-    box=30,
-    species=[argon],
-    pair_potentials={(argon, argon): lj},
-    seed=0,
-)
+model = Model.single(argon, lj)
+simulation = MDSimulation.initialise(model, number_of_atoms=16, temperature=300, box=30, seed=0)
 viewer = Viewer(simulation, [CellPane(), TemperaturePane()])
 for _ in range(300):
     simulation.step()
@@ -89,14 +84,7 @@ class FirstAtomPane(Pane):
         ax.autoscale_view()
 
 
-simulation = MDSimulation.initialise(
-    number_of_atoms=16,
-    temperature=300,
-    box=30,
-    species=[argon],
-    pair_potentials={(argon, argon): lj},
-    seed=0,
-)
+simulation = MDSimulation.initialise(model, number_of_atoms=16, temperature=300, box=30, seed=0)
 viewer = Viewer(simulation, [CellPane(), FirstAtomPane()])
 for _ in range(300):
     simulation.step()

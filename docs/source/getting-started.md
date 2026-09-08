@@ -17,14 +17,15 @@ plt.rcParams["figure.dpi"] = 100
 ## A model
 
 ```{code-cell} python
+from pylj.model import Model
 from pylj.potentials import LennardJones, Species
 
 argon = Species(mass=39.948, name="argon")
 lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
-model = dict(species=[argon], pair_potentials={(argon, argon): lj})
+model = Model.single(argon, lj)
 ```
 
-`Species` takes the mass in atomic mass units. `LennardJones` takes the well depth in joules and the zero-crossing separation in metres. `pair_potentials` maps each pair of species to the potential acting between them.
+`Species` takes the mass in atomic mass units. `LennardJones` takes the well depth in joules and the zero-crossing separation in metres. A `Model` is the species and the potential between each pair of them; `Model.single` builds it for one species.
 
 ## Molecular dynamics
 
@@ -32,7 +33,7 @@ model = dict(species=[argon], pair_potentials={(argon, argon): lj})
 from pylj import sample
 from pylj.md import MDSimulation
 
-simulation = MDSimulation.initialise(number_of_atoms=16, temperature=300, box=30, seed=1, **model)
+simulation = MDSimulation.initialise(model, number_of_atoms=16, temperature=300, box=30, seed=1)
 viewer = sample.Interactions(simulation)
 for _ in range(2000):
     simulation.step()
@@ -42,14 +43,14 @@ for _ in range(2000):
         viewer.update(simulation)
 ```
 
-`initialise` takes the number of atoms, the temperature in kelvin and the box side in Angstrom. `step()` advances one timestep, `heat_bath()` holds the temperature, `sample()` records the temperature, pressure and energies in `simulation.samples`, and the viewer redraws when asked.
+`initialise` takes the model, the number of atoms, the temperature in kelvin and the box side in Angstrom. `step()` advances one timestep, `heat_bath()` holds the temperature, `sample()` records the temperature, pressure and energies in `simulation.samples`, and the viewer redraws when asked.
 
 ## Monte Carlo
 
 ```{code-cell} python
 from pylj.mc import MCSimulation
 
-simulation = MCSimulation.initialise(number_of_atoms=16, temperature=300, box=20, seed=1, **model)
+simulation = MCSimulation.initialise(model, number_of_atoms=16, temperature=300, box=20, seed=1)
 viewer = sample.Energy(simulation)
 for _ in range(5000):
     simulation.step()

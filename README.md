@@ -24,18 +24,13 @@ Twenty-five argon atoms at 300 K, run with molecular dynamics and drawn as they 
 ```python
 from pylj import sample
 from pylj.md import MDSimulation
+from pylj.model import Model
 from pylj.potentials import LennardJones, Species
 
 argon = Species(mass=39.948, name="argon")
 lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
-simulation = MDSimulation.initialise(
-    number_of_atoms=25,
-    temperature=300,
-    box=40,
-    species=[argon],
-    pair_potentials={(argon, argon): lj},
-    seed=1,
-)
+model = Model.single(argon, lj)
+simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=300, box=40, seed=1)
 viewer = sample.Interactions(simulation)
 for _ in range(2000):
     simulation.step()
@@ -59,14 +54,7 @@ The same model runs under Monte Carlo:
 ```python
 from pylj.mc import MCSimulation
 
-simulation = MCSimulation.initialise(
-    number_of_atoms=25,
-    temperature=300,
-    box=40,
-    species=[argon],
-    pair_potentials={(argon, argon): lj},
-    seed=1,
-)
+simulation = MCSimulation.initialise(model, number_of_atoms=25, temperature=300, box=40, seed=1)
 viewer = sample.Energy(simulation)
 for _ in range(5000):
     simulation.step()
