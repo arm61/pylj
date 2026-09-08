@@ -1,3 +1,3 @@
-We aspire to deal with all pull requests in a timely manner. Please be patient.
+Describe what the pull request changes and why.
 
-Ideally pull requests will respect the underlying intrastructure of pylj and agree with PEP8, etc. However, please do not let this put novice programmers off contributing. 
+Before opening it, run `ruff check pylj`, `mypy pylj` and `pytest`, and make sure they pass. Use British spelling and Google-style docstrings.

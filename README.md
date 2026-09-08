@@ -7,7 +7,7 @@
 [![Build](https://github.com/arm61/pylj/actions/workflows/ci.yml/badge.svg)](https://github.com/arm61/pylj/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`pylj` runs molecular dynamics and Metropolis Monte Carlo simulations of atoms interacting through pair potentials, in two dimensions, and draws them as they run. It is written for teaching, in Python and NumPy, and it runs inside a Jupyter notebook.
+`pylj` runs molecular dynamics and Metropolis Monte Carlo simulations of atoms interacting through pair potentials, in two dimensions, and draws them as they run. It is a teaching code, written in Python and NumPy. Its viewers redraw in a Jupyter notebook; in a script, a viewer's `fig` is a matplotlib figure that can be saved.
 
 ## Installation
 
@@ -15,7 +15,7 @@
 pip install pylj
 ```
 
-`pylj` needs Python 3.11 or later and a Jupyter notebook to draw in; `pip install jupyterlab` provides one. Start each notebook with `%matplotlib inline`.
+`pylj` needs Python 3.11 or later. To watch the figures redraw you need a Jupyter notebook; `pip install jupyterlab` provides one. Start each notebook with `%matplotlib inline`.
 
 ## Example
 
