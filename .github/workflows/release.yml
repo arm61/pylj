@@ -1,35 +1,30 @@
-name: publish python distribution to pypi 
+name: publish to PyPI
 
 on:
   release:
     types: [published]
 
-jobs: 
-  build-n-publish:
-    name: build and publish to pypi
+jobs:
+  publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
-    - uses: actions/checkout@master
-    - name: setup python 3.12
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.12
-    - name: install pypa/build
-      run: >- 
-        python -m 
-        pip install 
-        build 
-        --user
-    - name: build a binary wheel and source tarball
-      run: >- 
-        python -m 
-        build 
-        --sdist
-        --wheel
-        --outdir dist/
-        .
-    - name: Publish distribution 📦 to PyPI
-      if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Check the version matches the tag
+        run: |
+          built=$(ls dist/*.whl | sed -E 's|.*/pylj-([^-]+)-.*|\1|')
+          if [ "$built" != "${GITHUB_REF_NAME}" ]; then
+            echo "built $built but the release tag is ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1

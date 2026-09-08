@@ -5,6 +5,8 @@ All notable changes to pylj are recorded here. The format follows
 
 ## Unreleased
 
+## 2.0.0b1 - 2026-09-08
+
 ### Added
 
 - `simulation.Samples`, the record a simulation's `sample()` appends to, with one array per quantity and `step`, whose `add()` takes exactly one value per array so the arrays stay aligned; `md.MDSamples` adds `temperature`, `pressure`, `potential_energy`, `kinetic_energy`, `msd` and the derived `total_energy`; `mc.MCSamples` adds `potential_energy`. A simulation holds it as `samples`.
@@ -26,6 +28,7 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Changed
 
+- The package is built from `pyproject.toml`; `setup.py`, `docker/` and `TODO.md` are removed. Releases publish to PyPI through trusted publishing from a GitHub release. The version lives in `pylj.__version__` only, and the runtime dependency on `jupyter` is now `ipython`, since only the viewers' redrawing needs a notebook.
 - The documentation is a set of pages on running a simulation, custom potentials and viewers, with the module reference, built with Sphinx and myst-nb (#85, #58).
 - A box length outside 4 to 600 Angstrom raises `ValueError` rather than `AttributeError`.
 - `md.heat_bath(configuration, bath_temperature)` returns the configuration with its velocities rescaled so that the instantaneous temperature is the bath temperature; it previously took the temperature sample array and rescaled towards its cumulative mean. A non-positive bath temperature, or a configuration at rest or with a non-finite temperature, raises `ValueError` (#76).
