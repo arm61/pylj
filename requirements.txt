@@ -1,8 +1,0 @@
-jupyter
-numpy>=1.16
-scipy
-matplotlib
-coverage
-coveralls
-ipympl
-pylj

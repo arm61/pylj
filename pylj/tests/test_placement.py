@@ -64,7 +64,7 @@ class TestPlacement(unittest.TestCase):
     def test_metropolis_places_inside_the_box(self):
         c, _ = place(10, 300, 20, init_conf="metropolis", seed=0)
         self.assertTrue(np.all((0 <= c.position) & (c.position < c.box)))
-        self.assertEqual(c.number_of_particles, 10)
+        self.assertEqual(c.number_of_atoms, 10)
 
     def test_metropolis_places_a_hard_core_outside_its_diameter(self):
         # A trial inside the square well's core costs infinite energy and is
@@ -113,14 +113,14 @@ class TestPlacement(unittest.TestCase):
         self.assertFalse(np.array_equal(first.position, other.position))
 
     def test_metropolis_placement_temperature_governs_success(self):
-        # 50 argon particles in a 27 Angstrom box: as near-hard discs of
+        # 50 argon atoms in a 27 Angstrom box: as near-hard discs of
         # diameter sigma (placement at 1 K) they exceed the packing that
         # sequential insertion reaches (the placement fails for every seed
         # tried), but at 1000 K closer contacts are tolerated.
         with self.assertRaisesRegex(ValueError, "Could not place"):
             place(50, 100, 27, init_conf="metropolis", seed=0, placement_temperature=1.0)
         hot, _ = place(50, 100, 27, init_conf="metropolis", seed=0, placement_temperature=1000)
-        self.assertEqual(hot.number_of_particles, 50)
+        self.assertEqual(hot.number_of_atoms, 50)
 
     def test_placement_temperature_defaults_to_the_run_temperature(self):
         # The same seed at the default and at an explicit placement
@@ -163,8 +163,8 @@ class TestPlace(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "'square' or 'metropolis'"):
             place(2, 300, 100, init_conf="horseradish")
 
-    def test_refuses_fewer_than_one_particle(self):
-        with self.assertRaisesRegex(ValueError, "at least one particle"):
+    def test_refuses_fewer_than_one_atom(self):
+        with self.assertRaisesRegex(ValueError, "at least one atom"):
             place(0, 300, 20)
 
     def test_rejects_a_non_positive_or_infinite_temperature(self):

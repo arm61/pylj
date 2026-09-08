@@ -53,7 +53,7 @@ class MDSimulation(Simulation):
     """A molecular dynamics simulation.
 
     Between steps the simulation holds two things: the configuration, and the
-    force on each particle at that configuration. Velocity-Verlet needs both to
+    force on each atom at that configuration. Velocity-Verlet needs both to
     take the next step. ``step`` integrates one timestep and advances the
     clock; ``sample`` measures the configuration.
 
@@ -66,7 +66,7 @@ class MDSimulation(Simulation):
 
     Attributes:
         configuration: The current configuration.
-        forces: The net force on each particle at the current
+        forces: The net force on each atom at the current
             configuration, shape ``(N, 2)``, in newtons.
         timestep: The length of each step, in seconds.
         initial_configuration: The configuration the mean squared
@@ -80,7 +80,7 @@ class MDSimulation(Simulation):
             potential has not died away at the cut-off, judged at the
             configuration's own temperature, the configuration stores more
             than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
-            energy per particle, or for anything :class:`Simulation`
+            energy per atom, or for anything :class:`Simulation`
             rejects.
     """
 
@@ -124,7 +124,7 @@ class MDSimulation(Simulation):
         )
         _check_initial_energy(
             configuration.potential_energy(self.pair_potentials, self.cut_off),
-            configuration.number_of_particles,
+            configuration.number_of_atoms,
             temperature,
         )
         self.forces = configuration.forces(self.pair_potentials, self.cut_off)
@@ -134,10 +134,10 @@ class MDSimulation(Simulation):
     @classmethod
     def initialise(
         cls,
-        number_of_particles: int,
+        *,
+        number_of_atoms: int,
         temperature: float,
         box: float,
-        *,
         species: Sequence[Species],
         pair_potentials: PairPotentials,
         init_conf: str = "square",
@@ -146,12 +146,12 @@ class MDSimulation(Simulation):
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> Self:
-        """Build a simulation from a model: place the particles and draw
+        """Build a simulation from a model: place the atoms and draw
         their velocities at a temperature.
 
         Each component of each velocity is drawn from a normal distribution
         of width ``sqrt(k_B T / m)``, where ``m`` is the mass of that
-        particle, so heavier particles move more slowly. The velocity of
+        atom, so heavier atoms move more slowly. The velocity of
         the centre of mass is then subtracted, so the system as a whole is
         at rest. Finally
         every velocity is scaled by the same factor, so that the instantaneous
@@ -159,10 +159,10 @@ class MDSimulation(Simulation):
         stored: molecular dynamics measures it.
 
         Args:
-            number_of_particles: The number of particles, at least two.
+            number_of_atoms: The number of atoms, at least two.
             temperature: The initial temperature, in kelvin.
             box: The side length of the box, in Angstrom, from 4 to 600.
-            species: The species; particles are assigned to them in turn.
+            species: The species; atoms are assigned to them in turn.
             pair_potentials: The potential between each pair of species.
             init_conf: ``'square'`` for a lattice or ``'metropolis'`` for
                 sequential Metropolis insertion.
@@ -181,18 +181,18 @@ class MDSimulation(Simulation):
             The simulation, with its forces evaluated.
 
         Raises:
-            ValueError: If fewer than two particles are requested, or for
+            ValueError: If fewer than two atoms are requested, or for
                 anything :func:`placement.place` or the constructor
                 rejects.
         """
-        if number_of_particles < 2:
+        if number_of_atoms < 2:
             raise ValueError(
-                "Molecular dynamics needs at least two particles: with one particle "
+                "Molecular dynamics needs at least two atoms: with one atom "
                 "there is no thermal motion once the centre-of-mass velocity is removed."
             )
         rng = np.random.default_rng(seed)
         placed, cut_off_metres = place(
-            number_of_particles,
+            number_of_atoms,
             temperature,
             box,
             species=species,
@@ -204,7 +204,7 @@ class MDSimulation(Simulation):
         )
         masses = placed.masses
         thermal_speed = np.sqrt(BOLTZMANN * temperature / masses)
-        velocity = rng.normal(0.0, thermal_speed[:, None], size=(number_of_particles, 2))
+        velocity = rng.normal(0.0, thermal_speed[:, None], size=(number_of_atoms, 2))
         velocity -= (masses[:, None] * velocity).sum(axis=0) / masses.sum()
         configuration = heat_bath(
             MDConfiguration(
@@ -240,7 +240,7 @@ class MDSimulation(Simulation):
         """Integrate one timestep and advance the clock.
 
         Raises:
-            ValueError: If a particle moves further than half the cut-off in
+            ValueError: If an atom moves further than half the cut-off in
                 the step, or a pair comes closer than its potential allows;
                 either way the run has diverged.
         """
@@ -255,7 +255,7 @@ class MDSimulation(Simulation):
 
         Raises:
             ValueError: If the bath temperature is not positive and finite,
-                the particles are at rest, or the simulation has diverged.
+                the atoms are at rest, or the simulation has diverged.
         """
         self.configuration = heat_bath(self.configuration, bath_temperature)
 
@@ -304,7 +304,7 @@ def velocity_verlet(
 
     Args:
         configuration: The configuration at time t.
-        forces: The net force on each particle at that configuration, shape
+        forces: The net force on each atom at that configuration, shape
             ``(N, 2)``, in newtons.
         timestep: The length of the step, in seconds.
         pair_potentials: The potential between each pair of species.
@@ -314,8 +314,8 @@ def velocity_verlet(
         The configuration at time t + dt and the forces at it.
 
     Raises:
-        ValueError: If a particle moves further than half the cut-off in
-            the one step. No particle moves that far in a run that is
+        ValueError: If an atom moves further than half the cut-off in
+            the one step. No atom moves that far in a run that is
             behaving: the timestep is too long, or the run has already
             diverged.
     """
@@ -325,7 +325,7 @@ def velocity_verlet(
     furthest = float(np.linalg.norm(unwrapped - configuration.unwrapped, axis=1).max())
     if not furthest < cut_off / 2:
         raise ValueError(
-            f"A particle moved {furthest * 1e10:.3g} Angstrom in a single step of "
+            f"An atom moved {furthest * 1e10:.3g} Angstrom in a single step of "
             f"{timestep:.3g} s, more than half the cut-off of {cut_off * 1e10:.3g} Angstrom: "
             "the timestep is too long, or the simulation has diverged."
         )
@@ -346,7 +346,7 @@ def update_positions(
 
     Args:
         configuration: The configuration to advance.
-        accelerations: The acceleration of each particle, shape ``(N, 2)``,
+        accelerations: The acceleration of each atom, shape ``(N, 2)``,
             in metres per second squared.
         timestep: The length of the step, in seconds.
 
@@ -368,7 +368,7 @@ def update_velocities(
     """Advance the velocities by the mean acceleration times the timestep.
 
     Args:
-        velocity: The velocity of each particle, shape ``(N, 2)``.
+        velocity: The velocity of each atom, shape ``(N, 2)``.
         accelerations: The accelerations at the start of the step.
         next_accelerations: The accelerations at the end of the step.
         timestep: The length of the step, in seconds.
@@ -402,13 +402,13 @@ def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConf
 
     Raises:
         ValueError: If the bath temperature is not positive and finite, the
-            particles are at rest, or the current temperature is not finite
+            atoms are at rest, or the current temperature is not finite
             (the simulation has diverged).
     """
     check_positive_finite("bath_temperature", bath_temperature)
     current = configuration.temperature()
     if current == 0:
-        raise ValueError("Cannot rescale velocities: the particles are at rest.")
+        raise ValueError("Cannot rescale velocities: the atoms are at rest.")
     if not (np.isfinite(current) and current > 0):
         raise ValueError(
             f"Cannot rescale velocities: the current temperature is {current}, so the "

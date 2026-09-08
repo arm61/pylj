@@ -32,7 +32,7 @@ class TestPairwise(unittest.TestCase):
         self.assertIs(pairwise.pair_potential(pair_potentials, LARGER, ARGON), LJ_ARGON_LARGER)
 
     def test_species_pairs_yields_each_unordered_pair_once(self):
-        # Particles of species 0, 1, 0: pairs (0, 1), (0, 2), (1, 2) are
+        # Atoms of species 0, 1, 0: pairs (0, 1), (0, 2), (1, 2) are
         # 0-1, 0-0 and 1-0, so the unordered pair (0, 1) covers the first
         # and the last.
         pairs = list(pairwise.species_pairs(np.array([0, 1, 0])))
@@ -50,7 +50,7 @@ class TestPairwise(unittest.TestCase):
     def test_calculate_pressure_ideal_gas_limit(self):
         # With no pair forces the virial vanishes and the two-dimensional
         # pressure is the kinetic energy over the area: N k_B T / L^2 for N
-        # particles at temperature T in two dimensions.
+        # atoms at temperature T in two dimensions.
         box = 25e-10
         p = pairwise.calculate_pressure(0.0, box, 50 * 1.380649e-23 * 200)
         assert_almost_equal(p, 50 * 1.380649e-23 * 200 / box**2)

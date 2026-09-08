@@ -85,12 +85,12 @@ class Viewer:
 
 
 class JustCell(Viewer):
-    """The particle positions only.
+    """The atom positions only.
 
     Args:
         simulation: The simulation to visualise.
         size: Figure size: 'small', 'medium' or 'large'.
-        diameter: Drawn diameter of the particles, in Angstrom, one value or
+        diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
     """
@@ -105,13 +105,13 @@ class JustCell(Viewer):
 
 
 class Energy(Viewer):
-    """The particle positions and the energy: total for molecular dynamics,
+    """The atom positions and the energy: total for molecular dynamics,
     potential for Monte Carlo.
 
     Args:
         simulation: The simulation to visualise.
         size: Figure size: 'small', 'medium' or 'large'.
-        diameter: Drawn diameter of the particles, in Angstrom, one value or
+        diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
     """
@@ -126,12 +126,12 @@ class Energy(Viewer):
 
 
 class MaxBolt(Viewer):
-    """The particle positions and a histogram of particle speeds.
+    """The atom positions and a histogram of atom speeds.
 
     Args:
         simulation: The simulation to visualise.
         size: Figure size: 'small', 'medium' or 'large'.
-        diameter: Drawn diameter of the particles, in Angstrom, one value or
+        diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
     """
@@ -146,12 +146,12 @@ class MaxBolt(Viewer):
 
 
 class RDF(Viewer):
-    """The particle positions and the radial distribution function.
+    """The atom positions and the radial distribution function.
 
     Args:
         simulation: The simulation to visualise.
         size: Figure size: 'small', 'medium' or 'large'.
-        diameter: Drawn diameter of the particles, in Angstrom, one value or
+        diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
     """
@@ -166,14 +166,14 @@ class RDF(Viewer):
 
 
 class CellPlus(Viewer):
-    """The particle positions and one plot of data supplied by the caller.
+    """The atom positions and one plot of data supplied by the caller.
 
     Args:
         simulation: The simulation to visualise.
         xlabel: Label of the custom plot's x axis.
         ylabel: Label of the custom plot's y axis.
         size: Figure size: 'small', 'medium' or 'large'.
-        diameter: Drawn diameter of the particles, in Angstrom, one value or
+        diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
     """
@@ -218,7 +218,7 @@ class Interactions(Viewer):
     Args:
         simulation: The simulation to visualise.
         size: Figure size: 'small', 'medium' or 'large'.
-        diameter: Drawn diameter of the particles, in Angstrom, one value or
+        diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
     """
@@ -239,7 +239,7 @@ class Phase(Viewer):
     Args:
         simulation: The simulation to visualise.
         size: Figure size: 'small', 'medium' or 'large'.
-        diameter: Drawn diameter of the particles, in Angstrom, one value or
+        diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
     """
@@ -260,7 +260,7 @@ class Scattering(Viewer):
     Args:
         simulation: The simulation to visualise.
         size: Figure size: 'small', 'medium' or 'large'.
-        diameter: Drawn diameter of the particles, in Angstrom, one value or
+        diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
     """
