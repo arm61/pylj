@@ -12,3 +12,10 @@ If you want to find a good issue to get you in the door as a contributor, check 
 - The documentation is built with `pip install -e ".[docs]"` and then `make html` in the `docs` directory.
 - To discuss an idea before implementing it, open an issue on GitHub.
 - If you would like to offer a pull request, we will try our best to assess and merge them as appropriate in a timely manner.
+
+## Releasing
+
+1. Set `__version__` in `pylj/__init__.py` and `version` and `date-released` in `CITATION.cff`.
+2. In `CHANGELOG.md`, rename the `Unreleased` heading to the version and date, and add an empty `Unreleased` above it.
+3. Merge, tag the merge commit with the bare version (`2.0.0`), and publish a GitHub release from the tag; tick "pre-release" for a beta.
+4. The release workflow builds the package, checks the version matches the tag, and publishes to PyPI by trusted publishing.
