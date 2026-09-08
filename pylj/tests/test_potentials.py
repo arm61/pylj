@@ -147,12 +147,12 @@ class TestBuckingham:
         assert expected[0] < 0
         assert bk.energies(np.array([0.0]))[0] == -np.inf
 
-    def test_a_form_without_a_barrier_is_trusted_everywhere(self):
+    def test_a_form_without_a_barrier_is_valid_everywhere(self):
         bk = Buckingham(a=1e-16, b=3e10, c=0.0)
         assert bk.min_separation == 0.0
         assert np.isfinite(bk.energies(np.array([1e-12]))[0])
 
-    def test_other_potentials_are_trusted_everywhere(self):
+    def test_other_potentials_are_valid_everywhere(self):
         assert LennardJones(epsilon=1.65e-21, sigma=3.4e-10).min_separation == 0.0
         assert SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5).min_separation == 0.0
 

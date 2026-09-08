@@ -309,7 +309,7 @@ class TestVelocityVerlet(unittest.TestCase):
     def test_refuses_a_step_that_moves_a_atom_past_half_the_cut_off(self):
         # A timestep a thousand times too long carries an atom tens of
         # Angstrom in one step; the integrator refuses rather than continue
-        # from a configuration it cannot trust.
+        # from a configuration that is no longer meaningful.
         a = MDSimulation.initialise(
             number_of_atoms=25, temperature=100, box=20, timestep=1e-11, seed=0, **ARGON_MODEL
         )
