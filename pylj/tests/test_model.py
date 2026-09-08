@@ -1,7 +1,7 @@
 import unittest
 
 from pylj.model import Model
-from pylj.potentials import LennardJones
+from pylj.potentials import LennardJones, Species
 from pylj.tests.argon import ARGON, LARGER, LJ_ARGON, LJ_ARGON_LARGER, LJ_LARGER
 
 
@@ -23,9 +23,9 @@ class TestModel(unittest.TestCase):
         self.assertIs(model.potential(ARGON, LARGER), LJ_ARGON_LARGER)
         self.assertIs(model.potential(LARGER, ARGON), LJ_ARGON_LARGER)
 
-    def test_potential_names_a_pair_outside_the_model(self):
+    def test_potential_names_a_species_outside_the_model(self):
         model = Model.single(ARGON, LJ_ARGON)
-        with self.assertRaisesRegex(KeyError, "argon and larger"):
+        with self.assertRaisesRegex(KeyError, "larger is not a species"):
             model.potential(ARGON, LARGER)
 
     def test_rejects_a_missing_pair(self):
@@ -52,7 +52,18 @@ class TestModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at least one Species"):
             Model((), {})
 
+    def test_rejects_a_repeated_species(self):
+        twin = Species(mass=ARGON.mass, name=ARGON.name)
+        with self.assertRaisesRegex(ValueError, "must not repeat"):
+            Model((ARGON, twin), {(ARGON, ARGON): LJ_ARGON})
+
     def test_is_frozen(self):
         model = Model.single(ARGON, LJ_ARGON)
         with self.assertRaises(AttributeError):
             model.species = ()
+
+    def test_copies_the_pair_potentials(self):
+        pair_potentials = {(ARGON, ARGON): LJ_ARGON}
+        model = Model((ARGON,), pair_potentials)
+        pair_potentials[(ARGON, ARGON)] = LJ_LARGER
+        self.assertIs(model.potential(ARGON, ARGON), LJ_ARGON)

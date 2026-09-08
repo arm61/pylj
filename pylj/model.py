@@ -4,6 +4,7 @@ between each pair of them."""
 import itertools
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Self
 
 from pylj.potentials import PairPotential, Species
 
@@ -14,14 +15,16 @@ def _check_complete(
     """Check that every pair of species has exactly one potential.
 
     Raises:
-        ValueError: If ``species`` is empty, a pair of species has no entry
-            in ``pair_potentials`` in either order, or a cross pair has one
-            in both orders.
+        ValueError: If ``species`` is empty or repeats a species, a pair of
+            species has no entry in ``pair_potentials`` in either order, or
+            a cross pair has one in both orders.
         TypeError: If a value in ``pair_potentials`` is not a
             ``PairPotential`` instance, such as the class itself.
     """
     if not species:
         raise ValueError("species must name at least one Species")
+    if len(set(species)) != len(species):
+        raise ValueError("species must not repeat: two Species that compare equal are one species")
     for one, other in itertools.combinations_with_replacement(species, 2):
         if (one, other) not in pair_potentials and (other, one) not in pair_potentials:
             raise ValueError(f"pair_potentials has no entry for the pair {one} and {other}")
@@ -53,8 +56,9 @@ class Model:
         pair_potentials: The potential between each pair of species.
 
     Raises:
-        ValueError: If ``species`` is empty, a pair of species has no
-            potential, or a cross pair is given in both orders.
+        ValueError: If ``species`` is empty or repeats a species, a pair of
+            species has no potential, or a cross pair is given in both
+            orders.
         TypeError: If a value in ``pair_potentials`` is not a
             ``PairPotential`` instance.
     """
@@ -67,7 +71,7 @@ class Model:
         _check_complete(self.species, self.pair_potentials)
 
     @classmethod
-    def single(cls, species: Species, potential: PairPotential) -> "Model":
+    def single(cls, species: Species, potential: PairPotential) -> Self:
         """The model for one species interacting through one potential."""
         return cls((species,), {(species, species): potential})
 
@@ -77,10 +81,9 @@ class Model:
         Raises:
             KeyError: If either species is not in the model.
         """
+        for species in (one, other):
+            if species not in self.species:
+                raise KeyError(f"{species.name or species} is not a species in this model")
         if (one, other) in self.pair_potentials:
             return self.pair_potentials[(one, other)]
-        if (other, one) in self.pair_potentials:
-            return self.pair_potentials[(other, one)]
-        raise KeyError(
-            f"The model has no potential for {one.name or 'atoms'} and {other.name or 'atoms'}"
-        )
+        return self.pair_potentials[(other, one)]
