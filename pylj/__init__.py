@@ -2,7 +2,7 @@
 
 import webbrowser
 
-__version__ = "1.5.2"
+__version__ = "2.0.0b1"
 
 
 def __cite__() -> None:  # pragma: no cover

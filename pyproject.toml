@@ -1,3 +1,50 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pylj"
+description = "Simple teaching tool for classical molecular dynamics and Monte Carlo simulation"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Andrew R. McCluskey", email = "arm61@bath.ac.uk"}]
+requires-python = ">=3.11"
+dependencies = ["numpy", "scipy", "matplotlib", "ipython"]
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: Jupyter",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "ruff", "mypy", "scipy-stubs"]
+docs = ["sphinx>=8", "myst-nb>=1.2", "sphinx-book-theme>=1.1", "sphinx-copybutton"]
+
+[project.urls]
+Documentation = "https://pylj.readthedocs.io/"
+Repository = "https://github.com/arm61/pylj"
+Changelog = "https://github.com/arm61/pylj/blob/master/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+include = ["pylj*"]
+
+[tool.setuptools.package-data]
+pylj = ["py.typed"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pylj.__version__"}
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
