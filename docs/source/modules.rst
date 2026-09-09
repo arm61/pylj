@@ -17,3 +17,4 @@ The other modules are the plumbing those five are built on.
    potentials
    sample
    simulation
+   trajectory

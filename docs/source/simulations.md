@@ -1,6 +1,6 @@
 # Simulations
 
-`MDSimulation` and `MCSimulation` share a base class, `Simulation`, and are built the same way. Both hold `configuration`, `model`, `cut_off`, `rng`, `steps` and `samples`, and both have `step()`, `sample()` and `restart()`.
+`MDSimulation` and `MCSimulation` share a base class, `Simulation`, and are built the same way. Both hold `configuration`, `model`, `cut_off`, `rng`, `steps`, `samples` and `trajectory`, and both have `step()`, `sample()` and `restart()`.
 
 ## Building a simulation
 
@@ -36,7 +36,7 @@ A configuration is never changed in place. `replace(**changes)` returns a copy w
 
 `heat_bath(bath_temperature)` rescales the velocities so that the instantaneous temperature is `bath_temperature`.
 
-`sample()` appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy`, `kinetic_energy` and `msd`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in newtons per metre. All are in SI units.
+`sample()` records the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy`, `kinetic_energy` and `msd`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in newtons per metre. All are in SI units.
 
 `step()` raises `ValueError` if an atom moves further than half the cut-off in one step, which means the timestep is too long or the run has diverged.
 
@@ -56,11 +56,11 @@ if mc.accept(proposal.energy_change, simulation.temperature, rng=simulation.rng)
 
 `propose()` moves one atom, chosen at random, to a uniform random position in the box, and returns a `Proposal` holding the trial positions, the energy change the move would cause and the configuration it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` makes the proposal the current configuration and adds its energy change to `energy`; it raises `ValueError` if the proposal was made from a configuration that is no longer current.
 
-`sample()` recomputes the energy exactly and appends `step` and `potential_energy` to `samples`, an `MCSamples`.
+`sample()` records the configuration in `trajectory`, recomputes the energy exactly and appends `step` and `potential_energy` to `samples`, an `MCSamples`.
 
 ## Restarting
 
-`restart()` returns a new simulation that continues from the current configuration with `steps` at zero, an empty `samples` and a copy of the random number generator, so that a production run can be recorded separately from equilibration:
+`restart()` returns a new simulation that continues from the current configuration with `steps` at zero, an empty `samples` and `trajectory`, and a copy of the random number generator, so that a production run can be recorded separately from equilibration:
 
 ```python
 for _ in range(1000):
@@ -69,6 +69,19 @@ production = simulation.restart()
 for _ in range(5000):
     production.step()
     production.sample()
+```
+
+## Trajectory
+
+`sample()` also records the current configuration in `simulation.trajectory`, one frame per sample. A frame is a `Configuration`, so `simulation.trajectory[-1].position` is the last sampled positions, and `simulation.trajectory.position` is every frame's, an array of shape `(frames, N, 2)`. Slicing gives a trajectory, so `simulation.trajectory[100:]` is the run after the first hundred frames. `restart()` starts an empty trajectory.
+
+A configuration is kept only if it was sampled, so memory grows with the number of samples and not with the number of steps. A molecular dynamics frame takes about fifty bytes per atom: a hundred atoms sampled a thousand times is five megabytes, and sampled a hundred thousand times is half a gigabyte.
+
+Two analyses are computed on demand, from one frame or averaged over a trajectory. `rdf(bins=100, r_max=None)` returns the bin centres in metres and g(r), which is one where the atoms are spread as evenly as an ideal gas; `r_max` defaults to half the box. `scattering(q)` returns the scattering intensity from the two-dimensional Debye sum, `N` plus twice the sum over pairs of the Bessel function `J0(qr)`, for `q` in inverse metres.
+
+```python
+r, gr = simulation.configuration.rdf()   # the configuration now
+r, gr = simulation.trajectory[100:].rdf()  # averaged over the run after equilibration
 ```
 
 ## Units

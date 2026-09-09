@@ -27,6 +27,8 @@ All notable changes to pylj are recorded here. The format follows
 - `placement_temperature` on `MDSimulation.initialise` and `MCSimulation.initialise`: the temperature of the Metropolis acceptance used to place an initial configuration, by default the run temperature.
 - `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built and read-only after; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
 - `LennardJones`, `Buckingham` and `SquareWell` print as the constructor call that built them, so a model shows its parameters in a notebook.
+- `pylj.trajectory.Trajectory`, the configurations a simulation has sampled, held as `simulation.trajectory`; `sample()` appends the current configuration and `restart()` starts an empty one. Indexing gives a frame, slicing gives a trajectory, and `position` gives the `(frames, N, 2)` array.
+- `Configuration.rdf(bins=100, r_max=None)` and `Configuration.scattering(q)`, and the same two methods on `Trajectory` averaged over its frames, so g(r) and I(q) are available as arrays without building a viewer.
 
 ### Changed
 
@@ -57,6 +59,7 @@ All notable changes to pylj are recorded here. The format follows
 - The simulated things are atoms throughout: `number_of_atoms` replaces `number_of_particles` in `MDSimulation.initialise`, `MCSimulation.initialise` and the placement functions, and `Configuration.number_of_atoms` replaces `number_of_particles`.
 - `MDSimulation.initialise` and `MCSimulation.initialise` take every argument by keyword, so a call names the number of atoms, the temperature and the box.
 - `MDSimulation.initialise` and `MCSimulation.initialise` take a `Model` as their one positional argument in place of the `species` and `pair_potentials` keywords, and the constructors take it in place of `pair_potentials`. A simulation holds it as `model`. `Configuration.pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy`, `md.velocity_verlet`, `placement.place` and `placement.place_metropolis` take it likewise; `place_metropolis` no longer takes `species` separately, since the model carries them.
+- `RDFPane` and `ScatteringPane` no longer keep a history of what they have drawn. `Viewer.average(simulation)` and `Pane.average(ax, simulation)` draw the mean over the simulation's trajectory. The scattering profile uses the two-dimensional Debye sum, `N + 2 sum J0(q r)`, in place of the three-dimensional `sin(qr) / (qr)`.
 
 ### Fixed
 
@@ -87,3 +90,4 @@ All notable changes to pylj are recorded here. The format follows
 - `pylj.forcefields` and its `mixing` and `diameter` members; cross-species potentials are entries in `pair_potentials`.
 - The `'random'` initial configuration, replaced by `'metropolis'`.
 - `pairwise.pair_potential` and the `PairPotentials` alias, replaced by `Model.potential`.
+- `Pane.keeps_history` and the history each pane kept of the curves it drew.
