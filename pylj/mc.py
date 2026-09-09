@@ -257,12 +257,14 @@ class MCSimulation(Simulation):
         self.steps += 1
 
     def sample(self) -> None:
-        """Record the step and the energy.
+        """Record the configuration in the trajectory and the step and energy
+        in the samples.
 
         The energy is recomputed from the configuration first, so the
         recorded value is exact; between samples ``apply`` keeps a running
         total.
         """
+        self.trajectory.append(self.configuration)
         self.energy = self.configuration.potential_energy(self.model, self.cut_off)
         self.samples.add(step=self.steps, potential_energy=self.energy)
 

@@ -13,6 +13,7 @@ from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
 from pylj.model import Model
 from pylj.potentials import check_positive_finite
+from pylj.trajectory import Trajectory
 
 #: Largest potential energy per atom, in units of k_B T, accepted for an
 #: initial configuration.
@@ -192,6 +193,8 @@ class Simulation(ABC):
         steps: The number of steps taken.
         samples: The record ``sample`` appends to; subclasses replace it
             with the record of what they measure.
+        trajectory: The configurations sampled so far, a
+            :class:`~pylj.trajectory.Trajectory`.
 
     Raises:
         ValueError: If a species in the configuration is not in the model,
@@ -215,6 +218,7 @@ class Simulation(ABC):
         self.rng = np.random.default_rng(seed)
         self.steps = 0
         self.samples = Samples()
+        self.trajectory = Trajectory()
 
     @abstractmethod
     def step(self) -> None:
@@ -231,9 +235,10 @@ class Simulation(ABC):
         and every other attribute with this one. Its random number generator
         starts from a copy of this one's state, so what this simulation draws
         next has no effect on the new one. The new simulation starts with
-        ``steps`` at zero and an empty record of samples. A subclass that holds
-        other per-run state extends this method to reset it. This simulation is
-        not changed. Use it to start a production run after equilibration::
+        ``steps`` at zero, an empty record of samples and an empty trajectory.
+        A subclass that holds other per-run state extends this method to reset
+        it. This simulation is not changed. Use it to start a production run
+        after equilibration::
 
             for _ in range(1000):
                 simulation.step()
@@ -249,4 +254,5 @@ class Simulation(ABC):
         new.rng = copy.deepcopy(self.rng)
         new.steps = 0
         new.samples = type(self.samples)()
+        new.trajectory = Trajectory()
         return new
