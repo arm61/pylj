@@ -6,6 +6,7 @@ from typing import Any, Self
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy.special import j0
 
 from pylj import pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
@@ -234,6 +235,71 @@ class Configuration:
             energy[mask & (distance < potential.min_separation)] = np.inf
         energy[distance > cut_off] = 0.0
         return float(energy.sum())
+
+    def rdf(
+        self, bins: int = 100, r_max: float | None = None
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Return the radial distribution function g(r) of this configuration.
+
+        The pair distances are sorted into bins from zero to ``r_max``. The
+        count in each bin is divided by the count an ideal gas of the same
+        density would give. That gas has ``N (N - 1) / 2`` pairs spread
+        evenly over the box, and a ring of radius ``r`` and width ``dr``
+        holds the fraction ``2 pi r dr / L^2`` of them, where ``L`` is the
+        box length. So g(r) is one where the atoms are spread as evenly as
+        an ideal gas, above one where they gather and below one where they
+        avoid each other.
+
+        Args:
+            bins: The number of bins.
+            r_max: The largest distance binned, in metres. By default half
+                the box, the furthest a minimum-image distance can reach in
+                every direction.
+
+        Returns:
+            The centre of each bin, in metres, and g(r) at each.
+        """
+        if r_max is None:
+            r_max = self.box / 2
+        edges = np.linspace(0, r_max, bins + 1)
+        dr = edges[1] - edges[0]
+        r = edges[:-1] + dr / 2
+        n = self.number_of_atoms
+        pairs = n * (n - 1) / 2
+        if pairs == 0:
+            return r, np.zeros(bins)
+        distance, _ = pairwise.dist(self.position, self.box)
+        counts, _ = np.histogram(distance, bins=edges)
+        ideal = pairs * 2 * np.pi * r * dr / self.box**2
+        return r, counts / ideal
+
+    def scattering(self, q: ArrayLike) -> NDArray[np.float64]:
+        """Return the scattering intensity I(q) of this configuration.
+
+        This is the Debye sum for ``N`` identical scatterers in two
+        dimensions. Each atom scattering on its own contributes one, giving
+        ``N`` in total, and each pair at distance ``r`` adds ``2 J0(q r)``.
+        ``J0`` is the Bessel function of the first kind and order zero. It is
+        the average of ``exp(i q . r)`` over every direction the pair could
+        point in the plane, in the same way that ``sin(q r) / (q r)`` is the
+        average over every direction in three dimensions.
+
+        Args:
+            q: The magnitudes of the scattering vector, in 1/m.
+
+        Returns:
+            I(q) at each value of ``q``, in units of one atom's scattering.
+        """
+        q = np.asarray(q, dtype=float)
+        distance, _ = pairwise.dist(self.position, self.box)
+        intensity = np.empty_like(q)
+        # A block of q values at a time; the outer product with the pair
+        # distances is what takes the memory.
+        block = 16
+        for start in range(0, q.size, block):
+            qr = np.outer(q[start : start + block], distance)
+            intensity[start : start + block] = j0(qr).sum(axis=1)
+        return self.number_of_atoms + 2 * intensity
 
 
 @dataclass(frozen=True, eq=False)
