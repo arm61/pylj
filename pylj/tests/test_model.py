@@ -65,6 +65,22 @@ class TestModel(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "Model.single"):
             Model(ARGON, {(ARGON, ARGON): LJ_ARGON})
 
+    def test_names_single_for_a_bare_potential(self):
+        with self.assertRaisesRegex(TypeError, "Model.single"):
+            Model((ARGON,), LJ_ARGON)
+
+    def test_rejects_a_string_as_the_species_sequence(self):
+        with self.assertRaisesRegex(TypeError, "Model.single"):
+            Model("argon", {(ARGON, ARGON): LJ_ARGON})
+
+    def test_rejects_a_bare_species_as_a_key(self):
+        with self.assertRaisesRegex(ValueError, "must be a pair of species"):
+            Model((ARGON,), {ARGON: LJ_ARGON})
+
+    def test_rejects_a_key_that_is_not_a_pair(self):
+        with self.assertRaisesRegex(ValueError, "must be a pair of species"):
+            Model((ARGON,), {(ARGON, ARGON): LJ_ARGON, (ARGON, ARGON, ARGON): LJ_ARGON})
+
     def test_rejects_an_entry_for_a_species_outside_the_model(self):
         with self.assertRaisesRegex(ValueError, "not one of the species"):
             Model((ARGON,), {(ARGON, ARGON): LJ_ARGON, (ARGON, LARGER): LJ_ARGON_LARGER})

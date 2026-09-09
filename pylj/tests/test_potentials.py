@@ -207,3 +207,8 @@ class TestSquareWell:
         assert repr(sw) == (
             "SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5, max_val=1e-19)"
         )
+
+    def test_repr_omits_the_default_max_val(self):
+        sw = SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5)
+        assert repr(sw).endswith("lambda_=1.5)")
+        assert "max_val" not in repr(sw)

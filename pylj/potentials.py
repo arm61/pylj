@@ -230,10 +230,13 @@ class SquareWell(PairPotential):
         self.max_val = max_val
 
     def __repr__(self) -> str:
-        return (
+        call = (
             f"SquareWell(epsilon={self.epsilon!r}, sigma={self.sigma!r}, "
-            f"lambda_={self.lambda_!r}, max_val={self.max_val!r})"
+            f"lambda_={self.lambda_!r}"
         )
+        if np.isfinite(self.max_val):
+            call += f", max_val={self.max_val!r}"
+        return call + ")"
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)

@@ -16,7 +16,8 @@ def _check_complete(species: tuple[Species, ...], pair_potentials: PairPotential
     exactly one potential, and that no other pair has one.
 
     Raises:
-        ValueError: If ``species`` is empty or repeats a species, an entry of
+        ValueError: If ``species`` is empty or repeats a species, a key of
+            ``pair_potentials`` is not a pair, an entry of
             ``pair_potentials`` names something that is not one of the
             species, a pair of species has no entry in either order, or a
             cross pair has one in both orders.
@@ -28,6 +29,11 @@ def _check_complete(species: tuple[Species, ...], pair_potentials: PairPotential
     if len(set(species)) != len(species):
         raise ValueError("species must not repeat: two Species that compare equal are one species")
     for pair in pair_potentials:
+        if not isinstance(pair, tuple) or len(pair) != 2:
+            raise ValueError(
+                f"pair_potentials keys must be a pair of species, such as (argon, argon), "
+                f"not {pair!r}"
+            )
         for one in pair:
             if one not in species:
                 raise ValueError(
@@ -56,8 +62,8 @@ class Model:
 
     Every pair of species, including each species with itself, has one
     entry in ``pair_potentials``, keyed by the two species in either order.
-    ``single`` builds the model for one species. A model does not change
-    after it is built: ``species`` and ``pair_potentials`` are read-only.
+    ``single`` builds the model for one species. ``species`` and
+    ``pair_potentials`` are read-only.
 
     Args:
         species: The species, as any sequence of ``Species``. Atoms are
@@ -65,20 +71,21 @@ class Model:
         pair_potentials: The potential between each pair of species.
 
     Raises:
-        ValueError: If ``species`` is empty or repeats a species, an entry
-            of ``pair_potentials`` names something that is not one of the
+        ValueError: If ``species`` is empty or repeats a species, a key of
+            ``pair_potentials`` is not a pair, an entry of
+            ``pair_potentials`` names something that is not one of the
             species, a pair of species has no potential, or a cross pair is
             given in both orders.
         TypeError: If ``species`` is a single ``Species`` rather than a
-            sequence, an item of ``species`` is not a ``Species``, or a
-            value in ``pair_potentials`` is not a ``PairPotential``
-            instance.
+            sequence, an item of ``species`` is not a ``Species``,
+            ``pair_potentials`` is not a mapping, or a value in
+            ``pair_potentials`` is not a ``PairPotential`` instance.
     """
 
     def __init__(self, species: Sequence[Species], pair_potentials: PairPotentials) -> None:
-        if isinstance(species, Species):
+        if isinstance(species, Species | str):
             raise TypeError(
-                f"species must be a sequence of Species, such as ({species.name or 'argon'},); "
+                f"species must be a sequence of Species, such as ({species!r},); "
                 "for one species, Model.single(species, potential) builds the model"
             )
         self._species = tuple(species)
@@ -88,6 +95,12 @@ class Model:
                     f"species must be Species instances, such as Species(mass=39.948, "
                     f"name='argon'), not {one!r}"
                 )
+        if not isinstance(pair_potentials, Mapping):
+            raise TypeError(
+                f"pair_potentials must map each pair of species to its potential, such as "
+                f"{{(argon, argon): potential}}, not {pair_potentials!r}; for one species, "
+                "Model.single(species, potential) builds the model"
+            )
         self._pair_potentials = MappingProxyType(dict(pair_potentials))
         _check_complete(self._species, self._pair_potentials)
 
@@ -118,6 +131,10 @@ class Model:
         """Return the potential between two species.
 
         The pair may be given in either order.
+
+        Args:
+            one: One species of the pair.
+            other: The other species; the same one for a pair of like atoms.
 
         Raises:
             KeyError: If either species is not in the model.
