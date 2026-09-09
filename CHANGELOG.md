@@ -5,19 +5,6 @@ All notable changes to pylj are recorded here. The format follows
 
 ## Unreleased
 
-### Added
-
-- `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built and read-only after; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
-- `LennardJones`, `Buckingham` and `SquareWell` print as the constructor call that built them, so a model shows its parameters in a notebook.
-
-### Changed
-
-- `MDSimulation.initialise` and `MCSimulation.initialise` take a `Model` as their one positional argument in place of the `species` and `pair_potentials` keywords, and the constructors take it in place of `pair_potentials`. A simulation holds it as `model`. `Configuration.pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy`, `md.velocity_verlet`, `placement.place` and `placement.place_metropolis` take it likewise; `place_metropolis` no longer takes `species` separately, since the model carries them.
-
-### Removed
-
-- `pairwise.pair_potential` and the `PairPotentials` alias, replaced by `Model.potential`.
-
 ## 2.0.0b1 - 2026-09-08
 
 ### Added
@@ -38,6 +25,11 @@ All notable changes to pylj are recorded here. The format follows
 - `MDSimulation` and `MCSimulation` refuse an initial configuration whose pair energy is not finite or stores more than `simulation.INITIAL_ENERGY_LIMIT` (ten) k_B T per atom, as an overlapping lattice does; the message gives the stored energy per atom in k_B T.
 - `MDSimulation` and `MCSimulation` refuse a pair potential whose energy at the cut-off is not finite or is larger in magnitude than k_B T, since the cut-off assumes the interaction has died away there; parameters in the wrong units are one way to trip it.
 - `placement_temperature` on `MDSimulation.initialise` and `MCSimulation.initialise`: the temperature of the Metropolis acceptance used to place an initial configuration, by default the run temperature.
+- `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built and read-only after; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
+- `LennardJones`, `Buckingham` and `SquareWell` print as the constructor call that built them, so a model shows its parameters in a notebook.
+- `pylj.scattering`, the two-dimensional Debye sum over a set of pair distances and the binning of those distances.
+- `pylj.trajectory.Trajectory`, the configurations a simulation has sampled, held as `simulation.trajectory`; `sample()` appends the current configuration and `restart()` starts an empty one. Indexing gives a frame, slicing gives a trajectory, and `position` gives the `(frames, N, 2)` array.
+- `Configuration.rdf(bins=100, r_max=None)` and `Configuration.scattering(q, bins=None)`, and the same two methods on `Trajectory` averaged over its frames, so g(r) and I(q) are available as arrays without building a viewer. Given a number of bins, the scattering sum is over binned pair distances rather than every pair, which is a few hundred times faster over a trajectory and within about a tenth of a percent of the peak intensity; the scattering pane's average uses it.
 
 ### Changed
 
@@ -48,9 +40,9 @@ All notable changes to pylj are recorded here. The format follows
 - Python 3.11 or later is required. scipy is a dependency; Cython is not.
 - The initialisers compute the initial forces, so the first integration step uses real accelerations.
 - Viewers are built before their display is opened, and a viewer whose panes need molecular dynamics samples refuses a Monte Carlo simulation.
-- Viewers and panes take a simulation and read its `configuration` and `samples`; the radial distribution and scattering panes compute the pair distances when they draw, and the scattering pane includes the self-scattering term `N` in the Debye sum, so the intensity is never negative. The energy pane plots the total energy, potential plus kinetic, for a molecular dynamics simulation; the `Interactions` viewer shows it in place of the force pane.
+- Viewers and panes take a simulation and read its `configuration` and `samples`; the radial distribution and scattering panes compute the pair distances when they draw, and the scattering pane includes the self-scattering term `N` in the Debye sum. The energy pane plots the total energy, potential plus kinetic, for a molecular dynamics simulation; the `Interactions` viewer shows it in place of the force pane.
 - The radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in N m^-1.
-- `JustCell` no longer takes a `scale` argument. `Viewer.average()` raises on a viewer whose panes keep no history. `CellPlus.update` rejects half-supplied custom data.
+- `JustCell` no longer takes a `scale` argument. `CellPlus.update` rejects half-supplied custom data.
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.
 - Pair distances and forces are computed with vectorised NumPy. `pairwise.dist(position, box)` takes `(N, 2)` positions and returns the distances and the `(M, 2)` separations; `pairwise.calculate_pressure(virial, box, kinetic_energy)` is the instantaneous virial pressure, `(2 K + sum(f r)) / (2 L^2)`, whose kinetic term averages `(N - 1) k_B T / L^2` because the centre of mass is held at rest; it previously used the sampled temperature, which is defined over `N - 1` degrees of freedom, with `N` in the ideal term.
 - `md.velocity_verlet(configuration, forces, timestep, pair_potentials, cut_off)` returns the next configuration and the forces at it, and raises `ValueError` if an atom moves further than half the cut-off in one step, which means the timestep is too long or the run has diverged; `md.update_positions(configuration, accelerations, timestep)` and `md.update_velocities(velocity, accelerations, next_accelerations, timestep)` work on `(N, 2)` arrays.
@@ -67,6 +59,8 @@ All notable changes to pylj are recorded here. The format follows
 - The radial distribution function pane plots r in Angstrom and the molecular dynamics series panes plot time in picoseconds, with the mean squared displacement in Angstrom squared; the panes previously used metres and seconds.
 - The simulated things are atoms throughout: `number_of_atoms` replaces `number_of_particles` in `MDSimulation.initialise`, `MCSimulation.initialise` and the placement functions, and `Configuration.number_of_atoms` replaces `number_of_particles`.
 - `MDSimulation.initialise` and `MCSimulation.initialise` take every argument by keyword, so a call names the number of atoms, the temperature and the box.
+- `MDSimulation.initialise` and `MCSimulation.initialise` take a `Model` as their one positional argument in place of the `species` and `pair_potentials` keywords, and the constructors take it in place of `pair_potentials`. A simulation holds it as `model`. `Configuration.pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy`, `md.velocity_verlet`, `placement.place` and `placement.place_metropolis` take it likewise; `place_metropolis` no longer takes `species` separately, since the model carries them.
+- `RDFPane` and `ScatteringPane` no longer keep a history of what they have drawn. `Viewer.average(simulation)` and `Pane.average(ax, simulation)` draw the mean over the simulation's trajectory. The scattering profile uses the two-dimensional Debye sum, `N + 2 sum J0(q r)`, in place of the three-dimensional `sin(qr) / (qr)`. Cutting the pair distances off at the box takes I(q) below zero at some q; the scattering pane's y axis follows the data rather than starting at zero, so those dips are drawn rather than hidden below the axis.
 
 ### Fixed
 
@@ -96,3 +90,4 @@ All notable changes to pylj are recorded here. The format follows
 - `mc.select_random_particle`, `mc.get_new_particle`, `mc.reject`, `mc.metropolis`, and the identity `mc.accept(new_energy)`.
 - `pylj.forcefields` and its `mixing` and `diameter` members; cross-species potentials are entries in `pair_potentials`.
 - The `'random'` initial configuration, replaced by `'metropolis'`.
+- `pairwise.pair_potential` and the `PairPotentials` alias, replaced by `Model.potential`.

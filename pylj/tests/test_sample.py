@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+from scipy.special import j0
 
 from pylj import pairwise
 from pylj.configuration import Configuration
@@ -360,18 +361,15 @@ def test_rdf_pane_normalisation_is_unity_for_metropolis_positions():
     plt.close(fig)
 
 
-def test_rdf_pane_average_is_mean_of_updates():
+def test_rdf_pane_average_is_the_trajectory_mean():
+    simulation = sampled_md_simulation(steps=3, every=1)
     fig, ax = environment(1)
     pane = RDFPane()
-    simulation = sampled_md_simulation(steps=1, every=1)
     pane.setup(ax, simulation)
-    pane.update(ax, simulation)
-    first = ax.lines[0].get_ydata().copy()
-    simulation.step()
-    pane.update(ax, simulation)
-    second = ax.lines[0].get_ydata().copy()
-    pane.average(ax)
-    assert_allclose(ax.lines[0].get_ydata(), (first + second) / 2)
+    pane.average(ax, simulation)
+    r, gr = simulation.trajectory.rdf(bins=RDFPane.BINS)
+    assert_allclose(ax.lines[0].get_ydata(), gr)
+    assert_allclose(ax.lines[0].get_xdata(), r * 1e10)
     plt.close(fig)
 
 
@@ -402,18 +400,20 @@ def test_rdf_pane_axes_are_in_angstrom_with_visible_y_ticks():
     plt.close(fig)
 
 
-def test_scattering_pane_average_is_mean_of_updates():
+def test_scattering_pane_average_is_the_trajectory_mean():
+    simulation = sampled_md_simulation(steps=3, every=1)
     fig, ax = environment(1)
     pane = ScatteringPane()
-    simulation = sampled_md_simulation(steps=1, every=1)
     pane.setup(ax, simulation)
-    pane.update(ax, simulation)
-    first = ax.lines[0].get_ydata().copy()
-    simulation.step()
-    pane.update(ax, simulation)
-    second = ax.lines[0].get_ydata().copy()
-    pane.average(ax)
-    assert_allclose(ax.lines[0].get_ydata(), (first + second) / 2)
+    pane.average(ax, simulation)
+    box = simulation.configuration.box
+    q = np.linspace(2 * np.pi / box, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
+    q = q[ScatteringPane.SKIP :]
+    assert_allclose(
+        ax.lines[0].get_ydata(),
+        simulation.trajectory.scattering(q, bins=ScatteringPane.AVERAGE_BINS),
+    )
+    assert_allclose(ax.lines[0].get_xdata(), q)
     plt.close(fig)
 
 
@@ -441,7 +441,7 @@ def test_scattering_pane_matches_direct_debye_sum():
     q = q[ScatteringPane.SKIP :]
     r, _ = pairwise.dist(simulation.configuration.position, box)
     n = simulation.configuration.number_of_atoms
-    expected = np.array([n + 2 * np.sum(np.sin(qi * r) / (qi * r)) for qi in q])
+    expected = np.array([n + 2 * np.sum(j0(qi * r)) for qi in q])
     assert np.all(expected > 0)
     assert_allclose(ax.lines[0].get_ydata(), expected, rtol=1e-6)
     plt.close(fig)
@@ -605,14 +605,13 @@ def test_rdf_pane_on_a_single_atom_draws_nothing(drawing_display):
     assert len(viewer.axes[1].lines[0].get_ydata()) == 0
 
 
-def test_average_with_no_history_leaves_the_line_alone(drawing_display):
-    simulation = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=1, temperature=100, box=20)
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        viewer = RDF(simulation)
-        viewer.average()
-    assert len(viewer.axes[1].lines[0].get_xdata()) == 0
-    assert len(viewer.axes[1].lines[0].get_ydata()) == 0
+def test_average_before_any_sample_leaves_the_line_alone(drawing_display):
+    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+    viewer = RDF(simulation)
+    line = viewer.axes[1].lines[0]
+    before = [data.copy() for data in line.get_data()]
+    viewer.average(simulation)
+    assert_allclose(line.get_data(), before)
 
 
 def test_energy_viewer_on_mc_system(drawing_display):
@@ -625,25 +624,30 @@ def test_energy_viewer_on_mc_system(drawing_display):
 def test_rdf_viewer_average_shows_the_mean(drawing_display):
     simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=20, temperature=100, box=20)
     viewer = RDF(simulation)
-    history = [viewer.axes[1].lines[0].get_ydata().copy()]
     for _ in range(3):
         simulation.step()
         simulation.sample()
         viewer.update(simulation)
-        history.append(viewer.axes[1].lines[0].get_ydata().copy())
-    viewer.average()
-    assert_allclose(viewer.axes[1].lines[0].get_ydata(), np.mean(history, axis=0))
+    viewer.average(simulation)
+    _, gr = simulation.trajectory.rdf(bins=RDFPane.BINS)
+    assert_allclose(viewer.axes[1].lines[0].get_ydata(), gr)
 
 
 def test_average_is_available_before_any_update(drawing_display):
-    RDF(MDSimulation.initialise(ARGON_MODEL, number_of_atoms=20, temperature=100, box=20)).average()
+    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=20, temperature=100, box=20)
+    RDF(simulation).average(simulation)
 
 
-def test_average_rejects_viewers_without_history(drawing_display):
-    with pytest.raises(ValueError):
-        Energy(
-            MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
-        ).average()
+def test_average_on_series_panes_does_nothing(drawing_display):
+    simulation = run_md_loop(
+        MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20),
+        steps=3,
+        every=1,
+    )
+    viewer = Energy(simulation)
+    before = [data.copy() for data in viewer.axes[1].lines[0].get_data()]
+    viewer.average(simulation)
+    assert_allclose(viewer.axes[1].lines[0].get_data(), before)
 
 
 def test_cell_plus_rejects_half_supplied_data(drawing_display):
@@ -707,3 +711,17 @@ def test_fit_axes_pads_a_constant_series_and_hides_the_offset():
     fig.canvas.draw()
     assert ax.yaxis.get_major_formatter().get_offset() == ""
     plt.close(fig)
+
+
+def test_scattering_pane_average_bins_are_fine_enough():
+    simulation = run_md_loop(
+        MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=100, box=25, seed=1),
+        steps=200,
+        every=10,
+    )
+    box = simulation.configuration.box
+    q = np.linspace(2 * np.pi / box, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
+    q = q[ScatteringPane.SKIP :]
+    exact = simulation.trajectory.scattering(q)
+    binned = simulation.trajectory.scattering(q, bins=ScatteringPane.AVERAGE_BINS)
+    assert np.abs(binned - exact).max() < 0.005 * exact.max()

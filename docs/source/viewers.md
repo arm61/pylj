@@ -27,7 +27,9 @@ A viewer is a figure that redraws when `update(simulation)` is called. Eight are
 - `Phase`: positions, total energy, mean squared displacement and the radial distribution function.
 - `Scattering`: positions, the radial distribution function, mean squared displacement and the scattering profile.
 
-`MaxBolt`, `Interactions`, `Phase` and `Scattering` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot. `average()` replaces the latest curve with the mean of every update so far on the radial distribution function and scattering panes, and raises `ValueError` on a viewer without one of them. Axes are in Angstrom, picoseconds and otherwise SI units.
+`MaxBolt`, `Interactions`, `Phase` and `Scattering` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot. `average(simulation)` replaces the latest curve with the mean over the trajectory, the frames `sample()` has recorded, on the radial distribution function and scattering panes; the other panes it leaves alone. Axes are in Angstrom, picoseconds and otherwise SI units.
+
+A viewer is for watching a run. For a plot to keep, take the arrays from `simulation.samples` or `simulation.trajectory` and use matplotlib.
 
 Panes that plot a quantity against time read it from `simulation.samples`, so the loop must call `sample()` for those panes to have data. A molecular dynamics pane plots against time; a Monte Carlo pane plots against the step.
 
@@ -58,7 +60,7 @@ The panes are `CellPane(diameter=None)`, `EnergyPane`, `TemperaturePane`, `Press
 
 ## Writing a pane
 
-A pane has `setup(ax, simulation)`, which creates the line and labels once, and `update(ax, simulation)`, which sets the line's data from the current state. `needs_md = True` makes a viewer refuse a Monte Carlo simulation. A pane whose curve can be averaged sets `keeps_history = True` and overrides `average(ax)`; `RDFPane` is the model.
+A pane has `setup(ax, simulation)`, which creates the line and labels once, and `update(ax, simulation)`, which sets the line's data from the current state. `needs_md = True` makes a viewer refuse a Monte Carlo simulation. A pane whose curve has a mean over the trajectory overrides `average(ax, simulation)`; `RDFPane` is the model.
 
 ```{code-cell} python
 from pylj.sample import Pane
@@ -93,3 +95,24 @@ for _ in range(300):
 ```
 
 A pane that needs a quantity the simulation samples, rather than one it can compute from the configuration, needs that quantity added to the simulation's `sample()` and its `Samples` record.
+
+## A plot from the trajectory
+
+`sample()` records the configuration each time it is called, so g(r) and the scattering profile can be computed after the run, over whichever frames are wanted:
+
+```{code-cell} python
+simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=100, box=30, seed=1)
+for _ in range(2000):
+    simulation.step()
+    simulation.heat_bath(100)
+    if simulation.steps % 10 == 0:
+        simulation.sample()
+
+r, gr = simulation.trajectory[50:].rdf()
+fig, ax = plt.subplots(figsize=(4, 3))
+ax.plot(r * 1e10, gr)
+ax.set_xlabel("r / Angstrom")
+ax.set_ylabel("g(r)")
+```
+
+`simulation.trajectory[50:]` drops the first fifty frames, the equilibration. [Simulations](simulations.md) describes the trajectory and the analyses on it.

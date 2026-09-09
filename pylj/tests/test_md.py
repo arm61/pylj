@@ -411,6 +411,15 @@ class TestSample(unittest.TestCase):
         assert_almost_equal(samples.total_energy[-1], potential + c.kinetic_energy())
         self.assertGreater(samples.msd[-1], 0.0)
 
+    def test_appends_the_configuration_to_the_trajectory(self):
+        a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+        self.assertEqual(len(a.trajectory), 0)
+        a.sample()
+        a.step()
+        a.sample()
+        self.assertEqual(len(a.trajectory), 2)
+        self.assertIs(a.trajectory[1], a.configuration)
+
 
 class TestRestart(unittest.TestCase):
     def run_and_sample(self, a, steps):
@@ -450,3 +459,10 @@ class TestRestart(unittest.TestCase):
         self.assertIs(a.configuration, source)
         self.assertEqual(a.steps, 3)
         self.assertEqual(a.samples.msd.size, 3)
+
+    def test_starts_an_empty_trajectory(self):
+        a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+        a.sample()
+        production = a.restart()
+        self.assertEqual(len(production.trajectory), 0)
+        self.assertEqual(len(a.trajectory), 1)

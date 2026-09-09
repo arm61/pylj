@@ -71,16 +71,14 @@ class Viewer:
             pane.update(ax, simulation)
         self.handle.update(self.fig)
 
-    def average(self) -> None:
-        """Show the average of every update so far on panes that keep one.
+    def average(self, simulation: Simulation) -> None:
+        """Draw, on every pane that has one, the mean over the simulation's trajectory.
 
-        Raises:
-            ValueError: If no pane keeps a history.
+        Args:
+            simulation: The simulation to visualise.
         """
-        if not any(pane.keeps_history for pane in self.panes):
-            raise ValueError("None of this viewer's panes keeps a history to average")
         for pane, ax in zip(self.panes, self.axes, strict=True):
-            pane.average(ax)
+            pane.average(ax, simulation)
         self.handle.update(self.fig)
 
 

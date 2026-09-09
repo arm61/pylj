@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
+from scipy.special import j0
 
 from pylj.configuration import Configuration, MDConfiguration
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
@@ -269,6 +270,81 @@ class TestConfiguration(unittest.TestCase):
         expected_force = [potentials[k].forces(d) for d, k in by_pair]
         assert_almost_equal(pairs.energy, expected_energy)
         assert_almost_equal(pairs.radial_force, expected_force)
+
+
+def two_atoms(distance, box=20e-10):
+    """Two argon atoms the given distance apart along x, in metres."""
+    return configuration([[1e-10, 1e-10], [1e-10 + distance, 1e-10]], box=box)
+
+
+class TestRDF(unittest.TestCase):
+    def test_two_atoms_fill_one_bin_near_their_distance(self):
+        c = two_atoms(4e-10)
+        r, gr = c.rdf(bins=50)
+        dr = c.box / 2 / 50
+        self.assertEqual(r.size, 50)
+        assert_allclose(r, np.arange(50) * dr + dr / 2)
+        self.assertEqual(np.count_nonzero(gr), 1)
+        (i,) = np.nonzero(gr)
+        self.assertLess(abs(r[i] - 4e-10), dr)
+
+    def test_r_max_sets_the_range(self):
+        r, gr = two_atoms(4e-10).rdf(bins=10, r_max=5e-10)
+        assert_allclose(r[-1], 5e-10 - 0.25e-10)
+
+    def test_single_atom_gives_zeros(self):
+        c = configuration([[1e-10, 1e-10]], box=20e-10)
+        r, gr = c.rdf(bins=10)
+        self.assertEqual(r.size, 10)
+        assert_allclose(gr, 0.0)
+
+    def test_uniform_gas_gives_one(self):
+        rng = np.random.default_rng(0)
+        n = 3000
+        c = Configuration(
+            position=rng.uniform(0, 20e-10, size=(n, 2)),
+            species=(ARGON,),
+            species_index=np.zeros(n, dtype=int),
+            box=20e-10,
+        )
+        _, gr = c.rdf(bins=10)
+        assert_allclose(gr, 1.0, atol=0.03)
+
+    def test_pairs_are_measured_across_the_periodic_boundary(self):
+        c = two_atoms(18e-10)
+        r, gr = c.rdf(bins=50)
+        (i,) = np.nonzero(gr)
+        self.assertLess(abs(r[i] - 2e-10), c.box / 2 / 50)
+        assert_allclose(c.scattering(np.array([1e10])), [2 + 2 * j0(1e10 * 2e-10)])
+
+
+class TestScattering(unittest.TestCase):
+    def test_two_atoms_give_the_two_dimensional_debye_sum(self):
+        c = two_atoms(4e-10)
+        q = np.linspace(1e9, 1e11, 300)
+        assert_allclose(c.scattering(q), 2 + 2 * j0(q * 4e-10))
+
+    def test_binned_sum_is_close_to_the_exact_one(self):
+        c = two_atoms(4e-10)
+        q = np.linspace(1e9, 5e10, 100)
+        exact = c.scattering(q)
+        assert_allclose(c.scattering(q, bins=4000), exact, atol=0.01 * exact.max())
+
+    def test_binned_sum_keeps_a_pair_on_the_half_diagonal(self):
+        box = 20e-10
+        # Two atoms diagonally opposite are the half-diagonal apart, the
+        # furthest a minimum-image separation reaches. The pair still counts,
+        # so the forward-scattering limit is N squared.
+        c = configuration(np.array([[0.0, 0.0], [box / 2, box / 2]]), box=box)
+        assert_allclose(c.scattering(1e-6, bins=2000), 4.0, rtol=1e-9)
+
+    def test_single_atom_scatters_as_itself(self):
+        c = configuration([[1e-10, 1e-10]], box=20e-10)
+        assert_allclose(c.scattering(np.array([1e10, 2e10])), 1.0)
+
+    def test_accepts_a_single_q(self):
+        c = two_atoms(4e-10)
+        assert_allclose(c.scattering(1e10), [2 + 2 * j0(1e10 * 4e-10)])
 
 
 def md_configuration(position, velocity, box=8e-10):

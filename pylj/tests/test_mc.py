@@ -304,3 +304,19 @@ class TestMoves(unittest.TestCase):
         self.assertIsInstance(production.samples, mc.MCSamples)
         self.assertEqual(production.samples.step.size, 0)
         self.assertEqual(a.samples.potential_energy.size, 1)
+
+    def test_sample_appends_the_configuration_to_the_trajectory(self):
+        a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+        self.assertEqual(len(a.trajectory), 0)
+        a.sample()
+        a.step()
+        a.sample()
+        self.assertEqual(len(a.trajectory), 2)
+        self.assertIs(a.trajectory[1], a.configuration)
+
+    def test_restart_starts_an_empty_trajectory(self):
+        a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+        a.sample()
+        production = a.restart()
+        self.assertEqual(len(production.trajectory), 0)
+        self.assertEqual(len(a.trajectory), 1)

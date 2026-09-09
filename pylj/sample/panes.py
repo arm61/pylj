@@ -2,8 +2,7 @@
 
 A pane draws one quantity into one matplotlib Axes. ``setup`` creates the
 artists and static decoration once; ``update`` pushes the current state of the
-simulation into those artists. Panes hold any history they accumulate across
-updates.
+simulation into those artists.
 """
 
 import warnings
@@ -14,7 +13,7 @@ import numpy.typing as npt
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
 
-from pylj import pairwise
+from pylj.configuration import Configuration
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.potentials import PairPotential
@@ -78,18 +77,15 @@ class Pane:
     """One plot within a viewer.
 
     ``setup`` creates the artists; the viewer draws them by calling
-    ``update``. A pane that keeps every curve it draws sets
-    ``keeps_history = True`` and overrides ``average``.
+    ``update``. A pane whose curve has a mean over the simulation's
+    trajectory overrides ``average``.
 
     Attributes:
-        keeps_history: Whether this pane accumulates a history across
-            updates that ``average`` can summarise.
         needs_md: Whether this pane can only plot molecular dynamics samples.
             If any pane in a viewer sets this, the viewer refuses a Monte Carlo
             simulation.
     """
 
-    keeps_history: bool = False
     needs_md: bool = False
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
@@ -110,40 +106,16 @@ class Pane:
         """
         raise NotImplementedError
 
-    def average(self, ax: Axes) -> None:
-        """Show the average of every update so far, for panes that keep a history.
+    def average(self, ax: Axes, simulation: Simulation) -> None:
+        """Draw the mean over the simulation's trajectory, for panes that have one.
 
-        Panes that keep a history of their updates override this to draw the
-        mean of that history. A pane that keeps no history does nothing here,
-        and says so by leaving ``keeps_history`` false.
-
-        Args:
-            ax: Axes this pane was set up in.
-        """
-
-
-class _HistoryPane(Pane):
-    """A pane that keeps every curve it has drawn so ``average`` can show the mean.
-
-    Attributes:
-        history: One entry per update, in the order they were drawn.
-    """
-
-    keeps_history = True
-
-    def __init__(self) -> None:
-        self.history: list[np.ndarray] = []
-
-    def average(self, ax: Axes) -> None:
-        """Replace the drawn curve with the mean of every update so far.
-
-        Subclasses leave the curve alone when ``history`` is empty, as there
-        is then nothing to average.
+        A pane that draws a running series has nothing to average and leaves
+        its axes alone.
 
         Args:
             ax: Axes this pane was set up in.
+            simulation: The simulation being visualised.
         """
-        raise NotImplementedError
 
 
 def _potential_minimum(potential: PairPotential) -> float:
@@ -408,17 +380,14 @@ class EnergyPane(Pane):
         _fit_axes(ax, x, y)
 
 
-class RDFPane(_HistoryPane):
-    """Radial distribution function of the current configuration.
+class RDFPane(Pane):
+    """Radial distribution function.
 
-    Keeps every g(r) it has drawn so ``average`` can show the mean.
+    ``update`` draws g(r) of the current configuration and ``average`` draws
+    it averaged over the frames the simulation has sampled.
     """
 
     BINS = 100
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.r = np.array([])
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
@@ -427,49 +396,50 @@ class RDFPane(_HistoryPane):
         ax.set_xlabel("r / Angstrom")
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
-        configuration = simulation.configuration
-        box = configuration.box
-        edges = np.linspace(0, box / 2, self.BINS + 1)
-        dr = edges[1] - edges[0]
-        r = edges[:-1] + dr / 2
-        distance, _ = pairwise.dist(configuration.position, box)
-        counts, _ = np.histogram(distance, bins=edges)
-        n = configuration.number_of_atoms
-        pairs = n * (n - 1) / 2
-        if pairs == 0:
-            # A single atom has no pairs, and so no radial distribution
-            # function to draw or to average.
+        r, gr = simulation.configuration.rdf(self.BINS)
+        self._draw(ax, r, gr)
+
+    def average(self, ax: Axes, simulation: Simulation) -> None:
+        """Draw g(r) averaged over the trajectory.
+
+        Leaves the curve alone before anything has been sampled.
+
+        Args:
+            ax: Axes this pane was set up in.
+            simulation: The simulation being visualised.
+        """
+        if len(simulation.trajectory) == 0:
+            return
+        r, gr = simulation.trajectory.rdf(self.BINS)
+        self._draw(ax, r, gr)
+
+    @staticmethod
+    def _draw(ax: Axes, r: NDArray[np.float64], gr: NDArray[np.float64]) -> None:
+        if not gr.any():
+            # g(r) is zero in every bin when no pair falls within half the
+            # box, as for a single atom or two atoms further apart than
+            # that, and there is then no curve to draw.
             ax.lines[0].set_data([], [])
             return
-        # The ideal-gas count for the N(N - 1) / 2 pairs, spread evenly over
-        # the box, in a 2D shell of area 2 pi r dr at radius r.
-        ideal = pairs * 2 * np.pi * r * dr / box**2
-        gr = counts / ideal
-        self.r = r * 1e10
-        self.history.append(gr)
-        ax.lines[0].set_data(self.r, gr)
-        _fit_axes(ax, self.r, gr, y_from_zero=True)
-
-    def average(self, ax: Axes) -> None:
-        """Replace the current g(r) with the mean of every update so far.
-
-        Leaves the curve alone when nothing has been drawn to average.
-        """
-        if not self.history:
-            return
-        gr = np.mean(self.history, axis=0)
-        ax.lines[0].set_data(self.r, gr)
-        _fit_axes(ax, self.r, gr, y_from_zero=True)
+        r = r * 1e10
+        ax.lines[0].set_data(r, gr)
+        _fit_axes(ax, r, gr, y_from_zero=True)
 
 
-class ScatteringPane(_HistoryPane):
+class ScatteringPane(Pane):
     """Scattering profile I(q) from the Debye sum over pair distances.
 
     The Debye sum for ``N`` identical scatterers is ``N`` from each atom
-    scattering on its own, plus ``2 sin(q r) / (q r)`` for each pair at
-    distance ``r``.
+    scattering on its own, plus ``2 J0(q r)`` for each pair at distance
+    ``r``, the two-dimensional form.
 
-    Keeps every profile it has drawn so ``average`` can show the mean.
+    The sum is over minimum-image distances, and cutting the distances off
+    at the box makes I(q) dip below zero at some q, which no measurement
+    does. Those dips are drawn rather than hidden, so that the size of the
+    artefact is visible.
+
+    ``update`` draws I(q) of the current configuration and ``average`` draws
+    it averaged over the frames the simulation has sampled.
     """
 
     # An empirical upper limit, in 1/m, that shows the first few peaks for
@@ -477,13 +447,11 @@ class ScatteringPane(_HistoryPane):
     Q_MAX = 1e11
     POINTS = 1000
     SKIP = 20  # lowest-q points, where the box periodicity dominates
-    # q values per block; np.sinc allocates several temporaries of this size
-    # times the pair count
-    BLOCK = 16
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.q = np.array([])
+    # Bins for the trajectory average, which sums over bins rather than over
+    # every pair of every frame. At this many the curve is within about a
+    # tenth of a percent of the peak intensity and takes a fraction of a
+    # second where the exact sum takes tens of seconds.
+    AVERAGE_BINS = 1000
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
@@ -491,38 +459,50 @@ class ScatteringPane(_HistoryPane):
         ax.set_ylabel("I(q)")
         ax.set_xlabel("q / m$^{-1}$")
 
-    def update(self, ax: Axes, simulation: Simulation) -> None:
-        configuration = simulation.configuration
-        distance, _ = pairwise.dist(configuration.position, configuration.box)
-        q = np.linspace(2 * np.pi / configuration.box, self.Q_MAX, self.POINTS)[self.SKIP :]
-        intensity = np.empty_like(q)
-        for start in range(0, q.size, self.BLOCK):
-            block = q[start : start + self.BLOCK]
-            qr = np.outer(block, distance)
-            intensity[start : start + self.BLOCK] = np.sum(np.sinc(qr / np.pi), axis=1)
-        intensity = configuration.number_of_atoms + 2 * intensity
-        self.q = q
-        self.history.append(intensity)
-        ax.lines[0].set_data(q, intensity)
-        _fit_axes(ax, q, intensity, x_from_zero=False, y_from_zero=True)
+    def _q(self, configuration: Configuration) -> NDArray[np.float64]:
+        """The q values to draw, in 1/m.
 
-    def average(self, ax: Axes) -> None:
-        """Replace the current I(q) with the mean of every update so far.
-
-        Leaves the curve alone when nothing has been drawn to average.
+        The grid runs from ``2 pi / L`` to ``Q_MAX``, and the first ``SKIP``
+        points are dropped, so the lowest q drawn is a small multiple of
+        ``2 pi / L``.
         """
-        if not self.history:
+        return np.linspace(2 * np.pi / configuration.box, self.Q_MAX, self.POINTS)[self.SKIP :]
+
+    def update(self, ax: Axes, simulation: Simulation) -> None:
+        q = self._q(simulation.configuration)
+        self._draw(ax, q, simulation.configuration.scattering(q))
+
+    def average(self, ax: Axes, simulation: Simulation) -> None:
+        """Draw I(q) averaged over the trajectory.
+
+        The pair distances are binned, so the curve is close to but not
+        exactly the sum over every pair. It is within about a tenth of a
+        percent of the peak intensity at ``AVERAGE_BINS`` bins; leaving
+        ``bins`` out of ``Trajectory.scattering`` sums every pair exactly.
+        Leaves the curve alone before anything has been sampled.
+
+        Args:
+            ax: Axes this pane was set up in.
+            simulation: The simulation being visualised.
+        """
+        if len(simulation.trajectory) == 0:
             return
-        intensity = np.mean(self.history, axis=0)
-        ax.lines[0].set_data(self.q, intensity)
-        _fit_axes(ax, self.q, intensity, x_from_zero=False, y_from_zero=True)
+        q = self._q(simulation.configuration)
+        self._draw(ax, q, simulation.trajectory.scattering(q, bins=self.AVERAGE_BINS))
+
+    @staticmethod
+    def _draw(ax: Axes, q: NDArray[np.float64], intensity: NDArray[np.float64]) -> None:
+        ax.lines[0].set_data(q, intensity)
+        # The y axis follows the data rather than starting at zero, so that
+        # where truncation takes I(q) negative the dip is visible.
+        _fit_axes(ax, q, intensity, x_from_zero=False)
 
 
 class MaxwellBoltzmannPane(Pane):
     """Histogram of the speeds of every atom at every update so far.
 
-    The histogram already pools every update, so there is no separate history
-    to average and this pane has no average to show."""
+    The histogram already pools the speeds of every update, so this pane has
+    no separate average to show."""
 
     needs_md = True
     BINS = 25
