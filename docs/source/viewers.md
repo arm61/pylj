@@ -25,7 +25,7 @@ A viewer is a figure that redraws when `update(simulation)` is called. Eight are
 - `CellPlus`: positions and one plot of data you supply through `update(simulation, xdata, ydata)`.
 - `Interactions`: positions, temperature, pressure and total energy.
 - `Phase`: positions, total energy, mean squared displacement and the radial distribution function.
-- `Scattering`: positions, the radial distribution function, mean squared displacement and the scattering profile.
+- `Scattering`: positions, the radial distribution function, mean squared displacement and the structure factor.
 
 `MaxBolt`, `Interactions`, `Phase` and `Scattering` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot. `average(simulation)` replaces the latest curve with the mean over the trajectory, the frames `sample()` has recorded, on the radial distribution function and scattering panes; the other panes it leaves alone. Axes are in Angstrom, picoseconds and otherwise SI units.
 
