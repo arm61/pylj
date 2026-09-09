@@ -139,7 +139,6 @@ class TestConfiguration(unittest.TestCase):
         rng = np.random.default_rng(1)
         n, box, cut_off = 8, 30e-10, 9e-10
         species_index = np.array([0, 1, 0, 1, 0, 1, 0, 1])
-        model = MIXTURE_MODEL
         full = configuration(
             rng.uniform(0, box, (n, 2)),
             species=MIXTURE_MODEL.species,
@@ -148,10 +147,10 @@ class TestConfiguration(unittest.TestCase):
         )
         without_last = full.without(n - 1)
         added = without_last.insertion_energy(
-            full.position[-1], int(species_index[-1]), model, cut_off
+            full.position[-1], int(species_index[-1]), MIXTURE_MODEL, cut_off
         )
-        difference = full.potential_energy(model, cut_off) - without_last.potential_energy(
-            model, cut_off
+        difference = full.potential_energy(MIXTURE_MODEL, cut_off) - without_last.potential_energy(
+            MIXTURE_MODEL, cut_off
         )
         assert_allclose(added, difference, rtol=1e-9)
 
@@ -168,7 +167,6 @@ class TestConfiguration(unittest.TestCase):
             species_index=species_index,
             box=box,
         )
-        model = MIXTURE_MODEL
         reference = np.zeros((n, 2))
         virial = 0.0
         for a in range(n - 1):
@@ -176,15 +174,15 @@ class TestConfiguration(unittest.TestCase):
                 separation = c.position[a] - c.position[b]
                 separation -= box * np.round(separation / box)
                 dr = np.linalg.norm(separation)
-                potential = model.potential(
+                potential = MIXTURE_MODEL.potential(
                     c.species[species_index[a]], c.species[species_index[b]]
                 )
                 force = potential.forces(dr)
                 reference[a] += force * separation / dr
                 reference[b] -= force * separation / dr
                 virial += force * dr
-        assert_allclose(c.forces(model, 1e-8), reference, rtol=1e-12)
-        assert_allclose(c.virial(model, 1e-8), virial, rtol=1e-12)
+        assert_allclose(c.forces(MIXTURE_MODEL, 1e-8), reference, rtol=1e-12)
+        assert_allclose(c.virial(MIXTURE_MODEL, 1e-8), virial, rtol=1e-12)
 
     def test_forces_are_equal_and_opposite_for_a_pair(self):
         c = configuration([[0.0, 0.0], [4e-10, 0.0]])
@@ -219,15 +217,14 @@ class TestConfiguration(unittest.TestCase):
         # Two argon 0.5 Angstrom apart, inside the Buckingham barrier: the
         # formula there is a deep negative number, but the pair is forbidden,
         # so the energy is infinite and asking for the force raises.
-        model = BUCKINGHAM_MODEL
         c = configuration([[0.0, 0.0], [0.5e-10, 0.0]])
         self.assertLess(BUCKINGHAM_ARGON.energies(np.array([0.5e-10]))[0], 0.0)
-        self.assertEqual(c.pairs(model, 15e-10).energy[0], np.inf)
-        self.assertEqual(c.potential_energy(model, 15e-10), np.inf)
+        self.assertEqual(c.pairs(BUCKINGHAM_MODEL, 15e-10).energy[0], np.inf)
+        self.assertEqual(c.potential_energy(BUCKINGHAM_MODEL, 15e-10), np.inf)
         with self.assertRaisesRegex(ValueError, "unphysical"):
-            c.forces(model, 15e-10)
+            c.forces(BUCKINGHAM_MODEL, 15e-10)
         with self.assertRaisesRegex(ValueError, "collapsed"):
-            c.virial(model, 15e-10)
+            c.virial(BUCKINGHAM_MODEL, 15e-10)
 
     def test_insertion_energy_forbids_a_separation_where_the_potential_is_unphysical(self):
         c = configuration([[0.0, 0.0]])

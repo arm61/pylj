@@ -56,8 +56,7 @@ class Configuration:
     description of how the atoms interact. Each method that evaluates the
     interactions between atoms is given a ``Model`` and a ``cut_off`` when it
     is called, so the same configuration can be evaluated under different
-    potentials.
-    Everything is in SI units.
+    potentials. Everything is in SI units.
 
     Attributes:
         position: The position of each atom, shape ``(N, 2)``, in

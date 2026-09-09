@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import md, placement, simulation
-from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, WELL_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL, WELL_MODEL
 
 
 class TestInitialEnergyCheck(unittest.TestCase):
@@ -88,6 +88,10 @@ class TestSimulation(unittest.TestCase):
         c = placement.place_square(4, (LARGER,), 40e-10)
         with self.assertRaisesRegex(ValueError, "larger.*not in the model"):
             Counting(c, ARGON_MODEL)
+
+    def test_accepts_a_configuration_using_some_of_the_model_species(self):
+        c = placement.place_square(4, (ARGON,), 40e-10)
+        self.assertIs(Counting(c, MIXTURE_MODEL).model, MIXTURE_MODEL)
 
     def test_step_and_sample_are_abstract(self):
         class Stepless(simulation.Simulation):

@@ -7,11 +7,11 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Added
 
-- `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
+- `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built and read-only after; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
 
 ### Changed
 
-- `MDSimulation.initialise` and `MCSimulation.initialise` take a `Model` as their one positional argument in place of the `species` and `pair_potentials` keywords, and the constructors take it in place of `pair_potentials`. A simulation holds it as `model`. `Configuration.pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy`, `md.velocity_verlet`, `placement.place` and `placement.place_metropolis` take it likewise.
+- `MDSimulation.initialise` and `MCSimulation.initialise` take a `Model` as their one positional argument in place of the `species` and `pair_potentials` keywords, and the constructors take it in place of `pair_potentials`. A simulation holds it as `model`. `Configuration.pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy`, `md.velocity_verlet`, `placement.place` and `placement.place_metropolis` take it likewise; `place_metropolis` no longer takes `species` separately, since the model carries them.
 
 ### Removed
 
