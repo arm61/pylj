@@ -6,9 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from scipy.special import j0
 
-from pylj import pairwise
 from pylj.configuration import Configuration
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
@@ -406,14 +404,9 @@ def test_scattering_pane_average_is_the_trajectory_mean():
     pane = ScatteringPane()
     pane.setup(ax, simulation)
     pane.average(ax, simulation)
-    box = simulation.configuration.box
-    q = np.linspace(2 * np.pi / box, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
-    q = q[ScatteringPane.SKIP :]
-    assert_allclose(
-        ax.lines[0].get_ydata(),
-        simulation.trajectory.scattering(q, bins=ScatteringPane.AVERAGE_BINS),
-    )
+    q, s = simulation.trajectory.structure_factor()
     assert_allclose(ax.lines[0].get_xdata(), q)
+    assert_allclose(ax.lines[0].get_ydata(), s)
     plt.close(fig)
 
 
@@ -423,27 +416,22 @@ def test_scattering_pane_is_finite_and_non_negative():
     pane = ScatteringPane()
     pane.setup(ax, simulation)
     pane.update(ax, simulation)
-    intensity = ax.lines[0].get_ydata()
-    assert np.isfinite(intensity).all()
-    assert (intensity >= 0).all()
+    s = ax.lines[0].get_ydata()
+    assert np.isfinite(s).all()
+    assert (s >= 0).all()
     plt.close(fig)
 
 
-def test_scattering_pane_matches_direct_debye_sum():
-    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+def test_scattering_pane_draws_the_configuration_structure_factor():
+    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=100, box=25)
     fig, ax = environment(1)
     pane = ScatteringPane()
     pane.setup(ax, simulation)
     pane.update(ax, simulation)
-
-    box = simulation.configuration.box
-    q = np.linspace(2 * np.pi / box, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
-    q = q[ScatteringPane.SKIP :]
-    r, _ = pairwise.dist(simulation.configuration.position, box)
-    n = simulation.configuration.number_of_atoms
-    expected = np.array([n + 2 * np.sum(j0(qi * r)) for qi in q])
-    assert np.all(expected > 0)
-    assert_allclose(ax.lines[0].get_ydata(), expected, rtol=1e-6)
+    q, s = simulation.configuration.structure_factor()
+    assert_allclose(ax.lines[0].get_xdata(), q)
+    assert_allclose(ax.lines[0].get_ydata(), s)
+    assert ax.get_ylabel() == "S(q)"
     plt.close(fig)
 
 
@@ -711,17 +699,3 @@ def test_fit_axes_pads_a_constant_series_and_hides_the_offset():
     fig.canvas.draw()
     assert ax.yaxis.get_major_formatter().get_offset() == ""
     plt.close(fig)
-
-
-def test_scattering_pane_average_bins_are_fine_enough():
-    simulation = run_md_loop(
-        MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=100, box=25, seed=1),
-        steps=200,
-        every=10,
-    )
-    box = simulation.configuration.box
-    q = np.linspace(2 * np.pi / box, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
-    q = q[ScatteringPane.SKIP :]
-    exact = simulation.trajectory.scattering(q)
-    binned = simulation.trajectory.scattering(q, bins=ScatteringPane.AVERAGE_BINS)
-    assert np.abs(binned - exact).max() < 0.005 * exact.max()

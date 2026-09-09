@@ -13,7 +13,6 @@ import numpy.typing as npt
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
 
-from pylj.configuration import Configuration
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.potentials import PairPotential
@@ -427,58 +426,23 @@ class RDFPane(Pane):
 
 
 class ScatteringPane(Pane):
-    """Scattering profile I(q) from the Debye sum over pair distances.
+    """Structure factor S(q) of the configuration.
 
-    The Debye sum for ``N`` identical scatterers is ``N`` from each atom
-    scattering on its own, plus ``2 J0(q r)`` for each pair at distance
-    ``r``, the two-dimensional form.
-
-    The sum is over minimum-image distances, and cutting the distances off
-    at the box makes I(q) dip below zero at some q, which no measurement
-    does. Those dips are drawn rather than hidden, so that the size of the
-    artefact is visible.
-
-    ``update`` draws I(q) of the current configuration and ``average`` draws
+    ``update`` draws S(q) of the current configuration and ``average`` draws
     it averaged over the frames the simulation has sampled.
     """
 
-    # An empirical upper limit, in 1/m, that shows the first few peaks for
-    # argon-sized atoms.
-    Q_MAX = 1e11
-    POINTS = 1000
-    SKIP = 20  # lowest-q points, where the box periodicity dominates
-    # Bins for the trajectory average, which sums over bins rather than over
-    # every pair of every frame. At this many the curve is within about a
-    # tenth of a percent of the peak intensity and takes a fraction of a
-    # second where the exact sum takes tens of seconds.
-    AVERAGE_BINS = 1000
-
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_yticks([])
-        ax.set_ylabel("I(q)")
+        ax.set_ylabel("S(q)")
         ax.set_xlabel("q / m$^{-1}$")
 
-    def _q(self, configuration: Configuration) -> NDArray[np.float64]:
-        """The q values to draw, in 1/m.
-
-        The grid runs from ``2 pi / L`` to ``Q_MAX``, and the first ``SKIP``
-        points are dropped, so the lowest q drawn is a small multiple of
-        ``2 pi / L``.
-        """
-        return np.linspace(2 * np.pi / configuration.box, self.Q_MAX, self.POINTS)[self.SKIP :]
-
     def update(self, ax: Axes, simulation: Simulation) -> None:
-        q = self._q(simulation.configuration)
-        self._draw(ax, q, simulation.configuration.scattering(q))
+        self._draw(ax, *simulation.configuration.structure_factor())
 
     def average(self, ax: Axes, simulation: Simulation) -> None:
-        """Draw I(q) averaged over the trajectory.
+        """Draw S(q) averaged over the trajectory.
 
-        The pair distances are binned, so the curve is close to but not
-        exactly the sum over every pair. It is within about a tenth of a
-        percent of the peak intensity at ``AVERAGE_BINS`` bins; leaving
-        ``bins`` out of ``Trajectory.scattering`` sums every pair exactly.
         Leaves the curve alone before anything has been sampled.
 
         Args:
@@ -487,15 +451,12 @@ class ScatteringPane(Pane):
         """
         if len(simulation.trajectory) == 0:
             return
-        q = self._q(simulation.configuration)
-        self._draw(ax, q, simulation.trajectory.scattering(q, bins=self.AVERAGE_BINS))
+        self._draw(ax, *simulation.trajectory.structure_factor())
 
     @staticmethod
-    def _draw(ax: Axes, q: NDArray[np.float64], intensity: NDArray[np.float64]) -> None:
-        ax.lines[0].set_data(q, intensity)
-        # The y axis follows the data rather than starting at zero, so that
-        # where truncation takes I(q) negative the dip is visible.
-        _fit_axes(ax, q, intensity, x_from_zero=False)
+    def _draw(ax: Axes, q: NDArray[np.float64], s: NDArray[np.float64]) -> None:
+        ax.lines[0].set_data(q, s)
+        _fit_axes(ax, q, s, x_from_zero=False, y_from_zero=True)
 
 
 class MaxwellBoltzmannPane(Pane):
