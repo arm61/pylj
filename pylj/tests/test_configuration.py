@@ -324,6 +324,20 @@ class TestScattering(unittest.TestCase):
         q = np.linspace(1e9, 1e11, 300)
         assert_allclose(c.scattering(q), 2 + 2 * j0(q * 4e-10))
 
+    def test_binned_sum_is_close_to_the_exact_one(self):
+        c = two_atoms(4e-10)
+        q = np.linspace(1e9, 5e10, 100)
+        exact = c.scattering(q)
+        assert_allclose(c.scattering(q, bins=4000), exact, atol=0.01 * exact.max())
+
+    def test_binned_sum_keeps_a_pair_on_the_half_diagonal(self):
+        box = 20e-10
+        # Two atoms diagonally opposite are the half-diagonal apart, the
+        # furthest a minimum-image separation reaches. The pair still counts,
+        # so the forward-scattering limit is N squared.
+        c = configuration(np.array([[0.0, 0.0], [box / 2, box / 2]]), box=box)
+        assert_allclose(c.scattering(1e-6, bins=2000), 4.0, rtol=1e-9)
+
     def test_single_atom_scatters_as_itself(self):
         c = configuration([[1e-10, 1e-10]], box=20e-10)
         assert_allclose(c.scattering(np.array([1e10, 2e10])), 1.0)

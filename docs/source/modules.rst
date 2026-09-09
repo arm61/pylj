@@ -15,6 +15,7 @@ The other modules are the plumbing those five are built on.
    pairwise
    placement
    potentials
+   scattering
    sample
    simulation
    trajectory

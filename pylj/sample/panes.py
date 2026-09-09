@@ -416,8 +416,9 @@ class RDFPane(Pane):
     @staticmethod
     def _draw(ax: Axes, r: NDArray[np.float64], gr: NDArray[np.float64]) -> None:
         if not gr.any():
-            # g(r) is zero everywhere when there are no pairs to bin, as for
-            # a single atom, and there is then no curve to draw.
+            # g(r) is zero in every bin when no pair falls within half the
+            # box, as for a single atom or two atoms further apart than
+            # that, and there is then no curve to draw.
             ax.lines[0].set_data([], [])
             return
         r = r * 1e10
@@ -432,6 +433,11 @@ class ScatteringPane(Pane):
     scattering on its own, plus ``2 J0(q r)`` for each pair at distance
     ``r``, the two-dimensional form.
 
+    The sum is over minimum-image distances, and cutting the distances off
+    at the box makes I(q) dip below zero at some q, which no measurement
+    does. Those dips are drawn rather than hidden, so that the size of the
+    artefact is visible.
+
     ``update`` draws I(q) of the current configuration and ``average`` draws
     it averaged over the frames the simulation has sampled.
     """
@@ -443,7 +449,8 @@ class ScatteringPane(Pane):
     SKIP = 20  # lowest-q points, where the box periodicity dominates
     # Bins for the trajectory average, which sums over bins rather than over
     # every pair of every frame. At this many the curve is within about a
-    # tenth of a percent of the exact sum and takes a fraction of a second.
+    # tenth of a percent of the peak intensity and takes a fraction of a
+    # second where the exact sum takes tens of seconds.
     AVERAGE_BINS = 1000
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
@@ -453,7 +460,12 @@ class ScatteringPane(Pane):
         ax.set_xlabel("q / m$^{-1}$")
 
     def _q(self, configuration: Configuration) -> NDArray[np.float64]:
-        """The q values to draw, in 1/m, from the box to ``Q_MAX``."""
+        """The q values to draw, in 1/m.
+
+        The grid runs from ``2 pi / L`` to ``Q_MAX``, and the first ``SKIP``
+        points are dropped, so the lowest q drawn is a small multiple of
+        ``2 pi / L``.
+        """
         return np.linspace(2 * np.pi / configuration.box, self.Q_MAX, self.POINTS)[self.SKIP :]
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
@@ -464,9 +476,10 @@ class ScatteringPane(Pane):
         """Draw I(q) averaged over the trajectory.
 
         The pair distances are binned, so the curve is close to but not
-        exactly the sum over every pair; ``Trajectory.scattering`` computes
-        the exact average. Leaves the curve alone before anything has been
-        sampled.
+        exactly the sum over every pair. It is within about a tenth of a
+        percent of the peak intensity at ``AVERAGE_BINS`` bins; leaving
+        ``bins`` out of ``Trajectory.scattering`` sums every pair exactly.
+        Leaves the curve alone before anything has been sampled.
 
         Args:
             ax: Axes this pane was set up in.
@@ -480,7 +493,9 @@ class ScatteringPane(Pane):
     @staticmethod
     def _draw(ax: Axes, q: NDArray[np.float64], intensity: NDArray[np.float64]) -> None:
         ax.lines[0].set_data(q, intensity)
-        _fit_axes(ax, q, intensity, x_from_zero=False, y_from_zero=True)
+        # The y axis follows the data rather than starting at zero, so that
+        # where truncation takes I(q) negative the dip is visible.
+        _fit_axes(ax, q, intensity, x_from_zero=False)
 
 
 class MaxwellBoltzmannPane(Pane):

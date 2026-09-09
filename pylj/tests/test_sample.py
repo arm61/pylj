@@ -639,8 +639,15 @@ def test_average_is_available_before_any_update(drawing_display):
 
 
 def test_average_on_series_panes_does_nothing(drawing_display):
-    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
-    Energy(simulation).average(simulation)
+    simulation = run_md_loop(
+        MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20),
+        steps=3,
+        every=1,
+    )
+    viewer = Energy(simulation)
+    before = [data.copy() for data in viewer.axes[1].lines[0].get_data()]
+    viewer.average(simulation)
+    assert_allclose(viewer.axes[1].lines[0].get_data(), before)
 
 
 def test_cell_plus_rejects_half_supplied_data(drawing_display):
@@ -704,3 +711,17 @@ def test_fit_axes_pads_a_constant_series_and_hides_the_offset():
     fig.canvas.draw()
     assert ax.yaxis.get_major_formatter().get_offset() == ""
     plt.close(fig)
+
+
+def test_scattering_pane_average_bins_are_fine_enough():
+    simulation = run_md_loop(
+        MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=100, box=25, seed=1),
+        steps=200,
+        every=10,
+    )
+    box = simulation.configuration.box
+    q = np.linspace(2 * np.pi / box, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
+    q = q[ScatteringPane.SKIP :]
+    exact = simulation.trajectory.scattering(q)
+    binned = simulation.trajectory.scattering(q, bins=ScatteringPane.AVERAGE_BINS)
+    assert np.abs(binned - exact).max() < 0.005 * exact.max()

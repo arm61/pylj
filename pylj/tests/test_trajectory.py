@@ -83,7 +83,12 @@ class TestTrajectory(unittest.TestCase):
         assert_allclose(binned, exact, atol=0.02 * exact.max())
 
     def test_binned_scattering_keeps_every_pair(self):
-        one = frame(atoms=25)
-        # Every pair counts, including those beyond half the box, so the
-        # forward-scattering limit is N squared however the distances fall.
-        assert_allclose(Trajectory([one]).scattering(1e-6, bins=2000), 25**2, rtol=1e-6)
+        # Every pair counts, including those on the half-diagonal, the
+        # furthest two atoms can be apart, so the forward-scattering limit
+        # is N squared however the distances fall.
+        for atoms, box in ((16, 25e-10), (25, 20e-10), (64, 50e-10), (100, 25e-10)):
+            with self.subTest(atoms=atoms, box=box):
+                one = frame(box=box, atoms=atoms)
+                assert_allclose(
+                    Trajectory([one]).scattering(1e-6, bins=2000), atoms**2, rtol=1e-9
+                )

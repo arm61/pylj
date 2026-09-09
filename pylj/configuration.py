@@ -6,69 +6,12 @@ from typing import Any, Self
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from scipy.special import j0
 
 from pylj import pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.model import Model
 from pylj.potentials import Species
-
-
-def debye_sum(
-    distance: NDArray[np.float64],
-    q: NDArray[np.float64],
-    number_of_atoms: int,
-    weight: NDArray[np.float64] | None = None,
-    frames: int = 1,
-) -> NDArray[np.float64]:
-    """Return the two-dimensional Debye sum over a set of pair distances.
-
-    Each distance contributes ``2 J0(q r)``, and each atom contributes one
-    for scattering on its own.
-
-    Args:
-        distance: The pair distances to sum over, in metres.
-        q: The magnitudes of the scattering vector, in 1/m.
-        number_of_atoms: The number of atoms in one frame.
-        weight: How many pairs each distance stands for; by default one
-            each. Binning gives one distance per bin and the count in it.
-        frames: The number of frames the distances came from, which the sum
-            is divided by.
-
-    Returns:
-        I(q) at each value of ``q``, per frame.
-    """
-    intensity = np.empty_like(q)
-    # A block of q values at a time; the outer product with the pair
-    # distances is what takes the memory.
-    block = 16
-    for start in range(0, q.size, block):
-        qr = j0(np.outer(q[start : start + block], distance))
-        if weight is not None:
-            qr = qr * weight
-        intensity[start : start + block] = qr.sum(axis=1)
-    return number_of_atoms + 2 * intensity / frames
-
-
-def binned_distances(
-    distance: NDArray[np.float64], bins: int, r_max: float
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """Return the centre of each bin and how many distances fall in it.
-
-    Args:
-        distance: The pair distances, in metres.
-        bins: The number of bins.
-        r_max: The largest distance binned, in metres. Any distance beyond
-            it is dropped, so a sum over every pair needs an ``r_max`` of at
-            least the half-diagonal of the box.
-
-    Returns:
-        The bin centres, in metres, and how many distances fall in each.
-    """
-    edges = np.linspace(0, r_max, bins + 1)
-    counts, _ = np.histogram(distance, bins=edges)
-    dr = edges[1] - edges[0]
-    return edges[:-1] + dr / 2, counts.astype(float)
+from pylj.scattering import binned_distances, debye_sum, max_separation
 
 
 @dataclass(frozen=True, eq=False)
@@ -346,9 +289,11 @@ class Configuration:
         average over every direction in three dimensions.
 
         The sum is over minimum-image distances, so it says nothing about
-        the system on a scale larger than the box. Below a q of about
-        ``2 pi / L`` the box itself and the ``N`` self-scattering term
-        dominate, and I(q) rises towards ``N^2`` at q of zero.
+        the system on a scale larger than the box: below a q of about
+        ``2 pi / L`` every pair adds in phase and I(q) climbs towards
+        ``N^2``. Truncating the distances at the box also makes I(q)
+        negative at some q, which no real measurement is. The lowest q worth
+        drawing is therefore ``2 pi / L`` or a little above.
 
         Args:
             q: The magnitudes of the scattering vector, in 1/m.
@@ -362,11 +307,10 @@ class Configuration:
         Returns:
             I(q) at each value of ``q``, in units of one atom's scattering.
         """
-        q = np.atleast_1d(np.asarray(q, dtype=float))
         distance, _ = pairwise.dist(self.position, self.box)
         if bins is None:
             return debye_sum(distance, q, self.number_of_atoms)
-        centre, counts = binned_distances(distance, bins, self.box / np.sqrt(2))
+        centre, counts = binned_distances(distance, bins, max_separation(self.box))
         return debye_sum(centre, q, self.number_of_atoms, weight=counts)
 
 
