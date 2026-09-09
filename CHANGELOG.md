@@ -8,6 +8,7 @@ All notable changes to pylj are recorded here. The format follows
 ### Added
 
 - `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built and read-only after; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
+- `LennardJones`, `Buckingham` and `SquareWell` print as the constructor call that built them, so a model shows its parameters in a notebook.
 
 ### Changed
 
