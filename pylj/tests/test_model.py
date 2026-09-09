@@ -73,6 +73,10 @@ class TestModel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "'argon' is not one of the species"):
             Model((ARGON,), {("argon", "argon"): LJ_ARGON})
 
+    def test_rejects_a_string_as_a_species(self):
+        with self.assertRaisesRegex(TypeError, r"Species\(mass="):
+            Model(("argon",), {("argon", "argon"): LJ_ARGON})
+
     def test_is_frozen(self):
         model = Model.single(ARGON, LJ_ARGON)
         with self.assertRaises(AttributeError):
@@ -97,4 +101,4 @@ class TestModel(unittest.TestCase):
     def test_repr_names_the_species_and_potentials(self):
         text = repr(Model.single(ARGON, LJ_ARGON))
         self.assertTrue(text.startswith("Model(species=("))
-        self.assertIn("LennardJones", text)
+        self.assertIn("LennardJones(epsilon=", text)

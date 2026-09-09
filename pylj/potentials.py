@@ -92,6 +92,9 @@ class LennardJones(PairPotential):
         self.epsilon = epsilon
         self.sigma = sigma
 
+    def __repr__(self) -> str:
+        return f"LennardJones(epsilon={self.epsilon!r}, sigma={self.sigma!r})"
+
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
         with np.errstate(divide="ignore"):
@@ -144,6 +147,9 @@ class Buckingham(PairPotential):
         self.b = b
         self.c = c
         self.min_separation = self._find_barrier()
+
+    def __repr__(self) -> str:
+        return f"Buckingham(a={self.a!r}, b={self.b!r}, c={self.c!r})"
 
     def _form(self, dr: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.a * np.exp(-self.b * dr) - self.c / dr**6
@@ -222,6 +228,12 @@ class SquareWell(PairPotential):
         self.sigma = sigma
         self.lambda_ = lambda_
         self.max_val = max_val
+
+    def __repr__(self) -> str:
+        return (
+            f"SquareWell(epsilon={self.epsilon!r}, sigma={self.sigma!r}, "
+            f"lambda_={self.lambda_!r}, max_val={self.max_val!r})"
+        )
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)

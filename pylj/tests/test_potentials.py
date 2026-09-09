@@ -91,6 +91,10 @@ class TestLennardJones:
         assert lj.energies(np.array([0.0]))[0] == np.inf
         assert lj.forces(np.array([0.0]))[0] == np.inf
 
+    def test_repr_is_the_constructor_call(self):
+        lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
+        assert repr(lj) == "LennardJones(epsilon=1.577e-21, sigma=3.372e-10)"
+
 
 class TestBuckingham:
     def test_constructor_is_keyword_only(self):
@@ -152,6 +156,10 @@ class TestBuckingham:
         assert bk.min_separation == 0.0
         assert np.isfinite(bk.energies(np.array([1e-12]))[0])
 
+    def test_repr_is_the_constructor_call(self):
+        bk = Buckingham(a=1e-16, b=3e10, c=1e-77)
+        assert repr(bk) == "Buckingham(a=1e-16, b=30000000000.0, c=1e-77)"
+
     def test_other_potentials_are_physical_everywhere(self):
         assert LennardJones(epsilon=1.65e-21, sigma=3.4e-10).min_separation == 0.0
         assert SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5).min_separation == 0.0
@@ -193,3 +201,9 @@ class TestSquareWell:
         sw = SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5)
         with pytest.raises(ValueError, match="Monte Carlo"):
             sw.forces(np.array([4.0e-10]))
+
+    def test_repr_is_the_constructor_call(self):
+        sw = SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5, max_val=1e-19)
+        assert repr(sw) == (
+            "SquareWell(epsilon=1.65e-21, sigma=3.4e-10, lambda_=1.5, max_val=1e-19)"
+        )

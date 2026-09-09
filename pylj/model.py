@@ -70,8 +70,9 @@ class Model:
             species, a pair of species has no potential, or a cross pair is
             given in both orders.
         TypeError: If ``species`` is a single ``Species`` rather than a
-            sequence, or a value in ``pair_potentials`` is not a
-            ``PairPotential`` instance.
+            sequence, an item of ``species`` is not a ``Species``, or a
+            value in ``pair_potentials`` is not a ``PairPotential``
+            instance.
     """
 
     def __init__(self, species: Sequence[Species], pair_potentials: PairPotentials) -> None:
@@ -81,6 +82,12 @@ class Model:
                 "for one species, Model.single(species, potential) builds the model"
             )
         self._species = tuple(species)
+        for one in self._species:
+            if not isinstance(one, Species):
+                raise TypeError(
+                    f"species must be Species instances, such as Species(mass=39.948, "
+                    f"name='argon'), not {one!r}"
+                )
         self._pair_potentials = MappingProxyType(dict(pair_potentials))
         _check_complete(self._species, self._pair_potentials)
 
