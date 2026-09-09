@@ -75,7 +75,8 @@ class Model:
     ) -> None:
         if isinstance(species, Species | str):
             raise TypeError(
-                f"species must be a sequence of Species, such as ({species!r},); "
+                "species must be a sequence of Species, such as "
+                f"(Species(mass=39.948, name='argon'),), not {species!r}; "
                 "for one species, Model.single(species, potential) builds the model"
             )
         self._species = tuple(species)
