@@ -409,7 +409,10 @@ def test_scattering_pane_average_is_the_trajectory_mean():
     box = simulation.configuration.box
     q = np.linspace(2 * np.pi / box, ScatteringPane.Q_MAX, ScatteringPane.POINTS)
     q = q[ScatteringPane.SKIP :]
-    assert_allclose(ax.lines[0].get_ydata(), simulation.trajectory.scattering(q))
+    assert_allclose(
+        ax.lines[0].get_ydata(),
+        simulation.trajectory.scattering(q, bins=ScatteringPane.AVERAGE_BINS),
+    )
     assert_allclose(ax.lines[0].get_xdata(), q)
     plt.close(fig)
 

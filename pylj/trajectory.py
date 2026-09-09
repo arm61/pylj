@@ -7,7 +7,8 @@ from typing import overload
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pylj.configuration import Configuration
+from pylj import pairwise
+from pylj.configuration import Configuration, binned_distances, debye_sum
 
 
 class Trajectory:
@@ -107,14 +108,18 @@ class Trajectory:
         gr = np.mean([one.rdf(bins, r_max)[1] for one in self._frames], axis=0)
         return r, gr
 
-    def scattering(self, q: ArrayLike) -> NDArray[np.float64]:
+    def scattering(self, q: ArrayLike, bins: int | None = None) -> NDArray[np.float64]:
         """Return I(q) averaged over the frames.
-
-        Each frame's :meth:`~pylj.configuration.Configuration.scattering` is
-        taken and the mean over frames returned.
 
         Args:
             q: The magnitudes of the scattering vector, in 1/m.
+            bins: If given, the pair distances of every frame are binned
+                together and the sum is over bins rather than pairs, as in
+                :meth:`~pylj.configuration.Configuration.scattering`. One
+                sum then serves the whole trajectory, which is much faster
+                than summing each frame in turn, at the cost of taking every
+                distance in a bin to be at the bin centre. By default every
+                pair of every frame is summed exactly.
 
         Returns:
             The mean I(q) at each value of ``q``.
@@ -123,7 +128,20 @@ class Trajectory:
             ValueError: If the trajectory has no frames.
         """
         self._check_frames()
-        return np.mean([one.scattering(q) for one in self._frames], axis=0)
+        if bins is None:
+            return np.mean([one.scattering(q) for one in self._frames], axis=0)
+        q = np.atleast_1d(np.asarray(q, dtype=float))
+        first = self._frames[0]
+        r_max = first.box / np.sqrt(2)
+        centre = np.array([])
+        total = np.zeros(bins)
+        for one in self._frames:
+            distance, _ = pairwise.dist(one.position, one.box)
+            centre, counts = binned_distances(distance, bins, r_max)
+            total += counts
+        return debye_sum(
+            centre, q, first.number_of_atoms, weight=total, frames=len(self._frames)
+        )
 
     def _check_frames(self) -> None:
         if not self._frames:

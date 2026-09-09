@@ -441,6 +441,10 @@ class ScatteringPane(Pane):
     Q_MAX = 1e11
     POINTS = 1000
     SKIP = 20  # lowest-q points, where the box periodicity dominates
+    # Bins for the trajectory average, which sums over bins rather than over
+    # every pair of every frame. At this many the curve is within about a
+    # tenth of a percent of the exact sum and takes a fraction of a second.
+    AVERAGE_BINS = 1000
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
@@ -459,7 +463,10 @@ class ScatteringPane(Pane):
     def average(self, ax: Axes, simulation: Simulation) -> None:
         """Draw I(q) averaged over the trajectory.
 
-        Leaves the curve alone before anything has been sampled.
+        The pair distances are binned, so the curve is close to but not
+        exactly the sum over every pair; ``Trajectory.scattering`` computes
+        the exact average. Leaves the curve alone before anything has been
+        sampled.
 
         Args:
             ax: Axes this pane was set up in.
@@ -468,7 +475,7 @@ class ScatteringPane(Pane):
         if len(simulation.trajectory) == 0:
             return
         q = self._q(simulation.configuration)
-        self._draw(ax, q, simulation.trajectory.scattering(q))
+        self._draw(ax, q, simulation.trajectory.scattering(q, bins=self.AVERAGE_BINS))
 
     @staticmethod
     def _draw(ax: Axes, q: NDArray[np.float64], intensity: NDArray[np.float64]) -> None:

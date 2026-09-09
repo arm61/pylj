@@ -79,7 +79,12 @@ A configuration is kept only if it was sampled, so memory grows with the number 
 
 Two analyses are computed on demand, from one frame or averaged over a trajectory. `rdf(bins=100, r_max=None)` returns the bin centres in metres and g(r), which is one where the atoms are spread as evenly as an ideal gas; `r_max` defaults to half the box. `scattering(q)` returns the scattering intensity from the two-dimensional Debye sum, `N` plus twice the sum over pairs of the Bessel function `J0(qr)`, for `q` in inverse metres.
 
-Both cost more over a trajectory than over one frame, in proportion to the number of frames. `rdf` is a histogram per frame and stays fast; `scattering` evaluates a Bessel function for every pair at every q, so averaging it over hundreds of frames of a hundred atoms takes tens of seconds.
+Both cost more over a trajectory than over one frame, in proportion to the number of frames. `rdf` is a histogram per frame and stays fast. `scattering` evaluates a Bessel function for every pair at every q, so averaging it over two hundred frames of a hundred atoms takes about twenty seconds. Giving it a number of bins sums over binned distances instead, taking every distance in a bin to be at the bin centre; the same average then takes a tenth of a second and is within about a tenth of a percent of the exact sum. More bins are needed to reach a larger q, since the error grows with q times the bin width.
+
+```python
+i_exact = simulation.trajectory.scattering(q)
+i_binned = simulation.trajectory.scattering(q, bins=1000)
+```
 
 ```python
 r, gr = simulation.configuration.rdf()   # the configuration now

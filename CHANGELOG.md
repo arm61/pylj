@@ -28,7 +28,7 @@ All notable changes to pylj are recorded here. The format follows
 - `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built and read-only after; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
 - `LennardJones`, `Buckingham` and `SquareWell` print as the constructor call that built them, so a model shows its parameters in a notebook.
 - `pylj.trajectory.Trajectory`, the configurations a simulation has sampled, held as `simulation.trajectory`; `sample()` appends the current configuration and `restart()` starts an empty one. Indexing gives a frame, slicing gives a trajectory, and `position` gives the `(frames, N, 2)` array.
-- `Configuration.rdf(bins=100, r_max=None)` and `Configuration.scattering(q)`, and the same two methods on `Trajectory` averaged over its frames, so g(r) and I(q) are available as arrays without building a viewer.
+- `Configuration.rdf(bins=100, r_max=None)` and `Configuration.scattering(q, bins=None)`, and the same two methods on `Trajectory` averaged over its frames, so g(r) and I(q) are available as arrays without building a viewer. Given a number of bins, the scattering sum is over binned pair distances rather than every pair, which is a few hundred times faster over a trajectory and within about a tenth of a percent of the exact sum; the scattering pane's average uses it.
 
 ### Changed
 

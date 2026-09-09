@@ -74,3 +74,16 @@ class TestTrajectory(unittest.TestCase):
             Trajectory().rdf()
         with self.assertRaisesRegex(ValueError, "no frames"):
             Trajectory().scattering(np.array([1e10]))
+
+    def test_binned_scattering_is_close_to_the_exact_sum(self):
+        trajectory = Trajectory([frame(atoms=25), moved(frame(atoms=25))])
+        q = np.linspace(1e9, 5e10, 200)
+        exact = trajectory.scattering(q)
+        binned = trajectory.scattering(q, bins=2000)
+        assert_allclose(binned, exact, atol=0.02 * exact.max())
+
+    def test_binned_scattering_keeps_every_pair(self):
+        one = frame(atoms=25)
+        # Every pair counts, including those beyond half the box, so the
+        # forward-scattering limit is N squared however the distances fall.
+        assert_allclose(Trajectory([one]).scattering(1e-6, bins=2000), 25**2, rtol=1e-6)

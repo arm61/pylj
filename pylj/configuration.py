@@ -14,6 +14,63 @@ from pylj.model import Model
 from pylj.potentials import Species
 
 
+def debye_sum(
+    distance: NDArray[np.float64],
+    q: NDArray[np.float64],
+    number_of_atoms: int,
+    weight: NDArray[np.float64] | None = None,
+    frames: int = 1,
+) -> NDArray[np.float64]:
+    """Return the two-dimensional Debye sum over a set of pair distances.
+
+    Each distance contributes ``2 J0(q r)``, and each atom contributes one
+    for scattering on its own.
+
+    Args:
+        distance: The pair distances to sum over, in metres.
+        q: The magnitudes of the scattering vector, in 1/m.
+        number_of_atoms: The number of atoms in one frame.
+        weight: How many pairs each distance stands for; by default one
+            each. Binning gives one distance per bin and the count in it.
+        frames: The number of frames the distances came from, which the sum
+            is divided by.
+
+    Returns:
+        I(q) at each value of ``q``, per frame.
+    """
+    intensity = np.empty_like(q)
+    # A block of q values at a time; the outer product with the pair
+    # distances is what takes the memory.
+    block = 16
+    for start in range(0, q.size, block):
+        qr = j0(np.outer(q[start : start + block], distance))
+        if weight is not None:
+            qr = qr * weight
+        intensity[start : start + block] = qr.sum(axis=1)
+    return number_of_atoms + 2 * intensity / frames
+
+
+def binned_distances(
+    distance: NDArray[np.float64], bins: int, r_max: float
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Return the centre of each bin and how many distances fall in it.
+
+    Args:
+        distance: The pair distances, in metres.
+        bins: The number of bins.
+        r_max: The largest distance binned, in metres. Any distance beyond
+            it is dropped, so a sum over every pair needs an ``r_max`` of at
+            least the half-diagonal of the box.
+
+    Returns:
+        The bin centres, in metres, and the count in each.
+    """
+    edges = np.linspace(0, r_max, bins + 1)
+    counts, _ = np.histogram(distance, bins=edges)
+    dr = edges[1] - edges[0]
+    return edges[:-1] + dr / 2, counts
+
+
 @dataclass(frozen=True, eq=False)
 class PairData:
     """The distance, separation, energy and force of every pair of atoms.
@@ -277,7 +334,7 @@ class Configuration:
         ideal = pairs * 2 * np.pi * r * dr / self.box**2
         return r, counts / ideal
 
-    def scattering(self, q: ArrayLike) -> NDArray[np.float64]:
+    def scattering(self, q: ArrayLike, bins: int | None = None) -> NDArray[np.float64]:
         """Return the scattering intensity I(q) of this configuration.
 
         This is the Debye sum for ``N`` identical scatterers in two
@@ -295,20 +352,22 @@ class Configuration:
 
         Args:
             q: The magnitudes of the scattering vector, in 1/m.
+            bins: If given, the pair distances are binned first and every
+                distance in a bin is taken to be at the bin centre. The sum
+                is then over bins rather than pairs, which is faster when
+                there are many more pairs than bins. The error grows with
+                ``q`` times the bin width, so more bins are needed to reach
+                a larger ``q``. By default every pair is summed exactly.
 
         Returns:
             I(q) at each value of ``q``, in units of one atom's scattering.
         """
         q = np.atleast_1d(np.asarray(q, dtype=float))
         distance, _ = pairwise.dist(self.position, self.box)
-        intensity = np.empty_like(q)
-        # A block of q values at a time; the outer product with the pair
-        # distances is what takes the memory.
-        block = 16
-        for start in range(0, q.size, block):
-            qr = np.outer(q[start : start + block], distance)
-            intensity[start : start + block] = j0(qr).sum(axis=1)
-        return self.number_of_atoms + 2 * intensity
+        if bins is None:
+            return debye_sum(distance, q, self.number_of_atoms)
+        centre, counts = binned_distances(distance, bins, self.box / np.sqrt(2))
+        return debye_sum(centre, q, self.number_of_atoms, weight=counts)
 
 
 @dataclass(frozen=True, eq=False)
