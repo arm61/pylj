@@ -251,9 +251,10 @@ class MDSimulation(Simulation):
         self.configuration = heat_bath(self.configuration, bath_temperature)
 
     def sample(self) -> None:
-        """Record the configuration in the trajectory and measure it: record
-        the step, temperature, pressure, potential and kinetic energies and
-        mean squared displacement.
+        """Record the configuration in the trajectory and measure it.
+
+        The step, temperature, pressure, potential and kinetic energies and
+        mean squared displacement go into the samples.
         """
         self.trajectory.append(self.configuration)
         configuration = self.configuration

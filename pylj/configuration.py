@@ -259,7 +259,9 @@ class Configuration:
                 towards zero even for a uniform gas.
 
         Returns:
-            The centre of each bin, in metres, and g(r) at each.
+            The centre of each bin, in metres, and g(r) at each. A
+            configuration of one atom has no pairs, so g(r) is zero
+            everywhere.
         """
         if r_max is None:
             r_max = self.box / 2
@@ -285,6 +287,11 @@ class Configuration:
         the average of ``exp(i q . r)`` over every direction the pair could
         point in the plane, in the same way that ``sin(q r) / (q r)`` is the
         average over every direction in three dimensions.
+
+        The sum is over minimum-image distances, so it says nothing about
+        the system on a scale larger than the box. Below a q of about
+        ``2 pi / L`` the box itself and the ``N`` self-scattering term
+        dominate, and I(q) rises towards ``N^2`` at q of zero.
 
         Args:
             q: The magnitudes of the scattering vector, in 1/m.

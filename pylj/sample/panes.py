@@ -416,8 +416,8 @@ class RDFPane(Pane):
     @staticmethod
     def _draw(ax: Axes, r: NDArray[np.float64], gr: NDArray[np.float64]) -> None:
         if not gr.any():
-            # A single atom has no pairs, and so no radial distribution
-            # function to draw.
+            # g(r) is zero everywhere when there are no pairs to bin, as for
+            # a single atom, and there is then no curve to draw.
             ax.lines[0].set_data([], [])
             return
         r = r * 1e10

@@ -12,6 +12,13 @@ def frame(box: float = 20e-10, atoms: int = 4):
     return placement.place_square(atoms, (ARGON,), box)
 
 
+def moved(configuration):
+    """The same frame with one atom shifted, so the pair distances differ."""
+    position = configuration.position.copy()
+    position[0] += [3e-10, 1e-10]
+    return configuration.replace(position=position)
+
+
 class TestTrajectory(unittest.TestCase):
     def test_starts_empty_and_appends_in_order(self):
         trajectory = Trajectory()
@@ -34,7 +41,7 @@ class TestTrajectory(unittest.TestCase):
         trajectory = Trajectory([frame(), frame()])
         self.assertEqual(trajectory.position.shape, (2, 4, 2))
         assert_allclose(trajectory.position[1], trajectory[1].position)
-        self.assertEqual(Trajectory().position.shape, (0,))
+        self.assertEqual(Trajectory().position.shape, (0, 0, 2))
 
     def test_rejects_a_frame_from_a_different_system(self):
         trajectory = Trajectory([frame()])
@@ -43,19 +50,24 @@ class TestTrajectory(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "atoms"):
             trajectory.append(frame(atoms=9))
 
-    def test_rdf_of_identical_frames_is_the_frame_rdf(self):
+    def test_rdf_is_the_mean_over_frames(self):
         one = frame()
-        trajectory = Trajectory([one, one, one])
+        other = moved(one)
+        trajectory = Trajectory([one, other])
         r, gr = trajectory.rdf(bins=20)
         r_one, gr_one = one.rdf(bins=20)
+        _, gr_other = other.rdf(bins=20)
+        self.assertFalse(np.allclose(gr_one, gr_other))
         assert_allclose(r, r_one)
-        assert_allclose(gr, gr_one)
+        assert_allclose(gr, (gr_one + gr_other) / 2)
 
-    def test_scattering_averages_over_frames(self):
+    def test_scattering_is_the_mean_over_frames(self):
         one = frame()
-        trajectory = Trajectory([one, one])
+        other = moved(one)
+        trajectory = Trajectory([one, other])
         q = np.array([1e10, 2e10])
-        assert_allclose(trajectory.scattering(q), one.scattering(q))
+        self.assertFalse(np.allclose(one.scattering(q), other.scattering(q)))
+        assert_allclose(trajectory.scattering(q), (one.scattering(q) + other.scattering(q)) / 2)
 
     def test_analyses_refuse_an_empty_trajectory(self):
         with self.assertRaisesRegex(ValueError, "no frames"):

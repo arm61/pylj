@@ -41,7 +41,7 @@ All notable changes to pylj are recorded here. The format follows
 - Viewers are built before their display is opened, and a viewer whose panes need molecular dynamics samples refuses a Monte Carlo simulation.
 - Viewers and panes take a simulation and read its `configuration` and `samples`; the radial distribution and scattering panes compute the pair distances when they draw, and the scattering pane includes the self-scattering term `N` in the Debye sum, so the intensity is never negative. The energy pane plots the total energy, potential plus kinetic, for a molecular dynamics simulation; the `Interactions` viewer shows it in place of the force pane.
 - The radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in N m^-1.
-- `JustCell` no longer takes a `scale` argument. `Viewer.average()` raises on a viewer whose panes keep no history. `CellPlus.update` rejects half-supplied custom data.
+- `JustCell` no longer takes a `scale` argument. `CellPlus.update` rejects half-supplied custom data.
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.
 - Pair distances and forces are computed with vectorised NumPy. `pairwise.dist(position, box)` takes `(N, 2)` positions and returns the distances and the `(M, 2)` separations; `pairwise.calculate_pressure(virial, box, kinetic_energy)` is the instantaneous virial pressure, `(2 K + sum(f r)) / (2 L^2)`, whose kinetic term averages `(N - 1) k_B T / L^2` because the centre of mass is held at rest; it previously used the sampled temperature, which is defined over `N - 1` degrees of freedom, with `N` in the ideal term.
 - `md.velocity_verlet(configuration, forces, timestep, pair_potentials, cut_off)` returns the next configuration and the forces at it, and raises `ValueError` if an atom moves further than half the cut-off in one step, which means the timestep is too long or the run has diverged; `md.update_positions(configuration, accelerations, timestep)` and `md.update_velocities(velocity, accelerations, next_accelerations, timestep)` work on `(N, 2)` arrays.
@@ -90,4 +90,3 @@ All notable changes to pylj are recorded here. The format follows
 - `pylj.forcefields` and its `mixing` and `diameter` members; cross-species potentials are entries in `pair_potentials`.
 - The `'random'` initial configuration, replaced by `'metropolis'`.
 - `pairwise.pair_potential` and the `PairPotentials` alias, replaced by `Model.potential`.
-- `Pane.keeps_history` and the history each pane kept of the curves it drew.

@@ -74,8 +74,14 @@ class Trajectory:
     def position(self) -> NDArray[np.float64]:
         """The positions of every frame, shape ``(frames, N, 2)``, in metres."""
         if not self._frames:
-            return np.empty(0)
+            return np.empty((0, 0, 2))
         return np.stack([one.position for one in self._frames])
+
+    def __repr__(self) -> str:
+        if not self._frames:
+            return "Trajectory(no frames)"
+        atoms = self._frames[0].number_of_atoms
+        return f"Trajectory({len(self._frames)} frames, {atoms} atoms)"
 
     def rdf(
         self, bins: int = 100, r_max: float | None = None
