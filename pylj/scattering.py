@@ -1,97 +1,82 @@
-"""The Debye sum, which turns a set of pair distances into a scattering
-profile, and the binning that lets one sum stand for many pairs."""
+"""The structure factor of a configuration, evaluated at the wavevectors
+commensurate with its box."""
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
-from scipy.special import j0
+from numpy.typing import NDArray
 
 
-def max_separation(box: float) -> float:
-    """Return the largest separation two atoms can have in a periodic box.
+def default_q_max(number_of_atoms: int, box: float) -> float:
+    """Return a wavevector magnitude that covers the first few peaks, in 1/m.
 
-    Each component of a minimum-image separation is at most half the box, so
-    the largest separation is the half-diagonal. The value returned is one
-    floating-point step above that, because a distance computed from the two
-    components can land a step above a half-diagonal computed directly, and
-    a distance above the largest bin edge would be dropped from a histogram.
+    A square box of side ``L`` holding ``N`` atoms leaves a mean spacing of
+    ``L / sqrt(N)`` between them, and the wavevector matching that spacing is
+    ``2 pi sqrt(N) / L``. The magnitude returned is six times that, so it
+    grows with the density of the configuration.
 
     Args:
+        number_of_atoms: The number of atoms.
         box: The side length of the square box, in metres.
 
     Returns:
-        The largest separation, in metres.
+        The wavevector magnitude, in 1/m.
     """
-    return float(np.nextafter(box / np.sqrt(2), np.inf))
+    return 6 * 2 * np.pi * np.sqrt(number_of_atoms) / box
 
 
-def bin_centres(bins: int, r_max: float) -> NDArray[np.float64]:
-    """Return the centre of each bin, in metres.
+def wavevectors(
+    box: float, q_max: float
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int64]]:
+    """Return the wavevectors commensurate with a box, grouped by magnitude.
 
-    The bins divide zero to ``r_max`` evenly. They depend on nothing but
-    these two numbers, so one set of centres serves every frame of a run.
+    A square box of side ``L`` that repeats in both directions has the
+    wavevectors ``2 pi (h, k) / L``, for integer ``h`` and ``k``. The pair
+    where both are zero is left out. The wavevectors that share a magnitude
+    make up a shell.
 
     Args:
-        bins: The number of bins.
-        r_max: The largest distance binned, in metres.
+        box: The side length of the square box, in metres.
+        q_max: The largest magnitude to return, in 1/m.
 
     Returns:
-        The centre of each bin, in metres.
+        The distinct magnitudes in increasing order, in 1/m; the wavevectors
+        themselves, of shape ``(M, 2)``, in 1/m; and, for each wavevector,
+        the position in that list of magnitudes of the shell it belongs to.
     """
-    edges = np.linspace(0, r_max, bins + 1)
-    return edges[:-1] + (edges[1] - edges[0]) / 2
+    unit = 2 * np.pi / box
+    limit = int(np.floor(q_max / unit))
+    index = np.arange(-limit, limit + 1)
+    h, k = np.meshgrid(index, index, indexing="ij")
+    square = (h**2 + k**2).ravel()
+    inside = (square > 0) & (square <= limit**2)
+    square = square[inside]
+    order = np.argsort(square, kind="stable")
+    square = square[order]
+    pair = np.stack([h.ravel()[inside][order], k.ravel()[inside][order]], axis=1)
+    magnitude, shell = np.unique(square, return_inverse=True)
+    return unit * np.sqrt(magnitude), unit * pair.astype(float), shell.astype(np.int64)
 
 
-def bin_counts(distance: NDArray[np.float64], bins: int, r_max: float) -> NDArray[np.float64]:
-    """Return how many distances fall in each bin of :func:`bin_centres`.
-
-    Args:
-        distance: The pair distances, in metres.
-        bins: The number of bins.
-        r_max: The largest distance binned, in metres. Any distance beyond
-            it is dropped, so a sum over every pair needs an ``r_max`` of at
-            least :func:`max_separation`.
-
-    Returns:
-        How many distances fall in each bin.
-    """
-    counts, _ = np.histogram(distance, bins=np.linspace(0, r_max, bins + 1))
-    return counts.astype(float)
-
-
-def debye_sum(
-    distance: ArrayLike,
-    q: ArrayLike,
-    number_of_atoms: int,
-    weight: ArrayLike | None = None,
+def shell_average(
+    position: NDArray[np.float64],
+    wavevector: NDArray[np.float64],
+    shell: NDArray[np.int64],
 ) -> NDArray[np.float64]:
-    """Return the two-dimensional Debye sum over a set of pair distances.
+    """Return the structure factor of a configuration, one value per shell.
 
-    Each atom contributes one for scattering on its own, giving
-    ``number_of_atoms`` in total, and each pair at distance ``r`` adds
-    ``2 J0(q r)``.
+    Each wavevector ``q`` has an amplitude ``sum_j exp(i q . r_j)``, summed
+    over the atom positions ``r_j``. The structure factor at that wavevector
+    is the square of the modulus of the amplitude, divided by the number of
+    atoms. The wavevectors that share a magnitude are averaged together, so
+    the result holds one value per shell.
 
     Args:
-        distance: The pair distances to sum over, in metres.
-        q: The magnitudes of the scattering vector, in 1/m.
-        number_of_atoms: The number of atoms.
-        weight: How many pairs each distance stands for; by default one
-            each. Binning gives one distance per bin and the count in it,
-            and an average over several frames divides those counts by the
-            number of frames.
+        position: The atom positions, shape ``(N, 2)``, in metres.
+        wavevector: The wavevectors, shape ``(M, 2)``, in 1/m.
+        shell: The index of the shell each wavevector belongs to.
 
     Returns:
-        I(q) at each value of ``q``, in units of one atom's scattering.
+        The structure factor at each shell magnitude.
     """
-    distance = np.asarray(distance, dtype=float)
-    q = np.atleast_1d(np.asarray(q, dtype=float))
-    weight = None if weight is None else np.asarray(weight, dtype=float)
-    intensity = np.empty_like(q)
-    # A block of q values at a time; the outer product with the pair
-    # distances is what takes the memory.
-    block = 16
-    for start in range(0, q.size, block):
-        bessel = j0(np.outer(q[start : start + block], distance))
-        if weight is not None:
-            bessel = bessel * weight
-        intensity[start : start + block] = bessel.sum(axis=1)
-    return number_of_atoms + 2 * intensity
+    amplitude = np.exp(1j * (position @ wavevector.T)).sum(axis=0)
+    intensity = np.abs(amplitude) ** 2 / len(position)
+    return np.bincount(shell, weights=intensity) / np.bincount(shell)
