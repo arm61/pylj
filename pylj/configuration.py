@@ -63,12 +63,12 @@ def binned_distances(
             least the half-diagonal of the box.
 
     Returns:
-        The bin centres, in metres, and the count in each.
+        The bin centres, in metres, and how many distances fall in each.
     """
     edges = np.linspace(0, r_max, bins + 1)
     counts, _ = np.histogram(distance, bins=edges)
     dr = edges[1] - edges[0]
-    return edges[:-1] + dr / 2, counts
+    return edges[:-1] + dr / 2, counts.astype(float)
 
 
 @dataclass(frozen=True, eq=False)
