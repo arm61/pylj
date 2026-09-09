@@ -5,19 +5,6 @@ All notable changes to pylj are recorded here. The format follows
 
 ## Unreleased
 
-### Added
-
-- `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built and read-only after; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
-- `LennardJones`, `Buckingham` and `SquareWell` print as the constructor call that built them, so a model shows its parameters in a notebook.
-
-### Changed
-
-- `MDSimulation.initialise` and `MCSimulation.initialise` take a `Model` as their one positional argument in place of the `species` and `pair_potentials` keywords, and the constructors take it in place of `pair_potentials`. A simulation holds it as `model`. `Configuration.pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy`, `md.velocity_verlet`, `placement.place` and `placement.place_metropolis` take it likewise; `place_metropolis` no longer takes `species` separately, since the model carries them.
-
-### Removed
-
-- `pairwise.pair_potential` and the `PairPotentials` alias, replaced by `Model.potential`.
-
 ## 2.0.0b1 - 2026-09-08
 
 ### Added
@@ -38,6 +25,8 @@ All notable changes to pylj are recorded here. The format follows
 - `MDSimulation` and `MCSimulation` refuse an initial configuration whose pair energy is not finite or stores more than `simulation.INITIAL_ENERGY_LIMIT` (ten) k_B T per atom, as an overlapping lattice does; the message gives the stored energy per atom in k_B T.
 - `MDSimulation` and `MCSimulation` refuse a pair potential whose energy at the cut-off is not finite or is larger in magnitude than k_B T, since the cut-off assumes the interaction has died away there; parameters in the wrong units are one way to trip it.
 - `placement_temperature` on `MDSimulation.initialise` and `MCSimulation.initialise`: the temperature of the Metropolis acceptance used to place an initial configuration, by default the run temperature.
+- `pylj.model.Model`, the species and the potential between each pair of them, validated when it is built and read-only after; `Model.single(species, potential)` builds the one-species case, and `Model.potential(one, other)` looks a pair up in either order.
+- `LennardJones`, `Buckingham` and `SquareWell` print as the constructor call that built them, so a model shows its parameters in a notebook.
 
 ### Changed
 
@@ -67,6 +56,7 @@ All notable changes to pylj are recorded here. The format follows
 - The radial distribution function pane plots r in Angstrom and the molecular dynamics series panes plot time in picoseconds, with the mean squared displacement in Angstrom squared; the panes previously used metres and seconds.
 - The simulated things are atoms throughout: `number_of_atoms` replaces `number_of_particles` in `MDSimulation.initialise`, `MCSimulation.initialise` and the placement functions, and `Configuration.number_of_atoms` replaces `number_of_particles`.
 - `MDSimulation.initialise` and `MCSimulation.initialise` take every argument by keyword, so a call names the number of atoms, the temperature and the box.
+- `MDSimulation.initialise` and `MCSimulation.initialise` take a `Model` as their one positional argument in place of the `species` and `pair_potentials` keywords, and the constructors take it in place of `pair_potentials`. A simulation holds it as `model`. `Configuration.pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy`, `md.velocity_verlet`, `placement.place` and `placement.place_metropolis` take it likewise; `place_metropolis` no longer takes `species` separately, since the model carries them.
 
 ### Fixed
 
@@ -96,3 +86,7 @@ All notable changes to pylj are recorded here. The format follows
 - `mc.select_random_particle`, `mc.get_new_particle`, `mc.reject`, `mc.metropolis`, and the identity `mc.accept(new_energy)`.
 - `pylj.forcefields` and its `mixing` and `diameter` members; cross-species potentials are entries in `pair_potentials`.
 - The `'random'` initial configuration, replaced by `'metropolis'`.
+
+### Removed
+
+- `pairwise.pair_potential` and the `PairPotentials` alias, replaced by `Model.potential`.
