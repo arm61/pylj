@@ -2,7 +2,6 @@
 criterion, the criterion itself, and the proposed move the criterion accepts or
 rejects."""
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Self
 
@@ -11,9 +10,9 @@ from numpy.typing import NDArray
 
 from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
-from pylj.pairwise import PairPotentials
+from pylj.model import Model
 from pylj.placement import place
-from pylj.potentials import Species, check_positive_finite
+from pylj.potentials import check_positive_finite
 from pylj.simulation import (
     Samples,
     Simulation,
@@ -99,9 +98,9 @@ class MCSimulation(Simulation):
     Args:
         configuration: The starting configuration. An ``MDConfiguration``
             is accepted; its velocities are ignored.
-        pair_potentials: The potential between each pair of species. Only
-            the pair energies are evaluated, so a potential with no finite
-            force, such as the square well, can be used.
+        model: The species and the potential between each pair of them.
+            Only the pair energies are evaluated, so a potential with no
+            finite force, such as the square well, can be used.
         temperature: The temperature of the simulation, in kelvin.
         cut_off: The cut-off, in metres; see :class:`Simulation`.
         seed: Seed for the random number generator.
@@ -128,23 +127,17 @@ class MCSimulation(Simulation):
     def __init__(
         self,
         configuration: Configuration,
-        pair_potentials: PairPotentials,
+        model: Model,
         temperature: float,
         *,
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> None:
         check_positive_finite("temperature", temperature)
-        super().__init__(configuration, pair_potentials, cut_off=cut_off, seed=seed)
+        super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         self.temperature = temperature
-        _check_potentials_at_the_cut_off(
-            configuration.species,
-            self.pair_potentials,
-            self.cut_off,
-            temperature,
-            configuration.box,
-        )
-        self.energy = configuration.potential_energy(self.pair_potentials, self.cut_off)
+        _check_potentials_at_the_cut_off(self.model, self.cut_off, temperature, configuration.box)
+        self.energy = configuration.potential_energy(self.model, self.cut_off)
         _check_initial_energy(self.energy, configuration.number_of_atoms, temperature)
         self.accepted = 0
         self.samples = MCSamples()
@@ -152,12 +145,11 @@ class MCSimulation(Simulation):
     @classmethod
     def initialise(
         cls,
+        model: Model,
         *,
         number_of_atoms: int,
         temperature: float,
         box: float,
-        species: Sequence[Species],
-        pair_potentials: PairPotentials,
         init_conf: str = "square",
         placement_temperature: float | None = None,
         cut_off: float | None = None,
@@ -167,11 +159,11 @@ class MCSimulation(Simulation):
         temperature.
 
         Args:
+            model: The species, assigned to the atoms in turn, and the
+                potential between each pair of them.
             number_of_atoms: The number of atoms.
             temperature: The temperature of the simulation, in kelvin.
             box: The side length of the box, in Angstrom, from 4 to 600.
-            species: The species; atoms are assigned to them in turn.
-            pair_potentials: The potential between each pair of species.
             init_conf: ``'square'`` for a lattice or ``'metropolis'`` for
                 sequential Metropolis insertion.
             placement_temperature: The temperature of the Metropolis
@@ -196,14 +188,13 @@ class MCSimulation(Simulation):
             number_of_atoms,
             temperature,
             box,
-            species=species,
-            pair_potentials=pair_potentials,
+            model=model,
             init_conf=init_conf,
             placement_temperature=placement_temperature,
             cut_off=cut_off,
             rng=rng,
         )
-        simulation = cls(configuration, pair_potentials, temperature, cut_off=cut_off_metres)
+        simulation = cls(configuration, model, temperature, cut_off=cut_off_metres)
         simulation.rng = rng
         return simulation
 
@@ -225,8 +216,8 @@ class MCSimulation(Simulation):
         species_index = int(configuration.species_index[atom])
         others = configuration.without(atom)
         energy_change = others.insertion_energy(
-            trial, species_index, self.pair_potentials, self.cut_off
-        ) - others.insertion_energy(current, species_index, self.pair_potentials, self.cut_off)
+            trial, species_index, self.model, self.cut_off
+        ) - others.insertion_energy(current, species_index, self.model, self.cut_off)
         position = configuration.position.copy()
         position[atom] = trial
         return Proposal(position, energy_change, configuration)
@@ -272,7 +263,7 @@ class MCSimulation(Simulation):
         recorded value is exact; between samples ``apply`` keeps a running
         total.
         """
-        self.energy = self.configuration.potential_energy(self.pair_potentials, self.cut_off)
+        self.energy = self.configuration.potential_energy(self.model, self.cut_off)
         self.samples.add(step=self.steps, potential_energy=self.energy)
 
     def restart(self) -> Self:

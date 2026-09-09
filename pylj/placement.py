@@ -1,17 +1,11 @@
 """The placement of initial configurations."""
 
-from collections.abc import Sequence
-
 import numpy as np
 
 from pylj.configuration import Configuration
-from pylj.pairwise import PairPotentials
+from pylj.model import Model
 from pylj.potentials import Species, check_positive_finite
-from pylj.simulation import (
-    _check_pair_potentials,
-    _check_potentials_at_the_cut_off,
-    _resolve_cut_off,
-)
+from pylj.simulation import _check_potentials_at_the_cut_off, _resolve_cut_off
 
 #: Number of trial positions tried for a single atom by Metropolis
 #: placement before it gives up and raises ``ValueError``.
@@ -48,9 +42,8 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
 
 def place_metropolis(
     number_of_atoms: int,
-    species: tuple[Species, ...],
     box: float,
-    pair_potentials: PairPotentials,
+    model: Model,
     cut_off: float,
     placement_temperature: float,
     rng: np.random.Generator,
@@ -72,9 +65,9 @@ def place_metropolis(
 
     Args:
         number_of_atoms: The number of atoms.
-        species: The species, assigned to the atoms in turn.
         box: The side length of the box, in metres.
-        pair_potentials: The potential between each pair of species.
+        model: The species, assigned to the atoms in turn, and the potential
+            between each pair of them.
         cut_off: The cut-off, in metres.
         placement_temperature: The temperature of the acceptance, in kelvin.
         rng: The generator to draw trial positions and acceptances from.
@@ -93,12 +86,13 @@ def place_metropolis(
     # imported here rather than at the top of the module.
     from pylj.mc import accept
 
+    species = model.species
     species_index = np.arange(number_of_atoms) % len(species)
     placed = Configuration(np.zeros((0, 2)), species, species_index[:0], box)
     for i in range(number_of_atoms):
         for _attempt in range(PLACEMENT_ATTEMPTS):
             trial = rng.uniform(0, box, size=2)
-            energy = placed.insertion_energy(trial, int(species_index[i]), pair_potentials, cut_off)
+            energy = placed.insertion_energy(trial, int(species_index[i]), model, cut_off)
             if accept(energy, placement_temperature, rng=rng):
                 placed = placed.replace(
                     position=np.vstack([placed.position, trial]),
@@ -121,8 +115,7 @@ def place(
     temperature: float,
     box: float,
     *,
-    species: Sequence[Species],
-    pair_potentials: PairPotentials,
+    model: Model,
     init_conf: str,
     placement_temperature: float | None,
     cut_off: float | None,
@@ -130,16 +123,16 @@ def place(
 ) -> tuple[Configuration, float]:
     """Build the initial configuration for a simulation factory.
 
-    Takes the box and cut-off in Angstrom, as the factories do, validates
-    the model, checks the potentials at the cut-off before any placement is
-    attempted, and places the atoms.
+    Takes the box and cut-off in Angstrom, as the factories do, checks the
+    potentials at the cut-off before any placement is attempted, and places
+    the atoms.
 
     Args:
         number_of_atoms: The number of atoms.
         temperature: The temperature of the run, in kelvin.
         box: The side length of the box, in Angstrom, from 4 to 600.
-        species: The species, assigned to the atoms in turn.
-        pair_potentials: The potential between each pair of species.
+        model: The species, assigned to the atoms in turn, and the potential
+            between each pair of them.
         init_conf: ``'square'`` for a lattice or ``'metropolis'`` for
             sequential Metropolis insertion.
         placement_temperature: The temperature of the Metropolis acceptance
@@ -155,10 +148,9 @@ def place(
     Raises:
         ValueError: If no atoms are requested, a temperature is
             not positive and finite, the box is outside 4 to 600 Angstrom,
-            the cut-off exceeds half the box, the model is incomplete, a
-            potential has not died away at the cut-off, ``init_conf`` is
-            unknown, or Metropolis placement exhausts its trial budget.
-        TypeError: If a pair potential is not a ``PairPotential`` instance.
+            the cut-off exceeds half the box, a potential has not died away
+            at the cut-off, ``init_conf`` is unknown, or Metropolis placement
+            exhausts its trial budget.
     """
     if number_of_atoms < 1:
         raise ValueError("A simulation needs at least one atom")
@@ -172,19 +164,16 @@ def place(
             "hold more than one atom, and above 600 the atoms are too small to be "
             "seen in the viewer."
         )
-    species = tuple(species)
-    _check_pair_potentials(species, pair_potentials)
     box_m = box * 1e-10
     cut_off_m = _resolve_cut_off(box_m, None if cut_off is None else cut_off * 1e-10)
-    _check_potentials_at_the_cut_off(species, pair_potentials, cut_off_m, temperature, box_m)
+    _check_potentials_at_the_cut_off(model, cut_off_m, temperature, box_m)
     if init_conf == "square":
-        configuration = place_square(number_of_atoms, species, box_m)
+        configuration = place_square(number_of_atoms, model.species, box_m)
     elif init_conf == "metropolis":
         configuration = place_metropolis(
             number_of_atoms,
-            species,
             box_m,
-            pair_potentials,
+            model,
             cut_off_m,
             placement_temperature,
             rng,

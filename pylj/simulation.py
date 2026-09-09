@@ -2,65 +2,25 @@
 samples, and the base class the simulations share."""
 
 import copy
-import itertools
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from dataclasses import dataclass, field, fields
 from typing import Self
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pylj import pairwise
 from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
-from pylj.pairwise import PairPotentials
-from pylj.potentials import PairPotential, Species, check_positive_finite
+from pylj.model import Model
+from pylj.potentials import check_positive_finite
 
 #: Largest potential energy per atom, in units of k_B T, accepted for an
 #: initial configuration.
 INITIAL_ENERGY_LIMIT = 10.0
 
 
-def _check_pair_potentials(species: Sequence[Species], pair_potentials: PairPotentials) -> None:
-    """Check that a model is complete.
-
-    Args:
-        species: The species in the model.
-        pair_potentials: The potential between each pair of species.
-
-    Raises:
-        ValueError: If ``species`` is empty, a pair of species has no entry
-            in ``pair_potentials`` in either order, or a cross pair has one
-            in both orders.
-        TypeError: If a value in ``pair_potentials`` is not a
-            ``PairPotential`` instance, such as the class itself.
-    """
-    if not species:
-        raise ValueError("species must name at least one Species")
-    for one, other in itertools.combinations_with_replacement(species, 2):
-        if (one, other) not in pair_potentials and (other, one) not in pair_potentials:
-            raise ValueError(f"pair_potentials has no entry for the pair {one} and {other}")
-    for one, other in itertools.combinations(species, 2):
-        if (one, other) in pair_potentials and (other, one) in pair_potentials:
-            raise ValueError(
-                f"pair_potentials has the pair {one} and {other} in both orders; "
-                "give each unordered pair once"
-            )
-    for pair, potential in pair_potentials.items():
-        if not isinstance(potential, PairPotential):
-            raise TypeError(
-                f"pair_potentials[{pair}] must be a PairPotential instance, such as "
-                f"LennardJones(epsilon=..., sigma=...), not {potential!r}"
-            )
-
-
 def _check_potentials_at_the_cut_off(
-    species: Sequence[Species],
-    pair_potentials: PairPotentials,
-    cut_off: float,
-    temperature: float,
-    box: float,
+    model: Model, cut_off: float, temperature: float, box: float
 ) -> None:
     """Check that every pair potential has died away at the cut-off.
 
@@ -69,8 +29,7 @@ def _check_potentials_at_the_cut_off(
     within ``k_B T`` of zero.
 
     Args:
-        species: The species in the model.
-        pair_potentials: The potential between each pair of species.
+        model: The species and the potential between each pair of them.
         cut_off: The cut-off, in metres.
         temperature: The temperature, in kelvin.
         box: The side length of the box, in metres. The cut-off can be no
@@ -86,8 +45,7 @@ def _check_potentials_at_the_cut_off(
     if from_box:
         where += " (half the box)"
     remedy = "Use a larger box" if from_box else "Use a larger box or cut-off"
-    for one, other in itertools.combinations_with_replacement(species, 2):
-        potential = pairwise.pair_potential(pair_potentials, one, other)
+    for (one, other), potential in model.pair_potentials.items():
         energy = float(potential.energies(np.array([cut_off]))[0])
         pair = (
             f"{type(potential).__name__} between {one.name or 'atoms'} and {other.name or 'atoms'}"
@@ -206,20 +164,19 @@ class Samples:
 
 
 class Simulation(ABC):
-    """A simulation: a configuration, the interaction law, the numerical choices, and
+    """A simulation: a configuration, the model, the numerical choices, and
     the machinery that evolves the configuration and measures it.
 
     ``MDSimulation`` and ``MCSimulation`` add ``step`` and ``sample`` to this
     class. The constructor takes a configuration that has already been built,
-    in SI units. To start from a description of the system instead, how many
-    atoms, which species and which potentials, use the ``initialise``
-    method of one of those subclasses, which builds the configuration for you.
+    in SI units. To start from a model and a number of atoms instead, use the
+    ``initialise`` method of one of those subclasses, which builds the
+    configuration for you.
 
     Args:
         configuration: The starting configuration.
-        pair_potentials: The potential between each pair of species, keyed
-            by the two species in either order. Every pair, including each
-            species with itself, needs an entry.
+        model: The species and the potential between each pair of them, a
+            :class:`~pylj.model.Model`.
         cut_off: The separation, in metres, beyond which a pair's
             interaction is taken as negligible. By default 15 Angstrom or
             half the box, whichever is smaller; it may not exceed half the
@@ -229,7 +186,7 @@ class Simulation(ABC):
 
     Attributes:
         configuration: The current configuration.
-        pair_potentials: The interaction law.
+        model: The model.
         cut_off: The cut-off, in metres.
         rng: The random number generator for this simulation.
         steps: The number of steps taken.
@@ -237,22 +194,23 @@ class Simulation(ABC):
             with the record of what they measure.
 
     Raises:
-        ValueError: If the model is incomplete or the cut-off exceeds half
-            the box.
-        TypeError: If a pair potential is not a ``PairPotential`` instance.
+        ValueError: If a species in the configuration is not in the model,
+            or the cut-off exceeds half the box.
     """
 
     def __init__(
         self,
         configuration: Configuration,
-        pair_potentials: PairPotentials,
+        model: Model,
         *,
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> None:
-        _check_pair_potentials(configuration.species, pair_potentials)
+        for one in configuration.species:
+            if one not in model.species:
+                raise ValueError(f"The configuration has species {one}, which is not in the model")
         self.configuration = configuration
-        self.pair_potentials = dict(pair_potentials)
+        self.model = model
         self.cut_off = _resolve_cut_off(configuration.box, cut_off)
         self.rng = np.random.default_rng(seed)
         self.steps = 0
@@ -269,7 +227,7 @@ class Simulation(ABC):
     def restart(self) -> Self:
         """A new simulation that continues from the current configuration.
 
-        The new simulation shares the interaction law, the numerical choices
+        The new simulation shares the model, the numerical choices
         and every other attribute with this one. Its random number generator
         starts from a copy of this one's state, so what this simulation draws
         next has no effect on the new one. The new simulation starts with

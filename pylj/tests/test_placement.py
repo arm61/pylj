@@ -5,6 +5,7 @@ from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import pairwise, placement
 from pylj.constants import ATOMIC_MASS_UNIT
+from pylj.model import Model
 from pylj.potentials import LennardJones, SquareWell
 from pylj.tests.argon import (
     ARGON,
@@ -30,20 +31,17 @@ def place(
     cut_off=None,
     seed=None,
     model=ARGON_MODEL,
-    **overrides,
 ):
     """placement.place with the argon model and a seeded generator."""
-    kwargs = dict(model)
-    kwargs.update(overrides)
     return placement.place(
         n,
         temperature,
         box,
+        model=model,
         init_conf=init_conf,
         placement_temperature=placement_temperature,
         cut_off=cut_off,
         rng=np.random.default_rng(seed),
-        **kwargs,
     )
 
 
@@ -70,18 +68,17 @@ class TestPlacement(unittest.TestCase):
         # A trial inside the square well's core costs infinite energy and is
         # always rejected, so no pair is closer than sigma.
         c, cut_off = place(50, 300, 30, init_conf="metropolis", seed=1, model=WELL_MODEL)
-        distance = c.pairs(WELL_MODEL["pair_potentials"], cut_off).distance
+        distance = c.pairs(WELL_MODEL, cut_off).distance
         self.assertGreaterEqual(distance.min(), WELL.sigma)
 
     def test_metropolis_places_a_mixture_with_each_pairs_own_potential(self):
         # Hard cores of three different diameters: no pair may sit inside the
         # core of its own potential. A placement using the wrong potential
         # for a pair lets it inside the true core.
-        potentials = WELL_MIXTURE_MODEL["pair_potentials"]
         c, cut_off = place(30, 300, 40, init_conf="metropolis", seed=0, model=WELL_MIXTURE_MODEL)
-        distance = c.pairs(potentials, cut_off).distance
+        distance = c.pairs(WELL_MIXTURE_MODEL, cut_off).distance
         for mask, type_1, type_2 in pairwise.species_pairs(c.species_index):
-            potential = pairwise.pair_potential(potentials, c.species[type_1], c.species[type_2])
+            potential = WELL_MIXTURE_MODEL.potential(c.species[type_1], c.species[type_2])
             core = potential.sigma
             self.assertGreaterEqual(distance[mask].min(), core)
 
@@ -90,7 +87,7 @@ class TestPlacement(unittest.TestCase):
         # so a trial there would be accepted as downhill; the potential's
         # min_separation makes such a trial cost infinite energy instead.
         c, cut_off = place(30, 300, 40, init_conf="metropolis", seed=0, model=BUCKINGHAM_MODEL)
-        pairs = c.pairs(BUCKINGHAM_MODEL["pair_potentials"], cut_off)
+        pairs = c.pairs(BUCKINGHAM_MODEL, cut_off)
         self.assertGreater(pairs.distance.min(), BUCKINGHAM_ARGON.min_separation)
         self.assertTrue(np.isfinite(pairs.energy).all())
 
@@ -98,7 +95,7 @@ class TestPlacement(unittest.TestCase):
         # Lennard-Jones has no hard core, but at 100 K a pair inside 0.8
         # sigma costs over 40 well depths and is never accepted.
         c, cut_off = place(30, 100, 40, init_conf="metropolis", seed=0)
-        distance = c.pairs(ARGON_MODEL["pair_potentials"], cut_off).distance
+        distance = c.pairs(ARGON_MODEL, cut_off).distance
         self.assertGreater(distance.min(), 0.8 * LJ_ARGON.sigma)
 
     def test_metropolis_too_dense_raises(self):
@@ -172,56 +169,31 @@ class TestPlace(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "temperature must be positive"):
                 place(2, temperature, 8)
 
-    def test_rejects_a_missing_pair_potential(self):
-        incomplete = {(ARGON, ARGON): LJ_ARGON, (LARGER, LARGER): LJ_ARGON}
-        with self.assertRaisesRegex(ValueError, "no entry for the pair .*larger"):
-            place(2, 300, 12, species=[ARGON, LARGER], pair_potentials=incomplete)
-
-    def test_accepts_a_pair_potential_keyed_in_either_order(self):
-        reversed_cross = dict(MIXTURE_MODEL["pair_potentials"])
-        reversed_cross[(LARGER, ARGON)] = reversed_cross.pop((ARGON, LARGER))
-        c, _ = place(2, 300, 12, species=[ARGON, LARGER], pair_potentials=reversed_cross)
-        assert_equal(c.species_index, [0, 1])
-
-    def test_rejects_a_potential_class_in_place_of_an_instance(self):
-        with self.assertRaisesRegex(TypeError, "PairPotential instance"):
-            place(2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): LennardJones})
-
-    def test_rejects_a_cross_pair_given_in_both_orders(self):
-        both_orders = dict(MIXTURE_MODEL["pair_potentials"])
-        both_orders[(LARGER, ARGON)] = LJ_ARGON
-        with self.assertRaisesRegex(ValueError, "in both orders"):
-            place(2, 300, 12, species=[ARGON, LARGER], pair_potentials=both_orders)
-
-    def test_rejects_no_species(self):
-        with self.assertRaisesRegex(ValueError, "at least one Species"):
-            place(2, 300, 8, species=[], pair_potentials={})
-
     def test_refuses_a_potential_still_repulsive_at_the_cut_off(self):
         # Sigma given in Angstrom: the pair energy is astronomically positive
         # at the cut-off, where a sensible potential has died away.
         in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
         with self.assertRaisesRegex(ValueError, "at the cut-off"):
-            place(2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): in_angstrom})
+            place(2, 300, 8, model=Model.single(ARGON, in_angstrom))
 
     def test_refuses_a_potential_still_attractive_at_the_cut_off(self):
         # Epsilon typed in kJ/mol: a well about 1e17 k_B T deep at the cut-off.
         deep = LennardJones(epsilon=0.95, sigma=3.372e-10)
         with self.assertRaisesRegex(ValueError, "at the cut-off"):
-            place(2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): deep})
+            place(2, 300, 8, model=Model.single(ARGON, deep))
 
     def test_refuses_a_hard_core_wider_than_the_cut_off(self):
         wide = SquareWell(epsilon=1.5e-21, sigma=8e-10, lambda_=1.5)
         with self.assertRaisesRegex(ValueError, "hard core is wider than the cut-off"):
-            place(2, 300, 10, species=[ARGON], pair_potentials={(ARGON, ARGON): wide})
+            place(2, 300, 10, model=Model.single(ARGON, wide))
 
     def test_refuses_a_cross_potential_still_repulsive_at_the_cut_off(self):
-        mistyped = dict(MIXTURE_MODEL["pair_potentials"])
+        mistyped = dict(MIXTURE_MODEL.pair_potentials)
         mistyped[(ARGON, LARGER)] = LennardJones(epsilon=1.577e-21, sigma=4.186)
         with self.assertRaisesRegex(ValueError, "between argon and larger"):
-            place(4, 100, 60, species=MIXTURE_MODEL["species"], pair_potentials=mistyped)
+            place(4, 100, 60, model=Model(MIXTURE_MODEL.species, mistyped))
 
     def test_names_half_the_box_when_the_cut_off_came_from_it(self):
         in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
         with self.assertRaisesRegex(ValueError, r"\(half the box\).*Use a larger box"):
-            place(2, 300, 8, species=[ARGON], pair_potentials={(ARGON, ARGON): in_angstrom})
+            place(2, 300, 8, model=Model.single(ARGON, in_angstrom))

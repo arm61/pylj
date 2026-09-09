@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import md, placement, simulation
-from pylj.tests.argon import ARGON, ARGON_MODEL, WELL_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL, WELL_MODEL
 
 
 class TestInitialEnergyCheck(unittest.TestCase):
@@ -12,13 +12,13 @@ class TestInitialEnergyCheck(unittest.TestCase):
         # 16 argon on a 4 by 4 lattice in a 10 Angstrom box are 2.5 Angstrom
         # apart, inside sigma: about 90 k_B T of potential energy per atom.
         c = placement.place_square(16, (ARGON,), 10e-10)
-        energy = c.potential_energy(ARGON_MODEL["pair_potentials"], 5e-10)
+        energy = c.potential_energy(ARGON_MODEL, 5e-10)
         with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
             simulation._check_initial_energy(energy, 16, 300)
 
     def test_refuses_a_lattice_inside_a_hard_core(self):
         c = placement.place_square(16, (ARGON,), 10e-10)
-        energy = c.potential_energy(WELL_MODEL["pair_potentials"], 5e-10)
+        energy = c.potential_energy(WELL_MODEL, 5e-10)
         with self.assertRaisesRegex(ValueError, "not finite"):
             simulation._check_initial_energy(energy, 16, 300)
 
@@ -26,7 +26,7 @@ class TestInitialEnergyCheck(unittest.TestCase):
         # 16 argon in a 12 Angstrom box store about 5.6 k_B T per atom
         # at 300 K, under the limit of 10.
         c = placement.place_square(16, (ARGON,), 12e-10)
-        energy = c.potential_energy(ARGON_MODEL["pair_potentials"], 6e-10)
+        energy = c.potential_energy(ARGON_MODEL, 6e-10)
         simulation._check_initial_energy(energy, 16, 300)
 
 
@@ -48,12 +48,12 @@ class Counting(simulation.Simulation):
 class TestSimulation(unittest.TestCase):
     def build(self, box=40e-10, **kwargs):
         c = placement.place_square(4, (ARGON,), box)
-        return Counting(c, ARGON_MODEL["pair_potentials"], **kwargs)
+        return Counting(c, ARGON_MODEL, **kwargs)
 
     def test_holds_the_configuration_and_the_model(self):
         s = self.build(seed=1)
         self.assertEqual(s.configuration.number_of_atoms, 4)
-        self.assertEqual(s.pair_potentials, ARGON_MODEL["pair_potentials"])
+        self.assertIs(s.model, ARGON_MODEL)
         self.assertEqual(s.steps, 0)
         self.assertIsInstance(s.samples, simulation.Samples)
         self.assertEqual(s.samples.step.size, 0)
@@ -84,10 +84,14 @@ class TestSimulation(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exceeds half the box"):
             self.build(cut_off=25e-10)
 
-    def test_validates_the_model(self):
+    def test_refuses_a_configuration_species_outside_the_model(self):
+        c = placement.place_square(4, (LARGER,), 40e-10)
+        with self.assertRaisesRegex(ValueError, "larger.*not in the model"):
+            Counting(c, ARGON_MODEL)
+
+    def test_accepts_a_configuration_using_some_of_the_model_species(self):
         c = placement.place_square(4, (ARGON,), 40e-10)
-        with self.assertRaisesRegex(ValueError, "no entry for the pair"):
-            Counting(c, {})
+        self.assertIs(Counting(c, MIXTURE_MODEL).model, MIXTURE_MODEL)
 
     def test_step_and_sample_are_abstract(self):
         class Stepless(simulation.Simulation):
@@ -96,7 +100,7 @@ class TestSimulation(unittest.TestCase):
 
         c = placement.place_square(4, (ARGON,), 40e-10)
         with self.assertRaisesRegex(TypeError, "step"):
-            Stepless(c, ARGON_MODEL["pair_potentials"])
+            Stepless(c, ARGON_MODEL)
 
     def test_restart_starts_a_fresh_record_and_shares_the_model(self):
         s = self.build(seed=1)
@@ -107,7 +111,7 @@ class TestSimulation(unittest.TestCase):
         self.assertIsNot(production, s)
         self.assertIsInstance(production, Counting)
         self.assertIs(production.configuration, s.configuration)
-        self.assertIs(production.pair_potentials, s.pair_potentials)
+        self.assertIs(production.model, s.model)
         self.assertEqual(production.steps, 0)
         self.assertIsNot(production.samples, s.samples)
         self.assertEqual(production.samples.step.size, 0)

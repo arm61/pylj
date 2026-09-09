@@ -3,9 +3,9 @@ import unittest
 import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 
-from pylj import pairwise
 from pylj.configuration import Configuration, MDConfiguration
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+from pylj.model import Model
 from pylj.potentials import PairPotential
 from pylj.tests.argon import (
     ARGON,
@@ -46,8 +46,8 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(c, c)
         self.assertNotEqual(c, c.replace())
         self.assertNotEqual(
-            c.pairs(ARGON_MODEL["pair_potentials"], 15e-10),
-            c.pairs(ARGON_MODEL["pair_potentials"], 15e-10),
+            c.pairs(ARGON_MODEL, 15e-10),
+            c.pairs(ARGON_MODEL, 15e-10),
         )
 
     def test_holds_positions_species_and_box(self):
@@ -104,7 +104,7 @@ class TestConfiguration(unittest.TestCase):
         # argon-larger, argon-argon and larger-argon; a 6 Angstrom cut-off
         # drops the last.
         c = three_atoms([0, 1, 0])
-        pairs = c.pairs(MIXTURE_MODEL["pair_potentials"], 6e-10, forces=True)
+        pairs = c.pairs(MIXTURE_MODEL, 6e-10, forces=True)
         assert_almost_equal(pairs.distance * 1e10, [4.0, np.sqrt(26), np.sqrt(50)])
         expected = [
             LJ_ARGON_LARGER.energies(pairs.distance[0]),
@@ -120,19 +120,17 @@ class TestConfiguration(unittest.TestCase):
 
     def test_pairs_needs_no_force_from_the_potential(self):
         c = three_atoms()
-        pairs = c.pairs(WELL_MODEL["pair_potentials"], 15e-10)
+        pairs = c.pairs(WELL_MODEL, 15e-10)
         assert_almost_equal(pairs.energy * 1e21, [-1.5, 0.0, 0.0])
         self.assertIsNone(pairs.radial_force)
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
-            c.pairs(WELL_MODEL["pair_potentials"], 15e-10, forces=True)
+            c.pairs(WELL_MODEL, 15e-10, forces=True)
 
     def test_potential_energy_is_the_sum_of_the_pair_energies(self):
         # Pairs at 4, sqrt(26) and sqrt(50) Angstrom, all argon.
         c = three_atoms()
         expected = LJ_ARGON.energies(np.array([4e-10, np.sqrt(26) * 1e-10, np.sqrt(50) * 1e-10]))
-        assert_allclose(
-            c.potential_energy(ARGON_MODEL["pair_potentials"], 15e-10), expected.sum(), rtol=1e-12
-        )
+        assert_allclose(c.potential_energy(ARGON_MODEL, 15e-10), expected.sum(), rtol=1e-12)
 
     def test_insertion_energy_is_the_energy_the_atom_adds(self):
         # The same minimum image, species lookup and cut-off on both paths:
@@ -141,19 +139,18 @@ class TestConfiguration(unittest.TestCase):
         rng = np.random.default_rng(1)
         n, box, cut_off = 8, 30e-10, 9e-10
         species_index = np.array([0, 1, 0, 1, 0, 1, 0, 1])
-        potentials = MIXTURE_MODEL["pair_potentials"]
         full = configuration(
             rng.uniform(0, box, (n, 2)),
-            species=MIXTURE_MODEL["species"],
+            species=MIXTURE_MODEL.species,
             species_index=species_index,
             box=box,
         )
         without_last = full.without(n - 1)
         added = without_last.insertion_energy(
-            full.position[-1], int(species_index[-1]), potentials, cut_off
+            full.position[-1], int(species_index[-1]), MIXTURE_MODEL, cut_off
         )
-        difference = full.potential_energy(potentials, cut_off) - without_last.potential_energy(
-            potentials, cut_off
+        difference = full.potential_energy(MIXTURE_MODEL, cut_off) - without_last.potential_energy(
+            MIXTURE_MODEL, cut_off
         )
         assert_allclose(added, difference, rtol=1e-9)
 
@@ -166,11 +163,10 @@ class TestConfiguration(unittest.TestCase):
         species_index = np.array([0, 0, 1, 1, 0, 1, 0, 1])
         c = configuration(
             rng.uniform(0, box, (n, 2)),
-            species=MIXTURE_MODEL["species"],
+            species=MIXTURE_MODEL.species,
             species_index=species_index,
             box=box,
         )
-        potentials = MIXTURE_MODEL["pair_potentials"]
         reference = np.zeros((n, 2))
         virial = 0.0
         for a in range(n - 1):
@@ -178,19 +174,19 @@ class TestConfiguration(unittest.TestCase):
                 separation = c.position[a] - c.position[b]
                 separation -= box * np.round(separation / box)
                 dr = np.linalg.norm(separation)
-                potential = pairwise.pair_potential(
-                    potentials, c.species[species_index[a]], c.species[species_index[b]]
+                potential = MIXTURE_MODEL.potential(
+                    c.species[species_index[a]], c.species[species_index[b]]
                 )
                 force = potential.forces(dr)
                 reference[a] += force * separation / dr
                 reference[b] -= force * separation / dr
                 virial += force * dr
-        assert_allclose(c.forces(potentials, 1e-8), reference, rtol=1e-12)
-        assert_allclose(c.virial(potentials, 1e-8), virial, rtol=1e-12)
+        assert_allclose(c.forces(MIXTURE_MODEL, 1e-8), reference, rtol=1e-12)
+        assert_allclose(c.virial(MIXTURE_MODEL, 1e-8), virial, rtol=1e-12)
 
     def test_forces_are_equal_and_opposite_for_a_pair(self):
         c = configuration([[0.0, 0.0], [4e-10, 0.0]])
-        force = c.forces(ARGON_MODEL["pair_potentials"], 15e-10)
+        force = c.forces(ARGON_MODEL, 15e-10)
         assert_allclose(force[0], -force[1])
         self.assertNotEqual(force[0, 0], 0.0)
         self.assertEqual(force[0, 1], 0.0)
@@ -203,7 +199,7 @@ class TestConfiguration(unittest.TestCase):
         c = three_atoms([1, 0, 0]).replace(
             position=np.array([[4e-10, 0.0], [0.0, 5e-10], [0.0, 20e-10]])
         )
-        energy = c.insertion_energy((0.0, 0.0), 0, MIXTURE_MODEL["pair_potentials"], 6e-10)
+        energy = c.insertion_energy((0.0, 0.0), 0, MIXTURE_MODEL, 6e-10)
         expected = (
             LJ_ARGON_LARGER.energies(np.array([4e-10]))[0] + LJ_ARGON.energies(np.array([5e-10]))[0]
         )
@@ -214,32 +210,31 @@ class TestConfiguration(unittest.TestCase):
         # away across the boundary, and one at 8 Angstrom is beyond a 6
         # Angstrom cut-off.
         c = configuration([[29e-10, 0.0], [8e-10, 0.0]])
-        energy = c.insertion_energy((0.0, 0.0), 0, ARGON_MODEL["pair_potentials"], 6e-10)
+        energy = c.insertion_energy((0.0, 0.0), 0, ARGON_MODEL, 6e-10)
         assert_allclose(energy, LJ_ARGON.energies(np.array([1e-10]))[0], rtol=1e-12)
 
     def test_pairs_forbid_a_separation_where_the_potential_is_unphysical(self):
         # Two argon 0.5 Angstrom apart, inside the Buckingham barrier: the
         # formula there is a deep negative number, but the pair is forbidden,
         # so the energy is infinite and asking for the force raises.
-        potentials = BUCKINGHAM_MODEL["pair_potentials"]
         c = configuration([[0.0, 0.0], [0.5e-10, 0.0]])
         self.assertLess(BUCKINGHAM_ARGON.energies(np.array([0.5e-10]))[0], 0.0)
-        self.assertEqual(c.pairs(potentials, 15e-10).energy[0], np.inf)
-        self.assertEqual(c.potential_energy(potentials, 15e-10), np.inf)
+        self.assertEqual(c.pairs(BUCKINGHAM_MODEL, 15e-10).energy[0], np.inf)
+        self.assertEqual(c.potential_energy(BUCKINGHAM_MODEL, 15e-10), np.inf)
         with self.assertRaisesRegex(ValueError, "unphysical"):
-            c.forces(potentials, 15e-10)
+            c.forces(BUCKINGHAM_MODEL, 15e-10)
         with self.assertRaisesRegex(ValueError, "collapsed"):
-            c.virial(potentials, 15e-10)
+            c.virial(BUCKINGHAM_MODEL, 15e-10)
 
     def test_insertion_energy_forbids_a_separation_where_the_potential_is_unphysical(self):
         c = configuration([[0.0, 0.0]])
-        energy = c.insertion_energy((0.5e-10, 0.0), 0, BUCKINGHAM_MODEL["pair_potentials"], 15e-10)
+        energy = c.insertion_energy((0.5e-10, 0.0), 0, BUCKINGHAM_MODEL, 15e-10)
         self.assertEqual(energy, np.inf)
 
     def test_insertion_energy_with_no_atoms_is_zero(self):
         empty = configuration(np.zeros((0, 2)))
         self.assertEqual(
-            empty.insertion_energy((1e-10, 1e-10), 0, ARGON_MODEL["pair_potentials"], 15e-10),
+            empty.insertion_energy((1e-10, 1e-10), 0, ARGON_MODEL, 15e-10),
             0.0,
         )
 
@@ -266,7 +261,7 @@ class TestConfiguration(unittest.TestCase):
             (ARGON, LARGER): GaussianCore(a=2.0, b=3.0),
         }
         c = three_atoms([0, 1, 0])
-        pairs = c.pairs(potentials, 15e-10, forces=True)
+        pairs = c.pairs(Model((ARGON, LARGER), potentials), 15e-10, forces=True)
         # pairs (0, 1), (0, 2), (1, 2) are argon-larger, argon-argon, larger-argon
         kinds = [(ARGON, LARGER), (ARGON, ARGON), (ARGON, LARGER)]
         by_pair = list(zip(pairs.distance, kinds, strict=True))

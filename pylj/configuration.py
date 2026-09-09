@@ -9,7 +9,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from pylj import pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
-from pylj.pairwise import PairPotentials
+from pylj.model import Model
 from pylj.potentials import Species
 
 
@@ -53,9 +53,9 @@ class Configuration:
     """Where the atoms are: the state a Monte Carlo simulation evolves.
 
     A configuration cannot be changed once it is made, and it holds no
-    description of how the atoms interact. Each method that needs the
-    interaction law is given ``pair_potentials`` and ``cut_off`` when it is
-    called, so the same configuration can be evaluated under different
+    description of how the atoms interact. Each method that evaluates the
+    interactions between atoms is given a ``Model`` and a ``cut_off`` when it
+    is called, so the same configuration can be evaluated under different
     potentials. Everything is in SI units.
 
     Attributes:
@@ -128,10 +128,8 @@ class Configuration:
         }
         return dataclasses.replace(self, **arrays)
 
-    def pairs(
-        self, pair_potentials: PairPotentials, cut_off: float, *, forces: bool = False
-    ) -> PairData:
-        """Evaluate every pair of atoms under the interaction law.
+    def pairs(self, model: Model, cut_off: float, *, forces: bool = False) -> PairData:
+        """Evaluate every pair of atoms under the model.
 
         Each pair is separated by its minimum-image distance, and the potential
         for the two species it joins gives its energy. A pair further apart
@@ -144,7 +142,7 @@ class Configuration:
         still be used here.
 
         Args:
-            pair_potentials: The potential between each pair of species.
+            model: The species and the potential between each pair of them.
             cut_off: The separation beyond which a pair contributes nothing,
                 in metres.
             forces: Whether to evaluate the radial forces as well.
@@ -161,9 +159,7 @@ class Configuration:
         energy = np.zeros(distance.size)
         force = np.zeros(distance.size) if forces else None
         for mask, type_1, type_2 in pairwise.species_pairs(self.species_index):
-            potential = pairwise.pair_potential(
-                pair_potentials, self.species[type_1], self.species[type_2]
-            )
+            potential = model.potential(self.species[type_1], self.species[type_2])
             energy[mask] = potential.energies(distance[mask])
             forbidden = mask & (distance < potential.min_separation)
             if forbidden.any():
@@ -184,13 +180,13 @@ class Configuration:
             force[beyond] = 0.0
         return PairData(distance, separation, energy, force)
 
-    def potential_energy(self, pair_potentials: PairPotentials, cut_off: float) -> float:
+    def potential_energy(self, model: Model, cut_off: float) -> float:
         """The total pair energy, in joules."""
-        return float(self.pairs(pair_potentials, cut_off).energy.sum())
+        return float(self.pairs(model, cut_off).energy.sum())
 
-    def forces(self, pair_potentials: PairPotentials, cut_off: float) -> NDArray[np.float64]:
+    def forces(self, model: Model, cut_off: float) -> NDArray[np.float64]:
         """The net force on each atom, shape ``(N, 2)``, in newtons."""
-        pairs = self.pairs(pair_potentials, cut_off, forces=True)
+        pairs = self.pairs(model, cut_off, forces=True)
         radial = _radial_force(pairs)
         i, j = np.triu_indices(self.number_of_atoms, 1)
         # Each pair's radial force acts along its separation, pushing
@@ -201,15 +197,15 @@ class Configuration:
         np.add.at(force, j, -pair_force)
         return force
 
-    def virial(self, pair_potentials: PairPotentials, cut_off: float) -> float:
+    def virial(self, model: Model, cut_off: float) -> float:
         """The sum over pairs of the radial force times the distance, in joules."""
-        return self.pairs(pair_potentials, cut_off, forces=True).virial
+        return self.pairs(model, cut_off, forces=True).virial
 
     def insertion_energy(
         self,
         position: ArrayLike,
         species_index: int,
-        pair_potentials: PairPotentials,
+        model: Model,
         cut_off: float,
     ) -> float:
         """Return the interaction energy of one added atom with the atoms already
@@ -218,7 +214,7 @@ class Configuration:
         Args:
             position: The ``(x, y)`` position of the added atom, in metres.
             species_index: The index in ``species`` of its species.
-            pair_potentials: The potential between each pair of species.
+            model: The species and the potential between each pair of them.
             cut_off: The separation beyond which a pair contributes nothing,
                 in metres.
 
@@ -233,9 +229,7 @@ class Configuration:
         energy = np.zeros(distance.size)
         for other in np.unique(self.species_index):
             mask = self.species_index == other
-            potential = pairwise.pair_potential(
-                pair_potentials, self.species[species_index], self.species[int(other)]
-            )
+            potential = model.potential(self.species[species_index], self.species[int(other)])
             energy[mask] = potential.energies(distance[mask])
             energy[mask & (distance < potential.min_separation)] = np.inf
         energy[distance > cut_off] = 0.0

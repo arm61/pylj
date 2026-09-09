@@ -44,18 +44,13 @@ A purely repulsive potential has no energy minimum for a viewer to size the atom
 ```{code-cell} python
 from pylj import sample
 from pylj.md import MDSimulation
+from pylj.model import Model
 from pylj.potentials import Species
 
 argon = Species(mass=39.948, name="argon")
 soft = SoftSphere(epsilon=1.577e-21, sigma=3.372e-10)
-simulation = MDSimulation.initialise(
-    number_of_atoms=25,
-    temperature=300,
-    box=30,
-    species=[argon],
-    pair_potentials={(argon, argon): soft},
-    seed=0,
-)
+model = Model.single(argon, soft)
+simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=300, box=30, seed=0)
 viewer = sample.JustCell(simulation, diameter=3.4)
 for _ in range(300):
     simulation.step()
@@ -65,7 +60,7 @@ for _ in range(300):
 
 ## Mixtures
 
-A mixture is more species and one `pair_potentials` entry for each species with itself and for each pair of different species, in either order:
+A mixture is a `Model` with more species and one entry for each species with itself and for each pair of different species, in either order:
 
 ```python
 from pylj.potentials import LennardJones
@@ -74,14 +69,11 @@ xenon = Species(mass=131.293, name="xenon")
 lj_argon = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
 lj_xenon = LennardJones(epsilon=3.05e-21, sigma=3.98e-10)
 lj_cross = LennardJones(epsilon=2.19e-21, sigma=3.68e-10)
-mixture = MDSimulation.initialise(
-    number_of_atoms=24,
-    temperature=200,
-    box=40,
-    species=[argon, xenon],
-    pair_potentials={(argon, argon): lj_argon, (xenon, xenon): lj_xenon, (argon, xenon): lj_cross},
-    seed=0,
+mixture = Model(
+    (argon, xenon),
+    {(argon, argon): lj_argon, (xenon, xenon): lj_xenon, (argon, xenon): lj_cross},
 )
+simulation = MDSimulation.initialise(mixture, number_of_atoms=24, temperature=200, box=40, seed=0)
 ```
 
-Atoms are assigned to the species in turn. A missing pair raises `ValueError`; a potential class in place of an instance raises `TypeError`. The viewers draw each species at the minimum of its own pair potential unless `diameter` is given, as one value or one per species.
+Atoms are assigned to the species in turn. A missing pair raises `ValueError` and a potential class in place of an instance raises `TypeError`, both when the `Model` is built. The viewers draw each species at the minimum of its own pair potential unless `diameter` is given, as one value or one per species.

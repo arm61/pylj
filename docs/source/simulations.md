@@ -1,16 +1,15 @@
 # Simulations
 
-`MDSimulation` and `MCSimulation` share a base class, `Simulation`, and are built the same way. Both hold `configuration`, `pair_potentials`, `cut_off`, `rng`, `steps` and `samples`, and both have `step()`, `sample()` and `restart()`.
+`MDSimulation` and `MCSimulation` share a base class, `Simulation`, and are built the same way. Both hold `configuration`, `model`, `cut_off`, `rng`, `steps` and `samples`, and both have `step()`, `sample()` and `restart()`.
 
 ## Building a simulation
 
 ```python
 simulation = MDSimulation.initialise(
+    model,
     number_of_atoms=16,
     temperature=300,
     box=30,
-    species=[argon],
-    pair_potentials={(argon, argon): lj},
     init_conf="square",
     placement_temperature=None,
     timestep=1e-14,
@@ -19,15 +18,15 @@ simulation = MDSimulation.initialise(
 )
 ```
 
-Every argument is given by keyword. Five are required: `number_of_atoms`; `temperature`, in kelvin; `box`, the side of the square periodic box in Angstrom; `species`, a sequence of `Species`; and `pair_potentials`, a mapping from each pair of species to the potential between them. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `timestep` is in seconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
+`model`, a `Model` of the species and the potential between each pair of them, is the one positional argument; the rest are given by keyword. Three are required: `number_of_atoms`; `temperature`, in kelvin; and `box`, the side of the square periodic box in Angstrom. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `timestep` is in seconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
 
 A configuration whose pair energy is not finite or exceeds ten $k_B T$ per atom is refused with `ValueError`, as is a potential whose energy at the cut-off is larger than $k_B T$.
 
-The constructors take a ready configuration instead: `MDSimulation(configuration, pair_potentials, cut_off=None, timestep=1e-14, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, pair_potentials, temperature, cut_off=None, seed=None)` with a `Configuration`, all in SI units.
+The constructors take a ready configuration instead: `MDSimulation(configuration, model, cut_off=None, timestep=1e-14, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, cut_off=None, seed=None)` with a `Configuration`, all in SI units.
 
 ## The configuration
 
-`simulation.configuration` is the current state. `position` is an `(N, 2)` array in metres, `box` the side in metres, `species` and `species_index` name each atom's species, and `masses` is in kilograms. `pairs(pair_potentials, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocity` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()`, `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest, and `msd(initial)`.
+`simulation.configuration` is the current state. `position` is an `(N, 2)` array in metres, `box` the side in metres, `species` and `species_index` name each atom's species, and `masses` is in kilograms. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocity` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()`, `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest, and `msd(initial)`.
 
 A configuration is never changed in place. `replace(**changes)` returns a copy with some arrays changed.
 
