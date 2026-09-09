@@ -11,7 +11,7 @@ from pylj import pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.model import Model
 from pylj.potentials import Species
-from pylj.scattering import binned_distances, debye_sum, max_separation
+from pylj.scattering import bin_centres, bin_counts, debye_sum, max_separation
 
 
 @dataclass(frozen=True, eq=False)
@@ -310,8 +310,9 @@ class Configuration:
         distance, _ = pairwise.dist(self.position, self.box)
         if bins is None:
             return debye_sum(distance, q, self.number_of_atoms)
-        centre, counts = binned_distances(distance, bins, max_separation(self.box))
-        return debye_sum(centre, q, self.number_of_atoms, weight=counts)
+        r_max = max_separation(self.box)
+        counts = bin_counts(distance, bins, r_max)
+        return debye_sum(bin_centres(bins, r_max), q, self.number_of_atoms, weight=counts)
 
 
 @dataclass(frozen=True, eq=False)

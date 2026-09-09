@@ -9,7 +9,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from pylj import pairwise
 from pylj.configuration import Configuration
-from pylj.scattering import binned_distances, debye_sum, max_separation
+from pylj.scattering import bin_centres, bin_counts, debye_sum, max_separation
 
 
 class Trajectory:
@@ -133,11 +133,10 @@ class Trajectory:
         first = self._frames[0]
         r_max = max_separation(first.box)
         total = np.zeros(bins)
-        centre = np.array([])
         for one in self._frames:
             distance, _ = pairwise.dist(one.position, one.box)
-            centre, counts = binned_distances(distance, bins, r_max)
-            total += counts
+            total += bin_counts(distance, bins, r_max)
+        centre = bin_centres(bins, r_max)
         return debye_sum(centre, q, first.number_of_atoms, weight=total / len(self._frames))
 
     def _check_frames(self) -> None:

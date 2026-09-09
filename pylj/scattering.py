@@ -24,10 +24,25 @@ def max_separation(box: float) -> float:
     return float(np.nextafter(box / np.sqrt(2), np.inf))
 
 
-def binned_distances(
-    distance: NDArray[np.float64], bins: int, r_max: float
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """Return the centre of each bin and how many distances fall in each.
+def bin_centres(bins: int, r_max: float) -> NDArray[np.float64]:
+    """Return the centre of each bin, in metres.
+
+    The bins divide zero to ``r_max`` evenly. They depend on nothing but
+    these two numbers, so one set of centres serves every frame of a run.
+
+    Args:
+        bins: The number of bins.
+        r_max: The largest distance binned, in metres.
+
+    Returns:
+        The centre of each bin, in metres.
+    """
+    edges = np.linspace(0, r_max, bins + 1)
+    return edges[:-1] + (edges[1] - edges[0]) / 2
+
+
+def bin_counts(distance: NDArray[np.float64], bins: int, r_max: float) -> NDArray[np.float64]:
+    """Return how many distances fall in each bin of :func:`bin_centres`.
 
     Args:
         distance: The pair distances, in metres.
@@ -37,12 +52,10 @@ def binned_distances(
             least :func:`max_separation`.
 
     Returns:
-        The bin centres, in metres, and how many distances fall in each.
+        How many distances fall in each bin.
     """
-    edges = np.linspace(0, r_max, bins + 1)
-    counts, _ = np.histogram(distance, bins=edges)
-    dr = edges[1] - edges[0]
-    return edges[:-1] + dr / 2, counts.astype(float)
+    counts, _ = np.histogram(distance, bins=np.linspace(0, r_max, bins + 1))
+    return counts.astype(float)
 
 
 def debye_sum(
