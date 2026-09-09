@@ -164,12 +164,11 @@ def place(
             "hold more than one atom, and above 600 the atoms are too small to be "
             "seen in the viewer."
         )
-    species = model.species
     box_m = box * 1e-10
     cut_off_m = _resolve_cut_off(box_m, None if cut_off is None else cut_off * 1e-10)
     _check_potentials_at_the_cut_off(model, cut_off_m, temperature, box_m)
     if init_conf == "square":
-        configuration = place_square(number_of_atoms, species, box_m)
+        configuration = place_square(number_of_atoms, model.species, box_m)
     elif init_conf == "metropolis":
         configuration = place_metropolis(
             number_of_atoms,

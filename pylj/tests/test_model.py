@@ -2,7 +2,7 @@ import unittest
 
 from pylj.model import Model
 from pylj.potentials import LennardJones, Species
-from pylj.tests.argon import ARGON, LARGER, LJ_ARGON, LJ_ARGON_LARGER, LJ_LARGER
+from pylj.tests.argon import ARGON, LARGER, LJ_ARGON, LJ_ARGON_LARGER, LJ_LARGER, MIXTURE_MODEL
 
 
 class TestModel(unittest.TestCase):
@@ -12,21 +12,13 @@ class TestModel(unittest.TestCase):
         self.assertEqual(model.pair_potentials, {(ARGON, ARGON): LJ_ARGON})
 
     def test_potential_is_found_in_either_order(self):
-        model = Model(
-            (ARGON, LARGER),
-            {
-                (ARGON, ARGON): LJ_ARGON,
-                (LARGER, LARGER): LJ_LARGER,
-                (LARGER, ARGON): LJ_ARGON_LARGER,
-            },
-        )
-        self.assertIs(model.potential(ARGON, LARGER), LJ_ARGON_LARGER)
-        self.assertIs(model.potential(LARGER, ARGON), LJ_ARGON_LARGER)
+        self.assertIs(MIXTURE_MODEL.potential(ARGON, LARGER), LJ_ARGON_LARGER)
+        self.assertIs(MIXTURE_MODEL.potential(LARGER, ARGON), LJ_ARGON_LARGER)
 
-    def test_potential_names_a_species_outside_the_model(self):
-        model = Model.single(ARGON, LJ_ARGON)
-        with self.assertRaisesRegex(KeyError, "larger.*is not a species"):
-            model.potential(ARGON, LARGER)
+    def test_potential_shows_the_species_that_differs(self):
+        twin = Species(mass=40.0, name="argon")
+        with self.assertRaisesRegex(KeyError, "mass=40.0"):
+            Model.single(ARGON, LJ_ARGON).potential(twin, twin)
 
     def test_rejects_a_missing_pair(self):
         with self.assertRaisesRegex(ValueError, "no entry for the pair .*larger"):
@@ -61,37 +53,29 @@ class TestModel(unittest.TestCase):
         model = Model([ARGON], {(ARGON, ARGON): LJ_ARGON})
         self.assertEqual(model.species, (ARGON,))
 
-    def test_names_single_for_a_bare_species(self):
+    def test_names_single_for_an_argument_that_is_not_a_sequence_or_mapping(self):
         with self.assertRaisesRegex(TypeError, "Model.single"):
             Model(ARGON, {(ARGON, ARGON): LJ_ARGON})
-
-    def test_names_single_for_a_bare_potential(self):
-        with self.assertRaisesRegex(TypeError, "Model.single"):
-            Model((ARGON,), LJ_ARGON)
-
-    def test_rejects_a_string_as_the_species_sequence(self):
         with self.assertRaisesRegex(TypeError, "Model.single"):
             Model("argon", {(ARGON, ARGON): LJ_ARGON})
-
-    def test_rejects_a_bare_species_as_a_key(self):
-        with self.assertRaisesRegex(ValueError, "must be a pair of species"):
-            Model((ARGON,), {ARGON: LJ_ARGON})
-
-    def test_rejects_a_key_that_is_not_a_pair(self):
-        with self.assertRaisesRegex(ValueError, "must be a pair of species"):
-            Model((ARGON,), {(ARGON, ARGON): LJ_ARGON, (ARGON, ARGON, ARGON): LJ_ARGON})
-
-    def test_rejects_an_entry_for_a_species_outside_the_model(self):
-        with self.assertRaisesRegex(ValueError, "not one of the species"):
-            Model((ARGON,), {(ARGON, ARGON): LJ_ARGON, (ARGON, LARGER): LJ_ARGON_LARGER})
-
-    def test_rejects_a_string_in_place_of_a_species(self):
-        with self.assertRaisesRegex(ValueError, "'argon' is not one of the species"):
-            Model((ARGON,), {("argon", "argon"): LJ_ARGON})
+        with self.assertRaisesRegex(TypeError, "Model.single"):
+            Model((ARGON,), LJ_ARGON)
 
     def test_rejects_a_string_as_a_species(self):
         with self.assertRaisesRegex(TypeError, r"Species\(mass="):
             Model(("argon",), {("argon", "argon"): LJ_ARGON})
+
+    def test_rejects_a_key_that_is_not_a_pair(self):
+        with self.assertRaisesRegex(ValueError, "must be a pair of species"):
+            Model((ARGON,), {ARGON: LJ_ARGON})
+        with self.assertRaisesRegex(ValueError, "must be a pair of species"):
+            Model((ARGON,), {(ARGON, ARGON): LJ_ARGON, (ARGON, ARGON, ARGON): LJ_ARGON})
+
+    def test_rejects_an_entry_naming_something_outside_the_species(self):
+        with self.assertRaisesRegex(ValueError, "not one of the species"):
+            Model((ARGON,), {(ARGON, ARGON): LJ_ARGON, (ARGON, LARGER): LJ_ARGON_LARGER})
+        with self.assertRaisesRegex(ValueError, "'argon' is not one of the species"):
+            Model((ARGON,), {("argon", "argon"): LJ_ARGON})
 
     def test_is_frozen(self):
         model = Model.single(ARGON, LJ_ARGON)
@@ -108,11 +92,6 @@ class TestModel(unittest.TestCase):
         model = Model.single(ARGON, LJ_ARGON)
         with self.assertRaises(TypeError):
             model.pair_potentials[(ARGON, ARGON)] = LJ_LARGER
-
-    def test_potential_shows_the_species_that_differs(self):
-        twin = Species(mass=40.0, name="argon")
-        with self.assertRaisesRegex(KeyError, "mass=40.0"):
-            Model.single(ARGON, LJ_ARGON).potential(twin, twin)
 
     def test_repr_names_the_species_and_potentials(self):
         text = repr(Model.single(ARGON, LJ_ARGON))

@@ -12,22 +12,8 @@ from pylj.potentials import PairPotential, Species
 def _check_complete(
     species: tuple[Species, ...], pair_potentials: Mapping[tuple[Species, Species], PairPotential]
 ) -> None:
-    """Check that the species do not repeat, that every pair of them has
-    exactly one potential, and that no other pair has one.
-
-    Raises:
-        ValueError: If ``species`` is empty or repeats a species, a key of
-            ``pair_potentials`` is not a pair, an entry of
-            ``pair_potentials`` names something that is not one of the
-            species, a pair of species has no entry in either order, or a
-            cross pair has one in both orders.
-        TypeError: If a value in ``pair_potentials`` is not a
-            ``PairPotential`` instance, such as the class itself.
-    """
-    if not species:
-        raise ValueError("species must name at least one Species")
-    if len(set(species)) != len(species):
-        raise ValueError("species must not repeat: two Species that compare equal are one species")
+    """Check that every pair of the species has exactly one potential and that
+    no other pair has one."""
     for pair in pair_potentials:
         if not isinstance(pair, tuple) or len(pair) != 2:
             raise ValueError(
@@ -105,6 +91,12 @@ class Model:
                 f"{{(argon, argon): potential}}, not {pair_potentials!r}; for one species, "
                 "Model.single(species, potential) builds the model"
             )
+        if not self._species:
+            raise ValueError("species must name at least one Species")
+        if len(set(self._species)) != len(self._species):
+            raise ValueError(
+                "species must not repeat: two Species that compare equal are one species"
+            )
         self._pair_potentials = MappingProxyType(dict(pair_potentials))
         _check_complete(self._species, self._pair_potentials)
 
@@ -125,9 +117,6 @@ class Model:
         Args:
             species: The one species.
             potential: The potential between two atoms of it.
-
-        Returns:
-            The model.
         """
         return cls((species,), {(species, species): potential})
 

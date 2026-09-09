@@ -2,7 +2,6 @@
 samples, and the base class the simulations share."""
 
 import copy
-import itertools
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, fields
 from typing import Self
@@ -46,8 +45,7 @@ def _check_potentials_at_the_cut_off(
     if from_box:
         where += " (half the box)"
     remedy = "Use a larger box" if from_box else "Use a larger box or cut-off"
-    for one, other in itertools.combinations_with_replacement(model.species, 2):
-        potential = model.potential(one, other)
+    for (one, other), potential in model.pair_potentials.items():
         energy = float(potential.energies(np.array([cut_off]))[0])
         pair = (
             f"{type(potential).__name__} between {one.name or 'atoms'} and {other.name or 'atoms'}"
