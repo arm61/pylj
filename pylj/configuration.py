@@ -11,7 +11,7 @@ from pylj import pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.model import Model
 from pylj.potentials import Species
-from pylj.scattering import bin_centres, bin_counts, debye_sum, max_separation
+from pylj.scattering import default_q_max, shell_average, wavevectors
 
 
 @dataclass(frozen=True, eq=False)
@@ -277,42 +277,32 @@ class Configuration:
         ideal = pairs * 2 * np.pi * r * dr / self.box**2
         return r, counts / ideal
 
-    def scattering(self, q: ArrayLike, bins: int | None = None) -> NDArray[np.float64]:
-        """Return the scattering intensity I(q) of this configuration.
+    def structure_factor(
+        self, q_max: float | None = None
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Return the structure factor S(q) of this configuration.
 
-        This is the Debye sum for ``N`` identical scatterers in two
-        dimensions. Each atom scattering on its own contributes one, giving
-        ``N`` in total, and each pair at distance ``r`` adds ``2 J0(q r)``.
-        ``J0`` is the Bessel function of the first kind and order zero. It is
-        the average of ``exp(i q . r)`` over every direction the pair could
-        point in the plane, in the same way that ``sin(q r) / (q r)`` is the
-        average over every direction in three dimensions.
-
-        The sum is over minimum-image distances, so it says nothing about
-        the system on a scale larger than the box: below a q of about
-        ``2 pi / L`` every pair adds in phase and I(q) climbs towards
-        ``N^2``. Truncating the distances at the box also makes I(q)
-        negative at some q, which no real measurement is. The lowest q worth
-        drawing is therefore ``2 pi / L`` or a little above.
+        S(q) is evaluated at the wavevectors commensurate with the box,
+        ``2 pi (h, k) / L``, where ``L`` is the box length and ``h`` and
+        ``k`` are integers that are not both zero. Each wavevector ``q`` has
+        an amplitude ``sum_j exp(i q . r_j)``, summed over the atom positions
+        ``r_j``. S(q) at that wavevector is the square of the modulus of the
+        amplitude, divided by the number of atoms. The wavevectors that share
+        a magnitude are averaged together, so the result holds one value per
+        magnitude.
 
         Args:
-            q: The magnitudes of the scattering vector, in 1/m.
-            bins: If given, the pair distances are binned first and every
-                distance in a bin is taken to be at the bin centre. The sum
-                is then over bins rather than pairs, which is faster when
-                there are many more pairs than bins. The error grows with
-                ``q`` times the bin width, so more bins are needed to reach
-                a larger ``q``. By default every pair is summed exactly.
+            q_max: The largest wavevector magnitude, in 1/m. By default six
+                times ``2 pi sqrt(N) / L``, the wavevector that matches the
+                mean spacing between the ``N`` atoms.
 
         Returns:
-            I(q) at each value of ``q``, in units of one atom's scattering.
+            The wavevector magnitudes, in 1/m, and S(q) at each.
         """
-        distance, _ = pairwise.dist(self.position, self.box)
-        if bins is None:
-            return debye_sum(distance, q, self.number_of_atoms)
-        r_max = max_separation(self.box)
-        counts = bin_counts(distance, bins, r_max)
-        return debye_sum(bin_centres(bins, r_max), q, self.number_of_atoms, weight=counts)
+        if q_max is None:
+            q_max = default_q_max(self.number_of_atoms, self.box)
+        q, wavevector, shell = wavevectors(self.box, q_max)
+        return q, shell_average(self.position, wavevector, shell)
 
 
 @dataclass(frozen=True, eq=False)

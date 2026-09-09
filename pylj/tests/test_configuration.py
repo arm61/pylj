@@ -2,12 +2,13 @@ import unittest
 
 import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
-from scipy.special import j0
 
+from pylj import placement
 from pylj.configuration import Configuration, MDConfiguration
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.model import Model
 from pylj.potentials import PairPotential
+from pylj.scattering import default_q_max
 from pylj.tests.argon import (
     ARGON,
     ARGON_MODEL,
@@ -315,36 +316,42 @@ class TestRDF(unittest.TestCase):
         r, gr = c.rdf(bins=50)
         (i,) = np.nonzero(gr)
         self.assertLess(abs(r[i] - 2e-10), c.box / 2 / 50)
-        assert_allclose(c.scattering(np.array([1e10])), [2 + 2 * j0(1e10 * 2e-10)])
 
 
-class TestScattering(unittest.TestCase):
-    def test_two_atoms_give_the_two_dimensional_debye_sum(self):
-        c = two_atoms(4e-10)
-        q = np.linspace(1e9, 1e11, 300)
-        assert_allclose(c.scattering(q), 2 + 2 * j0(q * 4e-10))
-
-    def test_binned_sum_is_close_to_the_exact_one(self):
-        c = two_atoms(4e-10)
-        q = np.linspace(1e9, 5e10, 100)
-        exact = c.scattering(q)
-        assert_allclose(c.scattering(q, bins=4000), exact, atol=0.01 * exact.max())
-
-    def test_binned_sum_keeps_a_pair_on_the_half_diagonal(self):
+class TestStructureFactor(unittest.TestCase):
+    def test_two_atoms_match_the_shell_average_by_hand(self):
         box = 20e-10
-        # Two atoms diagonally opposite are the half-diagonal apart, the
-        # furthest a minimum-image separation reaches. The pair still counts,
-        # so the forward-scattering limit is N squared.
-        c = configuration(np.array([[0.0, 0.0], [box / 2, box / 2]]), box=box)
-        assert_allclose(c.scattering(1e-6, bins=2000), 4.0, rtol=1e-9)
+        c = configuration(np.array([[0.0, 0.0], [4e-10, 0.0]]), box=box)
+        q, s = c.structure_factor(q_max=3 * 2 * np.pi / box)
+        wavevector = 2 * np.pi / box * np.array([[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]])
+        expected = np.mean(
+            [abs(1 + np.exp(1j * np.dot(w, [4e-10, 0.0]))) ** 2 / 2 for w in wavevector]
+        )
+        assert_allclose(s[0], expected)
 
-    def test_single_atom_scatters_as_itself(self):
-        c = configuration([[1e-10, 1e-10]], box=20e-10)
-        assert_allclose(c.scattering(np.array([1e10, 2e10])), 1.0)
+    def test_is_never_negative(self):
+        rng = np.random.default_rng(0)
+        c = configuration(rng.uniform(0, 30e-10, size=(50, 2)))
+        _, s = c.structure_factor()
+        self.assertTrue((s >= 0).all())
 
-    def test_accepts_a_single_q(self):
-        c = two_atoms(4e-10)
-        assert_allclose(c.scattering(1e10), [2 + 2 * j0(1e10 * 4e-10)])
+    def test_a_square_lattice_gives_sharp_peaks(self):
+        c = placement.place_square(100, (ARGON,), 40e-10)
+        _, s = c.structure_factor()
+        self.assertGreater(s.max(), 20 * np.median(s))
+        self.assertLess(s.min(), 1e-12)
+
+    def test_q_max_sets_the_largest_magnitude(self):
+        box = 20e-10
+        q_max = 4 * 2 * np.pi / box
+        q, _ = configuration(np.array([[0.0, 0.0], [4e-10, 0.0]]), box=box).structure_factor(q_max)
+        self.assertLessEqual(q.max(), q_max)
+        self.assertGreater(q.max(), 0.9 * q_max)
+
+    def test_the_default_range_follows_the_density(self):
+        c = placement.place_square(100, (ARGON,), 40e-10)
+        q, _ = c.structure_factor()
+        self.assertLessEqual(q.max(), default_q_max(100, 40e-10))
 
 
 def md_configuration(position, velocity, box=8e-10):
