@@ -8,10 +8,10 @@ from typing import Self
 
 from pylj.potentials import PairPotential, Species
 
-PairPotentials = Mapping[tuple[Species, Species], PairPotential]
 
-
-def _check_complete(species: tuple[Species, ...], pair_potentials: PairPotentials) -> None:
+def _check_complete(
+    species: tuple[Species, ...], pair_potentials: Mapping[tuple[Species, Species], PairPotential]
+) -> None:
     """Check that the species do not repeat, that every pair of them has
     exactly one potential, and that no other pair has one.
 
@@ -82,7 +82,11 @@ class Model:
             ``pair_potentials`` is not a ``PairPotential`` instance.
     """
 
-    def __init__(self, species: Sequence[Species], pair_potentials: PairPotentials) -> None:
+    def __init__(
+        self,
+        species: Sequence[Species],
+        pair_potentials: Mapping[tuple[Species, Species], PairPotential],
+    ) -> None:
         if isinstance(species, Species | str):
             raise TypeError(
                 f"species must be a sequence of Species, such as ({species!r},); "
@@ -110,7 +114,7 @@ class Model:
         return self._species
 
     @property
-    def pair_potentials(self) -> PairPotentials:
+    def pair_potentials(self) -> Mapping[tuple[Species, Species], PairPotential]:
         """The potential between each pair of species, as a read-only mapping."""
         return self._pair_potentials
 
