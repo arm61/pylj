@@ -86,7 +86,4 @@ All notable changes to pylj are recorded here. The format follows
 - `mc.select_random_particle`, `mc.get_new_particle`, `mc.reject`, `mc.metropolis`, and the identity `mc.accept(new_energy)`.
 - `pylj.forcefields` and its `mixing` and `diameter` members; cross-species potentials are entries in `pair_potentials`.
 - The `'random'` initial configuration, replaced by `'metropolis'`.
-
-### Removed
-
 - `pairwise.pair_potential` and the `PairPotentials` alias, replaced by `Model.potential`.
