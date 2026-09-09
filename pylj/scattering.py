@@ -43,11 +43,13 @@ def wavevectors(
         the position in that list of magnitudes of the shell it belongs to.
     """
     unit = 2 * np.pi / box
+    # No single component can exceed q_max, so that bounds the search, and
+    # the magnitude of the pair is what decides whether it is inside.
     limit = int(np.floor(q_max / unit))
     index = np.arange(-limit, limit + 1)
     h, k = np.meshgrid(index, index, indexing="ij")
     square = (h**2 + k**2).ravel()
-    inside = (square > 0) & (square <= limit**2)
+    inside = (square > 0) & (square <= (q_max / unit) ** 2)
     square = square[inside]
     order = np.argsort(square, kind="stable")
     square = square[order]

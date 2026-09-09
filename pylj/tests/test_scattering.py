@@ -72,3 +72,21 @@ class TestShellAverage(unittest.TestCase):
 class TestDefaultQMax(unittest.TestCase):
     def test_is_six_times_the_mean_spacing_wavevector(self):
         assert_allclose(default_q_max(100, 40e-10), 6 * 2 * np.pi * 10 / 40e-10)
+
+
+class TestWavevectorRange(unittest.TestCase):
+    def test_keeps_every_wavevector_up_to_q_max(self):
+        box = 20e-10
+        unit = 2 * np.pi / box
+        # A q_max between two shells: sqrt(13) is inside it, sqrt(16) is not.
+        q, wavevector, _ = wavevectors(box, 3.8 * unit)
+        assert_allclose(q[-1], unit * np.sqrt(13))
+        self.assertEqual(len(wavevector), 4 + 4 + 4 + 8 + 4 + 4 + 8 + 8)
+
+    def test_a_non_integer_default_keeps_its_outermost_shell(self):
+        box = 20e-10
+        unit = 2 * np.pi / box
+        q_max = default_q_max(17, box)
+        q, _, _ = wavevectors(box, q_max)
+        self.assertGreater(q.max(), 0.999 * q_max - unit)
+        self.assertLessEqual(q.max(), q_max)
