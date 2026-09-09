@@ -23,6 +23,28 @@ def default_q_max(number_of_atoms: int, box: float) -> float:
     return 6 * 2 * np.pi * np.sqrt(number_of_atoms) / box
 
 
+def check_q_max(q_max: float, box: float) -> None:
+    """Check that a wavevector magnitude reaches the box.
+
+    The smallest wavevector a box of side ``L`` has is ``2 pi / L``, so a
+    ``q_max`` below that leaves nothing to evaluate.
+
+    Args:
+        q_max: The largest wavevector magnitude, in 1/m.
+        box: The side length of the square box, in metres.
+
+    Raises:
+        ValueError: If ``q_max`` is below ``2 pi / L``.
+    """
+    smallest = 2 * np.pi / box
+    if q_max < smallest:
+        raise ValueError(
+            f"q_max of {q_max:g} 1/m is below {smallest:g} 1/m, the smallest wavevector a box "
+            f"of {box * 1e10:.1f} Angstrom has. q_max is in 1/m, so a value in inverse "
+            "Angstrom is a thousand million times too small."
+        )
+
+
 def wavevectors(
     box: float, q_max: float
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int64]]:
@@ -44,12 +66,15 @@ def wavevectors(
     """
     unit = 2 * np.pi / box
     # No single component can exceed q_max, so that bounds the search, and
-    # the magnitude of the pair is what decides whether it is inside.
-    limit = int(np.floor(q_max / unit))
+    # the magnitude of the pair is what decides whether it is inside. A whole
+    # number of units is the common request, and dividing by unit can land a
+    # hair under it, so the ratio is nudged up before either is taken.
+    ratio = q_max / unit * (1 + 1e-12)
+    limit = int(np.floor(ratio))
     index = np.arange(-limit, limit + 1)
     h, k = np.meshgrid(index, index, indexing="ij")
     square = (h**2 + k**2).ravel()
-    inside = (square > 0) & (square <= (q_max / unit) ** 2)
+    inside = (square > 0) & (square <= ratio**2)
     square = square[inside]
     order = np.argsort(square, kind="stable")
     square = square[order]
@@ -68,8 +93,9 @@ def shell_average(
     Each wavevector ``q`` has an amplitude ``sum_j exp(i q . r_j)``, summed
     over the atom positions ``r_j``. The structure factor at that wavevector
     is the square of the modulus of the amplitude, divided by the number of
-    atoms. The wavevectors that share a magnitude are averaged together, so
-    the result holds one value per shell.
+    atoms. Every atom counts alike, whatever its species. The wavevectors
+    that share a magnitude are averaged together, so the result holds one
+    value per shell.
 
     Args:
         position: The atom positions, shape ``(N, 2)``, in metres.
@@ -79,6 +105,11 @@ def shell_average(
     Returns:
         The structure factor at each shell magnitude.
     """
-    amplitude = np.exp(1j * (position @ wavevector.T)).sum(axis=0)
-    intensity = np.abs(amplitude) ** 2 / len(position)
+    intensity = np.empty(len(wavevector))
+    # A block of wavevectors at a time; the phase factor of every atom at
+    # every wavevector is what takes the memory.
+    block = 4096
+    for start in range(0, len(wavevector), block):
+        amplitude = np.exp(1j * (position @ wavevector[start : start + block].T)).sum(axis=0)
+        intensity[start : start + block] = np.abs(amplitude) ** 2 / len(position)
     return np.bincount(shell, weights=intensity) / np.bincount(shell)

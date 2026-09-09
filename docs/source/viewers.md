@@ -98,7 +98,7 @@ A pane that needs a quantity the simulation samples, rather than one it can comp
 
 ## A plot from the trajectory
 
-`sample()` records the configuration each time it is called, so g(r) and the scattering profile can be computed after the run, over whichever frames are wanted:
+`sample()` records the configuration each time it is called, so g(r) and the structure factor can be computed after the run, over whichever frames are wanted:
 
 ```{code-cell} python
 simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=100, box=30, seed=1)

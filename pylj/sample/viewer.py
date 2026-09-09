@@ -253,7 +253,7 @@ class Phase(Viewer):
 
 
 class Scattering(Viewer):
-    """Positions, g(r), mean squared displacement and the scattering profile.
+    """Positions, g(r), mean squared displacement and the structure factor.
 
     Args:
         simulation: The simulation to visualise.

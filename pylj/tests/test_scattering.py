@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pylj.scattering import default_q_max, shell_average, wavevectors
+from pylj.scattering import check_q_max, default_q_max, shell_average, wavevectors
 
 
 def reference(position, wavevector):
@@ -90,3 +90,22 @@ class TestWavevectorRange(unittest.TestCase):
         q, _, _ = wavevectors(box, q_max)
         self.assertGreater(q.max(), 0.999 * q_max - unit)
         self.assertLessEqual(q.max(), q_max)
+
+
+class TestCheckQMax(unittest.TestCase):
+    def test_accepts_the_smallest_wavevector_of_the_box(self):
+        box = 20e-10
+        check_q_max(2 * np.pi / box, box)
+
+    def test_names_the_units_for_a_q_max_below_the_box(self):
+        box = 20e-10
+        with self.assertRaisesRegex(ValueError, "below.*smallest wavevector"):
+            check_q_max(8.0, box)
+
+    def test_an_exact_multiple_keeps_its_outermost_shell(self):
+        box = 20e-10
+        unit = 2 * np.pi / box
+        for multiple in (3, 5, 7, 10):
+            with self.subTest(multiple=multiple):
+                q, _, _ = wavevectors(box, multiple * unit)
+                assert_allclose(q.max(), multiple * unit)

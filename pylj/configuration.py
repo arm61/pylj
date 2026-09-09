@@ -11,7 +11,7 @@ from pylj import pairwise
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.model import Model
 from pylj.potentials import Species
-from pylj.scattering import default_q_max, shell_average, wavevectors
+from pylj.scattering import check_q_max, default_q_max, shell_average, wavevectors
 
 
 @dataclass(frozen=True, eq=False)
@@ -287,9 +287,9 @@ class Configuration:
         ``k`` are integers that are not both zero. Each wavevector ``q`` has
         an amplitude ``sum_j exp(i q . r_j)``, summed over the atom positions
         ``r_j``. S(q) at that wavevector is the square of the modulus of the
-        amplitude, divided by the number of atoms. The wavevectors that share
-        a magnitude are averaged together, so the result holds one value per
-        magnitude.
+        amplitude, divided by the number of atoms. Every atom counts alike,
+        whatever its species. The wavevectors that share a magnitude are
+        averaged together, so the result holds one value per magnitude.
 
         Args:
             q_max: The largest wavevector magnitude, in 1/m. By default six
@@ -301,6 +301,7 @@ class Configuration:
         """
         if q_max is None:
             q_max = default_q_max(self.number_of_atoms, self.box)
+        check_q_max(q_max, self.box)
         q, wavevector, shell = wavevectors(self.box, q_max)
         return q, shell_average(self.position, wavevector, shell)
 

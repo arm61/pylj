@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pylj.configuration import Configuration
-from pylj.scattering import default_q_max, shell_average, wavevectors
+from pylj.scattering import check_q_max, default_q_max, shell_average, wavevectors
 
 
 class Trajectory:
@@ -132,6 +132,7 @@ class Trajectory:
         first = self._frames[0]
         if q_max is None:
             q_max = default_q_max(first.number_of_atoms, first.box)
+        check_q_max(q_max, first.box)
         q, wavevector, shell = wavevectors(first.box, q_max)
         total = np.zeros(q.size)
         for one in self._frames:
