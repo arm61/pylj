@@ -278,7 +278,7 @@ def two_atoms(distance, box=20e-10):
 
 
 class TestRDF(unittest.TestCase):
-    def test_two_atoms_fill_one_bin_with_the_ideal_gas_weight(self):
+    def test_two_atoms_fill_one_bin_near_their_distance(self):
         c = two_atoms(4e-10)
         r, gr = c.rdf(bins=50)
         dr = c.box / 2 / 50
@@ -287,7 +287,6 @@ class TestRDF(unittest.TestCase):
         self.assertEqual(np.count_nonzero(gr), 1)
         (i,) = np.nonzero(gr)
         self.assertLess(abs(r[i] - 4e-10), dr)
-        assert_allclose(gr[i] * 2 * np.pi * r[i] * dr / c.box**2, 1.0)
 
     def test_r_max_sets_the_range(self):
         r, gr = two_atoms(4e-10).rdf(bins=10, r_max=5e-10)
@@ -299,6 +298,25 @@ class TestRDF(unittest.TestCase):
         self.assertEqual(r.size, 10)
         assert_allclose(gr, 0.0)
 
+    def test_uniform_gas_gives_one(self):
+        rng = np.random.default_rng(0)
+        n = 3000
+        c = Configuration(
+            position=rng.uniform(0, 20e-10, size=(n, 2)),
+            species=(ARGON,),
+            species_index=np.zeros(n, dtype=int),
+            box=20e-10,
+        )
+        _, gr = c.rdf(bins=10)
+        assert_allclose(gr, 1.0, atol=0.03)
+
+    def test_pairs_are_measured_across_the_periodic_boundary(self):
+        c = two_atoms(18e-10)
+        r, gr = c.rdf(bins=50)
+        (i,) = np.nonzero(gr)
+        self.assertLess(abs(r[i] - 2e-10), c.box / 2 / 50)
+        assert_allclose(c.scattering(np.array([1e10])), [2 + 2 * j0(1e10 * 2e-10)])
+
 
 class TestScattering(unittest.TestCase):
     def test_two_atoms_give_the_two_dimensional_debye_sum(self):
@@ -309,6 +327,10 @@ class TestScattering(unittest.TestCase):
     def test_single_atom_scatters_as_itself(self):
         c = configuration([[1e-10, 1e-10]], box=20e-10)
         assert_allclose(c.scattering(np.array([1e10, 2e10])), 1.0)
+
+    def test_accepts_a_single_q(self):
+        c = two_atoms(4e-10)
+        assert_allclose(c.scattering(1e10), [2 + 2 * j0(1e10 * 4e-10)])
 
 
 def md_configuration(position, velocity, box=8e-10):

@@ -254,7 +254,9 @@ class Configuration:
             bins: The number of bins.
             r_max: The largest distance binned, in metres. By default half
                 the box, the furthest a minimum-image distance can reach in
-                every direction.
+                every direction. Past half the box the ring runs outside the
+                square, so the ideal-gas count is too large and g(r) sinks
+                towards zero even for a uniform gas.
 
         Returns:
             The centre of each bin, in metres, and g(r) at each.
@@ -290,7 +292,7 @@ class Configuration:
         Returns:
             I(q) at each value of ``q``, in units of one atom's scattering.
         """
-        q = np.asarray(q, dtype=float)
+        q = np.atleast_1d(np.asarray(q, dtype=float))
         distance, _ = pairwise.dist(self.position, self.box)
         intensity = np.empty_like(q)
         # A block of q values at a time; the outer product with the pair
