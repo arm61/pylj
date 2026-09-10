@@ -71,6 +71,22 @@ for _ in range(5000):
     production.sample()
 ```
 
+## Watching a run
+
+A loop that only calls `step()` shows nothing until it finishes. Print the step count every so often to see it working:
+
+```python
+for _ in range(20000):
+    simulation.step()
+    simulation.heat_bath(300)
+    if simulation.steps % 2000 == 0:
+        print(simulation.steps, simulation.configuration.temperature())
+```
+
+A viewer does this too: the figure redraws every time `update()` is called.
+
+Molecular dynamics manages a few thousand steps a second for twenty-five atoms, about a thousand for a hundred, and under a hundred for four hundred. Twenty thousand steps of four hundred atoms therefore takes minutes. Monte Carlo manages ten to twenty thousand a second at any of those sizes, because a step moves one atom.
+
 ## Trajectory
 
 `sample()` also records the current configuration in `simulation.trajectory`, one frame per sample. A frame is a `Configuration`, so `simulation.trajectory[-1].position` is the last sampled positions, and `simulation.trajectory.position` is every frame's, an array of shape `(frames, N, 2)`. Slicing gives a trajectory, so `simulation.trajectory[100:]` is the run after the first hundred frames. `restart()` starts an empty trajectory.
