@@ -6,11 +6,13 @@ from numpy.testing import assert_allclose
 from pylj.scattering import check_q_max, default_q_max, shell_average, wavevectors
 
 
-def reference(position, wavevector):
+def reference(position, box, index):
     """|F(q)|^2 / N for each wavevector, one Python loop at a time."""
     n = len(position)
-    out = np.empty(len(wavevector))
-    for i, q in enumerate(wavevector):
+    unit = 2 * np.pi / box
+    out = np.empty(len(index))
+    for i, pair in enumerate(index):
+        q = unit * pair
         amplitude = sum(np.exp(1j * np.dot(q, r)) for r in position)
         out[i] = abs(amplitude) ** 2 / n
     return out
@@ -31,19 +33,21 @@ class TestWavevectors(unittest.TestCase):
 
     def test_every_wavevector_matches_the_magnitude_of_its_shell(self):
         box = 20e-10
-        q, wavevector, shell = wavevectors(box, 4 * 2 * np.pi / box)
-        assert_allclose(np.linalg.norm(wavevector, axis=1), q[shell])
+        q, index, shell = wavevectors(box, 4 * 2 * np.pi / box)
+        unit = 2 * np.pi / box
+        assert_allclose(unit * np.linalg.norm(index, axis=1), q[shell])
 
     def test_the_origin_is_absent(self):
         box = 20e-10
-        _, wavevector, _ = wavevectors(box, 4 * 2 * np.pi / box)
-        self.assertFalse((np.linalg.norm(wavevector, axis=1) == 0).any())
+        _, index, _ = wavevectors(box, 4 * 2 * np.pi / box)
+        self.assertFalse((np.linalg.norm(index, axis=1) == 0).any())
 
     def test_no_wavevector_exceeds_q_max(self):
         box = 20e-10
         q_max = 3.5 * 2 * np.pi / box
-        _, wavevector, _ = wavevectors(box, q_max)
-        self.assertLessEqual(np.linalg.norm(wavevector, axis=1).max(), q_max)
+        _, index, _ = wavevectors(box, q_max)
+        unit = 2 * np.pi / box
+        self.assertLessEqual(unit * np.linalg.norm(index, axis=1).max(), q_max)
 
 
 class TestShellAverage(unittest.TestCase):
@@ -51,22 +55,22 @@ class TestShellAverage(unittest.TestCase):
         box = 20e-10
         rng = np.random.default_rng(0)
         position = rng.uniform(0, box, size=(12, 2))
-        q, wavevector, shell = wavevectors(box, 3 * 2 * np.pi / box)
-        direct = reference(position, wavevector)
+        q, index, shell = wavevectors(box, 3 * 2 * np.pi / box)
+        direct = reference(position, box, index)
         expected = np.bincount(shell, weights=direct) / np.bincount(shell)
-        assert_allclose(shell_average(position, wavevector, shell), expected)
+        assert_allclose(shell_average(position, box, index, shell), expected)
 
     def test_is_never_negative(self):
         box = 20e-10
         rng = np.random.default_rng(1)
         position = rng.uniform(0, box, size=(40, 2))
-        q, wavevector, shell = wavevectors(box, 8 * 2 * np.pi / box)
-        self.assertTrue((shell_average(position, wavevector, shell) >= 0).all())
+        q, index, shell = wavevectors(box, 8 * 2 * np.pi / box)
+        self.assertTrue((shell_average(position, box, index, shell) >= 0).all())
 
     def test_one_atom_scatters_as_itself(self):
         box = 20e-10
-        q, wavevector, shell = wavevectors(box, 3 * 2 * np.pi / box)
-        assert_allclose(shell_average(np.array([[1e-10, 2e-10]]), wavevector, shell), 1.0)
+        q, index, shell = wavevectors(box, 3 * 2 * np.pi / box)
+        assert_allclose(shell_average(np.array([[1e-10, 2e-10]]), box, index, shell), 1.0)
 
 
 class TestDefaultQMax(unittest.TestCase):
@@ -79,9 +83,9 @@ class TestWavevectorRange(unittest.TestCase):
         box = 20e-10
         unit = 2 * np.pi / box
         # A q_max between two shells: sqrt(13) is inside it, sqrt(16) is not.
-        q, wavevector, _ = wavevectors(box, 3.8 * unit)
+        q, index, _ = wavevectors(box, 3.8 * unit)
         assert_allclose(q[-1], unit * np.sqrt(13))
-        self.assertEqual(len(wavevector), 4 + 4 + 4 + 8 + 4 + 4 + 8 + 8)
+        self.assertEqual(len(index), 4 + 4 + 4 + 8 + 4 + 4 + 8 + 8)
 
     def test_a_non_integer_default_keeps_its_outermost_shell(self):
         box = 20e-10

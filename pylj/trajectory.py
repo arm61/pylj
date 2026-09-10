@@ -133,10 +133,10 @@ class Trajectory:
         if q_max is None:
             q_max = default_q_max(first.number_of_atoms, first.box)
         check_q_max(q_max, first.box)
-        q, wavevector, shell = wavevectors(first.box, q_max)
+        q, index, shell = wavevectors(first.box, q_max)
         total = np.zeros(q.size)
         for one in self._frames:
-            total += shell_average(one.position, wavevector, shell)
+            total += shell_average(one.position, first.box, index, shell)
         return q, total / len(self._frames)
 
     def _check_frames(self) -> None:

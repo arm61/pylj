@@ -47,7 +47,7 @@ def check_q_max(q_max: float, box: float) -> None:
 
 def wavevectors(
     box: float, q_max: float
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.int64]]:
+) -> tuple[NDArray[np.float64], NDArray[np.int64], NDArray[np.int64]]:
     """Return the wavevectors commensurate with a box, grouped by magnitude.
 
     A square box of side ``L`` that repeats in both directions has the
@@ -60,9 +60,10 @@ def wavevectors(
         q_max: The largest magnitude to return, in 1/m.
 
     Returns:
-        The distinct magnitudes in increasing order, in 1/m; the wavevectors
-        themselves, of shape ``(M, 2)``, in 1/m; and, for each wavevector,
-        the position in that list of magnitudes of the shell it belongs to.
+        The distinct magnitudes in increasing order, in 1/m; the pair of
+        integers ``(h, k)`` of each wavevector, of shape ``(M, 2)``; and,
+        for each wavevector, the position in that list of magnitudes of the
+        shell it belongs to.
     """
     unit = 2 * np.pi / box
     # No single component can exceed q_max, so that bounds the search, and
@@ -80,36 +81,63 @@ def wavevectors(
     square = square[order]
     pair = np.stack([h.ravel()[inside][order], k.ravel()[inside][order]], axis=1)
     magnitude, shell = np.unique(square, return_inverse=True)
-    return unit * np.sqrt(magnitude), unit * pair.astype(float), shell.astype(np.int64)
+    return unit * np.sqrt(magnitude), pair.astype(np.int64), shell.astype(np.int64)
+
+
+def _phase_rows(
+    coordinate: NDArray[np.float64], unit: float, limit: int
+) -> NDArray[np.complex128]:
+    """Return ``exp(i unit h x)`` for every atom and every ``h``.
+
+    The rows run from ``-limit`` to ``limit``. Negative ``h`` gives the
+    complex conjugate of positive ``h``, so only the non-negative rows are
+    evaluated.
+
+    Args:
+        coordinate: One coordinate of each atom, in metres.
+        unit: The smallest wavevector of the box, in 1/m.
+        limit: The largest ``h`` to return.
+
+    Returns:
+        The phase factors, shape ``(2 * limit + 1, N)``.
+    """
+    nonneg = np.exp(1j * unit * np.outer(np.arange(limit + 1), coordinate))
+    return np.vstack([np.conj(nonneg[:0:-1]), nonneg])
 
 
 def shell_average(
     position: NDArray[np.float64],
-    wavevector: NDArray[np.float64],
+    box: float,
+    index: NDArray[np.int64],
     shell: NDArray[np.int64],
 ) -> NDArray[np.float64]:
     """Return the structure factor of a configuration, one value per shell.
 
-    Each wavevector ``q`` has an amplitude ``sum_j exp(i q . r_j)``, summed
-    over the atom positions ``r_j``. The structure factor at that wavevector
-    is the square of the modulus of the amplitude, divided by the number of
-    atoms. Every atom counts alike, whatever its species. The wavevectors
-    that share a magnitude are averaged together, so the result holds one
-    value per shell.
+    The wavevector of a pair of integers ``(h, k)`` is ``2 pi (h, k) / L``,
+    and its amplitude is ``sum_j exp(i q . r_j)``, summed over the atom
+    positions ``r_j``. The structure factor at that wavevector is the square
+    of the modulus of the amplitude, divided by the number of atoms. Every
+    atom counts alike, whatever its species. The wavevectors that share a
+    magnitude are averaged together, so the result holds one value per shell.
+
+    A phase factor separates into one term per axis, ``exp(i q . r) =
+    exp(i q_x x) exp(i q_y y)``, so the amplitudes of every ``(h, k)`` are
+    the product of a matrix of phase factors along x with one along y.
 
     Args:
         position: The atom positions, shape ``(N, 2)``, in metres.
-        wavevector: The wavevectors, shape ``(M, 2)``, in 1/m.
+        box: The side length of the square box, in metres.
+        index: The pair of integers of each wavevector, shape ``(M, 2)``.
         shell: The index of the shell each wavevector belongs to.
 
     Returns:
         The structure factor at each shell magnitude.
     """
-    intensity = np.empty(len(wavevector))
-    # A block of wavevectors at a time; the phase factor of every atom at
-    # every wavevector is what takes the memory.
-    block = 4096
-    for start in range(0, len(wavevector), block):
-        amplitude = np.exp(1j * (position @ wavevector[start : start + block].T)).sum(axis=0)
-        intensity[start : start + block] = np.abs(amplitude) ** 2 / len(position)
+    limit = int(np.abs(index).max())
+    unit = 2 * np.pi / box
+    along_x = _phase_rows(position[:, 0], unit, limit)
+    along_y = _phase_rows(position[:, 1], unit, limit)
+    grid = along_x @ along_y.T
+    amplitude = grid[index[:, 0] + limit, index[:, 1] + limit]
+    intensity = np.abs(amplitude) ** 2 / len(position)
     return np.bincount(shell, weights=intensity) / np.bincount(shell)

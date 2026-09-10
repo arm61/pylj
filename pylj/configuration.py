@@ -302,8 +302,8 @@ class Configuration:
         if q_max is None:
             q_max = default_q_max(self.number_of_atoms, self.box)
         check_q_max(q_max, self.box)
-        q, wavevector, shell = wavevectors(self.box, q_max)
-        return q, shell_average(self.position, wavevector, shell)
+        q, index, shell = wavevectors(self.box, q_max)
+        return q, shell_average(self.position, self.box, index, shell)
 
 
 @dataclass(frozen=True, eq=False)
