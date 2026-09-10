@@ -301,9 +301,25 @@ class TestPlaceTriangular(unittest.TestCase):
             lined_up.potential_energy(ARGON_MODEL, cut_off),
         )
 
-    def test_assigns_the_species_in_turn(self):
+    def test_fills_the_sites_row_by_row(self):
+        # The species alternate along a row, so the first row of a 7 by 8
+        # lattice reads 0, 1, 0, 1, 0, 1, 0 from left to right.
         c = placement.place_triangular(56, (ARGON, LARGER), 60e-10)
-        assert_equal(c.species_index[:4], [0, 1, 0, 1])
+        y = np.unique(c.position[:, 1])
+        first_row = c.position[:, 1] == y[0]
+        order = np.argsort(c.position[first_row, 0])
+        assert_equal(c.species_index[first_row][order], [0, 1, 0, 1, 0, 1, 0])
+
+    def test_refuses_a_max_strain_above_the_limit(self):
+        with self.assertRaisesRegex(ValueError, "max_strain is a fraction"):
+            placement.place_triangular(56, (ARGON,), 60e-10, max_strain=5)
+
+    def test_says_when_an_odd_number_of_rows_is_the_reason(self):
+        # 42 atoms make a 6 by 7 lattice at 1 per cent strain, refused only
+        # because 7 rows is odd.
+        with self.assertRaisesRegex(ValueError, "odd number of rows") as caught:
+            placement.place_triangular(42, (ARGON,), 60e-10)
+        self.assertIn("6 columns by 7 rows", str(caught.exception))
 
     def test_max_strain_is_a_fraction_of_the_ratio(self):
         # 7 by 8 sits 0.0090 from sqrt(3) / 2 in absolute terms and 0.0104

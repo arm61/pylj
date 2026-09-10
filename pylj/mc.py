@@ -173,9 +173,10 @@ class MCSimulation(Simulation):
                 the run temperature. Raising it tolerates closer contacts,
                 lowering it rejects them more strictly and can exhaust the
                 trial budget.
-            max_strain: The largest strain accepted when ``init_conf`` is
-                ``'triangular'`` and its lattice is fitted to the box, as a
-                fraction of ``sqrt(3) / 2``. Used only by that placement.
+            max_strain: How far the fitted lattice may sit from
+                ``sqrt(3) / 2``, as a fraction of that ratio, when
+                ``init_conf`` is ``'triangular'``. Used only by that
+                placement.
             cut_off: The cut-off, in Angstrom; by default 15 Angstrom or
                 half the box, whichever is smaller.
             seed: Seed for the random number generator used to place the
