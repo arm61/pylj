@@ -67,6 +67,7 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Fixed
 
+- `Model`, and the simulations holding one, can be pickled and deep-copied, so a temperature scan can be handed to `multiprocessing` and a finished run saved to disk.
 - `Energy` and `Phase` viewers crashed under NumPy 2.
 - `Interactions`, `Phase` and `Scattering` crashed if built before the first sample.
 - Two-type systems drew the other type's atoms at the origin.

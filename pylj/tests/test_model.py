@@ -1,8 +1,20 @@
+import copy
+import pickle
 import unittest
+
+from numpy.testing import assert_allclose
 
 from pylj.model import Model
 from pylj.potentials import LennardJones, Species
-from pylj.tests.argon import ARGON, LARGER, LJ_ARGON, LJ_ARGON_LARGER, LJ_LARGER, MIXTURE_MODEL
+from pylj.tests.argon import (
+    ARGON,
+    ARGON_MODEL,
+    LARGER,
+    LJ_ARGON,
+    LJ_ARGON_LARGER,
+    LJ_LARGER,
+    MIXTURE_MODEL,
+)
 
 
 class TestModel(unittest.TestCase):
@@ -97,3 +109,32 @@ class TestModel(unittest.TestCase):
         text = repr(Model.single(ARGON, LJ_ARGON))
         self.assertTrue(text.startswith("Model(species=("))
         self.assertIn("LennardJones(epsilon=", text)
+
+
+class TestPickle(unittest.TestCase):
+    def test_a_model_survives_a_round_trip(self):
+        # A potential compares by identity, so the copies are compared by
+        # what they are made of, which their repr gives.
+        model = pickle.loads(pickle.dumps(MIXTURE_MODEL))
+        self.assertEqual(model.species, MIXTURE_MODEL.species)
+        self.assertEqual(
+            {pair: repr(one) for pair, one in model.pair_potentials.items()},
+            {pair: repr(one) for pair, one in MIXTURE_MODEL.pair_potentials.items()},
+        )
+        self.assertEqual(repr(model.potential(ARGON, LARGER)), repr(LJ_ARGON_LARGER))
+
+    def test_a_simulation_survives_a_round_trip(self):
+        from pylj.md import MDSimulation
+
+        simulation = MDSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=4, temperature=100, box=20, seed=1
+        )
+        simulation.step()
+        simulation.sample()
+        copied = pickle.loads(pickle.dumps(simulation))
+        assert_allclose(copied.configuration.position, simulation.configuration.position)
+        self.assertEqual(len(copied.trajectory), 1)
+
+    def test_a_model_survives_a_deep_copy(self):
+        model = copy.deepcopy(MIXTURE_MODEL)
+        self.assertEqual(model.species, MIXTURE_MODEL.species)
