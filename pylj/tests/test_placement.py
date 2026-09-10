@@ -4,6 +4,7 @@ import numpy as np
 from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 
 from pylj import pairwise, placement
+from pylj.configuration import Configuration
 from pylj.constants import ATOMIC_MASS_UNIT
 from pylj.model import Model
 from pylj.potentials import LennardJones, SquareWell
@@ -231,10 +232,15 @@ class TestPlace(unittest.TestCase):
 
 
 def neighbour_count(configuration):
-    """Mean number of atoms at the nearest distance, over the whole cell."""
+    """Mean number of atoms at the nearest distance, over the whole cell.
+
+    The window has to be wider than the spread the strain allows, which at
+    the default ``max_strain`` of 0.05 is under 7 per cent, and narrower
+    than the next shell at ``sqrt(3)`` times the nearest distance.
+    """
     distance, _ = pairwise.dist(configuration.position, configuration.box)
     nearest = distance.min()
-    return (distance < nearest * 1.05).sum() * 2 / configuration.number_of_atoms
+    return (distance < nearest * 1.07).sum() * 2 / configuration.number_of_atoms
 
 
 class TestPlaceTriangular(unittest.TestCase):
@@ -293,21 +299,46 @@ class TestPlaceTriangular(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "max_strain"):
             placement.place_triangular(56, (ARGON,), 60e-10, max_strain=0)
 
-    def test_is_lower_in_energy_than_the_square_lattice(self):
+    def test_staggering_the_rows_lowers_the_energy(self):
         sigma = 3.372e-10
         atoms = 56
         box = np.sqrt(atoms * sigma**2 / 0.9)
         cut_off = min(15e-10, box / 2)
         triangular = placement.place_triangular(atoms, (ARGON,), box)
-        square = placement.place_square(atoms, (ARGON,), box)
+        rows = np.unique(triangular.position[:, 1]).size
+        columns = atoms // rows
+        # The same grid of sites with the rows lined up rather than
+        # staggered, which is the one thing the triangular lattice changes.
+        lined_up = Configuration(
+            np.array(
+                [
+                    (i * box / columns, (j + 0.5) * box / rows)
+                    for j in range(rows)
+                    for i in range(columns)
+                ]
+            ),
+            (ARGON,),
+            np.zeros(atoms, dtype=np.int64),
+            box,
+        )
         self.assertLess(
             triangular.potential_energy(ARGON_MODEL, cut_off),
-            square.potential_energy(ARGON_MODEL, cut_off),
+            lined_up.potential_energy(ARGON_MODEL, cut_off),
         )
 
     def test_assigns_the_species_in_turn(self):
         c = placement.place_triangular(56, (ARGON, LARGER), 60e-10)
         assert_equal(c.species_index[:4], [0, 1, 0, 1])
+
+    def test_the_counts_that_fit_are_the_ones_documented(self):
+        fits = []
+        for atoms in range(2, 301):
+            try:
+                placement.place_triangular(atoms, (ARGON,), 60e-10)
+            except ValueError:
+                continue
+            fits.append(atoms)
+        self.assertEqual(fits, [30, 56, 90, 120, 168, 224, 270, 288])
 
     def test_every_atom_is_inside_the_box(self):
         box = 60e-10

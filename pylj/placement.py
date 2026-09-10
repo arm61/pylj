@@ -40,9 +40,8 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
     return Configuration(position, species, species_index, box)
 
 
-#: The spacing between the rows of a triangular lattice, as a fraction of the
-#: spacing between its columns: the rows sit ``sqrt(3) / 2`` of a column
-#: spacing apart.
+#: The rows of a triangular lattice sit ``sqrt(3) / 2`` of a column spacing
+#: apart.
 TRIANGULAR_RATIO = np.sqrt(3) / 2
 
 
@@ -86,6 +85,13 @@ def place_triangular(
     ``sqrt(3) / 2``, and ``max_strain`` sets how far from that ratio a
     lattice may sit. At the default, the counts up to 300 that fit are 30,
     56, 90, 120, 168, 224, 270 and 288.
+
+    The atoms fill the sites row by row, taking the species in turn. On a
+    lattice with an even number of columns, a mixture therefore starts out
+    in stripes of one species and then the other. Diffusion mixes them over
+    the course of the run. No check is made for overlapping atoms: a lattice
+    packed too tightly for the potential stores a large potential energy,
+    and for a potential with a hard core that energy is infinite.
 
     Args:
         number_of_atoms: The number of atoms.
