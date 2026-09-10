@@ -253,7 +253,7 @@ class Phase(Viewer):
 
 
 class Scattering(Viewer):
-    """Positions, g(r), mean squared displacement and the scattering profile.
+    """Positions, g(r), mean squared displacement and the structure factor.
 
     Args:
         simulation: The simulation to visualise.
@@ -261,6 +261,8 @@ class Scattering(Viewer):
         diameter: Drawn diameter of the atoms, in Angstrom, one value or
             one per species; by default the separation at the minimum of
             each species' own pair energy.
+        q_max: The largest wavevector magnitude drawn in the structure
+            factor, in 1/m; by default the one that follows the density.
     """
 
     def __init__(
@@ -268,6 +270,7 @@ class Scattering(Viewer):
         simulation: Simulation,
         size: str = "medium",
         diameter: float | Iterable[float] | None = None,
+        q_max: float | None = None,
     ) -> None:
-        panes = [CellPane(diameter), RDFPane(), MSDPane(), ScatteringPane()]
+        panes = [CellPane(diameter), RDFPane(), MSDPane(), ScatteringPane(q_max)]
         super().__init__(simulation, panes, size)

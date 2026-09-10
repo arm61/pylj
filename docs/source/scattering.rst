@@ -1,7 +1,7 @@
 pylj.scattering
 ===============
 
-The Debye sum, which turns a set of pair distances into a scattering profile, and the binning of those distances.
+The structure factor of a configuration, evaluated at the wavevectors commensurate with its box.
 
 .. automodule:: pylj.scattering
     :members:

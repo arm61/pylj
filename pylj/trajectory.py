@@ -5,11 +5,10 @@ from collections.abc import Iterable, Iterator
 from typing import overload
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 
-from pylj import pairwise
 from pylj.configuration import Configuration
-from pylj.scattering import bin_centres, bin_counts, debye_sum, max_separation
+from pylj.scattering import check_q_max, default_q_max, shell_average, wavevectors
 
 
 class Trajectory:
@@ -108,36 +107,39 @@ class Trajectory:
         curves = [one.rdf(bins, r_max) for one in self._frames]
         return curves[0][0], np.mean([gr for _, gr in curves], axis=0)
 
-    def scattering(self, q: ArrayLike, bins: int | None = None) -> NDArray[np.float64]:
-        """Return I(q) averaged over the frames.
+    def structure_factor(
+        self, q_max: float | None = None
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Return the structure factor S(q) averaged over the frames.
+
+        The wavevectors come from the first frame, and every frame is
+        evaluated on that one set, so the mean is taken value by value.
+        S(q) of a frame is as
+        :meth:`~pylj.configuration.Configuration.structure_factor` defines
+        it.
 
         Args:
-            q: The magnitudes of the scattering vector, in 1/m.
-            bins: If given, the pair distances of every frame are binned
-                together and the sum is over bins rather than pairs, as in
-                :meth:`~pylj.configuration.Configuration.scattering`. One
-                sum then serves the whole trajectory, which is much faster
-                than summing each frame in turn, at the cost of taking every
-                distance in a bin to be at the bin centre. By default every
-                pair of every frame is summed exactly.
+            q_max: The largest wavevector magnitude, in 1/m. By default six
+                times ``2 pi sqrt(N) / L``, the wavevector that matches the
+                mean spacing between the ``N`` atoms of the first frame.
 
         Returns:
-            The mean I(q) at each value of ``q``.
+            The wavevector magnitudes, in 1/m, and the mean S(q) at each.
 
         Raises:
-            ValueError: If the trajectory has no frames.
+            ValueError: If the trajectory has no frames, or ``q_max`` is
+                below ``2 pi / L``.
         """
         self._check_frames()
-        if bins is None:
-            return np.mean([one.scattering(q) for one in self._frames], axis=0)
         first = self._frames[0]
-        r_max = max_separation(first.box)
-        total = np.zeros(bins)
+        if q_max is None:
+            q_max = default_q_max(first.number_of_atoms, first.box)
+        check_q_max(q_max, first.box)
+        q, index, shell = wavevectors(first.box, q_max)
+        total = np.zeros(q.size)
         for one in self._frames:
-            distance, _ = pairwise.dist(one.position, one.box)
-            total += bin_counts(distance, bins, r_max)
-        centre = bin_centres(bins, r_max)
-        return debye_sum(centre, q, first.number_of_atoms, weight=total / len(self._frames))
+            total += shell_average(one.position, first.box, index, shell)
+        return q, total / len(self._frames)
 
     def _check_frames(self) -> None:
         if not self._frames:

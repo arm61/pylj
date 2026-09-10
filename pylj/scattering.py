@@ -1,97 +1,163 @@
-"""The Debye sum, which turns a set of pair distances into a scattering
-profile, and the binning that lets one sum stand for many pairs."""
+"""The structure factor of a configuration, evaluated at the wavevectors
+commensurate with its box."""
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
-from scipy.special import j0
+from numpy.typing import NDArray
+
+#: Most wavevectors a structure factor is evaluated at. Building them and
+#: the amplitudes takes a few tens of bytes each, so this bounds the working
+#: memory to under a hundred megabytes. The default range asks for about a
+#: hundred thousand of them for a thousand atoms.
+MOST_WAVEVECTORS = 1_000_000
 
 
-def max_separation(box: float) -> float:
-    """Return the largest separation two atoms can have in a periodic box.
+def default_q_max(number_of_atoms: int, box: float) -> float:
+    """Return a wavevector magnitude to draw a structure factor up to, in 1/m.
 
-    Each component of a minimum-image separation is at most half the box, so
-    the largest separation is the half-diagonal. The value returned is one
-    floating-point step above that, because a distance computed from the two
-    components can land a step above a half-diagonal computed directly, and
-    a distance above the largest bin edge would be dropped from a histogram.
+    A square box of side ``L`` holding ``N`` atoms leaves a mean spacing of
+    ``L / sqrt(N)`` between them. The wavevector matching that spacing,
+    ``2 pi sqrt(N) / L``, grows as the square root of the density, and the
+    magnitude returned is six times it.
+
+    How far a nearest neighbour sits is set by the potential rather than by
+    the density, so a dilute configuration is drawn up to a smaller multiple
+    of its first peak, where its S(q) is close to one throughout.
 
     Args:
+        number_of_atoms: The number of atoms.
         box: The side length of the square box, in metres.
 
     Returns:
-        The largest separation, in metres.
+        The wavevector magnitude, in 1/m.
     """
-    return float(np.nextafter(box / np.sqrt(2), np.inf))
+    return 6 * 2 * np.pi * np.sqrt(number_of_atoms) / box
 
 
-def bin_centres(bins: int, r_max: float) -> NDArray[np.float64]:
-    """Return the centre of each bin, in metres.
+def check_q_max(q_max: float, box: float) -> None:
+    """Check that a wavevector magnitude is one the box has, and not too many.
 
-    The bins divide zero to ``r_max`` evenly. They depend on nothing but
-    these two numbers, so one set of centres serves every frame of a run.
+    The smallest wavevector a box of side ``L`` has is ``2 pi / L``, so a
+    ``q_max`` below that leaves nothing to evaluate. The number of
+    wavevectors grows as the square of ``q_max``, so it is bounded above by
+    :data:`MOST_WAVEVECTORS`.
 
     Args:
-        bins: The number of bins.
-        r_max: The largest distance binned, in metres.
+        q_max: The largest wavevector magnitude, in 1/m.
+        box: The side length of the square box, in metres.
 
-    Returns:
-        The centre of each bin, in metres.
+    Raises:
+        ValueError: If ``q_max`` is below ``2 pi / L``, or needs more than
+            :data:`MOST_WAVEVECTORS`.
     """
-    edges = np.linspace(0, r_max, bins + 1)
-    return edges[:-1] + (edges[1] - edges[0]) / 2
+    smallest = 2 * np.pi / box
+    if q_max < smallest:
+        raise ValueError(
+            f"q_max of {q_max:g} 1/m is below {smallest:g} 1/m, the smallest wavevector a box "
+            f"of {box * 1e10:.1f} Angstrom has. q_max is in 1/m, and one inverse Angstrom is "
+            "1e10 1/m, so a value meant in inverse Angstrom lands far below the box."
+        )
+    across = 2 * int(np.floor(q_max / smallest)) + 1
+    if across**2 > MOST_WAVEVECTORS:
+        largest = smallest * (np.sqrt(MOST_WAVEVECTORS) - 1) / 2
+        raise ValueError(
+            f"q_max of {q_max:g} 1/m needs {across**2} wavevectors, above the limit of "
+            f"{MOST_WAVEVECTORS}. A box of {box * 1e10:.1f} Angstrom reaches {largest:g} 1/m "
+            "within it. q_max is in 1/m, and one inverse Angstrom is 1e10 1/m."
+        )
 
 
-def bin_counts(distance: NDArray[np.float64], bins: int, r_max: float) -> NDArray[np.float64]:
-    """Return how many distances fall in each bin of :func:`bin_centres`.
+def wavevectors(
+    box: float, q_max: float
+) -> tuple[NDArray[np.float64], NDArray[np.int64], NDArray[np.int64]]:
+    """Return the wavevectors commensurate with a box, grouped by magnitude.
+
+    A square box of side ``L`` that repeats in both directions has the
+    wavevectors ``2 pi (h, k) / L``, for integer ``h`` and ``k``. The pair
+    where both are zero is left out. The wavevectors that share a magnitude
+    make up a shell.
 
     Args:
-        distance: The pair distances, in metres.
-        bins: The number of bins.
-        r_max: The largest distance binned, in metres. Any distance beyond
-            it is dropped, so a sum over every pair needs an ``r_max`` of at
-            least :func:`max_separation`.
+        box: The side length of the square box, in metres.
+        q_max: The largest magnitude to return, in 1/m.
 
     Returns:
-        How many distances fall in each bin.
+        The distinct magnitudes in increasing order, in 1/m; the pair of
+        integers ``(h, k)`` of each wavevector, of shape ``(M, 2)``; and,
+        for each wavevector, the position in that list of magnitudes of the
+        shell it belongs to.
     """
-    counts, _ = np.histogram(distance, bins=np.linspace(0, r_max, bins + 1))
-    return counts.astype(float)
+    unit = 2 * np.pi / box
+    # No single component can exceed q_max, so that bounds the search, and
+    # the magnitude of the pair is what decides whether it is inside. A whole
+    # number of units is the common request, and dividing by unit can land a
+    # hair under it, so the ratio is nudged up before it is floored and
+    # before it is squared. The price is that a shell within a part in 1e12
+    # above q_max is kept.
+    ratio = q_max / unit * (1 + 1e-12)
+    limit = int(np.floor(ratio))
+    index = np.arange(-limit, limit + 1)
+    h, k = np.meshgrid(index, index, indexing="ij")
+    square = (h**2 + k**2).ravel()
+    inside = (square > 0) & (square <= ratio**2)
+    pair = np.stack([h.ravel()[inside], k.ravel()[inside]], axis=1)
+    magnitude, shell = np.unique(square[inside], return_inverse=True)
+    return unit * np.sqrt(magnitude), pair.astype(np.int64), shell.astype(np.int64)
 
 
-def debye_sum(
-    distance: ArrayLike,
-    q: ArrayLike,
-    number_of_atoms: int,
-    weight: ArrayLike | None = None,
+def _phase_rows(
+    coordinate: NDArray[np.float64], unit: float, limit: int
+) -> NDArray[np.complex128]:
+    """Return ``exp(i unit h x)`` for every atom and every ``h``.
+
+    The rows run from ``-limit`` to ``limit``. Negative ``h`` gives the
+    complex conjugate of positive ``h``, so only the non-negative rows are
+    evaluated.
+
+    Args:
+        coordinate: One coordinate of each atom, in metres.
+        unit: The smallest wavevector of the box, in 1/m.
+        limit: The largest ``h`` to return.
+
+    Returns:
+        The phase factors, shape ``(2 * limit + 1, N)``.
+    """
+    nonneg = np.exp(1j * unit * np.outer(np.arange(limit + 1), coordinate))
+    return np.vstack([np.conj(nonneg[:0:-1]), nonneg])
+
+
+def shell_average(
+    position: NDArray[np.float64],
+    box: float,
+    index: NDArray[np.int64],
+    shell: NDArray[np.int64],
 ) -> NDArray[np.float64]:
-    """Return the two-dimensional Debye sum over a set of pair distances.
+    """Return the structure factor of a configuration, one value per shell.
 
-    Each atom contributes one for scattering on its own, giving
-    ``number_of_atoms`` in total, and each pair at distance ``r`` adds
-    ``2 J0(q r)``.
+    The wavevector of a pair of integers ``(h, k)`` is ``2 pi (h, k) / L``,
+    and its amplitude is ``sum_j exp(i q . r_j)``, summed over the atom
+    positions ``r_j``. The structure factor at that wavevector is the square
+    of the modulus of the amplitude, divided by the number of atoms. Every
+    atom counts alike, whatever its species. The wavevectors that share a
+    magnitude are averaged together, so the result holds one value per shell.
+
+    A phase factor separates into one term per axis, ``exp(i q . r) =
+    exp(i q_x x) exp(i q_y y)``, so the amplitudes of every ``(h, k)`` are
+    the product of a matrix of phase factors along x with one along y.
 
     Args:
-        distance: The pair distances to sum over, in metres.
-        q: The magnitudes of the scattering vector, in 1/m.
-        number_of_atoms: The number of atoms.
-        weight: How many pairs each distance stands for; by default one
-            each. Binning gives one distance per bin and the count in it,
-            and an average over several frames divides those counts by the
-            number of frames.
+        position: The atom positions, shape ``(N, 2)``, in metres.
+        box: The side length of the square box, in metres.
+        index: The pair of integers of each wavevector, shape ``(M, 2)``.
+        shell: The index of the shell each wavevector belongs to.
 
     Returns:
-        I(q) at each value of ``q``, in units of one atom's scattering.
+        The structure factor at each shell magnitude.
     """
-    distance = np.asarray(distance, dtype=float)
-    q = np.atleast_1d(np.asarray(q, dtype=float))
-    weight = None if weight is None else np.asarray(weight, dtype=float)
-    intensity = np.empty_like(q)
-    # A block of q values at a time; the outer product with the pair
-    # distances is what takes the memory.
-    block = 16
-    for start in range(0, q.size, block):
-        bessel = j0(np.outer(q[start : start + block], distance))
-        if weight is not None:
-            bessel = bessel * weight
-        intensity[start : start + block] = bessel.sum(axis=1)
-    return number_of_atoms + 2 * intensity
+    limit = int(np.abs(index).max())
+    unit = 2 * np.pi / box
+    along_x = _phase_rows(position[:, 0], unit, limit)
+    along_y = _phase_rows(position[:, 1], unit, limit)
+    grid = along_x @ along_y.T
+    amplitude = grid[index[:, 0] + limit, index[:, 1] + limit]
+    intensity = np.abs(amplitude) ** 2 / len(position)
+    return np.bincount(shell, weights=intensity) / np.bincount(shell)

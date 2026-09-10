@@ -77,18 +77,12 @@ for _ in range(5000):
 
 A configuration is kept only if it was sampled, so memory grows with the number of samples and not with the number of steps. A molecular dynamics frame takes about fifty bytes per atom: a hundred atoms sampled a thousand times is five megabytes, and sampled a hundred thousand times is half a gigabyte.
 
-Two analyses are computed on demand, from one frame or averaged over a trajectory. `rdf(bins=100, r_max=None)` returns the bin centres in metres and g(r), which is one where the atoms are spread as evenly as an ideal gas; `r_max` defaults to half the box. `scattering(q)` returns the scattering intensity from the two-dimensional Debye sum, `N` plus twice the sum over pairs of the Bessel function `J0(qr)`, for `q` in inverse metres. The sum runs over minimum-image distances, so it says nothing about the system on a scale larger than the box: below a `q` of about `2 pi / L` every pair adds in phase and I(q) climbs towards `N` squared, and cutting the distances off at the box takes I(q) below zero at some `q`.
-
-Both cost more over a trajectory than over one frame, in proportion to the number of frames. `rdf` is a histogram per frame and stays fast. `scattering` evaluates a Bessel function for every pair at every q, so averaging it over two hundred frames of a hundred atoms takes about twenty seconds. Giving it a number of bins sums over binned distances instead, taking every distance in a bin to be at the bin centre; the same average then takes a tenth of a second and is within about a tenth of a percent of the peak intensity. More bins are needed to reach a larger q, since the error grows with q times the bin width.
-
-```python
-i_exact = simulation.trajectory.scattering(q)
-i_binned = simulation.trajectory.scattering(q, bins=1000)
-```
+Two analyses are computed on demand, from one frame or averaged over a trajectory. `rdf(bins=100, r_max=None)` returns the bin centres in metres and g(r), which is one where the atoms are spread as evenly as an ideal gas; `r_max` defaults to half the box. `structure_factor(q_max=None)` returns the wavevector magnitudes in inverse metres and S(q) at each, which is one where the atoms are spread as evenly as an ideal gas. S(q) is evaluated at the wavevectors `2 pi (h, k) / L` commensurate with the box, for integer `h` and `k` not both zero. The amplitude of a wavevector is the sum of `exp(i q . r)` over the atoms, and S(q) is the square of its modulus divided by the number of atoms. Wavevectors of equal magnitude are averaged together, so the result holds one value per magnitude. `q_max` defaults to six times `2 pi sqrt(N) / L`, the wavevector that matches the mean spacing between the atoms, which grows as the square root of the density. How far a nearest neighbour sits is set by the potential instead, so a dilute configuration is drawn up to a smaller multiple of its first peak, where its S(q) is close to one throughout. Two runs at different densities are drawn over different ranges; give both the same `q_max` to compare them directly.
 
 ```python
 r, gr = simulation.configuration.rdf()   # the configuration now
 r, gr = simulation.trajectory[100:].rdf()  # averaged over the run after equilibration
+q, s = simulation.trajectory.structure_factor()
 ```
 
 ## Units

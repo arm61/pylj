@@ -25,9 +25,9 @@ A viewer is a figure that redraws when `update(simulation)` is called. Eight are
 - `CellPlus`: positions and one plot of data you supply through `update(simulation, xdata, ydata)`.
 - `Interactions`: positions, temperature, pressure and total energy.
 - `Phase`: positions, total energy, mean squared displacement and the radial distribution function.
-- `Scattering`: positions, the radial distribution function, mean squared displacement and the scattering profile.
+- `Scattering`: positions, the radial distribution function, mean squared displacement and the structure factor.
 
-`MaxBolt`, `Interactions`, `Phase` and `Scattering` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot. `average(simulation)` replaces the latest curve with the mean over the trajectory, the frames `sample()` has recorded, on the radial distribution function and scattering panes; the other panes it leaves alone. Axes are in Angstrom, picoseconds and otherwise SI units.
+`MaxBolt`, `Interactions`, `Phase` and `Scattering` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot, and `Scattering` an optional `q_max` in inverse metres, which fixes the range of its structure factor so that two runs can be drawn over the same axis. `average(simulation)` replaces the latest curve with the mean over the trajectory, the frames `sample()` has recorded, on the radial distribution function and scattering panes; the other panes it leaves alone. Axes are in Angstrom, picoseconds and otherwise SI units.
 
 A viewer is for watching a run. For a plot to keep, take the arrays from `simulation.samples` or `simulation.trajectory` and use matplotlib.
 
@@ -98,7 +98,7 @@ A pane that needs a quantity the simulation samples, rather than one it can comp
 
 ## A plot from the trajectory
 
-`sample()` records the configuration each time it is called, so g(r) and the scattering profile can be computed after the run, over whichever frames are wanted:
+`sample()` records the configuration each time it is called, so g(r) and the structure factor can be computed after the run, over whichever frames are wanted:
 
 ```{code-cell} python
 simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=100, box=30, seed=1)
