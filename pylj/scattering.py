@@ -40,8 +40,8 @@ def check_q_max(q_max: float, box: float) -> None:
     if q_max < smallest:
         raise ValueError(
             f"q_max of {q_max:g} 1/m is below {smallest:g} 1/m, the smallest wavevector a box "
-            f"of {box * 1e10:.1f} Angstrom has. q_max is in 1/m, so a value in inverse "
-            "Angstrom is a thousand million times too small."
+            f"of {box * 1e10:.1f} Angstrom has. q_max is in 1/m, and one inverse Angstrom is "
+            "1e10 1/m, so a value meant in inverse Angstrom lands far below the box."
         )
 
 
@@ -69,7 +69,9 @@ def wavevectors(
     # No single component can exceed q_max, so that bounds the search, and
     # the magnitude of the pair is what decides whether it is inside. A whole
     # number of units is the common request, and dividing by unit can land a
-    # hair under it, so the ratio is nudged up before either is taken.
+    # hair under it, so the ratio is nudged up before it is floored and
+    # before it is squared. The price is that a shell within a part in 1e12
+    # above q_max is kept.
     ratio = q_max / unit * (1 + 1e-12)
     limit = int(np.floor(ratio))
     index = np.arange(-limit, limit + 1)

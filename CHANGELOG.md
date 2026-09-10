@@ -40,7 +40,7 @@ All notable changes to pylj are recorded here. The format follows
 - Python 3.11 or later is required. scipy is a dependency; Cython is not.
 - The initialisers compute the initial forces, so the first integration step uses real accelerations.
 - Viewers are built before their display is opened, and a viewer whose panes need molecular dynamics samples refuses a Monte Carlo simulation.
-- Viewers and panes take a simulation and read its `configuration` and `samples`; the radial distribution pane computes the pair distances when it draws, and the scattering pane draws the structure factor. The energy pane plots the total energy, potential plus kinetic, for a molecular dynamics simulation; the `Interactions` viewer shows it in place of the force pane.
+- Viewers and panes take a simulation and read its `configuration` and `samples`; the radial distribution pane computes the pair distances when it draws. The scattering pane plots the structure factor S(q) against the wavevectors commensurate with the box; 1.5.2 plotted an intensity from the Debye sum `sin(qr) / (qr)` over pair distances, labelled `I(q)`. The energy pane plots the total energy, potential plus kinetic, for a molecular dynamics simulation; the `Interactions` viewer shows it in place of the force pane.
 - The radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in N m^-1.
 - `JustCell` no longer takes a `scale` argument. `CellPlus.update` rejects half-supplied custom data.
 - The atomic mass unit used for initial velocities is the CODATA value; initial velocities and computed temperatures move by up to 4e-5 relative.
@@ -54,13 +54,14 @@ All notable changes to pylj are recorded here. The format follows
 - `mc.Proposal` holds `position`, shape `(N, 2)`, in place of `xposition` and `yposition`, and `source`, the configuration it was proposed from; `MCSimulation.apply` refuses a proposal whose `source` is no longer the current configuration.
 - `init_conf` is a keyword argument, `'square'` by default, taking `'square'` or `'metropolis'`; an unknown value raises `ValueError`. `'metropolis'` seats atoms by sequential Metropolis insertion, each trial position accepted on its interaction energy with the atoms already placed, in place of the `'random'` rejection-sampled placement; it works for any potential, including a hard core. `'square'` places on the lattice without an overlap check.
 - The radial distribution function pane shows its y axis, so the level g(r) = 1 can be read.
+- The scattering pane shows its y axis and starts it at zero, so the level S(q) = 1 can be read.
 - The cell pane draws an atom that overhangs an edge of the box again at the opposite edge, where the periodic boundary puts the overhanging part; atoms were previously clipped at the edge.
 - Pane axis labels use the same font size as the tick labels and read `Time / ps`, `Temperature / K`, `g(r)` and so on; a series held constant by the thermostat is shown with a one per cent margin rather than magnified rounding error, and no axis offset is printed.
 - The radial distribution function pane plots r in Angstrom and the molecular dynamics series panes plot time in picoseconds, with the mean squared displacement in Angstrom squared; the panes previously used metres and seconds.
 - The simulated things are atoms throughout: `number_of_atoms` replaces `number_of_particles` in `MDSimulation.initialise`, `MCSimulation.initialise` and the placement functions, and `Configuration.number_of_atoms` replaces `number_of_particles`.
 - `MDSimulation.initialise` and `MCSimulation.initialise` take every argument by keyword, so a call names the number of atoms, the temperature and the box.
 - `MDSimulation.initialise` and `MCSimulation.initialise` take a `Model` as their one positional argument in place of the `species` and `pair_potentials` keywords, and the constructors take it in place of `pair_potentials`. A simulation holds it as `model`. `Configuration.pairs`, `potential_energy`, `forces`, `virial` and `insertion_energy`, `md.velocity_verlet`, `placement.place` and `placement.place_metropolis` take it likewise; `place_metropolis` no longer takes `species` separately, since the model carries them.
-- `RDFPane` and `ScatteringPane` no longer keep a history of what they have drawn. `Viewer.average(simulation)` and `Pane.average(ax, simulation)` draw the mean over the simulation's trajectory. The scattering pane draws the structure factor.
+- `RDFPane` and `ScatteringPane` no longer keep a history of what they have drawn. `Viewer.average(simulation)` and `Pane.average(ax, simulation)` draw the mean over the simulation's trajectory.
 
 ### Fixed
 

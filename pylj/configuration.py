@@ -298,6 +298,9 @@ class Configuration:
 
         Returns:
             The wavevector magnitudes, in 1/m, and S(q) at each.
+
+        Raises:
+            ValueError: If ``q_max`` is below ``2 pi / L``.
         """
         if q_max is None:
             q_max = default_q_max(self.number_of_atoms, self.box)

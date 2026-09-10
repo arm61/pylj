@@ -87,6 +87,14 @@ class TestWavevectorRange(unittest.TestCase):
         assert_allclose(q[-1], unit * np.sqrt(13))
         self.assertEqual(len(index), 4 + 4 + 4 + 8 + 4 + 4 + 8 + 8)
 
+    def test_an_exact_multiple_keeps_its_outermost_shell(self):
+        box = 20e-10
+        unit = 2 * np.pi / box
+        for multiple in (3, 5, 7, 10):
+            with self.subTest(multiple=multiple):
+                q, _, _ = wavevectors(box, multiple * unit)
+                assert_allclose(q.max(), multiple * unit)
+
     def test_a_non_integer_default_keeps_its_outermost_shell(self):
         box = 20e-10
         unit = 2 * np.pi / box
@@ -105,11 +113,3 @@ class TestCheckQMax(unittest.TestCase):
         box = 20e-10
         with self.assertRaisesRegex(ValueError, "below.*smallest wavevector"):
             check_q_max(8.0, box)
-
-    def test_an_exact_multiple_keeps_its_outermost_shell(self):
-        box = 20e-10
-        unit = 2 * np.pi / box
-        for multiple in (3, 5, 7, 10):
-            with self.subTest(multiple=multiple):
-                q, _, _ = wavevectors(box, multiple * unit)
-                assert_allclose(q.max(), multiple * unit)

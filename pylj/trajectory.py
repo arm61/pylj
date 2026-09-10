@@ -112,21 +112,23 @@ class Trajectory:
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Return the structure factor S(q) averaged over the frames.
 
-        Each frame's
-        :meth:`~pylj.configuration.Configuration.structure_factor` is taken,
-        on the same set of wavevectors for every frame, and the mean over
-        frames returned.
+        The wavevectors come from the first frame, and every frame is
+        evaluated on that one set, so the mean is taken value by value.
+        S(q) of a frame is as
+        :meth:`~pylj.configuration.Configuration.structure_factor` defines
+        it.
 
         Args:
             q_max: The largest wavevector magnitude, in 1/m. By default six
                 times ``2 pi sqrt(N) / L``, the wavevector that matches the
-                mean spacing between the ``N`` atoms.
+                mean spacing between the ``N`` atoms of the first frame.
 
         Returns:
             The wavevector magnitudes, in 1/m, and the mean S(q) at each.
 
         Raises:
-            ValueError: If the trajectory has no frames.
+            ValueError: If the trajectory has no frames, or ``q_max`` is
+                below ``2 pi / L``.
         """
         self._check_frames()
         first = self._frames[0]

@@ -77,3 +77,8 @@ class TestTrajectory(unittest.TestCase):
             Trajectory().rdf()
         with self.assertRaisesRegex(ValueError, "no frames"):
             Trajectory().structure_factor()
+
+    def test_structure_factor_refuses_a_q_max_below_the_box(self):
+        trajectory = Trajectory([frame()])
+        with self.assertRaisesRegex(ValueError, "smallest wavevector"):
+            trajectory.structure_factor(q_max=8.0)

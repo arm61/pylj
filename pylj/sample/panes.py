@@ -456,6 +456,8 @@ class ScatteringPane(Pane):
     @staticmethod
     def _draw(ax: Axes, q: NDArray[np.float64], s: NDArray[np.float64]) -> None:
         ax.lines[0].set_data(q, s)
+        # The smallest wavevector a box has is 2 pi / L, so the x axis starts
+        # there rather than at zero.
         _fit_axes(ax, q, s, x_from_zero=False, y_from_zero=True)
 
 
