@@ -1,5 +1,7 @@
 """The placement of initial configurations."""
 
+import math
+
 import numpy as np
 
 from pylj.configuration import Configuration
@@ -42,7 +44,7 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
 
 #: The rows of a triangular lattice sit ``sqrt(3) / 2`` of a column spacing
 #: apart.
-TRIANGULAR_RATIO = np.sqrt(3) / 2
+TRIANGULAR_RATIO = math.sqrt(3) / 2
 
 
 def _triangular_lattice(number_of_atoms: int) -> tuple[int, int, float] | None:
@@ -82,9 +84,9 @@ def place_triangular(
     The lattice fills the box, so the number of atoms has to be a number of
     columns times an even number of rows. For the six neighbours to lie at
     the same distance, the ratio of columns to rows has to be close to
-    ``sqrt(3) / 2``, and ``max_strain`` sets how far from that ratio a
-    lattice may sit. At the default, the counts up to 300 that fit are 30,
-    56, 90, 120, 168, 224, 270 and 288.
+    ``sqrt(3) / 2``, and ``max_strain`` is the largest fraction of that
+    ratio a lattice may sit away from it. At the default, the counts up to
+    300 that fit are 30, 56, 90, 120, 168, 224, 270 and 288.
 
     The atoms fill the sites row by row, taking the species in turn. On a
     lattice with an even number of columns, a mixture therefore starts out
@@ -97,7 +99,8 @@ def place_triangular(
         number_of_atoms: The number of atoms.
         species: The species, assigned to the atoms in turn.
         box: The side length of the box, in metres.
-        max_strain: The largest strain accepted.
+        max_strain: The largest strain accepted, as a fraction of
+            ``sqrt(3) / 2``.
 
     Returns:
         The configuration.
@@ -232,7 +235,7 @@ def place(
     model: Model,
     init_conf: str,
     placement_temperature: float | None,
-    max_strain: float = 0.05,
+    max_strain: float,
     cut_off: float | None,
     rng: np.random.Generator,
 ) -> tuple[Configuration, float]:
@@ -255,7 +258,7 @@ def place(
             used by ``'metropolis'``, in kelvin; ``None`` for the run
             temperature.
         max_strain: The largest strain accepted when ``'triangular'`` fits
-            its lattice to the box.
+            its lattice to the box, as a fraction of ``sqrt(3) / 2``.
         cut_off: The cut-off, in Angstrom; ``None`` for 15 Angstrom or half
             the box, whichever is smaller.
         rng: The generator for Metropolis placement.

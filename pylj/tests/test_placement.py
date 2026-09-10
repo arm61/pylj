@@ -32,7 +32,6 @@ def place(
     max_strain=0.05,
     cut_off=None,
     seed=None,
-    rng=None,
     model=ARGON_MODEL,
 ):
     """placement.place with the argon model and a seeded generator."""
@@ -45,8 +44,20 @@ def place(
         placement_temperature=placement_temperature,
         max_strain=max_strain,
         cut_off=cut_off,
-        rng=rng if rng is not None else np.random.default_rng(seed),
+        rng=np.random.default_rng(seed),
     )
+
+
+def neighbour_count(configuration):
+    """Mean number of atoms at the nearest distance, over the whole cell.
+
+    The window has to be wider than the spread the strain allows, which at
+    the default ``max_strain`` of 0.05 is under 4 per cent, and narrower
+    than the next shell at ``sqrt(3)`` times the nearest distance.
+    """
+    distance, _ = pairwise.dist(configuration.position, configuration.box)
+    nearest = distance.min()
+    return (distance < nearest * 1.07).sum() * 2 / configuration.number_of_atoms
 
 
 class TestPlacement(unittest.TestCase):
@@ -203,44 +214,8 @@ class TestPlace(unittest.TestCase):
             place(2, 300, 8, model=Model.single(ARGON, in_angstrom))
 
     def test_place_builds_a_triangular_lattice(self):
-        c, _ = place(
-            56,
-            300,
-            60,
-            model=ARGON_MODEL,
-            init_conf="triangular",
-            placement_temperature=None,
-            max_strain=0.05,
-            cut_off=None,
-            rng=np.random.default_rng(0),
-        )
+        c, _ = place(56, 300, 60, init_conf="triangular")
         self.assertAlmostEqual(neighbour_count(c), 6.0, places=6)
-
-    def test_place_names_triangular_among_the_choices(self):
-        with self.assertRaisesRegex(ValueError, "triangular"):
-            place(
-                56,
-                300,
-                60,
-                model=ARGON_MODEL,
-                init_conf="hexagonal",
-                placement_temperature=None,
-                max_strain=0.05,
-                cut_off=None,
-                rng=np.random.default_rng(0),
-            )
-
-
-def neighbour_count(configuration):
-    """Mean number of atoms at the nearest distance, over the whole cell.
-
-    The window has to be wider than the spread the strain allows, which at
-    the default ``max_strain`` of 0.05 is under 7 per cent, and narrower
-    than the next shell at ``sqrt(3)`` times the nearest distance.
-    """
-    distance, _ = pairwise.dist(configuration.position, configuration.box)
-    nearest = distance.min()
-    return (distance < nearest * 1.07).sum() * 2 / configuration.number_of_atoms
 
 
 class TestPlaceTriangular(unittest.TestCase):
@@ -259,9 +234,9 @@ class TestPlaceTriangular(unittest.TestCase):
     def test_rows_alternate_by_half_a_column(self):
         c = placement.place_triangular(56, (ARGON,), 56e-10)
         # Every atom of a row is built from the same expression, so the row
-        # values are exactly equal and can be matched exactly. np.isclose
-        # would not work here: its absolute tolerance of 1e-8 swamps
-        # separations of order 1e-10.
+        # values are exactly equal and can be matched exactly. Any tolerance
+        # here would have to be well under the row spacing, itself of order
+        # 1e-10 metres.
         y = np.unique(c.position[:, 1])
         self.assertEqual(y.size, 8)
         first = np.sort(c.position[c.position[:, 1] == y[0], 0])
@@ -329,6 +304,13 @@ class TestPlaceTriangular(unittest.TestCase):
     def test_assigns_the_species_in_turn(self):
         c = placement.place_triangular(56, (ARGON, LARGER), 60e-10)
         assert_equal(c.species_index[:4], [0, 1, 0, 1])
+
+    def test_max_strain_is_a_fraction_of_the_ratio(self):
+        # 7 by 8 sits 0.0090 from sqrt(3) / 2 in absolute terms and 0.0104
+        # of it as a fraction, so a max_strain between the two refuses it.
+        with self.assertRaisesRegex(ValueError, "max_strain"):
+            placement.place_triangular(56, (ARGON,), 60e-10, max_strain=0.0095)
+        placement.place_triangular(56, (ARGON,), 60e-10, max_strain=0.0105)
 
     def test_the_counts_that_fit_are_the_ones_documented(self):
         fits = []
