@@ -73,7 +73,7 @@ for _ in range(5000):
 
 ## Watching a run
 
-A loop that neither samples nor redraws prints nothing while it runs. The `steps` counter that decides when to sample decides when to report:
+A loop that only calls `step()` shows nothing until it finishes. Print the step count every so often to see it working:
 
 ```python
 for _ in range(20000):
@@ -83,9 +83,9 @@ for _ in range(20000):
         print(simulation.steps, simulation.configuration.temperature())
 ```
 
-A viewer in the loop does the same job, since the figure redraws each time `update()` is called.
+A viewer does this too: the figure redraws every time `update()` is called.
 
-Molecular dynamics runs at a few thousand steps a second for twenty-five atoms, about a thousand for a hundred, and under a hundred for four hundred, so twenty thousand steps of four hundred atoms takes minutes. Monte Carlo runs at ten to twenty thousand steps a second at any of those sizes, because a step moves one atom.
+Molecular dynamics manages a few thousand steps a second for twenty-five atoms, about a thousand for a hundred, and under a hundred for four hundred. Twenty thousand steps of four hundred atoms therefore takes minutes. Monte Carlo manages ten to twenty thousand a second at any of those sizes, because a step moves one atom.
 
 ## Trajectory
 
