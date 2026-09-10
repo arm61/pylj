@@ -226,6 +226,7 @@ def place(
     model: Model,
     init_conf: str,
     placement_temperature: float | None,
+    max_strain: float = 0.05,
     cut_off: float | None,
     rng: np.random.Generator,
 ) -> tuple[Configuration, float]:
@@ -241,11 +242,14 @@ def place(
         box: The side length of the box, in Angstrom, from 4 to 600.
         model: The species, assigned to the atoms in turn, and the potential
             between each pair of them.
-        init_conf: ``'square'`` for a lattice or ``'metropolis'`` for
-            sequential Metropolis insertion.
+        init_conf: ``'square'`` for a square lattice, ``'triangular'`` for a
+            triangular one, or ``'metropolis'`` for sequential Metropolis
+            insertion.
         placement_temperature: The temperature of the Metropolis acceptance
             used by ``'metropolis'``, in kelvin; ``None`` for the run
             temperature.
+        max_strain: The largest strain accepted when ``'triangular'`` fits
+            its lattice to the box.
         cut_off: The cut-off, in Angstrom; ``None`` for 15 Angstrom or half
             the box, whichever is smaller.
         rng: The generator for Metropolis placement.
@@ -257,8 +261,9 @@ def place(
         ValueError: If no atoms are requested, a temperature is
             not positive and finite, the box is outside 4 to 600 Angstrom,
             the cut-off exceeds half the box, a potential has not died away
-            at the cut-off, ``init_conf`` is unknown, or Metropolis placement
-            exhausts its trial budget.
+            at the cut-off, ``init_conf`` is unknown, the atom count does not
+            fill a triangular lattice, or Metropolis placement exhausts its
+            trial budget.
     """
     if number_of_atoms < 1:
         raise ValueError("A simulation needs at least one atom")
@@ -277,6 +282,8 @@ def place(
     _check_potentials_at_the_cut_off(model, cut_off_m, temperature, box_m)
     if init_conf == "square":
         configuration = place_square(number_of_atoms, model.species, box_m)
+    elif init_conf == "triangular":
+        configuration = place_triangular(number_of_atoms, model.species, box_m, max_strain)
     elif init_conf == "metropolis":
         configuration = place_metropolis(
             number_of_atoms,
@@ -287,5 +294,7 @@ def place(
             rng,
         )
     else:
-        raise ValueError(f"init_conf must be 'square' or 'metropolis', not {init_conf!r}")
+        raise ValueError(
+            f"init_conf must be 'square', 'triangular' or 'metropolis', not {init_conf!r}"
+        )
     return configuration, cut_off_m

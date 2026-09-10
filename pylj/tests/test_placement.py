@@ -28,8 +28,10 @@ def place(
     *,
     init_conf="square",
     placement_temperature=None,
+    max_strain=0.05,
     cut_off=None,
     seed=None,
+    rng=None,
     model=ARGON_MODEL,
 ):
     """placement.place with the argon model and a seeded generator."""
@@ -40,8 +42,9 @@ def place(
         model=model,
         init_conf=init_conf,
         placement_temperature=placement_temperature,
+        max_strain=max_strain,
         cut_off=cut_off,
-        rng=np.random.default_rng(seed),
+        rng=rng if rng is not None else np.random.default_rng(seed),
     )
 
 
@@ -157,7 +160,7 @@ class TestPlace(unittest.TestCase):
                 place(2, 300, box)
 
     def test_refuses_an_unknown_init_conf(self):
-        with self.assertRaisesRegex(ValueError, "'square' or 'metropolis'"):
+        with self.assertRaisesRegex(ValueError, "'square', 'triangular' or 'metropolis'"):
             place(2, 300, 100, init_conf="horseradish")
 
     def test_refuses_fewer_than_one_atom(self):
@@ -197,6 +200,34 @@ class TestPlace(unittest.TestCase):
         in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
         with self.assertRaisesRegex(ValueError, r"\(half the box\).*Use a larger box"):
             place(2, 300, 8, model=Model.single(ARGON, in_angstrom))
+
+    def test_place_builds_a_triangular_lattice(self):
+        c, _ = place(
+            56,
+            300,
+            60,
+            model=ARGON_MODEL,
+            init_conf="triangular",
+            placement_temperature=None,
+            max_strain=0.05,
+            cut_off=None,
+            rng=np.random.default_rng(0),
+        )
+        self.assertAlmostEqual(neighbour_count(c), 6.0, places=6)
+
+    def test_place_names_triangular_among_the_choices(self):
+        with self.assertRaisesRegex(ValueError, "triangular"):
+            place(
+                56,
+                300,
+                60,
+                model=ARGON_MODEL,
+                init_conf="hexagonal",
+                placement_temperature=None,
+                max_strain=0.05,
+                cut_off=None,
+                rng=np.random.default_rng(0),
+            )
 
 
 def neighbour_count(configuration):

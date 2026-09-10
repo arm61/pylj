@@ -134,6 +134,7 @@ class MDSimulation(Simulation):
         box: float,
         init_conf: str = "square",
         placement_temperature: float | None = None,
+        max_strain: float = 0.05,
         timestep: float = 1e-14,
         cut_off: float | None = None,
         seed: int | None = None,
@@ -156,13 +157,17 @@ class MDSimulation(Simulation):
             number_of_atoms: The number of atoms, at least two.
             temperature: The initial temperature, in kelvin.
             box: The side length of the box, in Angstrom, from 4 to 600.
-            init_conf: ``'square'`` for a lattice or ``'metropolis'`` for
-                sequential Metropolis insertion.
+            init_conf: ``'square'`` for a square lattice, ``'triangular'``
+                for a triangular one, or ``'metropolis'`` for sequential
+                Metropolis insertion.
             placement_temperature: The temperature of the Metropolis
                 acceptance used by ``'metropolis'``, in kelvin; by default
                 the run temperature. Raising it tolerates closer contacts,
                 lowering it rejects them more strictly and can exhaust the
                 trial budget. Ignored by ``'square'``.
+            max_strain: The largest strain accepted when ``init_conf`` is
+                ``'triangular'`` and its lattice is fitted to the box.
+                Ignored by the other placements.
             timestep: The length of each integration step, in seconds.
             cut_off: The cut-off, in Angstrom; by default 15 Angstrom or
                 half the box, whichever is smaller.
@@ -190,6 +195,7 @@ class MDSimulation(Simulation):
             model=model,
             init_conf=init_conf,
             placement_temperature=placement_temperature,
+            max_strain=max_strain,
             cut_off=cut_off,
             rng=rng,
         )
