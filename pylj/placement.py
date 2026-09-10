@@ -146,7 +146,7 @@ def place_triangular(
         )
     best = _triangular_lattice(number_of_atoms)
     if best is None or best.strain > max_strain:
-        raise ValueError(_no_lattice_message(number_of_atoms, best, max_strain))
+        raise ValueError(_no_lattice_message(number_of_atoms, max_strain))
     columns, rows = best.columns, best.rows
     column_spacing = box / columns
     row_spacing = box / rows
@@ -160,66 +160,37 @@ def place_triangular(
     return Configuration(position, species, species_index, box)
 
 
-def _odd_row_lattice(number_of_atoms: int) -> Lattice | None:
-    """Return the best lattice an odd number of rows would give.
+def _nearest_fitting(number_of_atoms: int, max_strain: float) -> list[int]:
+    """Return the nearest atom counts either side that do fill a lattice.
 
-    ``None`` when no odd number of rows divides ``number_of_atoms``, or when
-    the best one is no better than the best even-row lattice.
+    Counts that fit are close together, so stepping outward from
+    ``number_of_atoms`` finds them quickly. The list is empty when neither
+    direction has one within a few hundred.
     """
-    best: Lattice | None = None
-    for rows in range(1, number_of_atoms + 1, 2):
-        if number_of_atoms % rows:
-            continue
-        columns = number_of_atoms // rows
-        strain = abs(columns / rows / TRIANGULAR_RATIO - 1)
-        if best is None or strain < best.strain:
-            best = Lattice(columns, rows, strain)
-    even = _triangular_lattice(number_of_atoms)
-    if best is None or (even is not None and even.strain <= best.strain):
-        return None
-    return best
-
-
-def _no_lattice_message(
-    number_of_atoms: int, best: Lattice | None, max_strain: float
-) -> str:
-    """Say why a triangular lattice was refused and which counts would fit."""
-    if best is None:
-        reason = (
-            f"{number_of_atoms} atoms cannot fill a triangular lattice: it needs a number "
-            "of columns times an even number of rows"
-        )
-    else:
-        reason = (
-            f"{number_of_atoms} atoms fill a {best.columns} column by {best.rows} row "
-            f"triangular lattice, straining it by {best.strain:.3f}, above max_strain "
-            f"of {max_strain:.3f}"
-        )
-    odd = _odd_row_lattice(number_of_atoms)
-    if odd is not None and odd.strain <= max_strain:
-        reason += (
-            f", and the {odd.columns} by {odd.rows} lattice that would fit has an odd number "
-            "of rows"
-        )
-    nearby = []
+    found = []
     for direction in (-1, 1):
         candidate = number_of_atoms
         for _ in range(300):
             candidate += direction
             if candidate < 2:
                 break
-            fit = _triangular_lattice(candidate)
-            if fit is not None and fit.strain <= max_strain:
-                nearby.append(candidate)
+            lattice = _triangular_lattice(candidate)
+            if lattice is not None and lattice.strain <= max_strain:
+                found.append(candidate)
                 break
-    advice = []
-    if nearby:
-        advice.append(f"use {' or '.join(str(one) for one in sorted(nearby))} atoms")
-    if best is not None and best.strain <= MOST_STRAIN:
-        advice.append("raise max_strain")
-    if not advice:
+    return sorted(found)
+
+
+def _no_lattice_message(number_of_atoms: int, max_strain: float) -> str:
+    """Say that an atom count was refused and which counts would fit."""
+    reason = (
+        f"{number_of_atoms} atoms do not fill a triangular lattice within a max_strain "
+        f"of {max_strain:g}"
+    )
+    nearby = _nearest_fitting(number_of_atoms, max_strain)
+    if not nearby:
         return f"{reason}."
-    return f"{reason}. To go on, {' or '.join(advice)}."
+    return f"{reason}. Use {' or '.join(str(one) for one in nearby)} atoms."
 
 
 def place_metropolis(

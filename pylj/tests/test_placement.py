@@ -261,8 +261,14 @@ class TestPlaceTriangular(unittest.TestCase):
         placement.place_triangular(120, (ARGON,), 60e-10)
 
     def test_refuses_a_count_with_no_even_row_factorisation(self):
-        with self.assertRaisesRegex(ValueError, "triangular lattice"):
+        # 97 is prime, so no even number of rows divides it.
+        with self.assertRaisesRegex(ValueError, "Use 90 or 120 atoms"):
             placement.place_triangular(97, (ARGON,), 60e-10)
+
+    def test_names_only_one_count_at_the_bottom_of_the_range(self):
+        # Nothing below 30 fits, so only the count above is offered.
+        with self.assertRaisesRegex(ValueError, r"Use 30 atoms\."):
+            placement.place_triangular(25, (ARGON,), 60e-10)
 
     def test_a_looser_tolerance_accepts_more_counts(self):
         with self.assertRaises(ValueError):
@@ -313,24 +319,6 @@ class TestPlaceTriangular(unittest.TestCase):
     def test_refuses_a_max_strain_above_the_limit(self):
         with self.assertRaisesRegex(ValueError, "max_strain is a fraction"):
             placement.place_triangular(56, (ARGON,), 60e-10, max_strain=5)
-
-    def test_says_when_an_odd_number_of_rows_is_the_reason(self):
-        # 42 atoms make a 6 by 7 lattice at 1 per cent strain, refused only
-        # because 7 rows is odd.
-        with self.assertRaisesRegex(ValueError, "odd number of rows") as caught:
-            placement.place_triangular(42, (ARGON,), 60e-10)
-        self.assertIn("6 by 7", str(caught.exception))
-
-    def test_offers_a_larger_max_strain_only_when_one_would_work(self):
-        # 100 atoms fill a 10 by 10 lattice at 0.155 strain, inside the
-        # limit, so raising max_strain reaches it. 42 atoms need 0.347,
-        # beyond the limit, so no max_strain reaches them.
-        with self.assertRaises(ValueError) as reachable:
-            placement.place_triangular(100, (ARGON,), 60e-10)
-        self.assertIn("raise max_strain", str(reachable.exception))
-        with self.assertRaises(ValueError) as unreachable:
-            placement.place_triangular(42, (ARGON,), 60e-10)
-        self.assertNotIn("max_strain", str(unreachable.exception).split("To go on")[1])
 
     def test_max_strain_is_a_fraction_of_the_ratio(self):
         # 7 by 8 sits 0.0090 from sqrt(3) / 2 in absolute terms and 0.0104
