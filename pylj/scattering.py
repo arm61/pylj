@@ -10,8 +10,10 @@ def default_q_max(number_of_atoms: int, box: float) -> float:
 
     A square box of side ``L`` holding ``N`` atoms leaves a mean spacing of
     ``L / sqrt(N)`` between them, and the wavevector matching that spacing is
-    ``2 pi sqrt(N) / L``. The magnitude returned is six times that, so it
-    follows the spacing rather than the size of the box.
+    ``2 pi sqrt(N) / L``. The magnitude returned is six times that. The
+    spacing between neighbouring atoms and this magnitude both scale with
+    the square root of the density, so the range covers the same number of
+    structure peaks at any density.
 
     Args:
         number_of_atoms: The number of atoms.
