@@ -55,6 +55,7 @@ All notable changes to pylj are recorded here. The format follows
 - `init_conf` is a keyword argument, `'square'` by default, taking `'square'` or `'metropolis'`; an unknown value raises `ValueError`. `'metropolis'` seats atoms by sequential Metropolis insertion, each trial position accepted on its interaction energy with the atoms already placed, in place of the `'random'` rejection-sampled placement; it works for any potential, including a hard core. `'square'` places on the lattice without an overlap check.
 - The radial distribution function pane shows its y axis, so the level g(r) = 1 can be read.
 - The scattering pane shows its y axis and starts it at zero, so the level S(q) = 1 can be read.
+- `ScatteringPane` and the `Scattering` viewer take `q_max`, the largest wavevector magnitude drawn, so two runs can be drawn over the same axis.
 - The cell pane draws an atom that overhangs an edge of the box again at the opposite edge, where the periodic boundary puts the overhanging part; atoms were previously clipped at the edge.
 - Pane axis labels use the same font size as the tick labels and read `Time / ps`, `Temperature / K`, `g(r)` and so on; a series held constant by the thermostat is shown with a one per cent margin rather than magnified rounding error, and no axis offset is printed.
 - The radial distribution function pane plots r in Angstrom and the molecular dynamics series panes plot time in picoseconds, with the mean squared displacement in Angstrom squared; the panes previously used metres and seconds.

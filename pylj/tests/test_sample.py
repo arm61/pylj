@@ -699,3 +699,24 @@ def test_fit_axes_pads_a_constant_series_and_hides_the_offset():
     fig.canvas.draw()
     assert ax.yaxis.get_major_formatter().get_offset() == ""
     plt.close(fig)
+
+
+def test_scattering_pane_takes_a_q_max():
+    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=100, box=25)
+    q_max = 4 * 2 * np.pi / simulation.configuration.box
+    fig, ax = environment(1)
+    pane = ScatteringPane(q_max)
+    pane.setup(ax, simulation)
+    pane.update(ax, simulation)
+    q, s = simulation.configuration.structure_factor(q_max)
+    assert_allclose(ax.lines[0].get_xdata(), q)
+    assert_allclose(ax.lines[0].get_ydata(), s)
+    plt.close(fig)
+
+
+def test_scattering_viewer_passes_its_q_max_to_the_pane(drawing_display):
+    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=100, box=25)
+    q_max = 4 * 2 * np.pi / simulation.configuration.box
+    viewer = Scattering(simulation, q_max=q_max)
+    q, _ = simulation.configuration.structure_factor(q_max)
+    assert_allclose(viewer.axes[3].lines[0].get_xdata(), q)

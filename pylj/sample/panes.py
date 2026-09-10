@@ -429,13 +429,22 @@ class ScatteringPane(Pane):
     """Structure factor S(q) of the configuration.
 
     The q axis runs from ``2 pi / L``, the smallest wavevector the box has,
-    to the default of
-    :meth:`~pylj.configuration.Configuration.structure_factor`. S(q) is one
-    where the atoms are spread as evenly as an ideal gas.
+    up to ``q_max``. S(q) is one where the atoms are spread as evenly as an
+    ideal gas.
 
     ``update`` draws S(q) of the current configuration and ``average`` draws
     it averaged over the frames the simulation has sampled.
+
+    Args:
+        q_max: The largest wavevector magnitude to draw, in 1/m; by default
+            the one
+            :meth:`~pylj.configuration.Configuration.structure_factor`
+            chooses, which follows the density. Give two runs the same
+            ``q_max`` to draw them over the same axis.
     """
+
+    def __init__(self, q_max: float | None = None) -> None:
+        self.q_max = q_max
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
@@ -443,7 +452,7 @@ class ScatteringPane(Pane):
         ax.set_xlabel("q / m$^{-1}$")
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
-        self._draw(ax, *simulation.configuration.structure_factor())
+        self._draw(ax, *simulation.configuration.structure_factor(self.q_max))
 
     def average(self, ax: Axes, simulation: Simulation) -> None:
         """Draw S(q) averaged over the trajectory.
@@ -456,7 +465,7 @@ class ScatteringPane(Pane):
         """
         if len(simulation.trajectory) == 0:
             return
-        self._draw(ax, *simulation.trajectory.structure_factor())
+        self._draw(ax, *simulation.trajectory.structure_factor(self.q_max))
 
     @staticmethod
     def _draw(ax: Axes, q: NDArray[np.float64], s: NDArray[np.float64]) -> None:
