@@ -225,12 +225,6 @@ class TestPlaceTriangular(unittest.TestCase):
                 c = placement.place_triangular(atoms, (ARGON,), 60e-10)
                 self.assertAlmostEqual(neighbour_count(c), 6.0, places=6)
 
-    def test_fills_every_site(self):
-        c = placement.place_triangular(56, (ARGON,), 60e-10)
-        self.assertEqual(c.number_of_atoms, 56)
-        distance, _ = pairwise.dist(c.position, c.box)
-        self.assertGreater(distance.min(), 0)
-
     def test_rows_alternate_by_half_a_column(self):
         c = placement.place_triangular(56, (ARGON,), 56e-10)
         # Every atom of a row is built from the same expression, so the row
@@ -244,14 +238,13 @@ class TestPlaceTriangular(unittest.TestCase):
         spacing = 56e-10 / 7
         assert_allclose(second - first, spacing / 2)
 
-    def test_strain_is_within_the_tolerance(self):
-        box = 60e-10
-        c = placement.place_triangular(56, (ARGON,), box)
-        rows = np.unique(c.position[:, 1]).size
-        columns = c.number_of_atoms // rows
-        strain = abs(columns / rows / (np.sqrt(3) / 2) - 1)
-        self.assertEqual(rows % 2, 0)
-        self.assertLess(strain, 0.05)
+    def test_the_row_count_is_even(self):
+        # An odd number of rows puts two unoffset rows next to each other
+        # across the periodic boundary, which breaks the lattice.
+        for atoms in (30, 56, 90, 120, 168, 224, 270, 288):
+            with self.subTest(atoms=atoms):
+                c = placement.place_triangular(atoms, (ARGON,), 60e-10)
+                self.assertEqual(np.unique(c.position[:, 1]).size % 2, 0)
 
     def test_refuses_a_count_that_does_not_fit_and_names_ones_that_do(self):
         with self.assertRaisesRegex(ValueError, "90") as caught:

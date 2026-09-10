@@ -48,7 +48,7 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
 TRIANGULAR_RATIO = math.sqrt(3) / 2
 
 
-class Lattice(NamedTuple):
+class _Lattice(NamedTuple):
     """A triangular lattice fitted to a square box.
 
     Attributes:
@@ -71,7 +71,7 @@ class Lattice(NamedTuple):
 MOST_STRAIN = 1 / 3
 
 
-def _triangular_lattice(number_of_atoms: int) -> Lattice | None:
+def _triangular_lattice(number_of_atoms: int) -> _Lattice | None:
     """Return the columns, rows and strain of the best triangular lattice.
 
     The lattice has ``columns * rows`` sites and an even number of rows. Its
@@ -80,14 +80,14 @@ def _triangular_lattice(number_of_atoms: int) -> Lattice | None:
     lattice is the one with the smallest strain. The return is ``None`` when
     no even number of rows divides ``number_of_atoms``.
     """
-    best: Lattice | None = None
+    best: _Lattice | None = None
     for rows in range(2, number_of_atoms + 1, 2):
         if number_of_atoms % rows:
             continue
         columns = number_of_atoms // rows
         strain = abs(columns / rows / TRIANGULAR_RATIO - 1)
         if best is None or strain < best.strain:
-            best = Lattice(columns, rows, strain)
+            best = _Lattice(columns, rows, strain)
     return best
 
 
@@ -160,17 +160,23 @@ def place_triangular(
     return Configuration(position, species, species_index, box)
 
 
+#: How far :func:`place_triangular` looks either side of a refused atom
+#: count for one that does fit. Counts that fit sit at most 84 apart below
+#: 20000 atoms, so this reaches one in every realistic case.
+SEARCH_RANGE = 300
+
+
 def _nearest_fitting(number_of_atoms: int, max_strain: float) -> list[int]:
     """Return the nearest atom counts either side that do fill a lattice.
 
     Counts that fit are close together, so stepping outward from
     ``number_of_atoms`` finds them quickly. The list is empty when neither
-    direction has one within a few hundred.
+    direction has one within :data:`SEARCH_RANGE`.
     """
     found = []
     for direction in (-1, 1):
         candidate = number_of_atoms
-        for _ in range(300):
+        for _ in range(SEARCH_RANGE):
             candidate += direction
             if candidate < 2:
                 break
@@ -183,9 +189,10 @@ def _nearest_fitting(number_of_atoms: int, max_strain: float) -> list[int]:
 
 def _no_lattice_message(number_of_atoms: int, max_strain: float) -> str:
     """Say that an atom count was refused and which counts would fit."""
+    atoms = "atom" if number_of_atoms == 1 else "atoms"
     reason = (
-        f"{number_of_atoms} atoms do not fill a triangular lattice within a max_strain "
-        f"of {max_strain:g}"
+        f"A triangular lattice within a max_strain of {max_strain:g} cannot hold "
+        f"{number_of_atoms} {atoms}"
     )
     nearby = _nearest_fitting(number_of_atoms, max_strain)
     if not nearby:
