@@ -95,6 +95,26 @@ class TestInitialise(unittest.TestCase):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=2, temperature=300, box=8, seed=5)
         self.assertEqual(a.rng.random(), np.random.default_rng(5).random())
 
+    def test_passes_max_strain_through(self):
+        with self.assertRaisesRegex(ValueError, "max_strain"):
+            MCSimulation.initialise(
+                ARGON_MODEL,
+                number_of_atoms=56,
+                temperature=100,
+                box=60,
+                init_conf="triangular",
+                max_strain=0.005,
+            )
+        a = MCSimulation.initialise(
+            ARGON_MODEL,
+            number_of_atoms=56,
+            temperature=100,
+            box=60,
+            init_conf="triangular",
+            max_strain=0.02,
+        )
+        self.assertEqual(a.configuration.number_of_atoms, 56)
+
     def test_refuses_a_lattice_inside_a_hard_core(self):
         # 16 atoms on a 4 by 4 lattice in a 10 Angstrom box are 2.5
         # Angstrom apart, inside a 3 Angstrom hard core that the 5 Angstrom

@@ -1,9 +1,10 @@
 import unittest
 
 import numpy as np
-from numpy.testing import assert_almost_equal, assert_equal
+from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 
 from pylj import pairwise, placement
+from pylj.configuration import Configuration
 from pylj.constants import ATOMIC_MASS_UNIT
 from pylj.model import Model
 from pylj.potentials import LennardJones, SquareWell
@@ -28,6 +29,7 @@ def place(
     *,
     init_conf="square",
     placement_temperature=None,
+    max_strain=0.05,
     cut_off=None,
     seed=None,
     model=ARGON_MODEL,
@@ -40,9 +42,22 @@ def place(
         model=model,
         init_conf=init_conf,
         placement_temperature=placement_temperature,
+        max_strain=max_strain,
         cut_off=cut_off,
         rng=np.random.default_rng(seed),
     )
+
+
+def neighbour_count(configuration):
+    """Mean number of atoms at the nearest distance, over the whole cell.
+
+    The window has to be wider than the spread the strain allows, which at
+    the default ``max_strain`` of 0.05 is under 4 per cent, and narrower
+    than the next shell at ``sqrt(3)`` times the nearest distance.
+    """
+    distance, _ = pairwise.dist(configuration.position, configuration.box)
+    nearest = distance.min()
+    return (distance < nearest * 1.07).sum() * 2 / configuration.number_of_atoms
 
 
 class TestPlacement(unittest.TestCase):
@@ -157,7 +172,7 @@ class TestPlace(unittest.TestCase):
                 place(2, 300, box)
 
     def test_refuses_an_unknown_init_conf(self):
-        with self.assertRaisesRegex(ValueError, "'square' or 'metropolis'"):
+        with self.assertRaisesRegex(ValueError, "'square', 'triangular' or 'metropolis'"):
             place(2, 300, 100, init_conf="horseradish")
 
     def test_refuses_fewer_than_one_atom(self):
@@ -197,3 +212,125 @@ class TestPlace(unittest.TestCase):
         in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
         with self.assertRaisesRegex(ValueError, r"\(half the box\).*Use a larger box"):
             place(2, 300, 8, model=Model.single(ARGON, in_angstrom))
+
+    def test_place_builds_a_triangular_lattice(self):
+        c, _ = place(56, 300, 60, init_conf="triangular")
+        self.assertAlmostEqual(neighbour_count(c), 6.0, places=6)
+
+
+class TestPlaceTriangular(unittest.TestCase):
+    def test_every_atom_has_six_nearest_neighbours(self):
+        for atoms in (56, 168):
+            with self.subTest(atoms=atoms):
+                c = placement.place_triangular(atoms, (ARGON,), 60e-10)
+                self.assertAlmostEqual(neighbour_count(c), 6.0, places=6)
+
+    def test_rows_alternate_by_half_a_column(self):
+        c = placement.place_triangular(56, (ARGON,), 56e-10)
+        # Every atom of a row is built from the same expression, so the row
+        # values are exactly equal and can be matched exactly. Any tolerance
+        # here would have to be well under the row spacing, itself of order
+        # 1e-10 metres.
+        y = np.unique(c.position[:, 1])
+        self.assertEqual(y.size, 8)
+        first = np.sort(c.position[c.position[:, 1] == y[0], 0])
+        second = np.sort(c.position[c.position[:, 1] == y[1], 0])
+        spacing = 56e-10 / 7
+        assert_allclose(second - first, spacing / 2)
+
+    def test_the_row_count_is_even(self):
+        # An odd number of rows puts two unoffset rows next to each other
+        # across the periodic boundary, which breaks the lattice.
+        for atoms in (30, 56, 90, 120, 168, 224, 270, 288):
+            with self.subTest(atoms=atoms):
+                c = placement.place_triangular(atoms, (ARGON,), 60e-10)
+                self.assertEqual(np.unique(c.position[:, 1]).size % 2, 0)
+
+    def test_refuses_a_count_that_does_not_fit_and_names_ones_that_do(self):
+        with self.assertRaisesRegex(ValueError, "90") as caught:
+            placement.place_triangular(100, (ARGON,), 60e-10)
+        self.assertIn("120", str(caught.exception))
+        placement.place_triangular(90, (ARGON,), 60e-10)
+        placement.place_triangular(120, (ARGON,), 60e-10)
+
+    def test_refuses_a_count_with_no_even_row_factorisation(self):
+        # 97 is prime, so no even number of rows divides it.
+        with self.assertRaisesRegex(ValueError, "Use 90 or 120 atoms"):
+            placement.place_triangular(97, (ARGON,), 60e-10)
+
+    def test_names_only_one_count_at_the_bottom_of_the_range(self):
+        # Nothing below 30 fits, so only the count above is offered.
+        with self.assertRaisesRegex(ValueError, r"Use 30 atoms\."):
+            placement.place_triangular(25, (ARGON,), 60e-10)
+
+    def test_a_looser_tolerance_accepts_more_counts(self):
+        with self.assertRaises(ValueError):
+            placement.place_triangular(100, (ARGON,), 60e-10)
+        c = placement.place_triangular(100, (ARGON,), 60e-10, max_strain=0.2)
+        self.assertEqual(c.number_of_atoms, 100)
+
+    def test_rejects_a_max_strain_that_is_not_positive(self):
+        with self.assertRaisesRegex(ValueError, "max_strain"):
+            placement.place_triangular(56, (ARGON,), 60e-10, max_strain=0)
+
+    def test_staggering_the_rows_lowers_the_energy(self):
+        sigma = 3.372e-10
+        atoms = 56
+        box = np.sqrt(atoms * sigma**2 / 0.9)
+        cut_off = min(15e-10, box / 2)
+        triangular = placement.place_triangular(atoms, (ARGON,), box)
+        rows = np.unique(triangular.position[:, 1]).size
+        columns = atoms // rows
+        # The same grid of sites with the rows lined up rather than
+        # staggered, which is the one thing the triangular lattice changes.
+        lined_up = Configuration(
+            np.array(
+                [
+                    (i * box / columns, (j + 0.5) * box / rows)
+                    for j in range(rows)
+                    for i in range(columns)
+                ]
+            ),
+            (ARGON,),
+            np.zeros(atoms, dtype=np.int64),
+            box,
+        )
+        self.assertLess(
+            triangular.potential_energy(ARGON_MODEL, cut_off),
+            lined_up.potential_energy(ARGON_MODEL, cut_off),
+        )
+
+    def test_fills_the_sites_row_by_row(self):
+        # The species alternate along a row, so the first row of a 7 by 8
+        # lattice reads 0, 1, 0, 1, 0, 1, 0 from left to right.
+        c = placement.place_triangular(56, (ARGON, LARGER), 60e-10)
+        y = np.unique(c.position[:, 1])
+        first_row = c.position[:, 1] == y[0]
+        order = np.argsort(c.position[first_row, 0])
+        assert_equal(c.species_index[first_row][order], [0, 1, 0, 1, 0, 1, 0])
+
+    def test_refuses_a_max_strain_above_the_limit(self):
+        with self.assertRaisesRegex(ValueError, "max_strain is a fraction"):
+            placement.place_triangular(56, (ARGON,), 60e-10, max_strain=5)
+
+    def test_max_strain_is_a_fraction_of_the_ratio(self):
+        # 7 by 8 sits 0.0090 from sqrt(3) / 2 in absolute terms and 0.0104
+        # of it as a fraction, so a max_strain between the two refuses it.
+        with self.assertRaisesRegex(ValueError, "max_strain"):
+            placement.place_triangular(56, (ARGON,), 60e-10, max_strain=0.0095)
+        placement.place_triangular(56, (ARGON,), 60e-10, max_strain=0.0105)
+
+    def test_the_counts_that_fit_are_the_ones_documented(self):
+        fits = []
+        for atoms in range(2, 301):
+            try:
+                placement.place_triangular(atoms, (ARGON,), 60e-10)
+            except ValueError:
+                continue
+            fits.append(atoms)
+        self.assertEqual(fits, [30, 56, 90, 120, 168, 224, 270, 288])
+
+    def test_every_atom_is_inside_the_box(self):
+        box = 60e-10
+        c = placement.place_triangular(56, (ARGON,), box)
+        self.assertTrue(((c.position >= 0) & (c.position < box)).all())

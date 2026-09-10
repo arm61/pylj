@@ -143,6 +143,31 @@ class TestInitialise(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
             MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=300, box=10)
 
+    def test_initialise_on_a_triangular_lattice(self):
+        simulation = MDSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=56, temperature=100, box=60, init_conf="triangular"
+        )
+        self.assertEqual(simulation.configuration.number_of_atoms, 56)
+
+    def test_initialise_passes_max_strain_to_the_placement(self):
+        with self.assertRaisesRegex(ValueError, "max_strain"):
+            MDSimulation.initialise(
+                ARGON_MODEL,
+                number_of_atoms=100,
+                temperature=100,
+                box=60,
+                init_conf="triangular",
+            )
+        simulation = MDSimulation.initialise(
+            ARGON_MODEL,
+            number_of_atoms=100,
+            temperature=100,
+            box=60,
+            init_conf="triangular",
+            max_strain=0.2,
+        )
+        self.assertEqual(simulation.configuration.number_of_atoms, 100)
+
 
 class TestConstructor(unittest.TestCase):
     def test_refuses_a_configuration_without_velocities(self):
