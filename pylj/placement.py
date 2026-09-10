@@ -198,9 +198,8 @@ def _no_lattice_message(
     odd = _odd_row_lattice(number_of_atoms)
     if odd is not None and odd.strain <= max_strain:
         reason += (
-            f". {odd.columns} columns by {odd.rows} rows would strain it by only "
-            f"{odd.strain:.3f}, and an odd number of rows breaks the lattice across the "
-            "periodic boundary"
+            f", and the {odd.columns} by {odd.rows} lattice that would fit has an odd number "
+            "of rows"
         )
     nearby = []
     for direction in (-1, 1):
@@ -213,10 +212,14 @@ def _no_lattice_message(
             if fit is not None and fit.strain <= max_strain:
                 nearby.append(candidate)
                 break
-    if not nearby:
+    advice = []
+    if nearby:
+        advice.append(f"use {' or '.join(str(one) for one in sorted(nearby))} atoms")
+    if best is not None and best.strain <= MOST_STRAIN:
+        advice.append("raise max_strain")
+    if not advice:
         return f"{reason}."
-    counts = " or ".join(str(one) for one in sorted(nearby))
-    return f"{reason}. Use {counts} atoms, or a larger max_strain."
+    return f"{reason}. To go on, {' or '.join(advice)}."
 
 
 def place_metropolis(

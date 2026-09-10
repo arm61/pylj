@@ -319,7 +319,18 @@ class TestPlaceTriangular(unittest.TestCase):
         # because 7 rows is odd.
         with self.assertRaisesRegex(ValueError, "odd number of rows") as caught:
             placement.place_triangular(42, (ARGON,), 60e-10)
-        self.assertIn("6 columns by 7 rows", str(caught.exception))
+        self.assertIn("6 by 7", str(caught.exception))
+
+    def test_offers_a_larger_max_strain_only_when_one_would_work(self):
+        # 100 atoms fill a 10 by 10 lattice at 0.155 strain, inside the
+        # limit, so raising max_strain reaches it. 42 atoms need 0.347,
+        # beyond the limit, so no max_strain reaches them.
+        with self.assertRaises(ValueError) as reachable:
+            placement.place_triangular(100, (ARGON,), 60e-10)
+        self.assertIn("raise max_strain", str(reachable.exception))
+        with self.assertRaises(ValueError) as unreachable:
+            placement.place_triangular(42, (ARGON,), 60e-10)
+        self.assertNotIn("max_strain", str(unreachable.exception).split("To go on")[1])
 
     def test_max_strain_is_a_fraction_of_the_ratio(self):
         # 7 by 8 sits 0.0090 from sqrt(3) / 2 in absolute terms and 0.0104
