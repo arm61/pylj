@@ -428,6 +428,11 @@ class RDFPane(Pane):
 class ScatteringPane(Pane):
     """Structure factor S(q) of the configuration.
 
+    The q axis runs from ``2 pi / L``, the smallest wavevector the box has,
+    to the default of
+    :meth:`~pylj.configuration.Configuration.structure_factor`. S(q) is one
+    where the atoms are spread as evenly as an ideal gas.
+
     ``update`` draws S(q) of the current configuration and ``average`` draws
     it averaged over the frames the simulation has sampled.
     """

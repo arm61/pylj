@@ -11,7 +11,7 @@ def default_q_max(number_of_atoms: int, box: float) -> float:
     A square box of side ``L`` holding ``N`` atoms leaves a mean spacing of
     ``L / sqrt(N)`` between them, and the wavevector matching that spacing is
     ``2 pi sqrt(N) / L``. The magnitude returned is six times that, so it
-    grows with the density of the configuration.
+    follows the spacing rather than the size of the box.
 
     Args:
         number_of_atoms: The number of atoms.
@@ -24,7 +24,7 @@ def default_q_max(number_of_atoms: int, box: float) -> float:
 
 
 def check_q_max(q_max: float, box: float) -> None:
-    """Check that a wavevector magnitude reaches the box.
+    """Check that a wavevector magnitude is one the box has.
 
     The smallest wavevector a box of side ``L`` has is ``2 pi / L``, so a
     ``q_max`` below that leaves nothing to evaluate.
@@ -78,11 +78,8 @@ def wavevectors(
     h, k = np.meshgrid(index, index, indexing="ij")
     square = (h**2 + k**2).ravel()
     inside = (square > 0) & (square <= ratio**2)
-    square = square[inside]
-    order = np.argsort(square, kind="stable")
-    square = square[order]
-    pair = np.stack([h.ravel()[inside][order], k.ravel()[inside][order]], axis=1)
-    magnitude, shell = np.unique(square, return_inverse=True)
+    pair = np.stack([h.ravel()[inside], k.ravel()[inside]], axis=1)
+    magnitude, shell = np.unique(square[inside], return_inverse=True)
     return unit * np.sqrt(magnitude), pair.astype(np.int64), shell.astype(np.int64)
 
 
