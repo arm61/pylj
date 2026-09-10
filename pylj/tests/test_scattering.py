@@ -3,7 +3,13 @@ import unittest
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pylj.scattering import check_q_max, default_q_max, shell_average, wavevectors
+from pylj.scattering import (
+    MOST_WAVEVECTORS,
+    check_q_max,
+    default_q_max,
+    shell_average,
+    wavevectors,
+)
 
 
 def reference(position, box, index):
@@ -113,3 +119,25 @@ class TestCheckQMax(unittest.TestCase):
         box = 20e-10
         with self.assertRaisesRegex(ValueError, "below.*smallest wavevector"):
             check_q_max(8.0, box)
+
+
+class TestQMaxCeiling(unittest.TestCase):
+    def test_accepts_a_grid_at_the_limit(self):
+        box = 20e-10
+        unit = 2 * np.pi / box
+        check_q_max(unit * (np.sqrt(MOST_WAVEVECTORS) - 1) / 2, box)
+
+    def test_names_the_reachable_q_max_for_too_many_wavevectors(self):
+        box = 40e-10
+        with self.assertRaisesRegex(ValueError, "above the limit"):
+            check_q_max(1e13, box)
+
+    def test_the_named_q_max_is_itself_accepted(self):
+        box = 40e-10
+        try:
+            check_q_max(1e13, box)
+        except ValueError as error:
+            reachable = float(str(error).split("reaches ")[1].split(" 1/m")[0])
+        check_q_max(reachable, box)
+        _, index, _ = wavevectors(box, reachable)
+        self.assertLessEqual(len(index), MOST_WAVEVECTORS)

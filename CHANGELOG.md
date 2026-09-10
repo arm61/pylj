@@ -29,7 +29,7 @@ All notable changes to pylj are recorded here. The format follows
 - `LennardJones`, `Buckingham` and `SquareWell` print as the constructor call that built them, so a model shows its parameters in a notebook.
 - `pylj.scattering`, the wavevectors commensurate with a box and the structure factor of a configuration at them.
 - `pylj.trajectory.Trajectory`, the configurations a simulation has sampled, held as `simulation.trajectory`; `sample()` appends the current configuration and `restart()` starts an empty one. Indexing gives a frame, slicing gives a trajectory, and `position` gives the `(frames, N, 2)` array.
-- `Configuration.rdf(bins=100, r_max=None)` and `Configuration.structure_factor(q_max=None)`, and the same two methods on `Trajectory` averaged over its frames, so g(r) and S(q) are available as arrays without building a viewer. S(q) is evaluated at the wavevectors commensurate with the box, and `q_max` defaults to six times `2 pi sqrt(N) / L`.
+- `Configuration.rdf(bins=100, r_max=None)` and `Configuration.structure_factor(q_max=None)`, and the same two methods on `Trajectory` averaged over its frames, so g(r) and S(q) are available as arrays without building a viewer. S(q) is evaluated at the wavevectors commensurate with the box, and `q_max` defaults to six times `2 pi sqrt(N) / L`. A `q_max` below the smallest wavevector the box has, or one needing more than `scattering.MOST_WAVEVECTORS`, raises `ValueError`.
 
 ### Changed
 

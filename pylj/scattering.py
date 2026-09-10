@@ -4,16 +4,24 @@ commensurate with its box."""
 import numpy as np
 from numpy.typing import NDArray
 
+#: Most wavevectors a structure factor is evaluated at. Building them and
+#: the amplitudes takes a few tens of bytes each, so this bounds the working
+#: memory to under a hundred megabytes. The default range asks for about a
+#: hundred thousand of them for a thousand atoms.
+MOST_WAVEVECTORS = 1_000_000
+
 
 def default_q_max(number_of_atoms: int, box: float) -> float:
-    """Return a wavevector magnitude that covers the first few peaks, in 1/m.
+    """Return a wavevector magnitude to draw a structure factor up to, in 1/m.
 
     A square box of side ``L`` holding ``N`` atoms leaves a mean spacing of
-    ``L / sqrt(N)`` between them, and the wavevector matching that spacing is
-    ``2 pi sqrt(N) / L``. The magnitude returned is six times that. The
-    spacing between neighbouring atoms and this magnitude both scale with
-    the square root of the density, so the range covers the same number of
-    structure peaks at any density.
+    ``L / sqrt(N)`` between them. The wavevector matching that spacing,
+    ``2 pi sqrt(N) / L``, grows as the square root of the density, and the
+    magnitude returned is six times it.
+
+    How far a nearest neighbour sits is set by the potential rather than by
+    the density, so a dilute configuration is drawn up to a smaller multiple
+    of its first peak, where its S(q) is close to one throughout.
 
     Args:
         number_of_atoms: The number of atoms.
@@ -26,17 +34,20 @@ def default_q_max(number_of_atoms: int, box: float) -> float:
 
 
 def check_q_max(q_max: float, box: float) -> None:
-    """Check that a wavevector magnitude is one the box has.
+    """Check that a wavevector magnitude is one the box has, and not too many.
 
     The smallest wavevector a box of side ``L`` has is ``2 pi / L``, so a
-    ``q_max`` below that leaves nothing to evaluate.
+    ``q_max`` below that leaves nothing to evaluate. The number of
+    wavevectors grows as the square of ``q_max``, so it is bounded above by
+    :data:`MOST_WAVEVECTORS`.
 
     Args:
         q_max: The largest wavevector magnitude, in 1/m.
         box: The side length of the square box, in metres.
 
     Raises:
-        ValueError: If ``q_max`` is below ``2 pi / L``.
+        ValueError: If ``q_max`` is below ``2 pi / L``, or needs more than
+            :data:`MOST_WAVEVECTORS`.
     """
     smallest = 2 * np.pi / box
     if q_max < smallest:
@@ -44,6 +55,14 @@ def check_q_max(q_max: float, box: float) -> None:
             f"q_max of {q_max:g} 1/m is below {smallest:g} 1/m, the smallest wavevector a box "
             f"of {box * 1e10:.1f} Angstrom has. q_max is in 1/m, and one inverse Angstrom is "
             "1e10 1/m, so a value meant in inverse Angstrom lands far below the box."
+        )
+    across = 2 * int(np.floor(q_max / smallest)) + 1
+    if across**2 > MOST_WAVEVECTORS:
+        largest = smallest * (np.sqrt(MOST_WAVEVECTORS) - 1) / 2
+        raise ValueError(
+            f"q_max of {q_max:g} 1/m needs {across**2} wavevectors, above the limit of "
+            f"{MOST_WAVEVECTORS}. A box of {box * 1e10:.1f} Angstrom reaches {largest:g} 1/m "
+            "within it. q_max is in 1/m, and one inverse Angstrom is 1e10 1/m."
         )
 
 
