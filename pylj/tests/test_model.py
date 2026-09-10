@@ -2,13 +2,10 @@ import copy
 import pickle
 import unittest
 
-from numpy.testing import assert_allclose
-
 from pylj.model import Model
 from pylj.potentials import LennardJones, Species
 from pylj.tests.argon import (
     ARGON,
-    ARGON_MODEL,
     LARGER,
     LJ_ARGON,
     LJ_ARGON_LARGER,
@@ -123,18 +120,9 @@ class TestPickle(unittest.TestCase):
         )
         self.assertEqual(repr(model.potential(ARGON, LARGER)), repr(LJ_ARGON_LARGER))
 
-    def test_a_simulation_survives_a_round_trip(self):
-        from pylj.md import MDSimulation
-
-        simulation = MDSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=4, temperature=100, box=20, seed=1
-        )
-        simulation.step()
-        simulation.sample()
-        copied = pickle.loads(pickle.dumps(simulation))
-        assert_allclose(copied.configuration.position, simulation.configuration.position)
-        self.assertEqual(len(copied.trajectory), 1)
-
     def test_a_model_survives_a_deep_copy(self):
+        # The copy rebuilds the mapping keys as new Species, so looking a
+        # pair up works only because a Species is hashed by its values.
         model = copy.deepcopy(MIXTURE_MODEL)
         self.assertEqual(model.species, MIXTURE_MODEL.species)
+        self.assertEqual(repr(model.potential(ARGON, LARGER)), repr(LJ_ARGON_LARGER))

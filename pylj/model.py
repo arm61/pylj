@@ -98,8 +98,9 @@ class Model:
             raise ValueError(
                 "species must not repeat: two Species that compare equal are one species"
             )
-        # A plain dict on the instance, so a model can be pickled and sent
-        # to another process; the property hands out a read-only view.
+        # A plain dict on the instance: a MappingProxyType cannot be
+        # pickled or deep-copied, and neither could anything holding one.
+        # The property hands out the read-only view instead.
         self._pair_potentials = dict(pair_potentials)
         _check_complete(self._species, self._pair_potentials)
 
