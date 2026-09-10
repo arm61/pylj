@@ -40,6 +40,114 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
     return Configuration(position, species, species_index, box)
 
 
+#: The spacing between the rows of a triangular lattice, as a fraction of the
+#: spacing between its columns: the rows sit ``sqrt(3) / 2`` of a column
+#: spacing apart.
+TRIANGULAR_RATIO = np.sqrt(3) / 2
+
+
+def _triangular_lattice(number_of_atoms: int) -> tuple[int, int, float] | None:
+    """Return the columns, rows and strain of the best triangular lattice.
+
+    The lattice has ``columns * rows`` sites and an even number of rows. Its
+    strain is how far the ratio of its row spacing to its column spacing sits
+    from :data:`TRIANGULAR_RATIO`, as a fraction of that ratio, and the best
+    lattice is the one with the smallest strain. The return is ``None`` when
+    no even number of rows divides ``number_of_atoms``.
+    """
+    best = None
+    for rows in range(2, number_of_atoms + 1, 2):
+        if number_of_atoms % rows:
+            continue
+        columns = number_of_atoms // rows
+        strain = abs(columns / rows / TRIANGULAR_RATIO - 1)
+        if best is None or strain < best[2]:
+            best = (columns, rows, strain)
+    return best
+
+
+def place_triangular(
+    number_of_atoms: int,
+    species: tuple[Species, ...],
+    box: float,
+    max_strain: float = 0.05,
+) -> Configuration:
+    """Place atoms on a triangular lattice that fills the box.
+
+    Every atom has six neighbours at the same distance, which is the
+    arrangement a two-dimensional solid settles into. Each row is offset
+    along x by half a column spacing from the row below it, and there is an
+    even number of rows so that the offset keeps alternating across the
+    periodic boundary.
+
+    The lattice fills the box, so the number of atoms has to be a number of
+    columns times an even number of rows. For the six neighbours to lie at
+    the same distance, the ratio of columns to rows has to be close to
+    ``sqrt(3) / 2``, and ``max_strain`` sets how far from that ratio a
+    lattice may sit. At the default, the counts up to 300 that fit are 30,
+    56, 90, 120, 168, 224, 270 and 288.
+
+    Args:
+        number_of_atoms: The number of atoms.
+        species: The species, assigned to the atoms in turn.
+        box: The side length of the box, in metres.
+        max_strain: The largest strain accepted.
+
+    Returns:
+        The configuration.
+
+    Raises:
+        ValueError: If ``max_strain`` is not positive and finite, or no
+            lattice within ``max_strain`` has this many sites.
+    """
+    check_positive_finite("max_strain", max_strain)
+    best = _triangular_lattice(number_of_atoms)
+    if best is None or best[2] > max_strain:
+        raise ValueError(_no_lattice_message(number_of_atoms, best, max_strain))
+    columns, rows, _ = best
+    column_spacing = box / columns
+    row_spacing = box / rows
+    sites = [
+        ((i + 0.5 * (j % 2)) * column_spacing, (j + 0.5) * row_spacing)
+        for j in range(rows)
+        for i in range(columns)
+    ]
+    position = np.array(sites, dtype=float)
+    species_index = np.arange(number_of_atoms) % len(species)
+    return Configuration(position, species, species_index, box)
+
+
+def _no_lattice_message(
+    number_of_atoms: int, best: tuple[int, int, float] | None, max_strain: float
+) -> str:
+    """Say why a triangular lattice was refused and which counts would fit."""
+    if best is None:
+        reason = (
+            f"{number_of_atoms} atoms cannot fill a triangular lattice: it needs a number "
+            "of columns times an even number of rows"
+        )
+    else:
+        reason = (
+            f"{number_of_atoms} atoms fill a {best[0]} by {best[1]} triangular lattice, "
+            f"straining it by {best[2]:.1%}, above max_strain of {max_strain:.1%}"
+        )
+    nearby = []
+    for direction in (-1, 1):
+        candidate = number_of_atoms
+        for _ in range(300):
+            candidate += direction
+            if candidate < 2:
+                break
+            fit = _triangular_lattice(candidate)
+            if fit is not None and fit[2] <= max_strain:
+                nearby.append(candidate)
+                break
+    if not nearby:
+        return f"{reason}."
+    counts = " or ".join(str(one) for one in sorted(nearby))
+    return f"{reason}. Use {counts} atoms, or a larger max_strain."
+
+
 def place_metropolis(
     number_of_atoms: int,
     box: float,

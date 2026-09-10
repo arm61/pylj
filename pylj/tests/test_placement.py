@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-from numpy.testing import assert_almost_equal, assert_equal
+from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 
 from pylj import pairwise, placement
 from pylj.constants import ATOMIC_MASS_UNIT
@@ -197,3 +197,88 @@ class TestPlace(unittest.TestCase):
         in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
         with self.assertRaisesRegex(ValueError, r"\(half the box\).*Use a larger box"):
             place(2, 300, 8, model=Model.single(ARGON, in_angstrom))
+
+
+def neighbour_count(configuration):
+    """Mean number of atoms at the nearest distance, over the whole cell."""
+    distance, _ = pairwise.dist(configuration.position, configuration.box)
+    nearest = distance.min()
+    return (distance < nearest * 1.05).sum() * 2 / configuration.number_of_atoms
+
+
+class TestPlaceTriangular(unittest.TestCase):
+    def test_every_atom_has_six_nearest_neighbours(self):
+        for atoms in (56, 168):
+            with self.subTest(atoms=atoms):
+                c = placement.place_triangular(atoms, (ARGON,), 60e-10)
+                self.assertAlmostEqual(neighbour_count(c), 6.0, places=6)
+
+    def test_fills_every_site(self):
+        c = placement.place_triangular(56, (ARGON,), 60e-10)
+        self.assertEqual(c.number_of_atoms, 56)
+        distance, _ = pairwise.dist(c.position, c.box)
+        self.assertGreater(distance.min(), 0)
+
+    def test_rows_alternate_by_half_a_column(self):
+        c = placement.place_triangular(56, (ARGON,), 56e-10)
+        # Every atom of a row is built from the same expression, so the row
+        # values are exactly equal and can be matched exactly. np.isclose
+        # would not work here: its absolute tolerance of 1e-8 swamps
+        # separations of order 1e-10.
+        y = np.unique(c.position[:, 1])
+        self.assertEqual(y.size, 8)
+        first = np.sort(c.position[c.position[:, 1] == y[0], 0])
+        second = np.sort(c.position[c.position[:, 1] == y[1], 0])
+        spacing = 56e-10 / 7
+        assert_allclose(second - first, spacing / 2)
+
+    def test_strain_is_within_the_tolerance(self):
+        box = 60e-10
+        c = placement.place_triangular(56, (ARGON,), box)
+        rows = np.unique(c.position[:, 1]).size
+        columns = c.number_of_atoms // rows
+        strain = abs(columns / rows / (np.sqrt(3) / 2) - 1)
+        self.assertEqual(rows % 2, 0)
+        self.assertLess(strain, 0.05)
+
+    def test_refuses_a_count_that_does_not_fit_and_names_ones_that_do(self):
+        with self.assertRaisesRegex(ValueError, "90") as caught:
+            placement.place_triangular(100, (ARGON,), 60e-10)
+        self.assertIn("120", str(caught.exception))
+        placement.place_triangular(90, (ARGON,), 60e-10)
+        placement.place_triangular(120, (ARGON,), 60e-10)
+
+    def test_refuses_a_count_with_no_even_row_factorisation(self):
+        with self.assertRaisesRegex(ValueError, "triangular lattice"):
+            placement.place_triangular(97, (ARGON,), 60e-10)
+
+    def test_a_looser_tolerance_accepts_more_counts(self):
+        with self.assertRaises(ValueError):
+            placement.place_triangular(100, (ARGON,), 60e-10)
+        c = placement.place_triangular(100, (ARGON,), 60e-10, max_strain=0.2)
+        self.assertEqual(c.number_of_atoms, 100)
+
+    def test_rejects_a_max_strain_that_is_not_positive(self):
+        with self.assertRaisesRegex(ValueError, "max_strain"):
+            placement.place_triangular(56, (ARGON,), 60e-10, max_strain=0)
+
+    def test_is_lower_in_energy_than_the_square_lattice(self):
+        sigma = 3.372e-10
+        atoms = 56
+        box = np.sqrt(atoms * sigma**2 / 0.9)
+        cut_off = min(15e-10, box / 2)
+        triangular = placement.place_triangular(atoms, (ARGON,), box)
+        square = placement.place_square(atoms, (ARGON,), box)
+        self.assertLess(
+            triangular.potential_energy(ARGON_MODEL, cut_off),
+            square.potential_energy(ARGON_MODEL, cut_off),
+        )
+
+    def test_assigns_the_species_in_turn(self):
+        c = placement.place_triangular(56, (ARGON, LARGER), 60e-10)
+        assert_equal(c.species_index[:4], [0, 1, 0, 1])
+
+    def test_every_atom_is_inside_the_box(self):
+        box = 60e-10
+        c = placement.place_triangular(56, (ARGON,), box)
+        self.assertTrue(((c.position >= 0) & (c.position < box)).all())
