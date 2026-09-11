@@ -22,7 +22,7 @@ simulation = MDSimulation.initialise(
 
 A configuration whose pair energy is not finite or exceeds ten $k_B T$ per atom is refused with `ValueError`, as is a potential whose energy at the cut-off is larger than $k_B T$.
 
-The constructors take a ready configuration instead: `MDSimulation(configuration, model, cut_off=None, timestep=1e-14, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, cut_off=None, seed=None)` with a `Configuration`, all in SI units. `MDSimulation` sets the centre of mass of the configuration it is given at rest, which changes the frame without changing any separation, force or relative velocity; `md.at_rest(configuration)` does it on its own.
+The constructors take a ready configuration instead: `MDSimulation(configuration, model, cut_off=None, timestep=1e-14, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, cut_off=None, seed=None)` with a `Configuration`, all in SI units. `MDSimulation` sets the centre of mass of the configuration it is given at rest; `md.at_rest(configuration)` does it on its own.
 
 ## The configuration
 

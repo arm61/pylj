@@ -386,16 +386,10 @@ def update_velocities(
 def at_rest(configuration: MDConfiguration) -> MDConfiguration:
     """Return the configuration with its centre of mass at rest.
 
-    The velocity of the centre of mass is the mean of the atomic velocities,
-    weighted by mass. Subtracting it from every atom is a change of
-    viewpoint rather than a change to the system. The atoms have not moved,
-    so the separations between them, the forces on them and the potential
-    energy are all unchanged, and each atom still moves in the same way
-    relative to every other. The kinetic energy does change: it falls by the
-    energy the drift was carrying, and the temperature falls with it.
+    The mass-weighted mean velocity is subtracted from every atom.
 
     Args:
-        configuration: The configuration to put in that frame.
+        configuration: The configuration to put at rest.
 
     Returns:
         The configuration with its centre of mass at rest.
