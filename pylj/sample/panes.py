@@ -270,7 +270,7 @@ class CellPane(Pane):
         axes_width_points = ax.get_window_extent().width / ax.figure.dpi * 72
         for index, diameter in enumerate(self.diameters):
             line = ax.lines[index]
-            position = configuration.position[configuration.species_index == index]
+            position = configuration.positions[configuration.species_index == index]
             drawn = _with_periodic_images(position, self.box, diameter / 2)
             line.set_data(drawn[:, 0], drawn[:, 1])
             line.set_markersize(diameter / self.box * axes_width_points)
@@ -494,7 +494,7 @@ class MaxwellBoltzmannPane(Pane):
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set
-        speeds = np.linalg.norm(simulation.configuration.velocity, axis=1)
+        speeds = np.linalg.norm(simulation.configuration.velocities, axis=1)
         self.speeds = np.append(self.speeds, speeds)
         density, edges = np.histogram(self.speeds, bins=self.BINS, density=True)
         plateau = np.append(density, density[-1])

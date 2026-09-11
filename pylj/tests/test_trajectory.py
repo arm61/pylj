@@ -14,9 +14,9 @@ def frame(box: float = 20e-10, atoms: int = 4):
 
 def moved(configuration):
     """The same frame with one atom shifted, so the pair distances differ."""
-    position = configuration.position.copy()
+    position = configuration.positions.copy()
     position[0] += [3e-10, 1e-10]
-    return configuration.replace(position=position)
+    return configuration.replace(positions=position)
 
 
 class TestTrajectory(unittest.TestCase):
@@ -39,9 +39,9 @@ class TestTrajectory(unittest.TestCase):
 
     def test_position_stacks_the_frames(self):
         trajectory = Trajectory([frame(), frame()])
-        self.assertEqual(trajectory.position.shape, (2, 4, 2))
-        assert_allclose(trajectory.position[1], trajectory[1].position)
-        self.assertEqual(Trajectory().position.shape, (0, 0, 2))
+        self.assertEqual(trajectory.positions.shape, (2, 4, 2))
+        assert_allclose(trajectory.positions[1], trajectory[1].positions)
+        self.assertEqual(Trajectory().positions.shape, (0, 0, 2))
 
     def test_rejects_a_frame_from_a_different_system(self):
         trajectory = Trajectory([frame()])

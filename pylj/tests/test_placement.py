@@ -55,7 +55,7 @@ def neighbour_count(configuration):
     the default ``max_strain`` of 0.05 is under 4 per cent, and narrower
     than the next shell at ``sqrt(3)`` times the nearest distance.
     """
-    distance, _ = pairwise.dist(configuration.position, configuration.box)
+    distance, _ = pairwise.dist(configuration.positions, configuration.box)
     nearest = distance.min()
     return (distance < nearest * 1.07).sum() * 2 / configuration.number_of_atoms
 
@@ -63,7 +63,7 @@ def neighbour_count(configuration):
 class TestPlacement(unittest.TestCase):
     def test_square_fills_the_lattice_in_order(self):
         c = placement.place_square(2, (ARGON,), 8e-10)
-        assert_almost_equal(c.position * 1e10, [[2, 2], [2, 6]])
+        assert_almost_equal(c.positions * 1e10, [[2, 2], [2, 6]])
         assert_equal(c.species_index, [0, 0])
         self.assertEqual(c.box, 8e-10)
 
@@ -76,14 +76,14 @@ class TestPlacement(unittest.TestCase):
 
     def test_metropolis_places_inside_the_box(self):
         c, _ = place(10, 300, 20, init_conf="metropolis", seed=0)
-        self.assertTrue(np.all((0 <= c.position) & (c.position < c.box)))
+        self.assertTrue(np.all((0 <= c.positions) & (c.positions < c.box)))
         self.assertEqual(c.number_of_atoms, 10)
 
     def test_metropolis_places_a_hard_core_outside_its_diameter(self):
         # A trial inside the square well's core costs infinite energy and is
         # always rejected, so no pair is closer than sigma.
         c, cut_off = place(50, 300, 30, init_conf="metropolis", seed=1, model=WELL_MODEL)
-        distance = c.pairs(WELL_MODEL, cut_off).distance
+        distance = c.pairs(WELL_MODEL, cut_off).distances
         self.assertGreaterEqual(distance.min(), WELL.sigma)
 
     def test_metropolis_places_a_mixture_with_each_pairs_own_potential(self):
@@ -91,7 +91,7 @@ class TestPlacement(unittest.TestCase):
         # core of its own potential. A placement using the wrong potential
         # for a pair lets it inside the true core.
         c, cut_off = place(30, 300, 40, init_conf="metropolis", seed=0, model=WELL_MIXTURE_MODEL)
-        distance = c.pairs(WELL_MIXTURE_MODEL, cut_off).distance
+        distance = c.pairs(WELL_MIXTURE_MODEL, cut_off).distances
         for mask, type_1, type_2 in pairwise.species_pairs(c.species_index):
             potential = WELL_MIXTURE_MODEL.potential(c.species[type_1], c.species[type_2])
             core = potential.sigma
@@ -103,14 +103,14 @@ class TestPlacement(unittest.TestCase):
         # min_separation makes such a trial cost infinite energy instead.
         c, cut_off = place(30, 300, 40, init_conf="metropolis", seed=0, model=BUCKINGHAM_MODEL)
         pairs = c.pairs(BUCKINGHAM_MODEL, cut_off)
-        self.assertGreater(pairs.distance.min(), BUCKINGHAM_ARGON.min_separation)
-        self.assertTrue(np.isfinite(pairs.energy).all())
+        self.assertGreater(pairs.distances.min(), BUCKINGHAM_ARGON.min_separation)
+        self.assertTrue(np.isfinite(pairs.energies).all())
 
     def test_metropolis_places_a_soft_potential_outside_its_core(self):
         # Lennard-Jones has no hard core, but at 100 K a pair inside 0.8
         # sigma costs over 40 well depths and is never accepted.
         c, cut_off = place(30, 100, 40, init_conf="metropolis", seed=0)
-        distance = c.pairs(ARGON_MODEL, cut_off).distance
+        distance = c.pairs(ARGON_MODEL, cut_off).distances
         self.assertGreater(distance.min(), 0.8 * LJ_ARGON.sigma)
 
     def test_metropolis_too_dense_raises(self):
@@ -121,8 +121,8 @@ class TestPlacement(unittest.TestCase):
         first, _ = place(10, 100, 40, init_conf="metropolis", seed=3)
         second, _ = place(10, 100, 40, init_conf="metropolis", seed=3)
         other, _ = place(10, 100, 40, init_conf="metropolis", seed=4)
-        assert_equal(first.position, second.position)
-        self.assertFalse(np.array_equal(first.position, other.position))
+        assert_equal(first.positions, second.positions)
+        self.assertFalse(np.array_equal(first.positions, other.positions))
 
     def test_metropolis_placement_temperature_governs_success(self):
         # 50 argon atoms in a 27 Angstrom box: as near-hard discs of
@@ -139,7 +139,7 @@ class TestPlacement(unittest.TestCase):
         # temperature equal to the run temperature gives the same positions.
         default, _ = place(10, 300, 40, init_conf="metropolis", seed=2)
         explicit, _ = place(10, 300, 40, init_conf="metropolis", seed=2, placement_temperature=300)
-        assert_equal(default.position, explicit.position)
+        assert_equal(default.positions, explicit.positions)
 
     def test_rejects_a_bad_placement_temperature(self):
         for bad in (0, -1, np.inf):
@@ -152,7 +152,7 @@ class TestPlace(unittest.TestCase):
         c, cut_off = place(2, 300, 8)
         assert_almost_equal(c.box * 1e10, 8)
         assert_almost_equal(cut_off * 1e10, 4.0)
-        assert_almost_equal(c.position * 1e10, [[2, 2], [2, 6]])
+        assert_almost_equal(c.positions * 1e10, [[2, 2], [2, 6]])
         _, given = place(2, 300, 40, cut_off=10)
         assert_almost_equal(given * 1e10, 10)
 
@@ -236,10 +236,10 @@ class TestPlaceTriangular(unittest.TestCase):
         # values are exactly equal and can be matched exactly. Any tolerance
         # here would have to be well under the row spacing, itself of order
         # 1e-10 metres.
-        y = np.unique(c.position[:, 1])
+        y = np.unique(c.positions[:, 1])
         self.assertEqual(y.size, 8)
-        first = np.sort(c.position[c.position[:, 1] == y[0], 0])
-        second = np.sort(c.position[c.position[:, 1] == y[1], 0])
+        first = np.sort(c.positions[c.positions[:, 1] == y[0], 0])
+        second = np.sort(c.positions[c.positions[:, 1] == y[1], 0])
         spacing = 56e-10 / 7
         assert_allclose(second - first, spacing / 2)
 
@@ -249,7 +249,7 @@ class TestPlaceTriangular(unittest.TestCase):
         for atoms in (30, 56, 90, 120, 168, 224, 270, 288):
             with self.subTest(atoms=atoms):
                 c = placement.place_triangular(atoms, (ARGON,), 60e-10)
-                self.assertEqual(np.unique(c.position[:, 1]).size % 2, 0)
+                self.assertEqual(np.unique(c.positions[:, 1]).size % 2, 0)
 
     def test_refuses_a_count_that_does_not_fit_and_names_ones_that_do(self):
         with self.assertRaisesRegex(ValueError, "90") as caught:
@@ -284,7 +284,7 @@ class TestPlaceTriangular(unittest.TestCase):
         box = np.sqrt(atoms * sigma**2 / 0.9)
         cut_off = min(15e-10, box / 2)
         triangular = placement.place_triangular(atoms, (ARGON,), box)
-        rows = np.unique(triangular.position[:, 1]).size
+        rows = np.unique(triangular.positions[:, 1]).size
         columns = atoms // rows
         # The same grid of sites with the rows lined up rather than
         # staggered, which is the one thing the triangular lattice changes.
@@ -309,9 +309,9 @@ class TestPlaceTriangular(unittest.TestCase):
         # The species alternate along a row, so the first row of a 7 by 8
         # lattice reads 0, 1, 0, 1, 0, 1, 0 from left to right.
         c = placement.place_triangular(56, (ARGON, LARGER), 60e-10)
-        y = np.unique(c.position[:, 1])
-        first_row = c.position[:, 1] == y[0]
-        order = np.argsort(c.position[first_row, 0])
+        y = np.unique(c.positions[:, 1])
+        first_row = c.positions[:, 1] == y[0]
+        order = np.argsort(c.positions[first_row, 0])
         assert_equal(c.species_index[first_row][order], [0, 1, 0, 1, 0, 1, 0])
 
     def test_refuses_a_max_strain_above_the_limit(self):
@@ -351,4 +351,4 @@ class TestPlaceTriangular(unittest.TestCase):
     def test_every_atom_is_inside_the_box(self):
         box = 60e-10
         c = placement.place_triangular(56, (ARGON,), box)
-        self.assertTrue(((c.position >= 0) & (c.position < box)).all())
+        self.assertTrue(((c.positions >= 0) & (c.positions < box)).all())

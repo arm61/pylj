@@ -58,7 +58,7 @@ class TestInitialise(unittest.TestCase):
         c = a.configuration
         self.assertEqual(c.number_of_atoms, 2)
         assert_almost_equal(c.box, 8e-10)
-        assert_almost_equal(c.position * 1e10, [[2, 2], [2, 6]])
+        assert_almost_equal(c.positions * 1e10, [[2, 2], [2, 6]])
         assert_almost_equal(a.temperature, 300)
         assert_almost_equal(a.cut_off * 1e10, 4.0)
         self.assertEqual(a.steps, 0)
@@ -133,7 +133,7 @@ class TestConstructor(unittest.TestCase):
             a.step()
         # The velocities are carried, untouched, through the moves.
         self.assertGreater(a.accepted, 0)
-        assert_equal(a.configuration.velocity, md_simulation.configuration.velocity)
+        assert_equal(a.configuration.velocities, md_simulation.configuration.velocities)
 
     def test_validates_the_temperature_before_the_configuration(self):
         # The configuration holds a species that ARGON_MODEL knows nothing
@@ -170,7 +170,7 @@ class TestMoves(unittest.TestCase):
         )
         proposal = a.propose()
         self.assertEqual(proposal, proposal)
-        copy = mc.Proposal(proposal.position, proposal.energy_change, proposal.source)
+        copy = mc.Proposal(proposal.positions, proposal.energy_change, proposal.source)
         self.assertNotEqual(proposal, copy)
 
     def test_propose_leaves_the_configuration_untouched(self):
@@ -178,11 +178,11 @@ class TestMoves(unittest.TestCase):
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, seed=1
         )
         before = a.configuration
-        position = before.position.copy()
+        position = before.positions.copy()
         energy = a.energy
         a.propose()
         self.assertIs(a.configuration, before)
-        assert_equal(a.configuration.position, position)
+        assert_equal(a.configuration.positions, position)
         self.assertEqual(a.energy, energy)
 
     def test_propose_moves_exactly_one_atom_inside_the_box(self):
@@ -190,9 +190,9 @@ class TestMoves(unittest.TestCase):
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, seed=1
         )
         proposal = a.propose()
-        moved = np.any(proposal.position != a.configuration.position, axis=1)
+        moved = np.any(proposal.positions != a.configuration.positions, axis=1)
         self.assertEqual(moved.sum(), 1)
-        trial = proposal.position[moved][0]
+        trial = proposal.positions[moved][0]
         self.assertTrue(np.all((0 <= trial) & (trial < a.configuration.box)))
 
     def test_propose_energy_change_matches_a_full_recompute(self):
@@ -204,10 +204,10 @@ class TestMoves(unittest.TestCase):
             moved_species = set()
             for _ in range(5):
                 proposal = a.propose()
-                trial = a.configuration.replace(position=proposal.position)
+                trial = a.configuration.replace(positions=proposal.positions)
                 expected = trial.potential_energy(a.model, a.cut_off) - total_energy(a)
                 np.testing.assert_allclose(proposal.energy_change, expected, rtol=1e-9, atol=1e-33)
-                moved = np.any(proposal.position != a.configuration.position, axis=1)
+                moved = np.any(proposal.positions != a.configuration.positions, axis=1)
                 moved_species.add(int(a.configuration.species_index[moved][0]))
                 a.apply(proposal)
             self.assertEqual(moved_species, set(range(len(model.species))))
@@ -223,7 +223,7 @@ class TestMoves(unittest.TestCase):
         a.apply(first)
         with self.assertRaisesRegex(ValueError, "no longer the current one"):
             a.apply(second)
-        assert_equal(a.configuration.position, first.position)
+        assert_equal(a.configuration.positions, first.positions)
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
 
     def test_apply_updates_the_positions_and_the_energy(self):
@@ -232,7 +232,7 @@ class TestMoves(unittest.TestCase):
         )
         proposal = a.propose()
         a.apply(proposal)
-        assert_equal(a.configuration.position, proposal.position)
+        assert_equal(a.configuration.positions, proposal.positions)
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
 
     def test_step_proposes_decides_and_counts(self):
@@ -274,10 +274,12 @@ class TestMoves(unittest.TestCase):
             return a
 
         first, second, other = run(7), run(7), run(8)
-        assert_equal(first.configuration.position, second.configuration.position)
+        assert_equal(first.configuration.positions, second.configuration.positions)
         self.assertEqual(first.energy, second.energy)
         self.assertEqual(first.accepted, second.accepted)
-        self.assertFalse(np.array_equal(first.configuration.position, other.configuration.position))
+        self.assertFalse(
+            np.array_equal(first.configuration.positions, other.configuration.positions)
+        )
 
     def test_samples_the_boltzmann_distribution(self):
         # Two argon atoms in a 12 Angstrom box at 300 K. The relative

@@ -114,7 +114,7 @@ def _phase_rows(
 
 
 def shell_average(
-    position: NDArray[np.float64],
+    positions: NDArray[np.float64],
     box: float,
     index: NDArray[np.int64],
     shell: NDArray[np.int64],
@@ -127,7 +127,7 @@ def shell_average(
     and the wavevectors of a shell are averaged together.
 
     Args:
-        position: The atom positions, shape ``(N, 2)``, in metres.
+        positions: The atom positions, shape ``(N, 2)``, in metres.
         box: The side length of the square box, in metres.
         index: The pair of integers of each wavevector, shape ``(M, 2)``.
         shell: The index of the shell each wavevector belongs to.
@@ -139,9 +139,9 @@ def shell_average(
     # (h, k) are one matrix product of the per-axis phase factors.
     limit = int(np.abs(index).max())
     unit = 2 * np.pi / box
-    along_x = _phase_rows(position[:, 0], unit, limit)
-    along_y = _phase_rows(position[:, 1], unit, limit)
+    along_x = _phase_rows(positions[:, 0], unit, limit)
+    along_y = _phase_rows(positions[:, 1], unit, limit)
     grid = along_x @ along_y.T
     amplitude = grid[index[:, 0] + limit, index[:, 1] + limit]
-    intensity = np.abs(amplitude) ** 2 / len(position)
+    intensity = np.abs(amplitude) ** 2 / len(positions)
     return np.bincount(shell, weights=intensity) / np.bincount(shell)

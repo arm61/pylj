@@ -19,34 +19,34 @@ class PairData:
     """The result of :meth:`Configuration.pairs`.
 
     Attributes:
-        distance: The minimum-image distance between each pair, in metres.
-        separation: The minimum-image separation of each pair, ``r_i - r_j``
+        distances: The minimum-image distance between each pair, in metres.
+        separations: The minimum-image separation of each pair, ``r_i - r_j``
             with ``i < j``, shape ``(M, 2)``, in metres.
-        energy: The energy of each pair, in joules.
-        radial_force: The radial force on each pair, in newtons, positive
+        energies: The energy of each pair, in joules.
+        radial_forces: The radial force on each pair, in newtons, positive
             where repulsive; ``None`` if it was not evaluated.
     """
 
-    distance: NDArray[np.float64]
-    separation: NDArray[np.float64]
-    energy: NDArray[np.float64]
-    radial_force: NDArray[np.float64] | None
+    distances: NDArray[np.float64]
+    separations: NDArray[np.float64]
+    energies: NDArray[np.float64]
+    radial_forces: NDArray[np.float64] | None
 
     @property
     def virial(self) -> float:
         """The sum over pairs of the radial force times the distance, in joules."""
-        return float(np.sum(_radial_force(self) * self.distance))
+        return float(np.sum(_radial_forces(self) * self.distances))
 
 
-def _radial_force(pairs: PairData) -> NDArray[np.float64]:
+def _radial_forces(pairs: PairData) -> NDArray[np.float64]:
     """Returns the radial forces.
 
     Raises:
         ValueError: If the pair data was evaluated without forces.
     """
-    if pairs.radial_force is None:
+    if pairs.radial_forces is None:
         raise ValueError("The pair forces were not evaluated; call pairs(..., forces=True)")
-    return pairs.radial_force
+    return pairs.radial_forces
 
 
 @dataclass(frozen=True, eq=False)
@@ -54,7 +54,7 @@ class Configuration:
     """A single configuration of atoms and the simulation cell.
 
     Attributes:
-        position: The position of each atom, shape ``(N, 2)``, in metres.
+        positions: The position of each atom, shape ``(N, 2)``, in metres.
         species: The distinct species, indexed by ``species_index``.
         species_index: The index in ``species`` of each atom's species,
             shape ``(N,)``.
@@ -66,15 +66,15 @@ class Configuration:
             species, or the box is not positive and finite.
     """
 
-    position: NDArray[np.float64]
+    positions: NDArray[np.float64]
     species: tuple[Species, ...]
     species_index: NDArray[np.int64]
     box: float
 
     def __post_init__(self) -> None:
-        if self.position.ndim != 2 or self.position.shape[1] != 2:
-            raise ValueError(f"position must have shape (N, 2), not {self.position.shape}")
-        n = self.position.shape[0]
+        if self.positions.ndim != 2 or self.positions.shape[1] != 2:
+            raise ValueError(f"positions must have shape (N, 2), not {self.positions.shape}")
+        n = self.positions.shape[0]
         integer = np.issubdtype(self.species_index.dtype, np.integer)
         if self.species_index.shape != (n,) or not integer:
             raise ValueError(
@@ -92,7 +92,7 @@ class Configuration:
 
     @property
     def number_of_atoms(self) -> int:
-        return self.position.shape[0]
+        return self.positions.shape[0]
 
     @property
     def masses(self) -> NDArray[np.float64]:
@@ -139,7 +139,7 @@ class Configuration:
             ValueError: If forces are requested and a pair is closer than
                 its potential's ``min_separation``.
         """
-        distance, separation = pairwise.dist(self.position, self.box)
+        distance, separation = pairwise.dist(self.positions, self.box)
         energy = np.zeros(distance.size)
         force = np.zeros(distance.size) if forces else None
         for mask, type_1, type_2 in pairwise.species_pairs(self.species_index):
@@ -166,16 +166,16 @@ class Configuration:
 
     def potential_energy(self, model: Model, cut_off: float) -> float:
         """Computes the total pair energy, in joules."""
-        return float(self.pairs(model, cut_off).energy.sum())
+        return float(self.pairs(model, cut_off).energies.sum())
 
     def forces(self, model: Model, cut_off: float) -> NDArray[np.float64]:
         """Computes the net force on each atom, shape ``(N, 2)``, in newtons."""
         pairs = self.pairs(model, cut_off, forces=True)
-        radial = _radial_force(pairs)
+        radial = _radial_forces(pairs)
         i, j = np.triu_indices(self.number_of_atoms, 1)
         # Each pair's radial force acts along its separation, pushing
         # atom i one way and atom j the other.
-        pair_force = (radial / pairs.distance)[:, None] * pairs.separation
+        pair_force = (radial / pairs.distances)[:, None] * pairs.separations
         force = np.zeros((self.number_of_atoms, 2))
         np.add.at(force, i, pair_force)
         np.add.at(force, j, -pair_force)
@@ -207,7 +207,7 @@ class Configuration:
             configuration.
         """
         separation = pairwise.minimum_image(
-            np.asarray(position, dtype=float) - self.position, self.box
+            np.asarray(position, dtype=float) - self.positions, self.box
         )
         distance = np.linalg.norm(separation, axis=1)
         energy = np.zeros(distance.size)
@@ -246,7 +246,7 @@ class Configuration:
         pairs = n * (n - 1) / 2
         if pairs == 0:
             return r, np.zeros(bins)
-        distance, _ = pairwise.dist(self.position, self.box)
+        distance, _ = pairwise.dist(self.positions, self.box)
         counts, _ = np.histogram(distance, bins=edges)
         ideal = pairs * 2 * np.pi * r * dr / self.box**2
         return r, counts / ideal
@@ -276,7 +276,7 @@ class Configuration:
             q_max = default_q_max(self.number_of_atoms, self.box)
         check_q_max(q_max, self.box)
         q, index, shell = wavevectors(self.box, q_max)
-        return q, shell_average(self.position, self.box, index, shell)
+        return q, shell_average(self.positions, self.box, index, shell)
 
 
 @dataclass(frozen=True, eq=False)
@@ -284,31 +284,31 @@ class MDConfiguration(Configuration):
     """A configuration with atom velocities and unwrapped positions.
 
     Attributes:
-        velocity: The velocity of each atom, shape ``(N, 2)``, in
+        velocities: The velocity of each atom, shape ``(N, 2)``, in
             metres per second.
         unwrapped: The position of each atom without periodic wrapping,
             shape ``(N, 2)``, in metres.
 
     Raises:
-        ValueError: If ``velocity`` or ``unwrapped`` is not the shape of
-            ``position``.
+        ValueError: If ``velocities`` or ``unwrapped`` is not the shape of
+            ``positions``.
     """
 
-    velocity: NDArray[np.float64]
+    velocities: NDArray[np.float64]
     unwrapped: NDArray[np.float64]
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        for name in ("velocity", "unwrapped"):
-            if getattr(self, name).shape != self.position.shape:
+        for name in ("velocities", "unwrapped"):
+            if getattr(self, name).shape != self.positions.shape:
                 raise ValueError(
-                    f"{name} must have the shape of position, {self.position.shape}, "
+                    f"{name} must have the shape of positions, {self.positions.shape}, "
                     f"not {getattr(self, name).shape}"
                 )
 
     def kinetic_energy(self) -> float:
         """Computes the total kinetic energy, in joules."""
-        return float(0.5 * np.sum(self.masses * np.sum(self.velocity**2, axis=1)))
+        return float(0.5 * np.sum(self.masses * np.sum(self.velocities**2, axis=1)))
 
     def temperature(self) -> float:
         """Computes the instantaneous temperature, in kelvin.

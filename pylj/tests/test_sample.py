@@ -81,7 +81,7 @@ def sampled_mc_simulation(steps: int):
 def with_velocity(simulation, x, y):
     """Set every atom's velocity to (x, y)."""
     velocity = np.tile([x, y], (simulation.configuration.number_of_atoms, 1))
-    simulation.configuration = simulation.configuration.replace(velocity=velocity)
+    simulation.configuration = simulation.configuration.replace(velocities=velocity)
 
 
 def test_environment_rejects_other_pane_counts():
@@ -133,7 +133,7 @@ def test_cell_pane_draws_each_type_separately():
     pane = CellPane()
     pane.setup(ax, simulation)
     pane.update(ax, simulation)
-    x = simulation.configuration.position[:, 0]
+    x = simulation.configuration.positions[:, 0]
     assert_allclose(ax.lines[0].get_xdata(), x[[0, 2]])
     assert_allclose(ax.lines[1].get_xdata(), x[[1, 3]])
     plt.close(fig)
