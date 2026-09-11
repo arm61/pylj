@@ -491,3 +491,58 @@ class TestRestart(unittest.TestCase):
         production = a.restart()
         self.assertEqual(len(production.trajectory), 0)
         self.assertEqual(len(a.trajectory), 1)
+
+
+def drift_speed(configuration):
+    """The speed of the centre of mass, in m/s."""
+    masses = configuration.masses[:, None]
+    return float(
+        np.linalg.norm((masses * configuration.velocity).sum(axis=0) / masses.sum())
+    )
+
+
+class TestAtRest(unittest.TestCase):
+    def build(self, atoms=8):
+        return MDSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=atoms, temperature=100, box=20, seed=1
+        ).configuration
+
+    def test_removes_the_drift(self):
+        configuration = self.build()
+        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        self.assertGreater(drift_speed(moving), 1.0)
+        self.assertLess(drift_speed(md.at_rest(moving)), 1e-9)
+
+    def test_leaves_the_positions_and_potential_energy_alone(self):
+        configuration = self.build()
+        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        rested = md.at_rest(moving)
+        assert_allclose(rested.position, moving.position)
+        assert_allclose(
+            rested.potential_energy(ARGON_MODEL, 9e-10),
+            moving.potential_energy(ARGON_MODEL, 9e-10),
+        )
+
+    def test_leaves_every_relative_velocity_alone(self):
+        configuration = self.build()
+        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        rested = md.at_rest(moving)
+        assert_allclose(
+            rested.velocity - rested.velocity[0], moving.velocity - moving.velocity[0]
+        )
+
+    def test_the_kinetic_energy_falls_by_the_drift_energy(self):
+        configuration = self.build()
+        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        speed = drift_speed(moving)
+        total_mass = moving.masses.sum()
+        assert_allclose(
+            moving.kinetic_energy() - md.at_rest(moving).kinetic_energy(),
+            0.5 * total_mass * speed**2,
+        )
+
+    def test_is_idempotent(self):
+        configuration = self.build()
+        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        once = md.at_rest(moving)
+        assert_allclose(md.at_rest(once).velocity, once.velocity)

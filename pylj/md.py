@@ -380,6 +380,32 @@ def update_velocities(
     return velocity + 0.5 * (accelerations + next_accelerations) * timestep
 
 
+def at_rest(configuration: MDConfiguration) -> MDConfiguration:
+    """Return the configuration with its centre of mass at rest.
+
+    The velocity of the centre of mass is the mean of the atomic velocities,
+    weighted by mass. Subtracting it from every atom is a change of
+    viewpoint rather than a change to the system. The atoms have not moved,
+    so the separations between them, the forces on them and the potential
+    energy are all unchanged, and each atom still moves in the same way
+    relative to every other. The kinetic energy does change: it falls by the
+    energy the drift was carrying, and the temperature falls with it.
+
+    A periodic box has no fixed origin for a velocity to be measured
+    against, so the only frame it singles out is the one in which the total
+    momentum is zero.
+
+    Args:
+        configuration: The configuration to put in that frame.
+
+    Returns:
+        The configuration with its centre of mass at rest.
+    """
+    masses = configuration.masses[:, None]
+    drift = (masses * configuration.velocity).sum(axis=0) / masses.sum()
+    return configuration.replace(velocity=configuration.velocity - drift)
+
+
 def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConfiguration:
     r"""Rescale the velocities so the instantaneous temperature equals the
     bath temperature.
