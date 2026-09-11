@@ -79,14 +79,11 @@ class MDSimulation(Simulation):
     Raises:
         TypeError: If ``configuration`` is not an ``MDConfiguration``.
         ValueError: If the timestep is not positive and finite, the
-            configuration is at rest once its centre of mass is, which a
-            configuration whose atoms all share a velocity also is, or has a
-            non-finite temperature, a pair potential has not died away at
-            the cut-off, judged at that temperature, the configuration
-            stores more
-            than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
-            energy per atom, or for anything :class:`Simulation`
-            rejects.
+            configuration is at rest or has a non-finite temperature, a pair
+            potential has not died away at the cut-off, the configuration
+            stores more than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T
+            of potential energy per atom, or for anything
+            :class:`Simulation` rejects.
     """
 
     configuration: MDConfiguration
@@ -150,11 +147,11 @@ class MDSimulation(Simulation):
         their velocities at a temperature.
 
         Each component of each velocity is drawn from a normal distribution
-        of width ``sqrt(k_B T / m)``, where ``m`` is the mass of that
-        atom, so heavier atoms move more slowly. The centre of mass is put at
+        of width ``sqrt(k_B T / m)``, where ``m`` is the mass of that atom,
+        so heavier atoms move more slowly. The centre of mass is put at
         rest, then every velocity is scaled by the same factor, so that the
-        instantaneous temperature is exactly the one requested. The temperature is not
-        stored: molecular dynamics measures it.
+        instantaneous temperature is exactly the one requested. The
+        temperature is not stored: molecular dynamics measures it.
 
         Args:
             model: The species, assigned to the atoms in turn, and the
@@ -392,7 +389,8 @@ def at_rest(configuration: MDConfiguration) -> MDConfiguration:
     The mass-weighted mean velocity is subtracted from every atom.
 
     Args:
-        configuration: The configuration to take the velocities from.
+        configuration: The configuration whose centre of mass is to be
+            brought to rest.
 
     Returns:
         A copy with the centre of mass at rest.

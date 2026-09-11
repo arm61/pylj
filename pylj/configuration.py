@@ -315,9 +315,8 @@ class MDConfiguration(Configuration):
     dynamics simulation evolves.
 
     An atom carries its momentum, so :meth:`Configuration.without` leaves
-    the rest with a net momentum between them. :func:`~pylj.md.at_rest`
-    clears it, and :class:`~pylj.md.MDSimulation` does so for whatever it is
-    built from.
+    the rest with a net momentum. :func:`~pylj.md.at_rest` clears it, and
+    :class:`~pylj.md.MDSimulation` does so for whatever it is built from.
 
     Attributes:
         velocity: The velocity of each atom, shape ``(N, 2)``, in
@@ -350,9 +349,9 @@ class MDConfiguration(Configuration):
         """The instantaneous temperature, in kelvin.
 
         A simulation sets the centre of mass at rest whichever way it is
-        built, and the pair forces cannot set it moving. Two of the ``2N`` velocity
-        components are therefore fixed by that condition, leaving ``2N - 2``
-        components to carry thermal energy. The temperature is the kinetic
+        built, and the pair forces cannot set it moving. Two of the ``2N``
+        velocity components are therefore fixed by that condition, leaving
+        ``2N - 2`` to carry thermal energy. The temperature is the kinetic
         energy divided by ``(N - 1) k_B``.
 
         Raises:

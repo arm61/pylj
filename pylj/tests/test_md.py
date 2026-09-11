@@ -354,11 +354,14 @@ class TestMSD(unittest.TestCase):
     def test_with_sparse_sampling(self):
         # The atoms move in opposite directions at 1e4 m/s, 1 Angstrom per
         # step, so each crosses the periodic boundary of the 8 Angstrom box
-        # several times in 60 steps with no sampling in between. Both share
-        # the same x, so the pair force acts only along y and the x motion
-        # is the imposed velocity. The oracle accumulates the minimum-image
-        # displacement between consecutive steps, which is exact while an
-        # atom moves less than half a box per step.
+        # several times in 60 steps with no sampling in between. Their y
+        # separation is 4 Angstrom, which is exactly the cut-off, so the
+        # pair is inside it only when their minimum-image x separation
+        # returns to zero, every fourth step, and the force is then purely
+        # along y. The x motion is the imposed velocity throughout. The
+        # oracle accumulates the minimum-image displacement between
+        # consecutive steps, which is exact while an atom moves less than
+        # half a box per step.
         a = MDSimulation(two_argon([[1e4, 0.0], [-1e4, 0.0]]), ARGON_MODEL)
         box = a.configuration.box
         total = np.zeros((2, 2))
