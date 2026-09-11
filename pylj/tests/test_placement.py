@@ -166,10 +166,15 @@ class TestPlace(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exceeds half the box"):
             place(2, 300, 40, cut_off=25)
 
-    def test_refuses_a_box_outside_the_viewer_range(self):
-        for box in (2, 1000):
-            with self.assertRaisesRegex(ValueError, "between 4 and 600 Angstrom"):
-                place(2, 300, box)
+    def test_refuses_a_box_too_small_to_hold_the_atoms(self):
+        with self.assertRaisesRegex(ValueError, "at least 4 Angstrom"):
+            place(2, 300, 2)
+
+    def test_accepts_a_box_too_large_to_draw(self):
+        # The viewer cannot usefully draw atoms this far apart, but nothing
+        # about the simulation stops it.
+        configuration, _ = place(2, 300, 1000)
+        self.assertAlmostEqual(configuration.box * 1e10, 1000)
 
     def test_refuses_an_unknown_init_conf(self):
         with self.assertRaisesRegex(ValueError, "'square', 'triangular' or 'metropolis'"):

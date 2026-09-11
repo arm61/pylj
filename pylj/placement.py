@@ -14,10 +14,6 @@ from pylj.simulation import _check_potentials_at_the_cut_off, _resolve_cut_off
 #: than one atom.
 SMALLEST_BOX = 4
 
-#: The largest box, in Angstrom. Above this the atoms are too small to be
-#: seen in the viewer.
-LARGEST_BOX = 600
-
 #: Number of trial positions tried for a single atom by Metropolis
 #: placement before it gives up and raises ``ValueError``.
 PLACEMENT_ATTEMPTS = 1000
@@ -286,8 +282,8 @@ def place(
     Args:
         number_of_atoms: The number of atoms.
         temperature: The temperature of the run, in kelvin.
-        box: The side length of the box, in Angstrom, from
-            :data:`SMALLEST_BOX` to :data:`LARGEST_BOX`.
+        box: The side length of the box, in Angstrom, at least
+            :data:`SMALLEST_BOX`.
         model: The model.
         init_conf: How the atoms are placed. ``'square'`` puts them on a
             square grid, ``'triangular'`` on a triangular lattice filling the
@@ -308,8 +304,8 @@ def place(
 
     Raises:
         ValueError: If no atoms are requested, a temperature is
-            not positive and finite, the box is outside
-            :data:`SMALLEST_BOX` to :data:`LARGEST_BOX` Angstrom,
+            not positive and finite, the box is below
+            :data:`SMALLEST_BOX` Angstrom,
             the cut-off exceeds half the box, a potential has not died away
             at the cut-off, ``init_conf`` is unknown, ``max_strain`` is not
             positive and finite or is above :data:`MOST_STRAIN`, no
@@ -322,11 +318,10 @@ def place(
     if placement_temperature is None:
         placement_temperature = temperature
     check_positive_finite("placement_temperature", placement_temperature)
-    if not SMALLEST_BOX <= box <= LARGEST_BOX:
+    if box < SMALLEST_BOX:
         raise ValueError(
-            f"box must be between {SMALLEST_BOX} and {LARGEST_BOX} Angstrom: below "
-            f"{SMALLEST_BOX} the cell cannot hold more than one atom, and above "
-            f"{LARGEST_BOX} the atoms are too small to be seen in the viewer."
+            f"box must be at least {SMALLEST_BOX} Angstrom: below that the cell cannot "
+            "hold more than one atom."
         )
     box_m = box * 1e-10
     cut_off_m = _resolve_cut_off(box_m, None if cut_off is None else cut_off * 1e-10)
