@@ -57,7 +57,9 @@ class MDSimulation(Simulation):
     clock; ``sample`` measures the configuration.
 
     Args:
-        configuration: The starting configuration, with velocities.
+        configuration: The starting configuration, with velocities. The
+            simulation starts from a copy with the centre of mass at rest;
+            see :func:`at_rest`.
         model: The species and the potential between each pair of them.
         cut_off: The cut-off, in metres; see :class:`Simulation`.
         timestep: The length of each integration step, in seconds.
@@ -76,11 +78,10 @@ class MDSimulation(Simulation):
         TypeError: If ``configuration`` is not an ``MDConfiguration``.
         ValueError: If the timestep is not positive and finite, the
             configuration is at rest or has a non-finite temperature, a pair
-            potential has not died away at the cut-off, judged at the
-            configuration's own temperature, the configuration stores more
-            than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
-            energy per atom, or for anything :class:`Simulation`
-            rejects.
+            potential has not died away at the cut-off, the configuration
+            stores more than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T
+            of potential energy per atom, or for anything
+            :class:`Simulation` rejects.
     """
 
     configuration: MDConfiguration
@@ -100,6 +101,7 @@ class MDSimulation(Simulation):
                 "MDSimulation needs an MDConfiguration, which carries velocities; build one "
                 "with MDSimulation.initialise(...) or construct an MDConfiguration."
             )
+        configuration = at_rest(configuration)
         super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         check_positive_finite("timestep", timestep)
         self.timestep = timestep
@@ -143,13 +145,11 @@ class MDSimulation(Simulation):
         their velocities at a temperature.
 
         Each component of each velocity is drawn from a normal distribution
-        of width ``sqrt(k_B T / m)``, where ``m`` is the mass of that
-        atom, so heavier atoms move more slowly. The velocity of
-        the centre of mass is then subtracted, so the system as a whole is
-        at rest. Finally
-        every velocity is scaled by the same factor, so that the instantaneous
-        temperature is exactly the one requested. The temperature is not
-        stored: molecular dynamics measures it.
+        of width ``sqrt(k_B T / m)``, where ``m`` is the mass of that atom,
+        so heavier atoms move more slowly. The centre of mass is put at
+        rest, then every velocity is scaled by the same factor, so that the
+        instantaneous temperature is exactly the one requested. The
+        temperature is not stored: molecular dynamics measures it.
 
         Args:
             model: The species, assigned to the atoms in turn, and the
@@ -203,15 +203,16 @@ class MDSimulation(Simulation):
         masses = placed.masses
         thermal_speed = np.sqrt(BOLTZMANN * temperature / masses)
         velocity = rng.normal(0.0, thermal_speed[:, None], size=(number_of_atoms, 2))
-        velocity -= (masses[:, None] * velocity).sum(axis=0) / masses.sum()
         configuration = heat_bath(
-            MDConfiguration(
-                position=placed.position,
-                species=placed.species,
-                species_index=placed.species_index,
-                box=placed.box,
-                velocity=velocity,
-                unwrapped=placed.position.copy(),
+            at_rest(
+                MDConfiguration(
+                    position=placed.position,
+                    species=placed.species,
+                    species_index=placed.species_index,
+                    box=placed.box,
+                    velocity=velocity,
+                    unwrapped=placed.position.copy(),
+                )
             ),
             temperature,
         )
@@ -378,6 +379,23 @@ def update_velocities(
         The new velocities.
     """
     return velocity + 0.5 * (accelerations + next_accelerations) * timestep
+
+
+def at_rest(configuration: MDConfiguration) -> MDConfiguration:
+    """Return the configuration with its centre of mass at rest.
+
+    The mass-weighted mean velocity is subtracted from every atom.
+
+    Args:
+        configuration: The configuration whose centre of mass is to be
+            brought to rest.
+
+    Returns:
+        A copy with the centre of mass at rest.
+    """
+    masses = configuration.masses[:, None]
+    drift = (masses * configuration.velocity).sum(axis=0) / masses.sum()
+    return configuration.replace(velocity=configuration.velocity - drift)
 
 
 def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConfiguration:
