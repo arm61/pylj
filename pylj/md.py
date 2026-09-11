@@ -58,10 +58,8 @@ class MDSimulation(Simulation):
 
     Args:
         configuration: The starting configuration, with velocities. The
-            simulation starts from a copy of it with the centre of mass at
-            rest; see :func:`at_rest`. The configuration passed in is
-            unchanged, so its temperature may differ from the
-            simulation's.
+            simulation starts from a copy with the centre of mass at rest;
+            see :func:`at_rest`.
         model: The species and the potential between each pair of them.
         cut_off: The cut-off, in metres; see :class:`Simulation`.
         timestep: The length of each integration step, in seconds.
