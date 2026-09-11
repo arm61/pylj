@@ -98,7 +98,10 @@ class Model:
             raise ValueError(
                 "species must not repeat: two Species that compare equal are one species"
             )
-        self._pair_potentials = MappingProxyType(dict(pair_potentials))
+        # A plain dict on the instance: a MappingProxyType cannot be
+        # pickled or deep-copied, and neither could anything holding one.
+        # The property hands out the read-only view instead.
+        self._pair_potentials = dict(pair_potentials)
         _check_complete(self._species, self._pair_potentials)
 
     @property
@@ -109,7 +112,7 @@ class Model:
     @property
     def pair_potentials(self) -> Mapping[tuple[Species, Species], PairPotential]:
         """The potential between each pair of species, as a read-only mapping."""
-        return self._pair_potentials
+        return MappingProxyType(self._pair_potentials)
 
     @classmethod
     def single(cls, species: Species, potential: PairPotential) -> Self:
@@ -141,4 +144,4 @@ class Model:
         return self._pair_potentials[(other, one)]
 
     def __repr__(self) -> str:
-        return f"Model(species={self._species!r}, pair_potentials={dict(self._pair_potentials)!r})"
+        return f"Model(species={self._species!r}, pair_potentials={self._pair_potentials!r})"

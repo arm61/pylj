@@ -1,3 +1,5 @@
+import copy
+import pickle
 import unittest
 
 from pylj.model import Model
@@ -97,3 +99,23 @@ class TestModel(unittest.TestCase):
         text = repr(Model.single(ARGON, LJ_ARGON))
         self.assertTrue(text.startswith("Model(species=("))
         self.assertIn("LennardJones(epsilon=", text)
+
+
+class TestPickle(unittest.TestCase):
+    def test_a_model_survives_a_round_trip(self):
+        # A potential compares by identity, so the copies are compared by
+        # what they are made of, which their repr gives.
+        model = pickle.loads(pickle.dumps(MIXTURE_MODEL))
+        self.assertEqual(model.species, MIXTURE_MODEL.species)
+        self.assertEqual(
+            {pair: repr(one) for pair, one in model.pair_potentials.items()},
+            {pair: repr(one) for pair, one in MIXTURE_MODEL.pair_potentials.items()},
+        )
+        self.assertEqual(repr(model.potential(ARGON, LARGER)), repr(LJ_ARGON_LARGER))
+
+    def test_a_model_survives_a_deep_copy(self):
+        # The copy rebuilds the mapping keys as new Species, so looking a
+        # pair up works only because a Species is hashed by its values.
+        model = copy.deepcopy(MIXTURE_MODEL)
+        self.assertEqual(model.species, MIXTURE_MODEL.species)
+        self.assertEqual(repr(model.potential(ARGON, LARGER)), repr(LJ_ARGON_LARGER))

@@ -1,7 +1,8 @@
+import pickle
 import unittest
 
 import numpy as np
-from numpy.testing import assert_almost_equal, assert_equal
+from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 
 from pylj import md, placement, simulation
 from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL, WELL_MODEL
@@ -134,3 +135,18 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(production.rng.random(), s.rng.random())
         s.rng.random()
         self.assertNotEqual(production.rng.random(), s.rng.random())
+
+
+class TestPickle(unittest.TestCase):
+    def test_a_simulation_survives_a_round_trip(self):
+        s = md.MDSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=4, temperature=100, box=20, seed=1
+        )
+        s.step()
+        s.sample()
+        copied = pickle.loads(pickle.dumps(s))
+        # Stepping the copy needs its model, generator, cut-off and
+        # timestep, so one comparison covers all four.
+        s.step()
+        copied.step()
+        assert_allclose(copied.configuration.position, s.configuration.position)
