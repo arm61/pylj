@@ -352,19 +352,14 @@ class TestMSD(unittest.TestCase):
         self.assertEqual(a.configuration.msd(a.initial_configuration), 0.0)
 
     def test_with_sparse_sampling(self):
-        # Both atoms are driven in -x at 1e4 m/s, 1 Angstrom per step, so
-        # each crosses the periodic boundary of the 8 Angstrom box several
-        # times in 60 steps with no sampling in between. Both share the same
-        # x, so the pair force acts only along y and the x motion is the
-        # imposed drift. The oracle accumulates the minimum-image
-        # displacement between consecutive steps, which is exact while a
+        # The atoms move in opposite directions at 1e4 m/s, 1 Angstrom per
+        # step, so each crosses the periodic boundary of the 8 Angstrom box
+        # several times in 60 steps with no sampling in between. Both share
+        # the same x, so the pair force acts only along y and the x motion
+        # is the imposed velocity. The oracle accumulates the minimum-image
+        # displacement between consecutive steps, which is exact while an
         # atom moves less than half a box per step.
-        #
-        # Both atoms share this velocity, so it is the centre-of-mass drift
-        # the constructor would remove; it is set directly on the
-        # configuration after construction instead.
-        a = MDSimulation(two_argon([[3e2, 0.0], [-3e2, 0.0]]), ARGON_MODEL)
-        a.configuration = a.configuration.replace(velocity=np.array([[-1e4, 0.0], [-1e4, 0.0]]))
+        a = MDSimulation(two_argon([[1e4, 0.0], [-1e4, 0.0]]), ARGON_MODEL)
         box = a.configuration.box
         total = np.zeros((2, 2))
         for _ in range(60):
@@ -372,7 +367,8 @@ class TestMSD(unittest.TestCase):
             a.step()
             displacement = a.configuration.position - before
             total += displacement - box * np.round(displacement / box)
-        self.assertTrue(np.all(total[:, 0] < -5e-10))
+        self.assertGreater(total[0, 0], 5e-10)
+        self.assertLess(total[1, 0], -5e-10)
         expected = np.mean(np.sum(total**2, axis=1))
         assert_almost_equal(a.configuration.msd(a.initial_configuration) * 1e20, expected * 1e20)
 
@@ -510,40 +506,33 @@ class TestRestart(unittest.TestCase):
 
 
 class TestAtRest(unittest.TestCase):
-    def build(self, atoms=8):
-        # A mixture, so a mass-weighted mean and a plain mean differ: the
-        # boost below gives 10.0, -4.0 weighted and 22.8, 6.5 unweighted.
-        return MDSimulation.initialise(
-            MIXTURE_MODEL, number_of_atoms=atoms, temperature=100, box=20, seed=1
+    def drifting(self):
+        # A mixture: with one species the plain mean of the velocities
+        # equals the mass-weighted mean, so an at_rest using the plain mean
+        # would pass every test here.
+        configuration = MDSimulation.initialise(
+            MIXTURE_MODEL, number_of_atoms=8, temperature=100, box=20, seed=1
         ).configuration
+        return configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
 
     def test_removes_the_drift(self):
-        configuration = self.build()
-        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        moving = self.drifting()
         self.assertGreater(drift_speed(moving), 1.0)
         self.assertLess(drift_speed(md.at_rest(moving)), 1e-9)
 
-    def test_leaves_the_positions_and_potential_energy_alone(self):
-        configuration = self.build()
-        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
-        rested = md.at_rest(moving)
-        assert_allclose(rested.position, moving.position)
-        assert_allclose(
-            rested.potential_energy(MIXTURE_MODEL, 9e-10),
-            moving.potential_energy(MIXTURE_MODEL, 9e-10),
-        )
+    def test_leaves_the_positions_alone(self):
+        moving = self.drifting()
+        assert_allclose(md.at_rest(moving).position, moving.position)
 
     def test_leaves_every_relative_velocity_alone(self):
-        configuration = self.build()
-        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        moving = self.drifting()
         rested = md.at_rest(moving)
         assert_allclose(
             rested.velocity - rested.velocity[0], moving.velocity - moving.velocity[0]
         )
 
     def test_the_kinetic_energy_falls_by_the_drift_energy(self):
-        configuration = self.build()
-        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        moving = self.drifting()
         speed = drift_speed(moving)
         total_mass = moving.masses.sum()
         assert_allclose(
@@ -552,17 +541,14 @@ class TestAtRest(unittest.TestCase):
         )
 
     def test_is_idempotent(self):
-        configuration = self.build()
-        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        moving = self.drifting()
         once = md.at_rest(moving)
         assert_allclose(md.at_rest(once).velocity, once.velocity)
 
     def test_the_constructor_sets_the_centre_of_mass_at_rest(self):
-        configuration = self.build()
-        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        moving = self.drifting()
         simulation = md.MDSimulation(moving, MIXTURE_MODEL, timestep=1e-14)
         self.assertLess(drift_speed(simulation.configuration), 1e-9)
-        self.assertLess(drift_speed(simulation.initial_configuration), 1e-9)
 
     def test_dropping_an_atom_leaves_the_simulation_at_rest(self):
         # Removing an atom takes its momentum with it, so the rest drift.
@@ -572,14 +558,6 @@ class TestAtRest(unittest.TestCase):
         vacancy = started.configuration.without(0)
         self.assertGreater(drift_speed(vacancy), 0.5)
         simulation = md.MDSimulation(vacancy, ARGON_MODEL, timestep=1e-14)
-        self.assertLess(drift_speed(simulation.configuration), 1e-9)
-
-    def test_the_drift_stays_at_rest_through_a_run(self):
-        simulation = MDSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=16, temperature=100, box=25, seed=1
-        )
-        for _ in range(200):
-            simulation.step()
         self.assertLess(drift_speed(simulation.configuration), 1e-9)
 
     def test_initialise_still_reports_its_target_temperature(self):

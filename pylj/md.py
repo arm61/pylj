@@ -57,8 +57,11 @@ class MDSimulation(Simulation):
     clock; ``sample`` measures the configuration.
 
     Args:
-        configuration: The starting configuration, with velocities. Its
-            centre of mass is set at rest; see :func:`at_rest`.
+        configuration: The starting configuration, with velocities. The
+            simulation starts from a copy of it with the centre of mass at
+            rest; see :func:`at_rest`. The configuration passed in is
+            unchanged, so its temperature may differ from the
+            simulation's.
         model: The species and the potential between each pair of them.
         cut_off: The cut-off, in metres; see :class:`Simulation`.
         timestep: The length of each integration step, in seconds.
@@ -76,9 +79,11 @@ class MDSimulation(Simulation):
     Raises:
         TypeError: If ``configuration`` is not an ``MDConfiguration``.
         ValueError: If the timestep is not positive and finite, the
-            configuration is at rest or has a non-finite temperature, a pair
-            potential has not died away at the cut-off, judged at the
-            configuration's own temperature, the configuration stores more
+            configuration is at rest once its centre of mass is, which a
+            configuration whose atoms all share a velocity also is, or has a
+            non-finite temperature, a pair potential has not died away at
+            the cut-off, judged at that temperature, the configuration
+            stores more
             than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of potential
             energy per atom, or for anything :class:`Simulation`
             rejects.
@@ -146,11 +151,9 @@ class MDSimulation(Simulation):
 
         Each component of each velocity is drawn from a normal distribution
         of width ``sqrt(k_B T / m)``, where ``m`` is the mass of that
-        atom, so heavier atoms move more slowly. The velocity of
-        the centre of mass is then subtracted, so the system as a whole is
-        at rest. Finally
-        every velocity is scaled by the same factor, so that the instantaneous
-        temperature is exactly the one requested. The temperature is not
+        atom, so heavier atoms move more slowly. The centre of mass is put at
+        rest, then every velocity is scaled by the same factor, so that the
+        instantaneous temperature is exactly the one requested. The temperature is not
         stored: molecular dynamics measures it.
 
         Args:
@@ -389,10 +392,10 @@ def at_rest(configuration: MDConfiguration) -> MDConfiguration:
     The mass-weighted mean velocity is subtracted from every atom.
 
     Args:
-        configuration: The configuration to put at rest.
+        configuration: The configuration to take the velocities from.
 
     Returns:
-        The configuration with its centre of mass at rest.
+        A copy with the centre of mass at rest.
     """
     masses = configuration.masses[:, None]
     drift = (masses * configuration.velocity).sum(axis=0) / masses.sum()
