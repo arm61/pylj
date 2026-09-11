@@ -25,6 +25,14 @@ def two_argon(velocity, box=8e-10):
     )
 
 
+def drift_speed(configuration):
+    """The speed of the centre of mass, in m/s."""
+    masses = configuration.masses[:, None]
+    return float(
+        np.linalg.norm((masses * configuration.velocity).sum(axis=0) / masses.sum())
+    )
+
+
 def kinetic_plus_potential(sim):
     """The total energy of a simulation, from its configuration and stored cut-off."""
     c = sim.configuration
@@ -501,18 +509,12 @@ class TestRestart(unittest.TestCase):
         self.assertEqual(len(a.trajectory), 1)
 
 
-def drift_speed(configuration):
-    """The speed of the centre of mass, in m/s."""
-    masses = configuration.masses[:, None]
-    return float(
-        np.linalg.norm((masses * configuration.velocity).sum(axis=0) / masses.sum())
-    )
-
-
 class TestAtRest(unittest.TestCase):
     def build(self, atoms=8):
+        # A mixture, so a mass-weighted mean and a plain mean differ: the
+        # boost below gives 10.0, -4.0 weighted and 22.8, 6.5 unweighted.
         return MDSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=atoms, temperature=100, box=20, seed=1
+            MIXTURE_MODEL, number_of_atoms=atoms, temperature=100, box=20, seed=1
         ).configuration
 
     def test_removes_the_drift(self):
@@ -527,8 +529,8 @@ class TestAtRest(unittest.TestCase):
         rested = md.at_rest(moving)
         assert_allclose(rested.position, moving.position)
         assert_allclose(
-            rested.potential_energy(ARGON_MODEL, 9e-10),
-            moving.potential_energy(ARGON_MODEL, 9e-10),
+            rested.potential_energy(MIXTURE_MODEL, 9e-10),
+            moving.potential_energy(MIXTURE_MODEL, 9e-10),
         )
 
     def test_leaves_every_relative_velocity_alone(self):
@@ -558,7 +560,7 @@ class TestAtRest(unittest.TestCase):
     def test_the_constructor_sets_the_centre_of_mass_at_rest(self):
         configuration = self.build()
         moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
-        simulation = md.MDSimulation(moving, ARGON_MODEL, timestep=1e-14)
+        simulation = md.MDSimulation(moving, MIXTURE_MODEL, timestep=1e-14)
         self.assertLess(drift_speed(simulation.configuration), 1e-9)
         self.assertLess(drift_speed(simulation.initial_configuration), 1e-9)
 
