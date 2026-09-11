@@ -198,10 +198,13 @@ class TestConstructor(unittest.TestCase):
             MDSimulation(two_argon([[3e2, 0.0], [-3e2, 0.0]]), wrong)
 
     def test_takes_a_ready_configuration(self):
+        # Already at rest, so the constructor's at_rest call leaves its
+        # velocities and positions unchanged.
         c = two_argon([[3e2, 0.0], [-3e2, 0.0]])
         a = MDSimulation(c, ARGON_MODEL, timestep=2e-15, seed=5)
-        self.assertIs(a.configuration, c)
-        self.assertIs(a.initial_configuration, c)
+        assert_allclose(a.configuration.velocity, c.velocity)
+        assert_allclose(a.configuration.position, c.position)
+        self.assertIs(a.configuration, a.initial_configuration)
         assert_almost_equal(a.timestep, 2e-15)
         assert_allclose(a.forces, c.forces(a.model, a.cut_off))
 
@@ -348,7 +351,12 @@ class TestMSD(unittest.TestCase):
         # imposed drift. The oracle accumulates the minimum-image
         # displacement between consecutive steps, which is exact while a
         # atom moves less than half a box per step.
-        a = MDSimulation(two_argon([[-1e4, 0.0], [-1e4, 0.0]]), ARGON_MODEL)
+        #
+        # Both atoms share this velocity, so it is the centre-of-mass drift
+        # the constructor would remove; it is set directly on the
+        # configuration after construction instead.
+        a = MDSimulation(two_argon([[3e2, 0.0], [-3e2, 0.0]]), ARGON_MODEL)
+        a.configuration = a.configuration.replace(velocity=np.array([[-1e4, 0.0], [-1e4, 0.0]]))
         box = a.configuration.box
         total = np.zeros((2, 2))
         for _ in range(60):
@@ -546,3 +554,34 @@ class TestAtRest(unittest.TestCase):
         moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
         once = md.at_rest(moving)
         assert_allclose(md.at_rest(once).velocity, once.velocity)
+
+    def test_the_constructor_sets_the_centre_of_mass_at_rest(self):
+        configuration = self.build()
+        moving = configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        simulation = md.MDSimulation(moving, ARGON_MODEL, timestep=1e-14)
+        self.assertLess(drift_speed(simulation.configuration), 1e-9)
+        self.assertLess(drift_speed(simulation.initial_configuration), 1e-9)
+
+    def test_dropping_an_atom_leaves_the_simulation_at_rest(self):
+        # Removing an atom takes its momentum with it, so the rest drift.
+        started = MDSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=16, temperature=100, box=25, seed=1
+        )
+        vacancy = started.configuration.without(0)
+        self.assertGreater(drift_speed(vacancy), 0.5)
+        simulation = md.MDSimulation(vacancy, ARGON_MODEL, timestep=1e-14)
+        self.assertLess(drift_speed(simulation.configuration), 1e-9)
+
+    def test_the_drift_stays_at_rest_through_a_run(self):
+        simulation = MDSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=16, temperature=100, box=25, seed=1
+        )
+        for _ in range(200):
+            simulation.step()
+        self.assertLess(drift_speed(simulation.configuration), 1e-9)
+
+    def test_initialise_still_reports_its_target_temperature(self):
+        simulation = MDSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=16, temperature=137.0, box=25, seed=1
+        )
+        assert_allclose(simulation.configuration.temperature(), 137.0)
