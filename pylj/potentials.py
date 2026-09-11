@@ -1,5 +1,4 @@
-"""The atom species and the pair potentials that act between them:
-Lennard-Jones, Buckingham and the square well."""
+"""Atom species and pair potentials."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -10,7 +9,7 @@ from scipy.optimize import brentq
 
 
 def check_positive_finite(name: str, value: float) -> None:
-    """Raise ``ValueError`` unless ``value`` is positive and finite.
+    """Raises ``ValueError`` unless ``value`` is positive and finite.
 
     Args:
         name: The name of the parameter, for the error message.
@@ -42,11 +41,8 @@ class Species:
 class PairPotential(ABC):
     """The interface every pair potential implements.
 
-    A pair potential is a central potential: the energy of a pair of atoms,
-    and the force that follows from it, depend only on how far apart the two
-    atoms are, and not on the direction from one to the other. Both
-    ``energies`` and ``forces`` take an array of separations ``dr``, in metres,
-    and return an array of the same shape.
+    Both ``energies`` and ``forces`` take an array of separations ``dr``,
+    in metres, and return an array of the same shape.
 
     Attributes:
         min_separation: The separation, in metres, below which the potential
@@ -60,15 +56,14 @@ class PairPotential(ABC):
 
     @abstractmethod
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
-        """Return the pair energy for each separation in ``dr``."""
+        """Evaluates the pair energy at each separation in ``dr``."""
 
     @abstractmethod
     def forces(self, dr: ArrayLike) -> NDArray[np.float64]:
-        """Return the signed radial force for each separation in ``dr``.
+        """Evaluates the signed radial force at each separation in ``dr``.
 
-        The value is minus the derivative of the energy with respect to the
-        separation, so it is positive where the interaction is repulsive and
-        negative where the interaction is attractive.
+        Minus the derivative of the energy with respect to the separation,
+        so positive where the interaction is repulsive.
         """
 
 
@@ -114,13 +109,9 @@ class Buckingham(PairPotential):
     .. math::
         E = A e^{-B r} - C / r^{6}
 
-    At short range the attractive term, minus C over r to the sixth, grows
-    faster than the exponential repulsion. The energy therefore rises to a
-    barrier as the atoms approach and then falls to minus infinity as
-    the separation goes to zero. That collapse is a defect of the formula,
-    not real physics. ``energies`` and ``forces`` return the formula at
-    every separation, and ``min_separation`` is set to the separation at the
-    top of the barrier, so a simulation never lets two atoms pass it.
+    The formula falls to minus infinity at short range, beyond a barrier.
+    ``energies`` and ``forces`` return it at every separation, and
+    ``min_separation`` is the separation at the top of that barrier.
 
     Args:
         a: The A parameter, an energy scale, in joules.
@@ -134,15 +125,14 @@ class Buckingham(PairPotential):
     Raises:
         ValueError: If ``a`` or ``b`` is not positive and finite, if ``c`` is
             negative or not finite, or if the barrier lies beyond 100
-            Angstrom, so that the formula collapses at every separation a
-            simulation could reach.
+            Angstrom.
     """
 
     def __init__(self, *, a: float, b: float, c: float):
         check_positive_finite("a", a)
         check_positive_finite("b", b)
         if not (np.isfinite(c) and c >= 0):
-            raise ValueError(f"c must be non-negative and finite, not {c}")
+            raise ValueError("c must be non-negative and finite")
         self.a = a
         self.b = b
         self.c = c
@@ -158,9 +148,7 @@ class Buckingham(PairPotential):
         return float(-self.a * self.b * np.exp(-self.b * dr) + 6 * self.c / dr**7)
 
     def _find_barrier(self) -> float:
-        """Locate the top of the short-range barrier. The slope of the energy is zero
-        there, between the fall to minus infinity at short range and the well
-        beyond."""
+        """Locates the top of the short-range barrier."""
         dr = np.geomspace(1e-13, 1e-8, 4000)
         with np.errstate(over="ignore"):
             barrier = int(np.argmax(self._form(dr)))
@@ -186,18 +174,11 @@ class Buckingham(PairPotential):
 
 
 class SquareWell(PairPotential):
-    r"""The square-well pair potential: a hard core surrounded by a well of
-    constant depth.
+    r"""The square-well pair potential.
 
-    The energy takes three values. When the separation is smaller than
-    ``sigma`` the atoms overlap and the energy is ``max_val``, infinite
-    by default. Between ``sigma`` and ``lambda_`` times ``sigma`` the
-    atoms sit in the well and the energy is minus ``epsilon``. Beyond
-    the well the energy is zero. Because the energy changes only in steps,
-    the force is zero everywhere except at the two walls, where it is
-    infinite. A potential without a finite force cannot drive molecular
-    dynamics, so the square well is for Monte Carlo, which uses energies
-    only.
+    The energy is ``max_val`` below ``sigma``, minus ``epsilon`` between
+    ``sigma`` and ``lambda_`` times ``sigma``, and zero beyond. It has no
+    finite force, so it is for Monte Carlo, which uses energies only.
 
     Args:
         epsilon: The well depth, in joules.
@@ -216,13 +197,12 @@ class SquareWell(PairPotential):
         check_positive_finite("sigma", sigma)
         if not (np.isfinite(lambda_) and lambda_ > 1):
             raise ValueError(
-                f"lambda_ must be greater than 1, not {lambda_}: the well lies outside "
-                "the hard core"
+                "lambda_ must be greater than 1: the well lies outside the hard core"
             )
         if not max_val > 0:
             raise ValueError(
-                f"max_val must be positive, not {max_val}: a hard core that lowers the "
-                "energy would draw atoms into it"
+                "max_val must be positive: a hard core that lowers the energy would "
+                "draw atoms into it"
             )
         self.epsilon = epsilon
         self.sigma = sigma

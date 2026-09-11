@@ -1,4 +1,4 @@
-"""Physical constants used throughout pylj, in SI units."""
+"""Physical constants, in SI units."""
 
 from scipy.constants import atomic_mass, k
 

@@ -1,4 +1,4 @@
-"""The placement of initial configurations."""
+"""Initial atom positions."""
 
 import math
 from typing import NamedTuple
@@ -10,22 +10,25 @@ from pylj.model import Model
 from pylj.potentials import Species, check_positive_finite
 from pylj.simulation import _check_potentials_at_the_cut_off, _resolve_cut_off
 
+#: The smallest box, in Angstrom. Below this the cell cannot hold more
+#: than one atom.
+SMALLEST_BOX = 4
+
+#: The largest box, in Angstrom. Above this the atoms are too small to be
+#: seen in the viewer.
+LARGEST_BOX = 600
+
 #: Number of trial positions tried for a single atom by Metropolis
 #: placement before it gives up and raises ``ValueError``.
 PLACEMENT_ATTEMPTS = 1000
 
 
 def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float) -> Configuration:
-    """Place atoms on a square lattice.
+    """Places atoms on a square lattice.
 
     The lattice has ``ceil(sqrt(number_of_atoms))`` sites along each side of
     the box, and the atoms fill those sites in order, taking the species in
-    turn. On a lattice with an even number of sites per side, a mixture
-    therefore starts out in stripes of one species and then the other.
-    Diffusion mixes them over the course of the run. No check is made for
-    overlapping atoms. A lattice packed too tightly for the potential
-    stores a large potential energy, and for a potential with a hard core that
-    energy is infinite.
+    turn. No check is made for overlapping atoms.
 
     Args:
         number_of_atoms: The number of atoms.
@@ -55,9 +58,7 @@ class _Lattice(NamedTuple):
         columns: The number of columns.
         rows: The number of rows.
         strain: How far the ratio of the row spacing to the column spacing
-            sits from :data:`TRIANGULAR_RATIO`, as a fraction of it. The six
-            neighbours of an atom split into two distances that differ by
-            about three quarters of the strain.
+            sits from :data:`TRIANGULAR_RATIO`, as a fraction of it.
     """
 
     columns: int
@@ -72,12 +73,10 @@ MOST_STRAIN = 1 / 3
 
 
 def _triangular_lattice(number_of_atoms: int) -> _Lattice | None:
-    """Return the columns, rows and strain of the best triangular lattice.
+    """Finds the columns, rows and strain of the best triangular lattice.
 
-    The lattice has ``columns * rows`` sites and an even number of rows. Its
-    strain is how far the ratio of its row spacing to its column spacing sits
-    from :data:`TRIANGULAR_RATIO`, as a fraction of that ratio, and the best
-    lattice is the one with the smallest strain. The return is ``None`` when
+    The lattice has ``columns * rows`` sites and an even number of rows, and
+    the best is the one with the smallest strain. The return is ``None`` when
     no even number of rows divides ``number_of_atoms``.
     """
     best: _Lattice | None = None
@@ -97,30 +96,19 @@ def place_triangular(
     box: float,
     max_strain: float = 0.05,
 ) -> Configuration:
-    """Place atoms on a triangular lattice that fills the box.
+    """Places atoms on a triangular lattice that fills the box.
 
-    A triangular lattice gives every atom six neighbours at one distance,
-    which is the arrangement a two-dimensional solid settles into. Fitting
-    one to a square box strains it a little, so the six split into two
-    distances differing by about three quarters of the strain. Each row is
-    offset along x by half a column spacing from the row below it, and there
-    is an even number of rows so that the offset keeps alternating across
-    the periodic boundary.
+    Each row is offset along x by half a column spacing from the row below
+    it, and the number of rows is even so that the offset keeps alternating
+    across the periodic boundary.
 
     The lattice fills the box, so the number of atoms has to be a number of
-    columns times an even number of rows. For the six to stay close to one
-    distance, the ratio of columns to rows has to be close to
-    ``sqrt(3) / 2``, and ``max_strain`` is the largest fraction of that
-    ratio a lattice may sit away from it, at most :data:`MOST_STRAIN`. At
-    the default the counts up to 300 that fit are 30, 56, 90, 120, 168, 224,
-    270 and 288.
+    columns times an even number of rows, with the ratio of columns to rows
+    within ``max_strain`` of ``sqrt(3) / 2``. At the default the counts up
+    to 300 that fit are 30, 56, 90, 120, 168, 224, 270 and 288.
 
-    The atoms fill the sites row by row, taking the species in turn. On a
-    lattice with an even number of columns, a mixture therefore starts out
-    in stripes of one species and then the other. Diffusion mixes them over
-    the course of the run. No check is made for overlapping atoms: a lattice
-    packed too tightly for the potential stores a large potential energy,
-    and for a potential with a hard core that energy is infinite.
+    The atoms fill the sites row by row, taking the species in turn. No
+    check is made for overlapping atoms.
 
     Args:
         number_of_atoms: The number of atoms.
@@ -167,11 +155,10 @@ SEARCH_RANGE = 300
 
 
 def _nearest_fitting(number_of_atoms: int, max_strain: float) -> list[int]:
-    """Return the nearest atom counts either side that do fill a lattice.
+    """Finds the nearest atom counts either side that do fill a lattice.
 
-    Counts that fit are close together, so stepping outward from
-    ``number_of_atoms`` finds them quickly. The list is empty when neither
-    direction has one within :data:`SEARCH_RANGE`.
+    The list is empty when neither direction has one within
+    :data:`SEARCH_RANGE`.
     """
     found = []
     for direction in (-1, 1):
@@ -190,7 +177,7 @@ def _nearest_fitting(number_of_atoms: int, max_strain: float) -> list[int]:
 def _no_lattice_message(
     number_of_atoms: int, best: _Lattice | None, max_strain: float
 ) -> str:
-    """Say that an atom count was refused and which counts would fit.
+    """Says that an atom count was refused and which counts would fit.
 
     Args:
         number_of_atoms: The number of atoms asked for.
@@ -225,26 +212,18 @@ def place_metropolis(
     placement_temperature: float,
     rng: np.random.Generator,
 ) -> Configuration:
-    """Place atoms one at a time by Metropolis insertion.
+    """Places atoms one at a time by Metropolis insertion.
 
     Each atom in turn is given a uniform trial position in the box,
     accepted by :func:`mc.accept` at ``placement_temperature`` on its
     interaction energy with the atoms already placed, and redrawn on
-    rejection. Before the atom is added it interacts with nothing, so its
-    interaction energy with the atoms already placed is exactly the energy
-    change the insertion causes.
-
-    Placing the atoms one after another gives a reasonable starting point,
-    not a configuration drawn from equilibrium. The atoms avoid the close
-    contacts the potential penalises at the placement temperature, and raising
-    that temperature makes closer contacts more likely. The run itself brings
-    the configuration to equilibrium.
+    rejection. The result is a reasonable starting point, not a
+    configuration drawn from equilibrium.
 
     Args:
         number_of_atoms: The number of atoms.
         box: The side length of the box, in metres.
-        model: The species, assigned to the atoms in turn, and the potential
-            between each pair of them.
+        model: The model.
         cut_off: The cut-off, in metres.
         placement_temperature: The temperature of the acceptance, in kelvin.
         rng: The generator to draw trial positions and acceptances from.
@@ -254,10 +233,8 @@ def place_metropolis(
 
     Raises:
         ValueError: If :data:`PLACEMENT_ATTEMPTS` trial positions are all
-            rejected for a single atom. At the highest densities this many
-            attempts can reach, success depends on the positions that happen to
-            be drawn, so the same call may succeed with one seed and raise with
-            another.
+            rejected for a single atom. Near the densest packing it can
+            reach, whether it succeeds depends on the seed.
     """
     # mc imports this module for place, so the acceptance criterion is
     # imported here rather than at the top of the module.
@@ -299,29 +276,31 @@ def place(
     cut_off: float | None,
     rng: np.random.Generator,
 ) -> tuple[Configuration, float]:
-    """Build the initial configuration for a simulation factory.
+    """Builds the initial configuration for a simulation.
 
-    Takes the box and cut-off in Angstrom, as the factories do, checks the
-    potentials at the cut-off before any placement is attempted, and places
-    the atoms.
+    Takes the box and cut-off in Angstrom, as
+    :meth:`~pylj.md.MDSimulation.initialise` and
+    :meth:`~pylj.mc.MCSimulation.initialise` do, checks the potentials at the
+    cut-off before any placement is attempted, and places the atoms.
 
     Args:
         number_of_atoms: The number of atoms.
         temperature: The temperature of the run, in kelvin.
-        box: The side length of the box, in Angstrom, from 4 to 600.
-        model: The species, assigned to the atoms in turn, and the potential
-            between each pair of them.
-        init_conf: ``'square'`` for a square lattice, ``'triangular'`` for a
-            triangular one, or ``'metropolis'`` for sequential Metropolis
-            insertion.
+        box: The side length of the box, in Angstrom, from
+            :data:`SMALLEST_BOX` to :data:`LARGEST_BOX`.
+        model: The model.
+        init_conf: How the atoms are placed. ``'square'`` puts them on a
+            square grid, ``'triangular'`` on a triangular lattice filling the
+            box, which constrains the number of atoms, and ``'metropolis'``
+            inserts them at random positions for a disordered start.
         placement_temperature: The temperature of the Metropolis acceptance
             used by ``'metropolis'``, in kelvin; ``None`` for the run
             temperature.
         max_strain: How far the fitted lattice may sit from
             ``sqrt(3) / 2``, as a fraction of that ratio, when ``'triangular'``
             fits its lattice to the box.
-        cut_off: The cut-off, in Angstrom; ``None`` for 15 Angstrom or half
-            the box, whichever is smaller.
+        cut_off: The cut-off, in Angstrom; ``None`` for
+            :data:`~pylj.simulation.DEFAULT_CUT_OFF` Angstrom or half the box, whichever is smaller.
         rng: The generator for Metropolis placement.
 
     Returns:
@@ -329,7 +308,8 @@ def place(
 
     Raises:
         ValueError: If no atoms are requested, a temperature is
-            not positive and finite, the box is outside 4 to 600 Angstrom,
+            not positive and finite, the box is outside
+            :data:`SMALLEST_BOX` to :data:`LARGEST_BOX` Angstrom,
             the cut-off exceeds half the box, a potential has not died away
             at the cut-off, ``init_conf`` is unknown, ``max_strain`` is not
             positive and finite or is above :data:`MOST_STRAIN`, no
@@ -342,11 +322,11 @@ def place(
     if placement_temperature is None:
         placement_temperature = temperature
     check_positive_finite("placement_temperature", placement_temperature)
-    if not 4 <= box <= 600:
+    if not SMALLEST_BOX <= box <= LARGEST_BOX:
         raise ValueError(
-            f"box must be between 4 and 600 Angstrom, not {box}: below 4 the cell cannot "
-            "hold more than one atom, and above 600 the atoms are too small to be "
-            "seen in the viewer."
+            f"box must be between {SMALLEST_BOX} and {LARGEST_BOX} Angstrom: below "
+            f"{SMALLEST_BOX} the cell cannot hold more than one atom, and above "
+            f"{LARGEST_BOX} the atoms are too small to be seen in the viewer."
         )
     box_m = box * 1e-10
     cut_off_m = _resolve_cut_off(box_m, None if cut_off is None else cut_off * 1e-10)
@@ -366,6 +346,6 @@ def place(
         )
     else:
         raise ValueError(
-            f"init_conf must be 'square', 'triangular' or 'metropolis', not {init_conf!r}"
+            "init_conf must be 'square', 'triangular' or 'metropolis'"
         )
     return configuration, cut_off_m

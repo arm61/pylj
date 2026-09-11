@@ -1,5 +1,4 @@
-"""The checks a simulation makes on its model, the record it keeps of its
-samples, and the base class the simulations share."""
+"""Shared simulation base class and sample records."""
 
 import copy
 from abc import ABC, abstractmethod
@@ -15,6 +14,10 @@ from pylj.model import Model
 from pylj.potentials import check_positive_finite
 from pylj.trajectory import Trajectory
 
+#: The cut-off used when none is given, in Angstrom, or half the box if
+#: that is smaller.
+DEFAULT_CUT_OFF = 15
+
 #: Largest potential energy per atom, in units of k_B T, accepted for an
 #: initial configuration.
 INITIAL_ENERGY_LIMIT = 10.0
@@ -23,19 +26,16 @@ INITIAL_ENERGY_LIMIT = 10.0
 def _check_potentials_at_the_cut_off(
     model: Model, cut_off: float, temperature: float, box: float
 ) -> None:
-    """Check that every pair potential has died away at the cut-off.
+    """Checks that every pair potential has died away at the cut-off.
 
-    Truncating the interaction at the cut-off assumes it is negligible
-    there. The check is that each pair energy at the cut-off is finite and
-    within ``k_B T`` of zero.
+    The check is that each pair energy at the cut-off is finite and within
+    ``k_B T`` of zero.
 
     Args:
-        model: The species and the potential between each pair of them.
+        model: The model.
         cut_off: The cut-off, in metres.
         temperature: The temperature, in kelvin.
-        box: The side length of the box, in metres. The cut-off can be no
-            larger than half the box, so when it already is, the only remedy is
-            a larger box.
+        box: The side length of the box, in metres.
 
     Raises:
         ValueError: If any pair potential's energy at the cut-off is not
@@ -64,13 +64,11 @@ def _check_potentials_at_the_cut_off(
 
 
 def _check_initial_energy(energy: float, number_of_atoms: int, temperature: float) -> None:
-    """Refuse a starting configuration that stores far more potential energy
+    """Refuses a starting configuration that stores far more potential energy
     than thermal energy.
 
-    Potential energy stored in an initial configuration is released as
-    motion over the first steps and heats the run. A configuration holding
-    more than :data:`INITIAL_ENERGY_LIMIT` k_B T per atom has atoms
-    too close together for its temperature.
+    A configuration holding more than :data:`INITIAL_ENERGY_LIMIT` k_B T
+    per atom has atoms too close together for its temperature.
 
     Args:
         energy: The total pair energy of the configuration, in joules.
@@ -102,18 +100,17 @@ def _check_initial_energy(energy: float, number_of_atoms: int, temperature: floa
 
 
 def _resolve_cut_off(box: float, cut_off: float | None) -> float:
-    """Return the cut-off in metres.
+    """Resolves the cut-off to metres.
 
-    A cut-off given by the caller is used as it stands. Without one, the
-    cut-off is 15 Angstrom, or half the box if that is smaller.
+    A ``cut_off`` of ``None`` becomes :data:`DEFAULT_CUT_OFF` Angstrom, or
+    half the box if that is smaller.
 
     Raises:
-        ValueError: If a given cut-off is not positive and finite, or is larger
-            than half the box. A cut-off beyond half the box breaks the minimum
-            image convention.
+        ValueError: If a given cut-off is not positive and finite, or is
+            larger than half the box.
     """
     if cut_off is None:
-        return min(15e-10, box / 2)
+        return min(DEFAULT_CUT_OFF * 1e-10, box / 2)
     check_positive_finite("cut_off", cut_off)
     if cut_off > box / 2:
         raise ValueError(
@@ -132,10 +129,7 @@ def _empty() -> NDArray[np.float64]:
 class Samples:
     """The record a simulation's ``sample`` appends to.
 
-    Every array holds one entry per call of ``sample``, in order, so the
-    arrays line up: ``step[i]`` is the step at which the other arrays'
-    ``i``-th entries were measured. Subclasses add the quantities their
-    simulation measures.
+    Every array holds one entry per call of ``sample``, in order.
 
     Attributes:
         step: The step at which each sample was taken.
@@ -144,15 +138,14 @@ class Samples:
     step: NDArray[np.int64] = field(default_factory=lambda: np.array([], dtype=np.int64))
 
     def add(self, **values: float) -> None:
-        """Append one value to every array, keeping them aligned.
+        """Appends one value to every array.
 
         Args:
             **values: One value for each of this record's arrays, by name.
 
         Raises:
             ValueError: If the names do not match this record's arrays
-                exactly, since a missing or unknown name would leave the
-                arrays out of step.
+                exactly.
         """
         expected = {f.name for f in fields(self)}
         if set(values) != expected:
@@ -165,34 +158,27 @@ class Samples:
 
 
 class Simulation(ABC):
-    """A simulation: a configuration, the model, the numerical choices, and
-    the machinery that evolves the configuration and measures it.
+    """The base class molecular dynamics and Monte Carlo share.
 
-    ``MDSimulation`` and ``MCSimulation`` add ``step`` and ``sample`` to this
-    class. The constructor takes a configuration that has already been built,
-    in SI units. To start from a model and a number of atoms instead, use the
-    ``initialise`` method of one of those subclasses, which builds the
-    configuration for you.
+    The constructor takes a configuration that is already built, in SI
+    units; the ``initialise`` method of either subclass builds one from a
+    model and a number of atoms instead.
 
     Args:
         configuration: The starting configuration.
-        model: The species and the potential between each pair of them, a
-            :class:`~pylj.model.Model`.
-        cut_off: The separation, in metres, beyond which a pair's
-            interaction is taken as negligible. By default 15 Angstrom or
-            half the box, whichever is smaller; it may not exceed half the
-            box.
-        seed: Seed for the random number generator. The same seed
-            reproduces the same run; without one the run differs each time.
+        model: The model.
+        cut_off: The separation, in metres, beyond which a pair's energy
+            and force are zero. By default :data:`DEFAULT_CUT_OFF` Angstrom
+            or half the box,
+            whichever is smaller; it may not exceed half the box.
+        seed: Seed for the random number generator; the same seed
+            reproduces the run, and without one the run differs each time.
 
     Attributes:
         configuration: The current configuration.
-        model: The model.
-        cut_off: The cut-off, in metres.
         rng: The random number generator for this simulation.
         steps: The number of steps taken.
-        samples: The record ``sample`` appends to; subclasses replace it
-            with the record of what they measure.
+        samples: The record ``sample`` appends to.
         trajectory: The configurations sampled so far, a
             :class:`~pylj.trajectory.Trajectory`.
 
@@ -222,23 +208,19 @@ class Simulation(ABC):
 
     @abstractmethod
     def step(self) -> None:
-        """Advance the simulation by one step."""
+        """Advances the simulation by one step."""
 
     @abstractmethod
     def sample(self) -> None:
-        """Record the quantities of interest at the current step."""
+        """Records the current step in ``samples``."""
 
     def restart(self) -> Self:
-        """A new simulation that continues from the current configuration.
+        """Returns a new simulation continuing from the current configuration.
 
-        The new simulation shares the model, the numerical choices
-        and every other attribute with this one. Its random number generator
-        starts from a copy of this one's state, so what this simulation draws
-        next has no effect on the new one. The new simulation starts with
-        ``steps`` at zero, an empty record of samples and an empty trajectory.
-        A subclass that holds other per-run state extends this method to reset
-        it. This simulation is not changed. Use it to start a production run
-        after equilibration::
+        The new simulation copies the model, the numerical choices and the
+        state of the random number generator, and starts with ``steps`` at
+        zero, no samples and an empty trajectory. This simulation is
+        unchanged. Use it to start a production run after equilibration::
 
             for _ in range(1000):
                 simulation.step()

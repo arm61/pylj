@@ -1,5 +1,4 @@
-"""The physical model a simulation runs: the species and the potential
-between each pair of them."""
+"""Simulation models."""
 
 import itertools
 from collections.abc import Mapping, Sequence
@@ -12,7 +11,7 @@ from pylj.potentials import PairPotential, Species
 def _check_complete(
     species: tuple[Species, ...], pair_potentials: Mapping[tuple[Species, Species], PairPotential]
 ) -> None:
-    """Check that every pair of the species has exactly one potential and that
+    """Checks that every pair of the species has exactly one potential and that
     no other pair has one."""
     for pair in pair_potentials:
         if not isinstance(pair, tuple) or len(pair) != 2:
@@ -48,12 +47,10 @@ class Model:
 
     Every pair of species, including each species with itself, has one
     entry in ``pair_potentials``, keyed by the two species in either order.
-    ``single`` builds the model for one species. ``species`` and
-    ``pair_potentials`` are read-only.
 
     Args:
-        species: The species, as any sequence of ``Species``. Atoms are
-            assigned to them in turn when a configuration is placed.
+        species: The species, assigned to the atoms in turn when a
+            configuration is placed.
         pair_potentials: The potential between each pair of species.
 
     Raises:
@@ -106,17 +103,17 @@ class Model:
 
     @property
     def species(self) -> tuple[Species, ...]:
-        """The species, as a tuple, in the order atoms are assigned to them."""
+        """The species, in the order they are assigned to atoms."""
         return self._species
 
     @property
     def pair_potentials(self) -> Mapping[tuple[Species, Species], PairPotential]:
-        """The potential between each pair of species, as a read-only mapping."""
+        """The potential between each pair of species."""
         return MappingProxyType(self._pair_potentials)
 
     @classmethod
     def single(cls, species: Species, potential: PairPotential) -> Self:
-        """Build the model for one species.
+        """Builds the model for one species.
 
         Args:
             species: The one species.
@@ -125,7 +122,7 @@ class Model:
         return cls((species,), {(species, species): potential})
 
     def potential(self, one: Species, other: Species) -> PairPotential:
-        """Return the potential between two species.
+        """Looks up the potential between two species.
 
         The pair may be given in either order.
 

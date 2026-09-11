@@ -1,5 +1,4 @@
-"""The configurations a simulation samples, kept in order for analysis
-after the run."""
+"""Sampled configurations, in order."""
 
 from collections.abc import Iterable, Iterator
 from typing import overload
@@ -15,11 +14,9 @@ class Trajectory:
     """The configurations a simulation has sampled, in order.
 
     A simulation appends its current configuration each time ``sample`` is
-    called, so a trajectory holds one frame per sample. Every frame comes
-    from the same system: the same box and the same number of atoms. A frame
-    is a :class:`~pylj.configuration.Configuration`, so ``trajectory[i]`` has
-    positions, a box and, for molecular dynamics, velocities. A slice such as
-    ``trajectory[100:]`` is a trajectory of the later frames.
+    called. Every frame has the same box and the same number of atoms.
+    Indexing gives a :class:`~pylj.configuration.Configuration`; slicing
+    gives a ``Trajectory``.
 
     Args:
         frames: Configurations to start with, in order.
@@ -31,7 +28,7 @@ class Trajectory:
             self.append(one)
 
     def append(self, configuration: Configuration) -> None:
-        """Add a frame to the end.
+        """Adds a frame to the end.
 
         Args:
             configuration: The frame to add.
@@ -87,10 +84,7 @@ class Trajectory:
     def rdf(
         self, bins: int = 100, r_max: float | None = None
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-        """Return g(r) averaged over the frames.
-
-        Each frame's :meth:`~pylj.configuration.Configuration.rdf` is taken
-        and the mean over frames returned.
+        """Averages g(r) over the frames.
 
         Args:
             bins: The number of bins.
@@ -98,7 +92,7 @@ class Trajectory:
                 the box.
 
         Returns:
-            The centre of each bin, in metres, and the mean g(r) at each.
+            The bin centres, in metres, and the mean g(r) in each bin.
 
         Raises:
             ValueError: If the trajectory has no frames.
@@ -110,21 +104,19 @@ class Trajectory:
     def structure_factor(
         self, q_max: float | None = None
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-        """Return the structure factor S(q) averaged over the frames.
+        """Averages the structure factor S(q) over the frames.
 
         The wavevectors come from the first frame, and every frame is
-        evaluated on that one set, so the mean is taken value by value.
-        S(q) of a frame is as
-        :meth:`~pylj.configuration.Configuration.structure_factor` defines
-        it.
+        evaluated on that one set.
 
         Args:
-            q_max: The largest wavevector magnitude, in 1/m. By default six
-                times ``2 pi sqrt(N) / L``, the wavevector that matches the
-                mean spacing between the ``N`` atoms of the first frame.
+            q_max: The largest wavevector magnitude, in 1/m; the default
+                comes from :func:`~pylj.scattering.default_q_max` for the
+                first frame.
 
         Returns:
-            The wavevector magnitudes, in 1/m, and the mean S(q) at each.
+            The wavevector magnitudes, in 1/m, and the mean S(q) at each
+            magnitude.
 
         Raises:
             ValueError: If the trajectory has no frames, or ``q_max`` is
