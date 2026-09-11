@@ -24,11 +24,6 @@ class TestAccept(unittest.TestCase):
         self.assertTrue(mc.accept(0.0, 300, rng=rng))
         self.assertEqual(rng.random(), untouched.random())
 
-    def test_tests_an_uphill_change_against_the_random_number(self):
-        # A rise of 1e-20 J at 300 K has a Boltzmann factor of about 0.09.
-        self.assertTrue(mc.accept(1e-20, 300, random_number=0.01))
-        self.assertFalse(mc.accept(1e-20, 300, random_number=0.1))
-
     def test_draws_from_the_supplied_generator(self):
         # With n the generator's first draw, an uphill change whose
         # acceptance probability is (1 + n) / 2 is accepted and one whose

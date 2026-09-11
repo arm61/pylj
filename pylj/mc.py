@@ -53,7 +53,6 @@ def accept(
     energy_change: float,
     temperature: float,
     *,
-    random_number: float | None = None,
     rng: np.random.Generator | None = None,
 ) -> bool:
     """Applies the Metropolis criterion to an energy change.
@@ -62,8 +61,6 @@ def accept(
         energy_change: The change in energy under the proposed move, in
             joules.
         temperature: The temperature the acceptance is judged at, in kelvin.
-        random_number: The uniform random number the acceptance probability
-            is tested against. By default one is drawn from ``rng``.
         rng: The generator to draw from; pass the simulation's ``rng`` for
             a reproducible run. By default an unseeded generator is used.
 
@@ -72,11 +69,9 @@ def accept(
     """
     if energy_change <= 0:
         return True
-    if random_number is None:
-        if rng is None:
-            rng = np.random.default_rng()
-        random_number = rng.random()
-    return bool(random_number < np.exp(-energy_change / (BOLTZMANN * temperature)))
+    if rng is None:
+        rng = np.random.default_rng()
+    return bool(rng.random() < np.exp(-energy_change / (BOLTZMANN * temperature)))
 
 
 class MCSimulation(Simulation):
@@ -145,8 +140,8 @@ class MCSimulation(Simulation):
             model: The model.
             number_of_atoms: The number of atoms.
             temperature: The temperature of the simulation, in kelvin.
-            box: The side length of the box, in Angstrom, from
-                :data:`~pylj.placement.SMALLEST_BOX` to :data:`~pylj.placement.LARGEST_BOX`.
+            box: The side length of the box, in Angstrom, at least
+                :data:`~pylj.placement.SMALLEST_BOX`.
             init_conf: How the atoms are placed. ``'square'`` puts them on a
                 square grid, ``'triangular'`` on a triangular lattice filling
                 the box, which constrains the number of atoms, and

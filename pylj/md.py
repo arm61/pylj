@@ -143,8 +143,8 @@ class MDSimulation(Simulation):
             model: The model.
             number_of_atoms: The number of atoms, at least two.
             temperature: The initial temperature, in kelvin.
-            box: The side length of the box, in Angstrom, from
-                :data:`~pylj.placement.SMALLEST_BOX` to :data:`~pylj.placement.LARGEST_BOX`.
+            box: The side length of the box, in Angstrom, at least
+                :data:`~pylj.placement.SMALLEST_BOX`.
             init_conf: How the atoms are placed. ``'square'`` puts them on a
                 square grid, ``'triangular'`` on a triangular lattice filling
                 the box, which constrains the number of atoms, and
