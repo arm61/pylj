@@ -394,11 +394,6 @@ def at_rest(configuration: MDConfiguration) -> MDConfiguration:
     relative to every other. The kinetic energy does change: it falls by the
     energy the drift was carrying, and the temperature falls with it.
 
-    The forces depend only on the separations between atoms, so shifting
-    every velocity by the same amount leaves the dynamics alone, and the
-    total momentum is conserved. The frame in which it is zero is the one
-    the system singles out.
-
     Args:
         configuration: The configuration to put in that frame.
 

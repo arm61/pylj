@@ -116,6 +116,12 @@ class Configuration:
     def without(self, index: int) -> Self:
         """Return a copy with one atom removed.
 
+        An atom carries its momentum, so removing one leaves the others with
+        a net momentum between them. :func:`~pylj.md.at_rest` puts them back
+        in the frame where the total is zero, and
+        :class:`~pylj.md.MDSimulation` does that for any configuration it is
+        built from.
+
         Args:
             index: The index of the atom to remove.
 
