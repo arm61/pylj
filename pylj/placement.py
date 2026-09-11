@@ -146,7 +146,7 @@ def place_triangular(
         )
     best = _triangular_lattice(number_of_atoms)
     if best is None or best.strain > max_strain:
-        raise ValueError(_no_lattice_message(number_of_atoms, max_strain))
+        raise ValueError(_no_lattice_message(number_of_atoms, best, max_strain))
     columns, rows = best.columns, best.rows
     column_spacing = box / columns
     row_spacing = box / rows
@@ -187,13 +187,30 @@ def _nearest_fitting(number_of_atoms: int, max_strain: float) -> list[int]:
     return sorted(found)
 
 
-def _no_lattice_message(number_of_atoms: int, max_strain: float) -> str:
-    """Say that an atom count was refused and which counts would fit."""
+def _no_lattice_message(
+    number_of_atoms: int, best: _Lattice | None, max_strain: float
+) -> str:
+    """Say that an atom count was refused and which counts would fit.
+
+    Args:
+        number_of_atoms: The number of atoms asked for.
+        best: The closest lattice with this many sites, or ``None`` when no
+            even number of rows divides them.
+        max_strain: The largest strain that was accepted.
+
+    Returns:
+        The message.
+    """
     atoms = "atom" if number_of_atoms == 1 else "atoms"
-    reason = (
-        f"A triangular lattice within a max_strain of {max_strain:g} cannot hold "
-        f"{number_of_atoms} {atoms}"
-    )
+    if best is not None and best.strain <= MOST_STRAIN:
+        # A larger max_strain would reach this count, so name it.
+        reason = (
+            f"A triangular lattice within a max_strain of {max_strain:g} cannot hold "
+            f"{number_of_atoms} {atoms}"
+        )
+    else:
+        reason = f"No triangular lattice can hold {number_of_atoms} {atoms}"
+
     nearby = _nearest_fitting(number_of_atoms, max_strain)
     if not nearby:
         return f"{reason}."

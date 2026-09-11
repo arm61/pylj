@@ -313,6 +313,19 @@ class TestPlaceTriangular(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "max_strain is a fraction"):
             placement.place_triangular(56, (ARGON,), 60e-10, max_strain=5)
 
+    def test_names_max_strain_only_when_it_is_a_lever(self):
+        # 100 atoms make a 10 by 10 lattice inside MOST_STRAIN, so a larger
+        # max_strain reaches them. 195 is 3 by 5 by 13, with no even divisor
+        # at all, so no max_strain ever will.
+        with self.assertRaisesRegex(ValueError, "within a max_strain"):
+            placement.place_triangular(100, (ARGON,), 60e-10)
+        with self.assertRaisesRegex(ValueError, "No triangular lattice can hold 195"):
+            placement.place_triangular(195, (ARGON,), 60e-10)
+        # 180 has even divisors, but its best lattice strains beyond the
+        # limit, so max_strain is no lever there either.
+        with self.assertRaisesRegex(ValueError, "No triangular lattice can hold 180"):
+            placement.place_triangular(180, (ARGON,), 60e-10)
+
     def test_max_strain_is_a_fraction_of_the_ratio(self):
         # 7 by 8 sits 0.0090 from sqrt(3) / 2 in absolute terms and 0.0104
         # of it as a fraction, so a max_strain between the two refuses it.
