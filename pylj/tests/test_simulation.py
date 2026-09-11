@@ -139,14 +139,14 @@ class TestSimulation(unittest.TestCase):
 
 class TestPickle(unittest.TestCase):
     def test_a_simulation_survives_a_round_trip(self):
-        simulation = md.MDSimulation.initialise(
+        s = md.MDSimulation.initialise(
             ARGON_MODEL, number_of_atoms=4, temperature=100, box=20, seed=1
         )
-        simulation.step()
-        simulation.sample()
-        copied = pickle.loads(pickle.dumps(simulation))
+        s.step()
+        s.sample()
+        copied = pickle.loads(pickle.dumps(s))
         # Stepping the copy needs its model, generator, cut-off and
         # timestep, so one comparison covers all four.
-        simulation.step()
+        s.step()
         copied.step()
-        assert_allclose(copied.configuration.position, simulation.configuration.position)
+        assert_allclose(copied.configuration.position, s.configuration.position)

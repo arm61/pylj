@@ -4,14 +4,7 @@ import unittest
 
 from pylj.model import Model
 from pylj.potentials import LennardJones, Species
-from pylj.tests.argon import (
-    ARGON,
-    LARGER,
-    LJ_ARGON,
-    LJ_ARGON_LARGER,
-    LJ_LARGER,
-    MIXTURE_MODEL,
-)
+from pylj.tests.argon import ARGON, LARGER, LJ_ARGON, LJ_ARGON_LARGER, LJ_LARGER, MIXTURE_MODEL
 
 
 class TestModel(unittest.TestCase):
