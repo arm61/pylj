@@ -25,8 +25,9 @@ def _check_potentials_at_the_cut_off(
 ) -> None:
     """Check that every pair potential has died away at the cut-off.
 
-    The check is that each pair energy at the cut-off is finite and within
-    ``k_B T`` of zero.
+    Truncating the interaction at the cut-off assumes it is negligible
+    there. The check is that each pair energy at the cut-off is finite and
+    within ``k_B T`` of zero.
 
     Args:
         model: The species and the potential between each pair of them.
@@ -66,8 +67,10 @@ def _check_initial_energy(energy: float, number_of_atoms: int, temperature: floa
     """Refuse a starting configuration that stores far more potential energy
     than thermal energy.
 
-    A configuration holding more than :data:`INITIAL_ENERGY_LIMIT` k_B T
-    per atom has atoms too close together for its temperature.
+    Potential energy stored in an initial configuration is released as
+    motion over the first steps and heats the run. A configuration holding
+    more than :data:`INITIAL_ENERGY_LIMIT` k_B T per atom has atoms
+    too close together for its temperature.
 
     Args:
         energy: The total pair energy of the configuration, in joules.
