@@ -1,4 +1,4 @@
-"""Configurations: the physical state a simulation evolves."""
+"""Atom configurations."""
 
 import dataclasses
 from dataclasses import dataclass
@@ -16,19 +16,15 @@ from pylj.scattering import check_q_max, default_q_max, shell_average, wavevecto
 
 @dataclass(frozen=True, eq=False)
 class PairData:
-    """The distance, separation, energy and force of every pair of atoms.
-
-    Each pair appears once, in the order :func:`pairwise.dist` returns them:
-    the atom with the lower index first.
+    """The result of :meth:`Configuration.pairs`.
 
     Attributes:
         distance: The minimum-image distance between each pair, in metres.
-        separation: The minimum-image separation ``r_i - r_j`` of each pair,
-            shape ``(M, 2)``, in metres.
-        energy: The energy of each pair, in joules; zero beyond the cut-off.
+        separation: The minimum-image separation of each pair, ``r_i - r_j``
+            with ``i < j``, shape ``(M, 2)``, in metres.
+        energy: The energy of each pair, in joules.
         radial_force: The radial force on each pair, in newtons, positive
-            where repulsive and zero beyond the cut-off; ``None`` when the
-            forces were not evaluated.
+            where repulsive; ``None`` if it was not evaluated.
     """
 
     distance: NDArray[np.float64]
@@ -43,7 +39,11 @@ class PairData:
 
 
 def _radial_force(pairs: PairData) -> NDArray[np.float64]:
-    """Return the radial forces, raising if the pair data was evaluated without them."""
+    """Returns the radial forces.
+
+    Raises:
+        ValueError: If the pair data was evaluated without forces.
+    """
     if pairs.radial_force is None:
         raise ValueError("The pair forces were not evaluated; call pairs(..., forces=True)")
     return pairs.radial_force
@@ -51,18 +51,11 @@ def _radial_force(pairs: PairData) -> NDArray[np.float64]:
 
 @dataclass(frozen=True, eq=False)
 class Configuration:
-    """Where the atoms are: the state a Monte Carlo simulation evolves.
-
-    A configuration cannot be changed once it is made, and it holds no
-    description of how the atoms interact. Each method that evaluates the
-    interactions between atoms is given a ``Model`` and a ``cut_off`` when it
-    is called, so the same configuration can be evaluated under different
-    potentials. Everything is in SI units.
+    """A single configuration of atoms and the simulation cell.
 
     Attributes:
-        position: The position of each atom, shape ``(N, 2)``, in
-            metres; a simulation keeps them wrapped into the box.
-        species: The species in the configuration.
+        position: The position of each atom, shape ``(N, 2)``, in metres.
+        species: The distinct species, indexed by ``species_index``.
         species_index: The index in ``species`` of each atom's species,
             shape ``(N,)``.
         box: The side length of the square periodic box, in metres.
@@ -99,22 +92,20 @@ class Configuration:
 
     @property
     def number_of_atoms(self) -> int:
-        """The number of atoms."""
         return self.position.shape[0]
 
     @property
     def masses(self) -> NDArray[np.float64]:
-        """The mass of each atom, in kilograms, from its species."""
+        """Atomic masses, in kilograms."""
         masses = np.array([one.mass for one in self.species], dtype=float) * ATOMIC_MASS_UNIT
         return masses[self.species_index]
 
     def replace(self, **changes: Any) -> Self:
-        """Return a copy with the given fields replaced. The copy is checked in the same
-        way as any other configuration."""
+        """Returns a copy with the given fields replaced."""
         return dataclasses.replace(self, **changes)
 
     def without(self, index: int) -> Self:
-        """Return a copy with one atom removed.
+        """Returns a copy of this Configuration with one atom removed.
 
         Args:
             index: The index of the atom to remove.
@@ -130,27 +121,19 @@ class Configuration:
         return dataclasses.replace(self, **arrays)
 
     def pairs(self, model: Model, cut_off: float, *, forces: bool = False) -> PairData:
-        """Evaluate every pair of atoms under the model.
+        """Evaluates the energy and optionally forces for each pair of atoms.
 
-        Each pair is separated by its minimum-image distance, and the potential
-        for the two species it joins gives its energy. A pair further apart
-        than the cut-off contributes nothing. A pair closer than its
-        potential's ``min_separation`` is forbidden: its energy is infinite,
-        and if forces are requested the evaluation raises, since the
-        simulation has entered a region where the model is unphysical. The
-        forces are evaluated only when ``forces`` is requested, so a
-        potential that has no finite force, such as the square well, can
-        still be used here.
+        A pair further apart than the cut-off has zero energy and force, and
+        a pair closer than its potential's ``min_separation`` has infinite
+        energy and raises if forces are requested.
 
         Args:
-            model: The species and the potential between each pair of them.
-            cut_off: The separation beyond which a pair contributes nothing,
-                in metres.
-            forces: Whether to evaluate the radial forces as well.
+            model: The model.
+            cut_off: The cut-off, in metres.
+            forces: Whether to evaluate the radial forces.
 
         Returns:
-            The pair distances, separations, energies and, if requested,
-            forces.
+            The pair data.
 
         Raises:
             ValueError: If forces are requested and a pair is closer than
@@ -182,11 +165,11 @@ class Configuration:
         return PairData(distance, separation, energy, force)
 
     def potential_energy(self, model: Model, cut_off: float) -> float:
-        """The total pair energy, in joules."""
+        """Computes the total pair energy, in joules."""
         return float(self.pairs(model, cut_off).energy.sum())
 
     def forces(self, model: Model, cut_off: float) -> NDArray[np.float64]:
-        """The net force on each atom, shape ``(N, 2)``, in newtons."""
+        """Computes the net force on each atom, shape ``(N, 2)``, in newtons."""
         pairs = self.pairs(model, cut_off, forces=True)
         radial = _radial_force(pairs)
         i, j = np.triu_indices(self.number_of_atoms, 1)
@@ -199,7 +182,8 @@ class Configuration:
         return force
 
     def virial(self, model: Model, cut_off: float) -> float:
-        """The sum over pairs of the radial force times the distance, in joules."""
+        """Computes the sum over pairs of the radial force times the distance,
+        in joules."""
         return self.pairs(model, cut_off, forces=True).virial
 
     def insertion_energy(
@@ -209,15 +193,14 @@ class Configuration:
         model: Model,
         cut_off: float,
     ) -> float:
-        """Return the interaction energy of one added atom with the atoms already
+        """Computes the interaction energy of one added atom with the atoms already
         in the configuration.
 
         Args:
             position: The ``(x, y)`` position of the added atom, in metres.
-            species_index: The index in ``species`` of its species.
-            model: The species and the potential between each pair of them.
-            cut_off: The separation beyond which a pair contributes nothing,
-                in metres.
+            species_index: The index in ``species`` of the added atom's species.
+            model: The model.
+            cut_off: The cut-off, in metres.
 
         Returns:
             The sum of its pair energies, in joules; zero for an empty
@@ -239,29 +222,20 @@ class Configuration:
     def rdf(
         self, bins: int = 100, r_max: float | None = None
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-        """Return the radial distribution function g(r) of this configuration.
+        """Computes the radial distribution function g(r) of this configuration.
 
-        The pair distances are sorted into bins from zero to ``r_max``. The
-        count in each bin is divided by the count an ideal gas of the same
-        density would give. That gas has ``N (N - 1) / 2`` pairs spread
-        evenly over the box, and a ring of radius ``r`` and width ``dr``
-        holds the fraction ``2 pi r dr / L^2`` of them, where ``L`` is the
-        box length. So g(r) is one where the atoms are spread as evenly as
-        an ideal gas, above one where they gather and below one where they
-        avoid each other.
+        The pair distances are binned from zero to ``r_max`` and divided by
+        the counts an ideal gas of the same density would give.
 
         Args:
             bins: The number of bins.
             r_max: The largest distance binned, in metres. By default half
-                the box, the furthest a minimum-image distance can reach in
-                every direction. Past half the box the ring runs outside the
-                square, so the ideal-gas count is too large and g(r) sinks
-                towards zero even for a uniform gas.
+                the box, beyond which the ideal-gas normalisation no longer
+                holds.
 
         Returns:
-            The centre of each bin, in metres, and g(r) at each. A
-            configuration of one atom has no pairs, so g(r) is zero
-            everywhere.
+            The bin centres, in metres, and g(r) in each bin.
+            Returns zero everywhere for a configuration containing one atom.
         """
         if r_max is None:
             r_max = self.box / 2
@@ -280,24 +254,20 @@ class Configuration:
     def structure_factor(
         self, q_max: float | None = None
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-        """Return the structure factor S(q) of this configuration.
+        """Computes the structure factor S(q) of this configuration.
 
         S(q) is evaluated at the wavevectors commensurate with the box,
-        ``2 pi (h, k) / L``, where ``L`` is the box length and ``h`` and
-        ``k`` are integers that are not both zero. Each wavevector ``q`` has
-        an amplitude ``sum_j exp(i q . r_j)``, summed over the atom positions
-        ``r_j``. S(q) at that wavevector is the square of the modulus of the
-        amplitude, divided by the number of atoms. Every atom counts alike,
-        whatever its species. The wavevectors that share a magnitude are
-        averaged together, so the result holds one value per magnitude.
+        ``2 pi (h, k) / L`` for integers ``h`` and ``k`` not both zero.
+        Wavevectors of equal magnitude are averaged together, so the result
+        holds one value per magnitude. Every atom counts alike, whatever its
+        species.
 
         Args:
-            q_max: The largest wavevector magnitude, in 1/m. By default six
-                times ``2 pi sqrt(N) / L``, the wavevector that matches the
-                mean spacing between the ``N`` atoms.
+            q_max: The largest wavevector magnitude, in 1/m; the default
+                comes from :func:`~pylj.scattering.default_q_max`.
 
         Returns:
-            The wavevector magnitudes, in 1/m, and S(q) at each.
+            The wavevector magnitudes, in 1/m, and S(q) at each magnitude.
 
         Raises:
             ValueError: If ``q_max`` is below ``2 pi / L``.
@@ -311,22 +281,17 @@ class Configuration:
 
 @dataclass(frozen=True, eq=False)
 class MDConfiguration(Configuration):
-    """Where the atoms are and how fast they move: the state a molecular
-    dynamics simulation evolves.
-
-    An atom carries its momentum, so :meth:`Configuration.without` leaves
-    the rest with a net momentum. :func:`~pylj.md.at_rest` clears it, and
-    :class:`~pylj.md.MDSimulation` does so for whatever it is built from.
+    """A configuration with atom velocities and unwrapped positions.
 
     Attributes:
         velocity: The velocity of each atom, shape ``(N, 2)``, in
             metres per second.
         unwrapped: The position of each atom without periodic wrapping,
-            shape ``(N, 2)``, in metres, for the mean squared displacement.
+            shape ``(N, 2)``, in metres.
 
     Raises:
         ValueError: If ``velocity`` or ``unwrapped`` is not the shape of
-            ``position``, or for anything :class:`Configuration` rejects.
+            ``position``.
     """
 
     velocity: NDArray[np.float64]
@@ -342,17 +307,14 @@ class MDConfiguration(Configuration):
                 )
 
     def kinetic_energy(self) -> float:
-        """The total kinetic energy, in joules."""
+        """Computes the total kinetic energy, in joules."""
         return float(0.5 * np.sum(self.masses * np.sum(self.velocity**2, axis=1)))
 
     def temperature(self) -> float:
-        """The instantaneous temperature, in kelvin.
+        """Computes the instantaneous temperature, in kelvin.
 
-        A simulation sets the centre of mass at rest whichever way it is
-        built, and the pair forces cannot set it moving. Two of the ``2N``
-        velocity components are therefore fixed by that condition, leaving
-        ``2N - 2`` to carry thermal energy. The temperature is the kinetic
-        energy divided by ``(N - 1) k_B``.
+        The kinetic energy divided by ``(N - 1) k_B``, the centre of mass
+        being at rest.
 
         Raises:
             ValueError: If there are fewer than two atoms.
@@ -365,11 +327,9 @@ class MDConfiguration(Configuration):
         return self.kinetic_energy() / ((self.number_of_atoms - 1) * BOLTZMANN)
 
     def msd(self, initial: "MDConfiguration") -> float:
-        """Return the mean squared displacement since an earlier configuration.
+        """Computes the mean squared displacement since an earlier configuration.
 
-        The unwrapped positions are used, so an atom that crosses the edge
-        of the box and reappears on the other side counts as having travelled
-        the whole way.
+        Measured from the unwrapped positions.
 
         Args:
             initial: The configuration to measure the displacement from.

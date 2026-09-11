@@ -1,5 +1,4 @@
-"""The structure factor of a configuration, evaluated at the wavevectors
-commensurate with its box."""
+"""Structure factor calculations."""
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,16 +11,10 @@ MOST_WAVEVECTORS = 1_000_000
 
 
 def default_q_max(number_of_atoms: int, box: float) -> float:
-    """Return a wavevector magnitude to draw a structure factor up to, in 1/m.
+    """Chooses the default largest wavevector magnitude, in 1/m.
 
-    A square box of side ``L`` holding ``N`` atoms leaves a mean spacing of
-    ``L / sqrt(N)`` between them. The wavevector matching that spacing,
-    ``2 pi sqrt(N) / L``, grows as the square root of the density, and the
-    magnitude returned is six times it.
-
-    How far a nearest neighbour sits is set by the potential rather than by
-    the density, so a dilute configuration is drawn up to a smaller multiple
-    of its first peak, where its S(q) is close to one throughout.
+    ``2 pi sqrt(N) / L`` matches the mean spacing between ``N`` atoms in a
+    box of side ``L``; the default is six times it.
 
     Args:
         number_of_atoms: The number of atoms.
@@ -34,12 +27,7 @@ def default_q_max(number_of_atoms: int, box: float) -> float:
 
 
 def check_q_max(q_max: float, box: float) -> None:
-    """Check that a wavevector magnitude is one the box has, and not too many.
-
-    The smallest wavevector a box of side ``L`` has is ``2 pi / L``, so a
-    ``q_max`` below that leaves nothing to evaluate. The number of
-    wavevectors grows as the square of ``q_max``, so it is bounded above by
-    :data:`MOST_WAVEVECTORS`.
+    """Checks a wavevector magnitude against the box and the wavevector limit.
 
     Args:
         q_max: The largest wavevector magnitude, in 1/m.
@@ -69,7 +57,7 @@ def check_q_max(q_max: float, box: float) -> None:
 def wavevectors(
     box: float, q_max: float
 ) -> tuple[NDArray[np.float64], NDArray[np.int64], NDArray[np.int64]]:
-    """Return the wavevectors commensurate with a box, grouped by magnitude.
+    """Enumerates the wavevectors commensurate with a box, grouped by magnitude.
 
     A square box of side ``L`` that repeats in both directions has the
     wavevectors ``2 pi (h, k) / L``, for integer ``h`` and ``k``. The pair
@@ -107,7 +95,7 @@ def wavevectors(
 def _phase_rows(
     coordinate: NDArray[np.float64], unit: float, limit: int
 ) -> NDArray[np.complex128]:
-    """Return ``exp(i unit h x)`` for every atom and every ``h``.
+    """Computes ``exp(i unit h x)`` for every atom and every ``h``.
 
     The rows run from ``-limit`` to ``limit``. Negative ``h`` gives the
     complex conjugate of positive ``h``, so only the non-negative rows are
@@ -131,18 +119,12 @@ def shell_average(
     index: NDArray[np.int64],
     shell: NDArray[np.int64],
 ) -> NDArray[np.float64]:
-    """Return the structure factor of a configuration, one value per shell.
+    """Computes the structure factor of a configuration.
 
-    The wavevector of a pair of integers ``(h, k)`` is ``2 pi (h, k) / L``,
-    and its amplitude is ``sum_j exp(i q . r_j)``, summed over the atom
-    positions ``r_j``. The structure factor at that wavevector is the square
-    of the modulus of the amplitude, divided by the number of atoms. Every
-    atom counts alike, whatever its species. The wavevectors that share a
-    magnitude are averaged together, so the result holds one value per shell.
-
-    A phase factor separates into one term per axis, ``exp(i q . r) =
-    exp(i q_x x) exp(i q_y y)``, so the amplitudes of every ``(h, k)`` are
-    the product of a matrix of phase factors along x with one along y.
+    The amplitude at a wavevector is ``sum_j exp(i q . r_j)`` over the atom
+    positions, and the structure factor is the square of its modulus divided
+    by the number of atoms. Every atom counts alike, whatever its species,
+    and the wavevectors of a shell are averaged together.
 
     Args:
         position: The atom positions, shape ``(N, 2)``, in metres.
@@ -153,6 +135,8 @@ def shell_average(
     Returns:
         The structure factor at each shell magnitude.
     """
+    # exp(i q . r) = exp(i q_x x) exp(i q_y y), so the amplitudes of every
+    # (h, k) are one matrix product of the per-axis phase factors.
     limit = int(np.abs(index).max())
     unit = 2 * np.pi / box
     along_x = _phase_rows(position[:, 0], unit, limit)

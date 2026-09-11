@@ -1,6 +1,4 @@
-"""Monte Carlo: the simulation that samples configurations by the Metropolis
-criterion, the criterion itself, and the proposed move the criterion accepts or
-rejects."""
+"""Metropolis Monte Carlo simulation."""
 
 from dataclasses import dataclass, field
 from typing import Self
@@ -24,7 +22,7 @@ from pylj.simulation import (
 
 @dataclass
 class MCSamples(Samples):
-    """What a Monte Carlo simulation records at each sample.
+    """The record a Monte Carlo simulation appends to at each sample.
 
     Attributes:
         potential_energy: The total pair energy, in joules.
@@ -35,17 +33,14 @@ class MCSamples(Samples):
 
 @dataclass(frozen=True, eq=False)
 class Proposal:
-    """A proposed configuration for a Monte Carlo move.
-
-    The energy change is relative to the configuration the proposal was made
-    from, so a proposal can only be applied while that configuration is
-    still the current one.
+    """A proposed configuration for a Monte Carlo move, and the corresponding
+    energy change.
 
     Attributes:
         position: The proposed position of every atom, shape ``(N, 2)``,
             in metres.
-        energy_change: The energy of the proposed configuration minus that
-            of ``source``, in joules.
+        energy_change: The change in energy under the proposed move, in
+            joules.
         source: The configuration the proposal was made from.
     """
 
@@ -61,15 +56,11 @@ def accept(
     random_number: float | None = None,
     rng: np.random.Generator | None = None,
 ) -> bool:
-    """Apply the Metropolis criterion to an energy change.
-
-    A change that does not raise the energy is always accepted, without
-    drawing a random number. A change that raises it by ``energy_change`` is
-    accepted with probability ``exp(-energy_change / (k_B temperature))``.
+    """Applies the Metropolis criterion to an energy change.
 
     Args:
-        energy_change: The energy of the proposed configuration minus that
-            of the current one, in joules.
+        energy_change: The change in energy under the proposed move, in
+            joules.
         temperature: The temperature the acceptance is judged at, in kelvin.
         random_number: The uniform random number the acceptance probability
             is tested against. By default one is drawn from ``rng``.
@@ -89,37 +80,27 @@ def accept(
 
 
 class MCSimulation(Simulation):
-    """A Monte Carlo simulation at a temperature.
-
-    ``step`` proposes a move, accepts it by the Metropolis criterion or
-    leaves the configuration as it is, and advances the step count;
-    ``sample`` records the exact energy.
+    """A Monte Carlo simulation.
 
     Args:
-        configuration: The starting configuration. An ``MDConfiguration``
-            is accepted; its velocities are ignored.
-        model: The species and the potential between each pair of them.
-            Only the pair energies are evaluated, so a potential with no
-            finite force, such as the square well, can be used.
+        configuration: The starting configuration.
+        model: The model.
         temperature: The temperature of the simulation, in kelvin.
         cut_off: The cut-off, in metres; see :class:`Simulation`.
         seed: Seed for the random number generator.
 
     Attributes:
         temperature: The temperature, in kelvin.
-        energy: The total pair energy of the current configuration, in joules.
-            It is computed when the simulation is built, updated by ``apply``
-            each time a move is accepted, and recomputed exactly each time
-            ``sample`` is called.
+        energy: The total pair energy of the current configuration, in
+            joules.
         accepted: The number of moves accepted so far.
         samples: The :class:`MCSamples` record that ``sample`` appends to.
 
     Raises:
         ValueError: If the temperature is not positive and finite, a pair
-            potential has not died away at the cut-off, the configuration
+            potential has not died away at the cut-off, or the configuration
             stores more than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of
-            potential energy per atom, or for anything
-            :class:`Simulation` rejects.
+            potential energy per atom.
     """
 
     samples: MCSamples
@@ -156,31 +137,33 @@ class MCSimulation(Simulation):
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> Self:
-        """Build a simulation from a model: place the atoms and set the
-        temperature.
+        """Builds a simulation from a model.
+
+        Places the atoms in the box.
 
         Args:
-            model: The species, assigned to the atoms in turn, and the
-                potential between each pair of them.
+            model: The model.
             number_of_atoms: The number of atoms.
             temperature: The temperature of the simulation, in kelvin.
-            box: The side length of the box, in Angstrom, from 4 to 600.
-            init_conf: ``'square'`` for a square lattice, ``'triangular'``
-                for a triangular one, or ``'metropolis'`` for sequential
-                Metropolis insertion.
+            box: The side length of the box, in Angstrom, from
+                :data:`~pylj.placement.SMALLEST_BOX` to :data:`~pylj.placement.LARGEST_BOX`.
+            init_conf: How the atoms are placed. ``'square'`` puts them on a
+                square grid, ``'triangular'`` on a triangular lattice filling
+                the box, which constrains the number of atoms, and
+                ``'metropolis'`` inserts them at random positions for a
+                disordered start.
             placement_temperature: The temperature of the Metropolis
                 acceptance used by ``'metropolis'``, in kelvin; by default
-                the run temperature. Raising it tolerates closer contacts,
-                lowering it rejects them more strictly and can exhaust the
-                trial budget.
-            max_strain: How far the fitted lattice may sit from
-                ``sqrt(3) / 2``, as a fraction of that ratio, when
-                ``init_conf`` is ``'triangular'``. Used only by that
-                placement.
-            cut_off: The cut-off, in Angstrom; by default 15 Angstrom or
-                half the box, whichever is smaller.
+                the run temperature.
+            max_strain: If ``init_conf`` is ``'triangular'``, how far the
+                fitted lattice may sit from
+                ``sqrt(3) / 2``, as a fraction of that ratio.
+            cut_off: The cut-off, in Angstrom; by default
+                :data:`~pylj.simulation.DEFAULT_CUT_OFF` Angstrom or half the
+                box, whichever is smaller.
             seed: Seed for the random number generator used to place the
-                configuration and make the moves.
+                configuration and make the moves; without one the run differs
+                each time.
 
         Returns:
             The simulation, with its energy evaluated.
@@ -206,15 +189,10 @@ class MCSimulation(Simulation):
         return simulation
 
     def propose(self) -> Proposal:
-        """Propose a move: one atom relocated at random.
-
-        An atom is chosen at random and given a uniform trial position in
-        the box. The energy change is that atom's interaction energy at
-        the trial position minus that at its current position, with every
-        other atom. The configuration is not changed.
+        """Proposes moving one atom to a random position.
 
         Returns:
-            The proposed configuration and its energy change.
+            The proposal.
         """
         configuration = self.configuration
         atom = int(self.rng.integers(configuration.number_of_atoms))
@@ -230,20 +208,14 @@ class MCSimulation(Simulation):
         return Proposal(position, energy_change, configuration)
 
     def apply(self, proposal: Proposal) -> None:
-        """Make a proposed configuration the current one.
-
-        The configuration takes the proposal's positions, and the proposal's
-        energy change is added to ``energy``.
+        """Applies a proposal, replacing the configuration with its positions.
 
         Args:
-            proposal: The proposal to apply, from :meth:`propose`.
+            proposal: The proposal.
 
         Raises:
             ValueError: If the proposal was made from a configuration other
-                than the current one, so its energy change no longer
-                applies. This happens when two proposals are made and both
-                are applied: the second must be proposed after the first is
-                applied.
+                than the current one.
         """
         if proposal.source is not self.configuration:
             raise ValueError(
@@ -255,8 +227,7 @@ class MCSimulation(Simulation):
         self.energy += proposal.energy_change
 
     def step(self) -> None:
-        """Propose a move, accept it by the Metropolis criterion or leave
-        the configuration as it is, and advance the step count."""
+        """Proposes a move and accept or reject it by the Metropolis criterion."""
         proposal = self.propose()
         if accept(proposal.energy_change, self.temperature, rng=self.rng):
             self.apply(proposal)
@@ -264,19 +235,17 @@ class MCSimulation(Simulation):
         self.steps += 1
 
     def sample(self) -> None:
-        """Record the configuration in the trajectory and measure it.
+        """Records the configuration in the trajectory and measures it.
 
-        The step and the potential energy go into the samples. The energy
-        is recomputed from the configuration first, so the
-        recorded value is exact; between samples ``apply`` keeps a running
-        total.
+        The energy is recomputed from the configuration, so the recorded
+        value is exact.
         """
         self.trajectory.append(self.configuration)
         self.energy = self.configuration.potential_energy(self.model, self.cut_off)
         self.samples.add(step=self.steps, potential_energy=self.energy)
 
     def restart(self) -> Self:
-        """A new simulation that continues from the current configuration.
+        """Returns a new simulation continuing from the current configuration.
 
         See :meth:`Simulation.restart`.
         """
