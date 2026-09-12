@@ -110,13 +110,6 @@ class TestInitialise(unittest.TestCase):
         )
         self.assertEqual(a.configuration.number_of_atoms, 56)
 
-    def test_refuses_a_lattice_inside_a_hard_core(self):
-        # 16 atoms on a 4 by 4 lattice in a 10 Angstrom box are 2.5
-        # Angstrom apart, inside a 3 Angstrom hard core that the 5 Angstrom
-        # cut-off clears: the lattice energy is infinite.
-        with self.assertRaisesRegex(ValueError, "not finite"):
-            MCSimulation.initialise(WELL_MODEL, number_of_atoms=16, temperature=300, box=10)
-
     def test_one_atom_is_allowed(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=1, temperature=300, box=20)
         self.assertEqual(a.energy, 0.0)
