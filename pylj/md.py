@@ -192,7 +192,7 @@ class MDSimulation(Simulation):
         )
         masses = placed.masses
         thermal_speed = np.sqrt(BOLTZMANN * temperature / masses)
-        velocity = rng.normal(0.0, thermal_speed[:, None], size=(number_of_atoms, 2))
+        velocities = rng.normal(0.0, thermal_speed[:, None], size=(number_of_atoms, 2))
         configuration = heat_bath(
             at_rest(
                 MDConfiguration(
@@ -200,7 +200,7 @@ class MDSimulation(Simulation):
                     species=placed.species,
                     species_index=placed.species_index,
                     box=placed.box,
-                    velocities=velocity,
+                    velocities=velocities,
                     unwrapped=placed.positions.copy(),
                 )
             ),
@@ -303,7 +303,7 @@ def velocity_verlet(
     """
     masses = configuration.masses[:, None]
     accelerations = forces / masses
-    position, unwrapped = update_positions(configuration, accelerations, timestep)
+    positions, unwrapped = update_positions(configuration, accelerations, timestep)
     furthest = float(np.linalg.norm(unwrapped - configuration.unwrapped, axis=1).max())
     if not furthest < cut_off / 2:
         raise ValueError(
@@ -311,13 +311,13 @@ def velocity_verlet(
             f"{timestep:.3g} s, more than half the cut-off of {cut_off * 1e10:.3g} Angstrom: "
             "the timestep is too long, or the simulation has diverged."
         )
-    moved = configuration.replace(positions=position, unwrapped=unwrapped)
+    moved = configuration.replace(positions=positions, unwrapped=unwrapped)
     next_forces = moved.forces(model, cut_off)
     next_accelerations = next_forces / masses
-    velocity = update_velocities(
+    velocities = update_velocities(
         configuration.velocities, accelerations, next_accelerations, timestep
     )
-    return moved.replace(velocities=velocity), next_forces
+    return moved.replace(velocities=velocities), next_forces
 
 
 def update_positions(
@@ -336,8 +336,8 @@ def update_positions(
         positions.
     """
     displacement = configuration.velocities * timestep + 0.5 * accelerations * timestep**2
-    position = (configuration.positions + displacement) % configuration.box
-    return position, configuration.unwrapped + displacement
+    positions = (configuration.positions + displacement) % configuration.box
+    return positions, configuration.unwrapped + displacement
 
 
 def update_velocities(

@@ -139,30 +139,30 @@ class Configuration:
             ValueError: If forces are requested and a pair is closer than
                 its potential's ``min_separation``.
         """
-        distance, separation = pairwise.dist(self.positions, self.box)
-        energy = np.zeros(distance.size)
-        force = np.zeros(distance.size) if forces else None
+        distances, separations = pairwise.dist(self.positions, self.box)
+        energies = np.zeros(distances.size)
+        radial_forces = np.zeros(distances.size) if forces else None
         for mask, type_1, type_2 in pairwise.species_pairs(self.species_index):
             potential = model.potential(self.species[type_1], self.species[type_2])
-            energy[mask] = potential.energies(distance[mask])
-            forbidden = mask & (distance < potential.min_separation)
+            energies[mask] = potential.energies(distances[mask])
+            forbidden = mask & (distances < potential.min_separation)
             if forbidden.any():
-                if force is not None:
+                if radial_forces is not None:
                     raise ValueError(
                         f"A pair of {self.species[type_1].name or 'atoms'} and "
                         f"{self.species[type_2].name or 'atoms'} is "
-                        f"{distance[forbidden].min() * 1e10:.2f} Angstrom apart, closer than the "
+                        f"{distances[forbidden].min() * 1e10:.2f} Angstrom apart, closer than the "
                         f"{potential.min_separation * 1e10:.2f} Angstrom below which "
                         f"{type(potential).__name__} is unphysical: the simulation has collapsed."
                     )
-                energy[forbidden] = np.inf
-            if force is not None:
-                force[mask] = potential.forces(distance[mask])
-        beyond = distance > cut_off
-        energy[beyond] = 0.0
-        if force is not None:
-            force[beyond] = 0.0
-        return PairData(distance, separation, energy, force)
+                energies[forbidden] = np.inf
+            if radial_forces is not None:
+                radial_forces[mask] = potential.forces(distances[mask])
+        beyond = distances > cut_off
+        energies[beyond] = 0.0
+        if radial_forces is not None:
+            radial_forces[beyond] = 0.0
+        return PairData(distances, separations, energies, radial_forces)
 
     def potential_energy(self, model: Model, cut_off: float) -> float:
         """Computes the total pair energy, in joules."""
@@ -175,11 +175,11 @@ class Configuration:
         i, j = np.triu_indices(self.number_of_atoms, 1)
         # Each pair's radial force acts along its separation, pushing
         # atom i one way and atom j the other.
-        pair_force = (radial / pairs.distances)[:, None] * pairs.separations
-        force = np.zeros((self.number_of_atoms, 2))
-        np.add.at(force, i, pair_force)
-        np.add.at(force, j, -pair_force)
-        return force
+        pair_forces = (radial / pairs.distances)[:, None] * pairs.separations
+        forces = np.zeros((self.number_of_atoms, 2))
+        np.add.at(forces, i, pair_forces)
+        np.add.at(forces, j, -pair_forces)
+        return forces
 
     def virial(self, model: Model, cut_off: float) -> float:
         """Computes the sum over pairs of the radial force times the distance,
@@ -206,18 +206,18 @@ class Configuration:
             The sum of its pair energies, in joules; zero for an empty
             configuration.
         """
-        separation = pairwise.minimum_image(
+        separations = pairwise.minimum_image(
             np.asarray(position, dtype=float) - self.positions, self.box
         )
-        distance = np.linalg.norm(separation, axis=1)
-        energy = np.zeros(distance.size)
+        distances = np.linalg.norm(separations, axis=1)
+        energies = np.zeros(distances.size)
         for other in np.unique(self.species_index):
             mask = self.species_index == other
             potential = model.potential(self.species[species_index], self.species[int(other)])
-            energy[mask] = potential.energies(distance[mask])
-            energy[mask & (distance < potential.min_separation)] = np.inf
-        energy[distance > cut_off] = 0.0
-        return float(energy.sum())
+            energies[mask] = potential.energies(distances[mask])
+            energies[mask & (distances < potential.min_separation)] = np.inf
+        energies[distances > cut_off] = 0.0
+        return float(energies.sum())
 
     def rdf(
         self, bins: int = 100, r_max: float | None = None
@@ -246,8 +246,8 @@ class Configuration:
         pairs = n * (n - 1) / 2
         if pairs == 0:
             return r, np.zeros(bins)
-        distance, _ = pairwise.dist(self.positions, self.box)
-        counts, _ = np.histogram(distance, bins=edges)
+        distances, _ = pairwise.dist(self.positions, self.box)
+        counts, _ = np.histogram(distances, bins=edges)
         ideal = pairs * 2 * np.pi * r * dr / self.box**2
         return r, counts / ideal
 

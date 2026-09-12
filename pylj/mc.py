@@ -184,7 +184,7 @@ class MCSimulation(Simulation):
         return simulation
 
     def propose(self) -> Proposal:
-        """Proposes moving one atom to a random position.
+        """Proposes moving one atom to a random positions.
 
         Returns:
             The proposal.
@@ -198,9 +198,9 @@ class MCSimulation(Simulation):
         energy_change = others.insertion_energy(
             trial, species_index, self.model, self.cut_off
         ) - others.insertion_energy(current, species_index, self.model, self.cut_off)
-        position = configuration.positions.copy()
-        position[atom] = trial
-        return Proposal(position, energy_change, configuration)
+        positions = configuration.positions.copy()
+        positions[atom] = trial
+        return Proposal(positions, energy_change, configuration)
 
     def apply(self, proposal: Proposal) -> None:
         """Applies a proposal, replacing the configuration with its positions.

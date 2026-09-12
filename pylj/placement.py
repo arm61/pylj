@@ -37,9 +37,9 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
     m = int(np.ceil(np.sqrt(number_of_atoms)))
     spacing = box / m
     sites = [((i + 0.5) * spacing, (j + 0.5) * spacing) for i in range(m) for j in range(m)]
-    position = np.array(sites[:number_of_atoms], dtype=float).reshape(-1, 2)
+    positions = np.array(sites[:number_of_atoms], dtype=float).reshape(-1, 2)
     species_index = np.arange(number_of_atoms) % len(species)
-    return Configuration(position, species, species_index, box)
+    return Configuration(positions, species, species_index, box)
 
 
 #: The rows of a triangular lattice sit ``sqrt(3) / 2`` of a column spacing
@@ -139,9 +139,9 @@ def place_triangular(
         for j in range(rows)
         for i in range(columns)
     ]
-    position = np.array(sites, dtype=float)
+    positions = np.array(sites, dtype=float)
     species_index = np.arange(number_of_atoms) % len(species)
-    return Configuration(position, species, species_index, box)
+    return Configuration(positions, species, species_index, box)
 
 
 #: How far :func:`place_triangular` looks either side of a refused atom
