@@ -8,7 +8,7 @@ import numpy as np
 from pylj.configuration import Configuration
 from pylj.model import Model
 from pylj.potentials import Species, check_positive_finite
-from pylj.simulation import _check_potentials_at_the_cut_off, _resolve_cut_off
+from pylj.simulation import _resolve_cut_off
 
 #: The smallest box, in Angstrom. Below this the cell cannot hold more
 #: than one atom.
@@ -276,8 +276,7 @@ def place(
 
     Takes the box and cut-off in Angstrom, as
     :meth:`~pylj.md.MDSimulation.initialise` and
-    :meth:`~pylj.mc.MCSimulation.initialise` do, checks the potentials at the
-    cut-off before any placement is attempted, and places the atoms.
+    :meth:`~pylj.mc.MCSimulation.initialise` do, and places the atoms.
 
     Args:
         number_of_atoms: The number of atoms.
@@ -303,14 +302,13 @@ def place(
         The configuration and the cut-off, both in metres.
 
     Raises:
-        ValueError: If no atoms are requested, a temperature is
-            not positive and finite, the box is below
-            :data:`SMALLEST_BOX` Angstrom,
-            the cut-off exceeds half the box, a potential has not died away
-            at the cut-off, ``init_conf`` is unknown, ``max_strain`` is not
-            positive and finite or is above :data:`MOST_STRAIN`, no
-            triangular lattice within ``max_strain`` has this many sites, or
-            Metropolis placement exhausts its trial budget.
+        ValueError: If no atoms are requested, a temperature is not positive
+            and finite, the box is below :data:`SMALLEST_BOX` Angstrom, the
+            cut-off exceeds half the box, ``init_conf`` is unknown,
+            ``max_strain`` is not positive and finite or is above
+            :data:`MOST_STRAIN`, no triangular lattice within ``max_strain``
+            has this many sites, or Metropolis placement exhausts its trial
+            budget.
     """
     if number_of_atoms < 1:
         raise ValueError("A simulation needs at least one atom")
@@ -325,7 +323,6 @@ def place(
         )
     box_m = box * 1e-10
     cut_off_m = _resolve_cut_off(box_m, None if cut_off is None else cut_off * 1e-10)
-    _check_potentials_at_the_cut_off(model, cut_off_m, temperature, box_m)
     if init_conf == "square":
         configuration = place_square(number_of_atoms, model.species, box_m)
     elif init_conf == "triangular":

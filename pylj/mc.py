@@ -11,13 +11,7 @@ from pylj.constants import BOLTZMANN
 from pylj.model import Model
 from pylj.placement import place
 from pylj.potentials import check_positive_finite
-from pylj.simulation import (
-    Samples,
-    Simulation,
-    _check_initial_energy,
-    _check_potentials_at_the_cut_off,
-    _empty,
-)
+from pylj.simulation import Samples, Simulation, _empty
 
 
 @dataclass
@@ -92,10 +86,7 @@ class MCSimulation(Simulation):
         samples: The :class:`MCSamples` record that ``sample`` appends to.
 
     Raises:
-        ValueError: If the temperature is not positive and finite, a pair
-            potential has not died away at the cut-off, or the configuration
-            stores more than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T of
-            potential energy per atom.
+        ValueError: If the temperature is not positive and finite.
     """
 
     samples: MCSamples
@@ -112,9 +103,7 @@ class MCSimulation(Simulation):
         check_positive_finite("temperature", temperature)
         super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         self.temperature = temperature
-        _check_potentials_at_the_cut_off(self.model, self.cut_off, temperature, configuration.box)
         self.energy = configuration.potential_energy(self.model, self.cut_off)
-        _check_initial_energy(self.energy, configuration.number_of_atoms, temperature)
         self.accepted = 0
         self.samples = MCSamples()
 
