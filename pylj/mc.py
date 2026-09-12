@@ -37,14 +37,14 @@ class Proposal:
     energy change.
 
     Attributes:
-        position: The proposed position of every atom, shape ``(N, 2)``,
+        positions: The proposed position of every atom, shape ``(N, 2)``,
             in metres.
         energy_change: The change in energy under the proposed move, in
             joules.
         source: The configuration the proposal was made from.
     """
 
-    position: NDArray[np.float64]
+    positions: NDArray[np.float64]
     energy_change: float
     source: Configuration
 
@@ -192,15 +192,15 @@ class MCSimulation(Simulation):
         configuration = self.configuration
         atom = int(self.rng.integers(configuration.number_of_atoms))
         trial = self.rng.uniform(0, configuration.box, size=2)
-        current = configuration.position[atom]
+        current = configuration.positions[atom]
         species_index = int(configuration.species_index[atom])
         others = configuration.without(atom)
         energy_change = others.insertion_energy(
             trial, species_index, self.model, self.cut_off
         ) - others.insertion_energy(current, species_index, self.model, self.cut_off)
-        position = configuration.position.copy()
-        position[atom] = trial
-        return Proposal(position, energy_change, configuration)
+        positions = configuration.positions.copy()
+        positions[atom] = trial
+        return Proposal(positions, energy_change, configuration)
 
     def apply(self, proposal: Proposal) -> None:
         """Applies a proposal, replacing the configuration with its positions.
@@ -218,7 +218,7 @@ class MCSimulation(Simulation):
                 "one, so its energy change no longer applies. Propose again from the current "
                 "configuration."
             )
-        self.configuration = self.configuration.replace(position=proposal.position)
+        self.configuration = self.configuration.replace(positions=proposal.positions)
         self.energy += proposal.energy_change
 
     def step(self) -> None:

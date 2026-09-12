@@ -16,11 +16,11 @@ def two_argon(velocity, box=8e-10):
     """Two argon atoms at (2, 2) and (2, 6) Angstrom with the given velocities."""
     position = np.array([[2e-10, 2e-10], [2e-10, 6e-10]])
     return MDConfiguration(
-        position=position,
+        positions=position,
         species=(ARGON,),
         species_index=np.zeros(2, dtype=np.int64),
         box=box,
-        velocity=np.asarray(velocity, dtype=float),
+        velocities=np.asarray(velocity, dtype=float),
         unwrapped=position.copy(),
     )
 
@@ -29,7 +29,7 @@ def drift_speed(configuration):
     """The speed of the centre of mass, in m/s."""
     masses = configuration.masses[:, None]
     return float(
-        np.linalg.norm((masses * configuration.velocity).sum(axis=0) / masses.sum())
+        np.linalg.norm((masses * configuration.velocities).sum(axis=0) / masses.sum())
     )
 
 
@@ -46,8 +46,8 @@ class TestInitialise(unittest.TestCase):
         self.assertIsInstance(c, MDConfiguration)
         self.assertEqual(c.number_of_atoms, 2)
         assert_almost_equal(c.box, 8e-10)
-        assert_almost_equal(c.position * 1e10, [[2, 2], [2, 6]])
-        assert_almost_equal(c.unwrapped, c.position)
+        assert_almost_equal(c.positions * 1e10, [[2, 2], [2, 6]])
+        assert_almost_equal(c.unwrapped, c.positions)
         assert_almost_equal(a.cut_off * 1e10, 4.0)
         assert_almost_equal(a.timestep, 1e-14)
         self.assertEqual(a.steps, 0)
@@ -61,7 +61,7 @@ class TestInitialise(unittest.TestCase):
     def test_velocities_have_no_net_momentum(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=25, temperature=100, box=40)
         thermal_speed = np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
-        momentum = a.configuration.velocity.sum(axis=0)
+        momentum = a.configuration.velocities.sum(axis=0)
         self.assertLess(abs(momentum[0]), 1e-12 * thermal_speed)
         self.assertLess(abs(momentum[1]), 1e-12 * thermal_speed)
 
@@ -76,7 +76,7 @@ class TestInitialise(unittest.TestCase):
         c = a.configuration
         assert_allclose(c.masses[:4], np.array([39.948, 80.0, 39.948, 80.0]) * ATOMIC_MASS_UNIT)
         momentum_scale = ARGON.mass * np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
-        momentum = (c.masses[:, None] * c.velocity).sum(axis=0)
+        momentum = (c.masses[:, None] * c.velocities).sum(axis=0)
         self.assertLess(abs(momentum[0]), 1e-12 * momentum_scale)
         self.assertLess(abs(momentum[1]), 1e-12 * momentum_scale)
         assert_almost_equal(c.temperature(), 100)
@@ -90,7 +90,7 @@ class TestInitialise(unittest.TestCase):
             MIXTURE_MODEL, number_of_atoms=1000, temperature=100, box=320, seed=0
         ).configuration
         for index, species in enumerate((ARGON, LARGER)):
-            speeds_squared = np.sum(c.velocity[c.species_index == index] ** 2, axis=1)
+            speeds_squared = np.sum(c.velocities[c.species_index == index] ** 2, axis=1)
             expected = 2 * BOLTZMANN * 100 / (species.mass * ATOMIC_MASS_UNIT)
             assert_allclose(speeds_squared.mean(), expected, rtol=0.1)
 
@@ -110,9 +110,11 @@ class TestInitialise(unittest.TestCase):
             )
 
         first, second, other = build(3), build(3), build(4)
-        assert_equal(first.configuration.position, second.configuration.position)
-        assert_equal(first.configuration.velocity, second.configuration.velocity)
-        self.assertFalse(np.array_equal(first.configuration.velocity, other.configuration.velocity))
+        assert_equal(first.configuration.positions, second.configuration.positions)
+        assert_equal(first.configuration.velocities, second.configuration.velocities)
+        self.assertFalse(
+            np.array_equal(first.configuration.velocities, other.configuration.velocities)
+        )
         # The generator continues from the placement and velocity draws.
         self.assertEqual(first.rng.random(), second.rng.random())
 
@@ -210,8 +212,8 @@ class TestConstructor(unittest.TestCase):
         # velocities and positions unchanged.
         c = two_argon([[3e2, 0.0], [-3e2, 0.0]])
         a = MDSimulation(c, ARGON_MODEL, timestep=2e-15, seed=5)
-        assert_allclose(a.configuration.velocity, c.velocity)
-        assert_allclose(a.configuration.position, c.position)
+        assert_allclose(a.configuration.velocities, c.velocities)
+        assert_allclose(a.configuration.positions, c.positions)
         self.assertIs(a.configuration, a.initial_configuration)
         assert_almost_equal(a.timestep, 2e-15)
         assert_allclose(a.forces, c.forces(a.model, a.cut_off))
@@ -241,7 +243,7 @@ class TestStep(unittest.TestCase):
         before, forces_before = a.configuration, a.forces
         a.integrate()
         self.assertIsNot(a.configuration, before)
-        self.assertFalse(np.array_equal(a.configuration.position, before.position))
+        self.assertFalse(np.array_equal(a.configuration.positions, before.positions))
         assert_allclose(a.forces, a.configuration.forces(a.model, a.cut_off))
         self.assertFalse(np.array_equal(a.forces, forces_before))
         self.assertEqual(a.steps, 0)
@@ -256,7 +258,7 @@ class TestVelocityVerlet(unittest.TestCase):
         c = two_argon([[0.0, 3e4], [0.0, 3e4]])
         moved, forces = md.velocity_verlet(c, np.zeros((2, 2)), 1e-14, ARGON_MODEL, 15e-10)
         assert_almost_equal(moved.unwrapped * 1e10, [[2, 5], [2, 9]])
-        assert_almost_equal(moved.position * 1e10, [[2, 5], [2, 1]])
+        assert_almost_equal(moved.positions * 1e10, [[2, 5], [2, 1]])
         assert_allclose(forces, moved.forces(ARGON_MODEL, 15e-10))
 
     def test_matches_the_hand_computed_step(self):
@@ -269,14 +271,14 @@ class TestVelocityVerlet(unittest.TestCase):
         forces = c.forces(ARGON_MODEL, cut_off)
         moved, next_forces = md.velocity_verlet(c, forces, 1e-14, ARGON_MODEL, cut_off)
         accelerations = forces / c.masses[:, None]
-        expected_position = c.position + c.velocity * 1e-14 + 0.5 * accelerations * 1e-28
-        assert_allclose(moved.position, expected_position)
-        expected_forces = c.replace(position=expected_position).forces(ARGON_MODEL, cut_off)
+        expected_position = c.positions + c.velocities * 1e-14 + 0.5 * accelerations * 1e-28
+        assert_allclose(moved.positions, expected_position)
+        expected_forces = c.replace(positions=expected_position).forces(ARGON_MODEL, cut_off)
         assert_allclose(next_forces, expected_forces)
         next_accelerations = expected_forces / c.masses[:, None]
-        expected_velocity = c.velocity + 0.5 * (accelerations + next_accelerations) * 1e-14
-        assert_allclose(moved.velocity, expected_velocity)
-        self.assertNotEqual(moved.velocity[0, 1], 0.0)
+        expected_velocity = c.velocities + 0.5 * (accelerations + next_accelerations) * 1e-14
+        assert_allclose(moved.velocities, expected_velocity)
+        self.assertNotEqual(moved.velocities[0, 1], 0.0)
 
     def test_update_positions_wraps_the_position_and_not_the_unwrapped_one(self):
         c = two_argon([[1e4, 3e4], [1e4, 3e4]])
@@ -331,7 +333,7 @@ class TestVelocityVerlet(unittest.TestCase):
             for _ in range(200):
                 a.step()
             c = a.configuration
-            momentum = (c.masses[:, None] * c.velocity).sum(axis=0)
+            momentum = (c.masses[:, None] * c.velocities).sum(axis=0)
             self.assertLess(abs(momentum[0]), 1e-12 * momentum_scale)
             self.assertLess(abs(momentum[1]), 1e-12 * momentum_scale)
 
@@ -366,9 +368,9 @@ class TestMSD(unittest.TestCase):
         box = a.configuration.box
         total = np.zeros((2, 2))
         for _ in range(60):
-            before = a.configuration.position
+            before = a.configuration.positions
             a.step()
-            displacement = a.configuration.position - before
+            displacement = a.configuration.positions - before
             total += displacement - box * np.round(displacement / box)
         self.assertGreater(total[0, 0], 5e-10)
         self.assertLess(total[1, 0], -5e-10)
@@ -384,10 +386,10 @@ class TestHeatBath(unittest.TestCase):
 
     def test_preserves_velocity_directions_and_the_forces(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=10, temperature=300, box=20)
-        old = a.configuration.velocity
+        old = a.configuration.velocities
         forces = a.forces
         a.heat_bath(250.0)
-        ratio = a.configuration.velocity / old
+        ratio = a.configuration.velocities / old
         assert_almost_equal(ratio, np.full(ratio.shape, ratio[0, 0]))
         self.assertIs(a.forces, forces)
 
@@ -477,8 +479,8 @@ class TestRestart(unittest.TestCase):
         self.assertEqual(production.time, 0.0)
         self.assertIsInstance(production.samples, md.MDSamples)
         self.assertEqual(production.samples.step.size, 0)
-        assert_equal(production.configuration.position, a.configuration.position)
-        assert_equal(production.configuration.unwrapped, a.configuration.position)
+        assert_equal(production.configuration.positions, a.configuration.positions)
+        assert_equal(production.configuration.unwrapped, a.configuration.positions)
         self.assertIs(production.initial_configuration, production.configuration)
         self.assertEqual(production.configuration.msd(production.initial_configuration), 0.0)
         assert_equal(production.forces, a.forces)
@@ -486,7 +488,7 @@ class TestRestart(unittest.TestCase):
         # while its displacement is measured from the restart.
         a.step()
         production.step()
-        assert_equal(production.configuration.position, a.configuration.position)
+        assert_equal(production.configuration.positions, a.configuration.positions)
         production.sample()
         self.assertGreater(production.samples.msd[-1], 0.0)
 
@@ -516,7 +518,7 @@ class TestAtRest(unittest.TestCase):
         configuration = MDSimulation.initialise(
             MIXTURE_MODEL, number_of_atoms=8, temperature=100, box=20, seed=1
         ).configuration
-        return configuration.replace(velocity=configuration.velocity + [10.0, -4.0])
+        return configuration.replace(velocities=configuration.velocities + [10.0, -4.0])
 
     def test_removes_the_drift(self):
         moving = self.drifting()
@@ -525,13 +527,13 @@ class TestAtRest(unittest.TestCase):
 
     def test_leaves_the_positions_alone(self):
         moving = self.drifting()
-        assert_allclose(md.at_rest(moving).position, moving.position)
+        assert_allclose(md.at_rest(moving).positions, moving.positions)
 
     def test_leaves_every_relative_velocity_alone(self):
         moving = self.drifting()
         rested = md.at_rest(moving)
         assert_allclose(
-            rested.velocity - rested.velocity[0], moving.velocity - moving.velocity[0]
+            rested.velocities - rested.velocities[0], moving.velocities - moving.velocities[0]
         )
 
     def test_the_kinetic_energy_falls_by_the_drift_energy(self):
@@ -546,7 +548,7 @@ class TestAtRest(unittest.TestCase):
     def test_is_idempotent(self):
         moving = self.drifting()
         once = md.at_rest(moving)
-        assert_allclose(md.at_rest(once).velocity, once.velocity)
+        assert_allclose(md.at_rest(once).velocities, once.velocities)
 
     def test_the_constructor_sets_the_centre_of_mass_at_rest(self):
         moving = self.drifting()

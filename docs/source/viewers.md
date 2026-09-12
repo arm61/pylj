@@ -80,7 +80,7 @@ class FirstAtomPane(Pane):
 
     def update(self, ax, simulation):
         self.times.append(simulation.time * 1e12)
-        self.velocities.append(simulation.configuration.velocity[0, 0])
+        self.velocities.append(simulation.configuration.velocities[0, 0])
         ax.lines[0].set_data(self.times, self.velocities)
         ax.relim()
         ax.autoscale_view()

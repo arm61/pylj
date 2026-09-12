@@ -192,16 +192,16 @@ class MDSimulation(Simulation):
         )
         masses = placed.masses
         thermal_speed = np.sqrt(BOLTZMANN * temperature / masses)
-        velocity = rng.normal(0.0, thermal_speed[:, None], size=(number_of_atoms, 2))
+        velocities = rng.normal(0.0, thermal_speed[:, None], size=(number_of_atoms, 2))
         configuration = heat_bath(
             at_rest(
                 MDConfiguration(
-                    position=placed.position,
+                    positions=placed.positions,
                     species=placed.species,
                     species_index=placed.species_index,
                     box=placed.box,
-                    velocity=velocity,
-                    unwrapped=placed.position.copy(),
+                    velocities=velocities,
+                    unwrapped=placed.positions.copy(),
                 )
             ),
             temperature,
@@ -256,7 +256,7 @@ class MDSimulation(Simulation):
             step=self.steps,
             temperature=configuration.temperature(),
             pressure=pairwise.calculate_pressure(pairs.virial, configuration.box, kinetic_energy),
-            potential_energy=float(pairs.energy.sum()),
+            potential_energy=float(pairs.energies.sum()),
             kinetic_energy=kinetic_energy,
             msd=configuration.msd(self.initial_configuration),
         )
@@ -268,7 +268,9 @@ class MDSimulation(Simulation):
         See :meth:`Simulation.restart`.
         """
         new = super().restart()
-        new.configuration = self.configuration.replace(unwrapped=self.configuration.position.copy())
+        new.configuration = self.configuration.replace(
+            unwrapped=self.configuration.positions.copy()
+        )
         new.initial_configuration = new.configuration
         new.forces = self.forces.copy()
         return new
@@ -301,7 +303,7 @@ def velocity_verlet(
     """
     masses = configuration.masses[:, None]
     accelerations = forces / masses
-    position, unwrapped = update_positions(configuration, accelerations, timestep)
+    positions, unwrapped = update_positions(configuration, accelerations, timestep)
     furthest = float(np.linalg.norm(unwrapped - configuration.unwrapped, axis=1).max())
     if not furthest < cut_off / 2:
         raise ValueError(
@@ -309,13 +311,13 @@ def velocity_verlet(
             f"{timestep:.3g} s, more than half the cut-off of {cut_off * 1e10:.3g} Angstrom: "
             "the timestep is too long, or the simulation has diverged."
         )
-    moved = configuration.replace(position=position, unwrapped=unwrapped)
+    moved = configuration.replace(positions=positions, unwrapped=unwrapped)
     next_forces = moved.forces(model, cut_off)
     next_accelerations = next_forces / masses
-    velocity = update_velocities(
-        configuration.velocity, accelerations, next_accelerations, timestep
+    velocities = update_velocities(
+        configuration.velocities, accelerations, next_accelerations, timestep
     )
-    return moved.replace(velocity=velocity), next_forces
+    return moved.replace(velocities=velocities), next_forces
 
 
 def update_positions(
@@ -333,13 +335,13 @@ def update_positions(
         The new positions, wrapped into the box, and the new unwrapped
         positions.
     """
-    displacement = configuration.velocity * timestep + 0.5 * accelerations * timestep**2
-    position = (configuration.position + displacement) % configuration.box
-    return position, configuration.unwrapped + displacement
+    displacement = configuration.velocities * timestep + 0.5 * accelerations * timestep**2
+    positions = (configuration.positions + displacement) % configuration.box
+    return positions, configuration.unwrapped + displacement
 
 
 def update_velocities(
-    velocity: NDArray[np.float64],
+    velocities: NDArray[np.float64],
     accelerations: NDArray[np.float64],
     next_accelerations: NDArray[np.float64],
     timestep: float,
@@ -347,7 +349,7 @@ def update_velocities(
     """Advances the velocities by one timestep.
 
     Args:
-        velocity: The velocity of each atom, shape ``(N, 2)``, in metres
+        velocities: The velocity of each atom, shape ``(N, 2)``, in metres
             per second.
         accelerations: The accelerations at the start of the step.
         next_accelerations: The accelerations at the end of the step.
@@ -356,7 +358,7 @@ def update_velocities(
     Returns:
         The new velocities.
     """
-    return velocity + 0.5 * (accelerations + next_accelerations) * timestep
+    return velocities + 0.5 * (accelerations + next_accelerations) * timestep
 
 
 def at_rest(configuration: MDConfiguration) -> MDConfiguration:
@@ -371,8 +373,8 @@ def at_rest(configuration: MDConfiguration) -> MDConfiguration:
         A copy with the centre of mass at rest.
     """
     masses = configuration.masses[:, None]
-    drift = (masses * configuration.velocity).sum(axis=0) / masses.sum()
-    return configuration.replace(velocity=configuration.velocity - drift)
+    drift = (masses * configuration.velocities).sum(axis=0) / masses.sum()
+    return configuration.replace(velocities=configuration.velocities - drift)
 
 
 def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConfiguration:
@@ -400,5 +402,5 @@ def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConf
             "simulation has diverged."
         )
     return configuration.replace(
-        velocity=configuration.velocity * np.sqrt(bath_temperature / current)
+        velocities=configuration.velocities * np.sqrt(bath_temperature / current)
     )

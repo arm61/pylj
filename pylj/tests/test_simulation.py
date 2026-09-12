@@ -149,4 +149,4 @@ class TestPickle(unittest.TestCase):
         # timestep, so one comparison covers all four.
         s.step()
         copied.step()
-        assert_allclose(copied.configuration.position, s.configuration.position)
+        assert_allclose(copied.configuration.positions, s.configuration.positions)

@@ -26,7 +26,7 @@ The constructors take a ready configuration instead: `MDSimulation(configuration
 
 ## The configuration
 
-`simulation.configuration` is the current state. `position` is an `(N, 2)` array in metres, `box` the side in metres, `species` and `species_index` name each atom's species, and `masses` is in kilograms. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocity` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()`, `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest, and `msd(initial)`.
+`simulation.configuration` is the current state. `positions` is an `(N, 2)` array in metres, `box` the side in metres, `species` and `species_index` name each atom's species, and `masses` is in kilograms. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocities` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()`, `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest, and `msd(initial)`.
 
 A configuration is never changed in place. `replace(**changes)` returns a copy with some arrays changed.
 
@@ -89,7 +89,7 @@ Molecular dynamics manages a few thousand steps a second for twenty-five atoms, 
 
 ## Trajectory
 
-`sample()` also records the current configuration in `simulation.trajectory`, one frame per sample. A frame is a `Configuration`, so `simulation.trajectory[-1].position` is the last sampled positions, and `simulation.trajectory.position` is every frame's, an array of shape `(frames, N, 2)`. Slicing gives a trajectory, so `simulation.trajectory[100:]` is the run after the first hundred frames. `restart()` starts an empty trajectory.
+`sample()` also records the current configuration in `simulation.trajectory`, one frame per sample. A frame is a `Configuration`, so `simulation.trajectory[-1].positions` is the last sampled positions, and `simulation.trajectory.positions` is every frame's, an array of shape `(frames, N, 2)`. Slicing gives a trajectory, so `simulation.trajectory[100:]` is the run after the first hundred frames. `restart()` starts an empty trajectory.
 
 A configuration is kept only if it was sampled, so memory grows with the number of samples and not with the number of steps. A molecular dynamics frame takes about fifty bytes per atom: a hundred atoms sampled a thousand times is five megabytes, and sampled a hundred thousand times is half a gigabyte.
 

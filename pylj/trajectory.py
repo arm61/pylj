@@ -69,11 +69,11 @@ class Trajectory:
         return self._frames[index]
 
     @property
-    def position(self) -> NDArray[np.float64]:
+    def positions(self) -> NDArray[np.float64]:
         """The positions of every frame, shape ``(frames, N, 2)``, in metres."""
         if not self._frames:
             return np.empty((0, 0, 2))
-        return np.stack([one.position for one in self._frames])
+        return np.stack([one.positions for one in self._frames])
 
     def __repr__(self) -> str:
         if not self._frames:
@@ -130,7 +130,7 @@ class Trajectory:
         q, index, shell = wavevectors(first.box, q_max)
         total = np.zeros(q.size)
         for one in self._frames:
-            total += shell_average(one.position, first.box, index, shell)
+            total += shell_average(one.positions, first.box, index, shell)
         return q, total / len(self._frames)
 
     def _check_frames(self) -> None:

@@ -196,7 +196,7 @@ def _drawn_diameters(
 
 
 def _with_periodic_images(
-    position: NDArray[np.float64], box: float, radius: float
+    positions: NDArray[np.float64], box: float, radius: float
 ) -> NDArray[np.float64]:
     """Return the positions with a copy of each atom that overhangs an edge.
 
@@ -205,19 +205,19 @@ def _with_periodic_images(
     the edge appears at the opposite edge, where it belongs.
 
     Args:
-        position: The atom positions, shape ``(N, 2)``, in metres.
+        positions: The atom positions, shape ``(N, 2)``, in metres.
         box: The side length of the box, in metres.
         radius: The drawn radius of the atoms, in metres.
 
     Returns:
         The positions followed by the images, shape ``(N + images, 2)``.
     """
-    images = [position]
+    images = [positions]
     for shift_x in (-box, 0.0, box):
         for shift_y in (-box, 0.0, box):
             if shift_x == 0.0 and shift_y == 0.0:
                 continue
-            shifted = position + np.array([shift_x, shift_y])
+            shifted = positions + np.array([shift_x, shift_y])
             overhangs = np.all((shifted > -radius) & (shifted < box + radius), axis=1)
             images.append(shifted[overhangs])
     return np.concatenate(images)
@@ -270,8 +270,8 @@ class CellPane(Pane):
         axes_width_points = ax.get_window_extent().width / ax.figure.dpi * 72
         for index, diameter in enumerate(self.diameters):
             line = ax.lines[index]
-            position = configuration.position[configuration.species_index == index]
-            drawn = _with_periodic_images(position, self.box, diameter / 2)
+            positions = configuration.positions[configuration.species_index == index]
+            drawn = _with_periodic_images(positions, self.box, diameter / 2)
             line.set_data(drawn[:, 0], drawn[:, 1])
             line.set_markersize(diameter / self.box * axes_width_points)
 
@@ -494,7 +494,7 @@ class MaxwellBoltzmannPane(Pane):
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set
-        speeds = np.linalg.norm(simulation.configuration.velocity, axis=1)
+        speeds = np.linalg.norm(simulation.configuration.velocities, axis=1)
         self.speeds = np.append(self.speeds, speeds)
         density, edges = np.histogram(self.speeds, bins=self.BINS, density=True)
         plateau = np.append(density, density[-1])
