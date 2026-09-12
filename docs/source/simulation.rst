@@ -1,7 +1,7 @@
 pylj.simulation
 ===============
 
-The base class the two simulations share, and the checks a simulation makes on its model.
+The base class the two simulations share.
 
 .. automodule:: pylj.simulation
     :members:

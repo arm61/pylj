@@ -189,7 +189,7 @@ class TestConstructor(unittest.TestCase):
     def test_builds_from_a_configuration_at_rest(self):
         a = MDSimulation(two_argon(np.zeros((2, 2))), ARGON_MODEL)
         a.step()
-        self.assertEqual(a.steps, 1)
+        self.assertTrue((a.configuration.velocities != 0).any())
 
     def test_takes_a_ready_configuration(self):
         # Already at rest, so the constructor's at_rest call leaves its
@@ -328,10 +328,18 @@ class TestVelocityVerlet(unittest.TestCase):
         a = MDSimulation.initialise(
             ARGON_MODEL, number_of_atoms=25, temperature=100, box=20, timestep=1e-11, seed=0
         )
+        before = a.configuration.positions.copy()
         with self.assertRaisesRegex(ValueError, "half the cut-off"):
             a.step()
-        self.assertTrue(np.isfinite(a.configuration.positions).all())
-        self.assertTrue(np.isfinite(a.configuration.velocities).all())
+        assert_equal(a.configuration.positions, before)
+        self.assertEqual(a.steps, 0)
+
+    def test_refuses_a_step_whose_displacement_is_not_a_number(self):
+        # A non-finite velocity gives a nan displacement, which the guard
+        # catches only because it is spelled ``not furthest < cut_off / 2``.
+        a = MDSimulation(two_argon([[np.nan, 0.0], [1.0, 0.0]]), ARGON_MODEL)
+        with self.assertRaisesRegex(ValueError, "half the cut-off"):
+            a.step()
 
 
 class TestMSD(unittest.TestCase):

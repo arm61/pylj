@@ -148,8 +148,8 @@ class MDSimulation(Simulation):
         """
         if number_of_atoms < 2:
             raise ValueError(
-                "Molecular dynamics needs at least two atoms: with one atom "
-                "there is no thermal motion once the centre-of-mass velocity is removed."
+                "Molecular dynamics needs at least two atoms: the temperature is "
+                "undefined for a single atom."
             )
         rng = np.random.default_rng(seed)
         placed, cut_off_metres = place(

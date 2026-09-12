@@ -60,7 +60,16 @@ def accept(
 
     Returns:
         True if the proposed configuration should be accepted.
+
+    Raises:
+        ValueError: If the energy change is not a number.
     """
+    if np.isnan(energy_change):
+        raise ValueError(
+            "The energy change is not a number, so the Metropolis criterion is "
+            "undefined. The atom's current and trial positions are both inside a "
+            "hard core, or a position is not finite."
+        )
     if energy_change <= 0:
         return True
     if rng is None:
