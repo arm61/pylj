@@ -184,7 +184,7 @@ class MCSimulation(Simulation):
         return simulation
 
     def propose(self) -> Proposal:
-        """Proposes moving one atom to a random positions.
+        """Proposes moving one atom to a random position.
 
         Returns:
             The proposal.
