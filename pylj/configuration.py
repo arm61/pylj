@@ -320,10 +320,7 @@ class MDConfiguration(Configuration):
             ValueError: If there are fewer than two atoms.
         """
         if self.number_of_atoms < 2:
-            raise ValueError(
-                "The temperature needs at least two atoms: with one atom there "
-                "is no thermal motion once the centre-of-mass velocity is removed."
-            )
+            raise ValueError("The temperature is undefined for a single atom.")
         return self.kinetic_energy() / ((self.number_of_atoms - 1) * BOLTZMANN)
 
     def msd(self, initial: "MDConfiguration") -> float:

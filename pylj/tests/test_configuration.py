@@ -409,9 +409,14 @@ class TestMDConfiguration(unittest.TestCase):
         assert_allclose(c.kinetic_energy(), expected)
         assert_allclose(c.temperature(), expected / BOLTZMANN)
 
-    def test_temperature_needs_two_atoms(self):
+    def test_temperature_is_undefined_for_one_atom(self):
+        # Two atoms at rest are 0 K; one atom is 0/0.
+        self.assertEqual(
+            md_configuration([[2e-10, 2e-10], [2e-10, 6e-10]], np.zeros((2, 2))).temperature(),
+            0.0,
+        )
         c = md_configuration([[2e-10, 2e-10]], [[1.0, 0.0]])
-        with self.assertRaisesRegex(ValueError, "at least two atoms"):
+        with self.assertRaisesRegex(ValueError, "undefined for a single atom"):
             c.temperature()
 
     def test_msd_uses_the_unwrapped_positions(self):
