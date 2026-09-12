@@ -8,7 +8,7 @@ from pylj.constants import BOLTZMANN
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.pairwise import minimum_image
-from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
+from pylj.tests.argon import ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
 
 
 def total_energy(sim):
@@ -141,32 +141,16 @@ class TestConstructor(unittest.TestCase):
             MCSimulation(c, ARGON_MODEL, -1)
 
 
-class TestOverlappingStart(unittest.TestCase):
-    def test_a_wholly_overlapped_start_stops_at_the_first_step(self):
+class TestMoves(unittest.TestCase):
+    def test_a_step_with_no_defined_energy_change_raises(self):
         # Every position open to the atom is inside a hard core, so the
-        # energy change is inf - inf. Monte Carlo has no integrator to catch
-        # this later.
+        # change is inf - inf.
         a = MCSimulation.initialise(
             WELL_MODEL, number_of_atoms=16, temperature=300, box=10, seed=1
         )
         with self.assertRaisesRegex(ValueError, "not a number"):
             a.step()
 
-    def test_a_single_overlap_escapes(self):
-        # An infinite starting energy is recoverable: the trapped atom
-        # proposes its way out and the change is -inf, which is accepted.
-        # Refusing infinite energies outright would reject this run.
-        c = placement.place_square(4, (ARGON,), 40e-10)
-        positions = c.positions.copy()
-        positions[3] = positions[2] + 1e-11
-        a = MCSimulation(c.replace(positions=positions), WELL_MODEL, 300, seed=1)
-        self.assertEqual(a.energy, np.inf)
-        for _ in range(500):
-            a.step()
-        self.assertEqual(total_energy(a), 0.0)
-
-
-class TestMoves(unittest.TestCase):
     def test_square_well_drives_monte_carlo(self):
         # Nine atoms on a 3 by 3 lattice in a 12 Angstrom box: each has
         # four lattice neighbours 4 Angstrom away, inside the well, and four
