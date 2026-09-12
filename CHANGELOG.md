@@ -22,7 +22,6 @@ All notable changes to pylj are recorded here. The format follows
 - `pairwise.pair_potential`, `pairwise.species_pairs` and `pairwise.minimum_image`.
 - `CellPane(diameter=...)` and a `diameter` keyword on every named viewer, in Angstrom, one value or one per species; by default atoms are drawn at the separation of the minimum of their species' own pair energy.
 - `mc.accept`, the Metropolis criterion on an energy change, and `mc.Proposal`, a proposed configuration with its energy change.
-- `MDSimulation` and `MCSimulation` refuse an initial configuration whose pair energy is not finite or stores more than `simulation.INITIAL_ENERGY_LIMIT` (ten) k_B T per atom, as an overlapping lattice does; the message gives the stored energy per atom in k_B T.
 - `MDSimulation` and `MCSimulation` refuse a pair potential whose energy at the cut-off is not finite or is larger in magnitude than k_B T, since the cut-off assumes the interaction has died away there; parameters in the wrong units are one way to trip it.
 - `placement_temperature` on `MDSimulation.initialise` and `MCSimulation.initialise`: the temperature of the Metropolis acceptance used to place an initial configuration, by default the run temperature.
 - `md.at_rest`, which returns a copy of a configuration with its centre of mass at rest; `MDSimulation` applies it to whatever it is built from, so `simulation.configuration` is a copy rather than the object passed in.
