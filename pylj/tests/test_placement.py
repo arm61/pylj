@@ -6,8 +6,6 @@ from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 from pylj import pairwise, placement
 from pylj.configuration import Configuration
 from pylj.constants import ATOMIC_MASS_UNIT
-from pylj.model import Model
-from pylj.potentials import LennardJones, SquareWell
 from pylj.tests.argon import (
     ARGON,
     ARGON_MODEL,
@@ -15,7 +13,6 @@ from pylj.tests.argon import (
     BUCKINGHAM_MODEL,
     LARGER,
     LJ_ARGON,
-    MIXTURE_MODEL,
     WELL,
     WELL_MIXTURE_MODEL,
     WELL_MODEL,
@@ -188,35 +185,6 @@ class TestPlace(unittest.TestCase):
         for temperature in (0, -10, np.inf):
             with self.assertRaisesRegex(ValueError, "temperature must be positive"):
                 place(2, temperature, 8)
-
-    def test_refuses_a_potential_still_repulsive_at_the_cut_off(self):
-        # Sigma given in Angstrom: the pair energy is astronomically positive
-        # at the cut-off, where a sensible potential has died away.
-        in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
-        with self.assertRaisesRegex(ValueError, "at the cut-off"):
-            place(2, 300, 8, model=Model.single(ARGON, in_angstrom))
-
-    def test_refuses_a_potential_still_attractive_at_the_cut_off(self):
-        # Epsilon typed in kJ/mol: a well about 1e17 k_B T deep at the cut-off.
-        deep = LennardJones(epsilon=0.95, sigma=3.372e-10)
-        with self.assertRaisesRegex(ValueError, "at the cut-off"):
-            place(2, 300, 8, model=Model.single(ARGON, deep))
-
-    def test_refuses_a_hard_core_wider_than_the_cut_off(self):
-        wide = SquareWell(epsilon=1.5e-21, sigma=8e-10, lambda_=1.5)
-        with self.assertRaisesRegex(ValueError, "hard core is wider than the cut-off"):
-            place(2, 300, 10, model=Model.single(ARGON, wide))
-
-    def test_refuses_a_cross_potential_still_repulsive_at_the_cut_off(self):
-        mistyped = dict(MIXTURE_MODEL.pair_potentials)
-        mistyped[(ARGON, LARGER)] = LennardJones(epsilon=1.577e-21, sigma=4.186)
-        with self.assertRaisesRegex(ValueError, "between argon and larger"):
-            place(4, 100, 60, model=Model(MIXTURE_MODEL.species, mistyped))
-
-    def test_names_half_the_box_when_the_cut_off_came_from_it(self):
-        in_angstrom = LennardJones(epsilon=1.577e-21, sigma=3.372)
-        with self.assertRaisesRegex(ValueError, r"\(half the box\).*Use a larger box"):
-            place(2, 300, 8, model=Model.single(ARGON, in_angstrom))
 
     def test_place_builds_a_triangular_lattice(self):
         c, _ = place(56, 300, 60, init_conf="triangular")

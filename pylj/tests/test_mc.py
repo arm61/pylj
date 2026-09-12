@@ -51,6 +51,13 @@ class TestAccept(unittest.TestCase):
         self.assertIn(True, outcomes)
         self.assertIn(False, outcomes)
 
+    def test_takes_a_change_of_minus_infinity(self):
+        self.assertTrue(mc.accept(-np.inf, 300))
+
+    def test_refuses_an_energy_change_that_is_not_a_number(self):
+        with self.assertRaisesRegex(ValueError, "not a number"):
+            mc.accept(np.nan, 300)
+
 
 class TestInitialise(unittest.TestCase):
     def test_square_lattice_at_a_temperature(self):
@@ -110,13 +117,6 @@ class TestInitialise(unittest.TestCase):
         )
         self.assertEqual(a.configuration.number_of_atoms, 56)
 
-    def test_refuses_a_lattice_inside_a_hard_core(self):
-        # 16 atoms on a 4 by 4 lattice in a 10 Angstrom box are 2.5
-        # Angstrom apart, inside a 3 Angstrom hard core that the 5 Angstrom
-        # cut-off clears: the lattice energy is infinite.
-        with self.assertRaisesRegex(ValueError, "not finite"):
-            MCSimulation.initialise(WELL_MODEL, number_of_atoms=16, temperature=300, box=10)
-
     def test_one_atom_is_allowed(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=1, temperature=300, box=20)
         self.assertEqual(a.energy, 0.0)
@@ -144,6 +144,15 @@ class TestConstructor(unittest.TestCase):
 
 
 class TestMoves(unittest.TestCase):
+    def test_a_step_with_no_defined_energy_change_raises(self):
+        # Every position open to the atom is inside a hard core, so the
+        # change is inf - inf.
+        a = MCSimulation.initialise(
+            WELL_MODEL, number_of_atoms=16, temperature=300, box=10, seed=1
+        )
+        with self.assertRaisesRegex(ValueError, "not a number"):
+            a.step()
+
     def test_square_well_drives_monte_carlo(self):
         # Nine atoms on a 3 by 3 lattice in a 12 Angstrom box: each has
         # four lattice neighbours 4 Angstrom away, inside the well, and four

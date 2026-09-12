@@ -7,8 +7,6 @@ from pylj import md, pairwise, placement
 from pylj.configuration import MDConfiguration
 from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
 from pylj.md import MDSimulation
-from pylj.model import Model
-from pylj.potentials import LennardJones
 from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL, WELL_MODEL
 
 
@@ -149,10 +147,6 @@ class TestInitialise(unittest.TestCase):
                     ARGON_MODEL, number_of_atoms=2, temperature=temperature, box=8
                 )
 
-    def test_refuses_an_overlapping_lattice(self):
-        with self.assertRaisesRegex(ValueError, "k_B T of potential energy"):
-            MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=300, box=10)
-
     def test_initialise_on_a_triangular_lattice(self):
         simulation = MDSimulation.initialise(
             ARGON_MODEL, number_of_atoms=56, temperature=100, box=60, init_conf="triangular"
@@ -192,20 +186,10 @@ class TestConstructor(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "timestep must be positive"):
                 MDSimulation(c, ARGON_MODEL, timestep=bad)
 
-    def test_refuses_a_diverged_configuration(self):
-        with self.assertRaisesRegex(ValueError, "diverged"):
-            MDSimulation(two_argon([[np.nan, 0.0], [1.0, 0.0]]), ARGON_MODEL)
-
-    def test_refuses_a_configuration_at_rest(self):
-        with self.assertRaisesRegex(ValueError, "at rest"):
-            MDSimulation(two_argon(np.zeros((2, 2))), ARGON_MODEL)
-
-    def test_checks_the_model_at_the_measured_temperature(self):
-        # Sigma in Angstrom is caught against the kinetic temperature of the
-        # configuration given.
-        wrong = Model.single(ARGON, LennardJones(epsilon=1.577e-21, sigma=3.372))
-        with self.assertRaisesRegex(ValueError, "at the cut-off"):
-            MDSimulation(two_argon([[3e2, 0.0], [-3e2, 0.0]]), wrong)
+    def test_builds_from_a_configuration_at_rest(self):
+        a = MDSimulation(two_argon(np.zeros((2, 2))), ARGON_MODEL)
+        a.step()
+        self.assertTrue((a.configuration.velocities != 0).any())
 
     def test_takes_a_ready_configuration(self):
         # Already at rest, so the constructor's at_rest call leaves its
@@ -344,6 +328,16 @@ class TestVelocityVerlet(unittest.TestCase):
         a = MDSimulation.initialise(
             ARGON_MODEL, number_of_atoms=25, temperature=100, box=20, timestep=1e-11, seed=0
         )
+        before = a.configuration.positions.copy()
+        with self.assertRaisesRegex(ValueError, "half the cut-off"):
+            a.step()
+        assert_equal(a.configuration.positions, before)
+        self.assertEqual(a.steps, 0)
+
+    def test_refuses_a_step_whose_displacement_is_not_a_number(self):
+        # A non-finite velocity gives a nan displacement, which the guard
+        # catches only because it is spelled ``not furthest < cut_off / 2``.
+        a = MDSimulation(two_argon([[np.nan, 0.0], [1.0, 0.0]]), ARGON_MODEL)
         with self.assertRaisesRegex(ValueError, "half the cut-off"):
             a.step()
 

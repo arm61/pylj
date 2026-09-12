@@ -12,13 +12,7 @@ from pylj.constants import BOLTZMANN
 from pylj.model import Model
 from pylj.placement import place
 from pylj.potentials import check_positive_finite
-from pylj.simulation import (
-    Samples,
-    Simulation,
-    _check_initial_energy,
-    _check_potentials_at_the_cut_off,
-    _empty,
-)
+from pylj.simulation import Samples, Simulation, _empty
 
 
 @dataclass
@@ -69,11 +63,7 @@ class MDSimulation(Simulation):
 
     Raises:
         TypeError: If ``configuration`` is not an ``MDConfiguration``.
-        ValueError: If the timestep is not positive and finite, the
-            configuration is at rest or has a non-finite temperature, a pair
-            potential has not died away at the cut-off, or the configuration
-            stores more than :data:`simulation.INITIAL_ENERGY_LIMIT` k_B T
-            of potential energy per atom.
+        ValueError: If the timestep is not positive and finite.
     """
 
     configuration: MDConfiguration
@@ -97,23 +87,6 @@ class MDSimulation(Simulation):
         super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         check_positive_finite("timestep", timestep)
         self.timestep = timestep
-        temperature = configuration.temperature()
-        if temperature == 0:
-            raise ValueError(
-                "The configuration is at rest: molecular dynamics needs velocities. "
-                "MDSimulation.initialise draws them at a temperature."
-            )
-        if not np.isfinite(temperature):
-            raise ValueError(
-                f"The configuration's temperature is {temperature}: the simulation it came "
-                "from has diverged."
-            )
-        _check_potentials_at_the_cut_off(self.model, self.cut_off, temperature, configuration.box)
-        _check_initial_energy(
-            configuration.potential_energy(self.model, self.cut_off),
-            configuration.number_of_atoms,
-            temperature,
-        )
         self.forces = configuration.forces(self.model, self.cut_off)
         self.initial_configuration = configuration
         self.samples = MDSamples()
@@ -175,8 +148,8 @@ class MDSimulation(Simulation):
         """
         if number_of_atoms < 2:
             raise ValueError(
-                "Molecular dynamics needs at least two atoms: with one atom "
-                "there is no thermal motion once the centre-of-mass velocity is removed."
+                "Molecular dynamics needs at least two atoms: the temperature is "
+                "undefined for a single atom."
             )
         rng = np.random.default_rng(seed)
         placed, cut_off_metres = place(

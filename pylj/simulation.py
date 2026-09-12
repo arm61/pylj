@@ -9,7 +9,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pylj.configuration import Configuration
-from pylj.constants import BOLTZMANN
 from pylj.model import Model
 from pylj.potentials import check_positive_finite
 from pylj.trajectory import Trajectory
@@ -17,86 +16,6 @@ from pylj.trajectory import Trajectory
 #: The cut-off used when none is given, in Angstrom, or half the box if
 #: that is smaller.
 DEFAULT_CUT_OFF = 15
-
-#: Largest potential energy per atom, in units of k_B T, accepted for an
-#: initial configuration.
-INITIAL_ENERGY_LIMIT = 10.0
-
-
-def _check_potentials_at_the_cut_off(
-    model: Model, cut_off: float, temperature: float, box: float
-) -> None:
-    """Checks that every pair potential has died away at the cut-off.
-
-    The check is that each pair energy at the cut-off is finite and within
-    ``k_B T`` of zero.
-
-    Args:
-        model: The model.
-        cut_off: The cut-off, in metres.
-        temperature: The temperature, in kelvin.
-        box: The side length of the box, in metres.
-
-    Raises:
-        ValueError: If any pair potential's energy at the cut-off is not
-            finite or larger in magnitude than ``k_B T``.
-    """
-    from_box = cut_off >= box / 2
-    where = f"the cut-off of {cut_off * 1e10:.1f} Angstrom"
-    if from_box:
-        where += " (half the box)"
-    remedy = "Use a larger box" if from_box else "Use a larger box or cut-off"
-    for (one, other), potential in model.pair_potentials.items():
-        energy = float(potential.energies(np.array([cut_off]))[0])
-        pair = (
-            f"{type(potential).__name__} between {one.name or 'atoms'} and {other.name or 'atoms'}"
-        )
-        if not np.isfinite(energy):
-            raise ValueError(
-                f"{pair} is infinite at {where}: its hard core is wider than the cut-off. {remedy}."
-            )
-        if abs(energy) > BOLTZMANN * temperature:
-            raise ValueError(
-                f"{pair} is still {energy / (BOLTZMANN * temperature):+.3g} k_B T at {where}; "
-                "the cut-off assumes the interaction has died away there. "
-                f"{remedy}, or check the parameter units: metres and joules are expected."
-            )
-
-
-def _check_initial_energy(energy: float, number_of_atoms: int, temperature: float) -> None:
-    """Refuses a starting configuration that stores far more potential energy
-    than thermal energy.
-
-    A configuration holding more than :data:`INITIAL_ENERGY_LIMIT` k_B T
-    per atom has atoms too close together for its temperature.
-
-    Args:
-        energy: The total pair energy of the configuration, in joules.
-        number_of_atoms: The number of atoms.
-        temperature: The temperature of the run, in kelvin.
-
-    Raises:
-        ValueError: If the energy is not finite, or exceeds
-            :data:`INITIAL_ENERGY_LIMIT` k_B T per atom.
-    """
-    remedy = (
-        "Use fewer atoms or a larger box; init_conf='metropolis' places atoms by "
-        "energy, and a lower placement_temperature there keeps them further apart."
-    )
-    if number_of_atoms == 0:
-        return
-    if not np.isfinite(energy):
-        raise ValueError(
-            "The initial pair energy is not finite: atoms sit inside a hard core, or a "
-            f"position is not a number. {remedy}"
-        )
-    per_atom = energy / (number_of_atoms * BOLTZMANN * temperature)
-    if per_atom > INITIAL_ENERGY_LIMIT:
-        raise ValueError(
-            f"The initial configuration stores {per_atom:.3g} k_B T of potential energy "
-            f"per atom, above the limit of {INITIAL_ENERGY_LIMIT:g}: its atoms are "
-            f"too close together for {temperature:g} K. {remedy}"
-        )
 
 
 def _resolve_cut_off(box: float, cut_off: float | None) -> float:
