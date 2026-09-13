@@ -68,15 +68,14 @@ class _Lattice(NamedTuple):
 MOST_STRAIN = 1 / 3
 
 
-def _triangular_lattice(number_of_atoms: int) -> _Lattice | None:
-    """Finds the columns, rows and strain of the best triangular lattice.
+def _best_lattice(number_of_atoms: int, row_counts: range) -> _Lattice | None:
+    """Finds the lattice with the smallest strain among the given row counts.
 
-    The lattice has ``columns * rows`` sites and an even number of rows, and
-    the best is the one with the smallest strain. The return is ``None`` when
-    no even number of rows divides ``number_of_atoms``.
+    The return is ``None`` when none of the row counts divides
+    ``number_of_atoms``.
     """
     best: _Lattice | None = None
-    for rows in range(2, number_of_atoms + 1, 2):
+    for rows in row_counts:
         if number_of_atoms % rows:
             continue
         columns = number_of_atoms // rows
@@ -84,6 +83,15 @@ def _triangular_lattice(number_of_atoms: int) -> _Lattice | None:
         if best is None or strain < best.strain:
             best = _Lattice(columns, rows, strain)
     return best
+
+
+def _triangular_lattice(number_of_atoms: int) -> _Lattice | None:
+    """Finds the columns, rows and strain of the best triangular lattice.
+
+    The lattice has an even number of rows. The return is ``None`` when no
+    even number of rows divides ``number_of_atoms``.
+    """
+    return _best_lattice(number_of_atoms, range(2, number_of_atoms + 1, 2))
 
 
 def place_triangular(
@@ -185,7 +193,14 @@ def _no_lattice_message(
         The message.
     """
     atoms = "atom" if number_of_atoms == 1 else "atoms"
-    if best is not None and best.strain <= MOST_STRAIN:
+    odd = _best_lattice(number_of_atoms, range(1, number_of_atoms + 1, 2))
+    if odd is not None and odd.strain <= max_strain:
+        reason = (
+            f"{odd.rows} rows of {odd.columns} would hold {number_of_atoms} {atoms}, but a "
+            "triangular lattice needs an even number of rows for its offset to carry across "
+            "the periodic boundary"
+        )
+    elif best is not None and best.strain <= MOST_STRAIN:
         # A larger max_strain would reach this count, so name it.
         reason = (
             f"A triangular lattice within a max_strain of {max_strain:g} cannot hold "
