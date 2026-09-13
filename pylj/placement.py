@@ -118,8 +118,9 @@ def place_triangular(
         number_of_atoms: The number of atoms.
         species: The species, assigned to the atoms in turn.
         box: The side length of the box, in metres.
-        max_strain: How far the fitted lattice may sit from
-            ``sqrt(3) / 2``, as a fraction of that ratio.
+        max_strain: How far the ratio of columns to rows may sit from
+            ``sqrt(3) / 2``, as a fraction of that ratio, up to
+            :data:`MOST_STRAIN`.
 
     Returns:
         The configuration.
@@ -306,9 +307,9 @@ def place(
         placement_temperature: The temperature of the Metropolis acceptance
             used by ``'metropolis'``, in kelvin; ``None`` for the run
             temperature.
-        max_strain: How far the fitted lattice may sit from
-            ``sqrt(3) / 2``, as a fraction of that ratio, when ``'triangular'``
-            fits its lattice to the box.
+        max_strain: How far a triangular lattice may sit from
+            ``sqrt(3) / 2``, as a fraction of that ratio; used when
+            ``init_conf`` is ``'triangular'``.
         cut_off: The cut-off, in Angstrom; ``None`` for
             :data:`~pylj.simulation.DEFAULT_CUT_OFF` Angstrom or half the box, whichever is smaller.
         rng: The generator for Metropolis placement.

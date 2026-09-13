@@ -126,10 +126,9 @@ class MDSimulation(Simulation):
             placement_temperature: The temperature of the Metropolis
                 acceptance used by ``'metropolis'``, in kelvin; by default
                 the run temperature.
-            max_strain: How far the fitted lattice may sit from
-                ``sqrt(3) / 2``, as a fraction of that ratio, when
-                ``init_conf`` is ``'triangular'``. Used only by that
-                placement.
+            max_strain: How far a triangular lattice may sit from
+                ``sqrt(3) / 2``, as a fraction of that ratio; used when
+                ``init_conf`` is ``'triangular'``.
             timestep: The length of each integration step, in seconds.
             cut_off: The cut-off, in Angstrom; by default
                 :data:`~pylj.simulation.DEFAULT_CUT_OFF` Angstrom or half the
