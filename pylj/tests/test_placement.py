@@ -288,16 +288,26 @@ class TestPlaceTriangular(unittest.TestCase):
 
     def test_names_max_strain_only_when_it_is_a_lever(self):
         # 100 atoms make a 10 by 10 lattice inside MOST_STRAIN, so a larger
-        # max_strain reaches them. 195 is 3 by 5 by 13, with no even divisor
-        # at all, so no max_strain ever will.
+        # max_strain reaches them.
         with self.assertRaisesRegex(ValueError, "within a max_strain"):
             placement.place_triangular(100, (ARGON,), 60e-10)
-        with self.assertRaisesRegex(ValueError, "No triangular lattice can hold 195"):
-            placement.place_triangular(195, (ARGON,), 60e-10)
         # 180 has even divisors, but its best lattice strains beyond the
         # limit, so max_strain is no lever there either.
         with self.assertRaisesRegex(ValueError, "No triangular lattice can hold 180"):
             placement.place_triangular(180, (ARGON,), 60e-10)
+
+    def test_says_the_rows_must_be_even_when_that_is_the_reason(self):
+        # 15 rows of 13 holds 195 atoms well inside max_strain, but 15 is odd.
+        with self.assertRaisesRegex(
+            ValueError, "15 rows of 13 would hold 195 atoms, but .* even number of rows"
+        ):
+            placement.place_triangular(195, (ARGON,), 60e-10)
+        # 72 also has an even-row lattice, 8 rows of 9, inside MOST_STRAIN, so
+        # the max_strain wording could apply too. The parity reason wins.
+        with self.assertRaisesRegex(
+            ValueError, "9 rows of 8 would hold 72 atoms, but .* even number of rows"
+        ):
+            placement.place_triangular(72, (ARGON,), 60e-10)
 
     def test_max_strain_is_a_fraction_of_the_ratio(self):
         # 7 by 8 sits 0.0090 from sqrt(3) / 2 in absolute terms and 0.0104

@@ -12,15 +12,24 @@ simulation = MDSimulation.initialise(
     box=30,
     init_conf="square",
     placement_temperature=None,
+    max_strain=0.05,
     timestep=1e-14,
     cut_off=None,
     seed=None,
 )
 ```
 
-`model`, a `Model` of the species and the potential between each pair of them, is the one positional argument; the rest are given by keyword. Three are required: `number_of_atoms`; `temperature`, in kelvin; and `box`, the side of the square periodic box in Angstrom. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, `"triangular"` on a triangular one, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. A triangular lattice fills the box, so the number of atoms has to be a number of columns times an even number of rows. Each row is offset along x by half a column spacing from the row below, and an odd number of rows would leave the last row and the first meeting unoffset across the periodic boundary. Dividing the columns by the rows has to give something near `sqrt(3) / 2`, and `max_strain` is how far away it may sit, as a fraction of that ratio. At the default of 0.05 the counts up to 300 are 30, 56, 90, 120, 168, 224, 270 and 288, and any other count raises `ValueError` naming ones that fit. `timestep` is in seconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
+`model`, a `Model` of the species and the potential between each pair of them, is the one positional argument; the rest are given by keyword. Three are required: `number_of_atoms`; `temperature`, in kelvin; and `box`, the side of the square periodic box in Angstrom. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, `"triangular"` on a triangular one, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `max_strain` applies only to the triangular lattice, described below. `timestep` is in seconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
 
 The constructors take a ready configuration instead: `MDSimulation(configuration, model, cut_off=None, timestep=1e-14, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, cut_off=None, seed=None)` with a `Configuration`, all in SI units. `MDSimulation` starts from a copy with the centre of mass at rest; `md.at_rest(configuration)` returns that copy on its own.
+
+### A triangular lattice
+
+A triangular lattice fills the box, so the number of atoms has to be a number of columns times a number of rows. Each row is offset along x by half a column spacing from the row below, so the number of rows has to be even: with an odd number, the last row and the first would meet unoffset across the periodic boundary.
+
+The rows of a triangular lattice sit `sqrt(3) / 2` of a column spacing apart, so the columns divided by the rows should be `sqrt(3) / 2`, which a square box rarely allows exactly. The strain is how far that ratio sits from `sqrt(3) / 2`, as a fraction of it, and it splits the six neighbours of each atom into two distances that differ by about three quarters of the strain. `max_strain` is the largest strain accepted: 0.05 by default, and at most `placement.MOST_STRAIN`, a third.
+
+At the default the counts up to 300 that fit are 30, 56, 90, 120, 168, 224, 270 and 288. Any other count raises `ValueError`, naming the nearest counts that fit.
 
 ## The configuration
 
