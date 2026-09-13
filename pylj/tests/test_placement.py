@@ -302,6 +302,12 @@ class TestPlaceTriangular(unittest.TestCase):
             ValueError, "15 rows of 13 would hold 195 atoms, but .* even number of rows"
         ):
             placement.place_triangular(195, (ARGON,), 60e-10)
+        # 72 also has an even-row lattice, 8 rows of 9, inside MOST_STRAIN, so
+        # the max_strain wording could apply too. The parity reason wins.
+        with self.assertRaisesRegex(
+            ValueError, "9 rows of 8 would hold 72 atoms, but .* even number of rows"
+        ):
+            placement.place_triangular(72, (ARGON,), 60e-10)
 
     def test_max_strain_is_a_fraction_of_the_ratio(self):
         # 7 by 8 sits 0.0090 from sqrt(3) / 2 in absolute terms and 0.0104

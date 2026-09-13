@@ -27,7 +27,7 @@ The constructors take a ready configuration instead: `MDSimulation(configuration
 
 A triangular lattice fills the box, so the number of atoms has to be a number of columns times a number of rows. Each row is offset along x by half a column spacing from the row below, so the number of rows has to be even: with an odd number, the last row and the first would meet unoffset across the periodic boundary.
 
-The rows of a triangular lattice sit `sqrt(3) / 2` of a column spacing apart, so the columns divided by the rows should be `sqrt(3) / 2`, which a square box rarely allows exactly. The strain is how far that ratio sits from `sqrt(3) / 2`, as a fraction of it, and it splits the six neighbours of each atom into two distances that differ by a little less than the strain. `max_strain` is the largest strain accepted: 0.05 by default, and at most `placement.MOST_STRAIN`, a third.
+The rows of a triangular lattice sit `sqrt(3) / 2` of a column spacing apart, so the columns divided by the rows should be `sqrt(3) / 2`, which a square box rarely allows exactly. The strain is how far that ratio sits from `sqrt(3) / 2`, as a fraction of it, and it splits the six neighbours of each atom into two distances that differ by about three quarters of the strain. `max_strain` is the largest strain accepted: 0.05 by default, and at most `placement.MOST_STRAIN`, a third.
 
 At the default the counts up to 300 that fit are 30, 56, 90, 120, 168, 224, 270 and 288. Any other count raises `ValueError`, naming the nearest counts that fit.
 
