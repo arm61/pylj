@@ -1,12 +1,12 @@
 """Sampled configurations, in order."""
 
 from collections.abc import Iterable, Iterator
-from typing import overload
+from typing import cast, overload
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pylj.configuration import Configuration
+from pylj.configuration import Configuration, MDConfiguration
 from pylj.scattering import check_q_max, default_q_max, shell_average, wavevectors
 
 
@@ -171,6 +171,56 @@ class Trajectory:
         for one in self._frames:
             total += shell_average(one.positions, first.box, index, shell)
         return q, total / len(self._frames)
+
+    def msd(
+        self, max_lag: float | None = None
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Averages the mean squared displacement over time origins.
+
+        For each lag, the squared displacement of the unwrapped positions
+        between every pair of frames that lag apart is averaged over those
+        pairs and over atoms.
+
+        Args:
+            max_lag: The longest lag returned, in seconds. By default the
+                whole run.
+
+        Returns:
+            The lag times, in seconds, from one frame interval up to
+            ``max_lag``, and the mean squared displacement at each, in
+            metres squared.
+
+        Raises:
+            ValueError: If the trajectory has no times, fewer than two
+                frames, frames that are not evenly spaced, or ``max_lag``
+                is below the frame spacing.
+        """
+        if self._times is None:
+            raise ValueError(
+                "The trajectory has no times: only a molecular dynamics run records them"
+            )
+        if len(self._frames) < 2:
+            raise ValueError("The mean squared displacement needs at least two frames")
+        times = np.array(self._times)
+        spacing = times[1] - times[0]
+        if spacing <= 0 or not np.allclose(np.diff(times), spacing, rtol=1e-9, atol=0.0):
+            raise ValueError("The frames are not evenly spaced in increasing time")
+        lags = len(self._frames) - 1
+        if max_lag is not None:
+            if max_lag < spacing:
+                raise ValueError(
+                    f"max_lag of {max_lag:g} s is below the frame spacing of {spacing:g} s"
+                )
+            # The ratio can land a hair under a whole number, so nudge it up
+            # before flooring, at the price of admitting a lag within a part
+            # in 1e9 above max_lag.
+            lags = min(lags, int(max_lag / spacing * (1 + 1e-9)))
+        unwrapped = np.stack([cast(MDConfiguration, one).unwrapped for one in self._frames])
+        msd = np.empty(lags)
+        for k in range(1, lags + 1):
+            displacement = unwrapped[k:] - unwrapped[:-k]
+            msd[k - 1] = np.mean(np.sum(displacement**2, axis=2))
+        return spacing * np.arange(1, lags + 1), msd
 
     def _check_frames(self) -> None:
         if not self._frames:
