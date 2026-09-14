@@ -13,6 +13,7 @@ from pylj.model import Model
 from pylj.placement import place
 from pylj.potentials import check_positive_finite
 from pylj.simulation import Samples, Simulation, _empty
+from pylj.trajectory import Trajectory
 
 
 @dataclass
@@ -85,6 +86,7 @@ class MDSimulation(Simulation):
             )
         configuration = at_rest(configuration)
         super().__init__(configuration, model, cut_off=cut_off, seed=seed)
+        self.trajectory = Trajectory(times=[])
         check_positive_finite("timestep", timestep)
         self.timestep = timestep
         self.forces = configuration.forces(self.model, self.cut_off)
@@ -220,7 +222,7 @@ class MDSimulation(Simulation):
     def sample(self) -> None:
         """Records the configuration in the trajectory and measures it into
         :class:`MDSamples`."""
-        self.trajectory.append(self.configuration)
+        self.trajectory.append(self.configuration, self.time)
         configuration = self.configuration
         kinetic_energy = configuration.kinetic_energy()
         pairs = configuration.pairs(self.model, self.cut_off, forces=True)
@@ -240,6 +242,7 @@ class MDSimulation(Simulation):
         See :meth:`Simulation.restart`.
         """
         new = super().restart()
+        new.trajectory = Trajectory(times=[])
         new.configuration = self.configuration.replace(
             unwrapped=self.configuration.positions.copy()
         )
