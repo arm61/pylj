@@ -105,6 +105,8 @@ Three analyses are computed on demand, from one frame or averaged over a traject
 `msd(max_lag=None)` is for a molecular dynamics trajectory. It returns the lag times in seconds, from one frame interval up to `max_lag`, and the mean squared displacement at each in metres squared, averaged over every pair of frames that lag apart. Short lags are averaged over many origins and long lags over few, so the curve is smooth at the start and jagged at the end. Fit the diffusion coefficient over a window of lags that is short compared with the run; in two dimensions the mean squared displacement is `4 D t`.
 
 ```python
+import numpy as np
+
 r, gr = simulation.configuration.rdf()   # the configuration now
 r, gr = simulation.trajectory[100:].rdf()  # averaged over the run after equilibration
 q, s = simulation.trajectory.structure_factor()

@@ -71,8 +71,6 @@ class Trajectory:
                     f"The frame has {configuration.number_of_atoms} atoms but the trajectory "
                     f"has {first.number_of_atoms}"
                 )
-        if not self._frames and time is not None:
-            self._times = []
         if self._times is None:
             if time is not None:
                 raise ValueError("The trajectory has no times, but this frame has one")

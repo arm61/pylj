@@ -124,6 +124,8 @@ class TestTimes(unittest.TestCase):
         untimed = Trajectory([frame()])
         with self.assertRaisesRegex(ValueError, "time"):
             untimed.append(frame(), 1.0)
+        with self.assertRaisesRegex(ValueError, "time"):
+            Trajectory().append(frame(), 1.0)
 
     def test_refuses_times_of_the_wrong_length(self):
         with self.assertRaisesRegex(ValueError, "times"):
