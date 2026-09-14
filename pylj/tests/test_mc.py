@@ -340,6 +340,11 @@ class TestMoves(unittest.TestCase):
         self.assertEqual(len(a.trajectory), 2)
         self.assertIs(a.trajectory[1], a.configuration)
 
+    def test_frames_carry_no_time(self):
+        a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+        a.sample()
+        self.assertIsNone(a.trajectory.times)
+
     def test_restart_starts_an_empty_trajectory(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
         a.sample()

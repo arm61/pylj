@@ -456,6 +456,15 @@ class TestSample(unittest.TestCase):
         self.assertEqual(len(a.trajectory), 2)
         self.assertIs(a.trajectory[1], a.configuration)
 
+    def test_frames_carry_the_time_of_each_sample(self):
+        a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+        for _ in range(3):
+            a.step()
+            a.step()
+            a.sample()
+        assert_allclose(a.trajectory.times, a.samples.step * a.timestep)
+        assert_allclose(a.trajectory.times, np.array([2, 4, 6]) * a.timestep)
+
 
 class TestRestart(unittest.TestCase):
     def run_and_sample(self, a, steps):

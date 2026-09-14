@@ -220,7 +220,7 @@ class MDSimulation(Simulation):
     def sample(self) -> None:
         """Records the configuration in the trajectory and measures it into
         :class:`MDSamples`."""
-        self.trajectory.append(self.configuration)
+        self.trajectory.append(self.configuration, self.time)
         configuration = self.configuration
         kinetic_energy = configuration.kinetic_energy()
         pairs = configuration.pairs(self.model, self.cut_off, forces=True)
