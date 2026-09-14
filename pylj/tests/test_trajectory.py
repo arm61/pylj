@@ -4,6 +4,7 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from pylj import placement
+from pylj.configuration import MDConfiguration
 from pylj.tests.argon import ARGON
 from pylj.trajectory import Trajectory
 
@@ -17,6 +18,19 @@ def moved(configuration):
     position = configuration.positions.copy()
     position[0] += [3e-10, 1e-10]
     return configuration.replace(positions=position)
+
+
+def md_frame(unwrapped, box=20e-10):
+    """An argon MDConfiguration at rest with the given unwrapped positions."""
+    unwrapped = np.asarray(unwrapped, dtype=float)
+    return MDConfiguration(
+        positions=unwrapped % box,
+        species=(ARGON,),
+        species_index=np.zeros(unwrapped.shape[0], dtype=np.int64),
+        box=box,
+        velocities=np.zeros_like(unwrapped),
+        unwrapped=unwrapped,
+    )
 
 
 class TestTrajectory(unittest.TestCase):
@@ -82,3 +96,35 @@ class TestTrajectory(unittest.TestCase):
         trajectory = Trajectory([frame()])
         with self.assertRaisesRegex(ValueError, "smallest wavevector"):
             trajectory.structure_factor(q_max=8.0)
+
+
+class TestTimes(unittest.TestCase):
+    def test_an_untimed_trajectory_has_no_times(self):
+        self.assertIsNone(Trajectory([frame(), frame()]).times)
+        self.assertIsNone(Trajectory().times)
+
+    def test_times_are_kept_in_order(self):
+        trajectory = Trajectory([frame(), frame()], times=[0.0, 1e-13])
+        assert_allclose(trajectory.times, [0.0, 1e-13])
+        trajectory.append(frame(), 2e-13)
+        assert_allclose(trajectory.times, [0.0, 1e-13, 2e-13])
+
+    def test_a_slice_keeps_its_times(self):
+        trajectory = Trajectory([frame(), frame(), frame()], times=[0.0, 1.0, 2.0])
+        assert_allclose(trajectory[1:].times, [1.0, 2.0])
+        assert_allclose(trajectory[::2].times, [0.0, 2.0])
+        self.assertIsNone(Trajectory([frame(), frame()])[1:].times)
+
+    def test_refuses_mixing_timed_and_untimed_frames(self):
+        timed = Trajectory([frame()], times=[0.0])
+        with self.assertRaisesRegex(ValueError, "time"):
+            timed.append(frame())
+        with self.assertRaisesRegex(ValueError, "time"):
+            Trajectory([], times=[]).append(frame())
+        untimed = Trajectory([frame()])
+        with self.assertRaisesRegex(ValueError, "time"):
+            untimed.append(frame(), 1.0)
+
+    def test_refuses_times_of_the_wrong_length(self):
+        with self.assertRaisesRegex(ValueError, "times"):
+            Trajectory([frame(), frame()], times=[0.0])

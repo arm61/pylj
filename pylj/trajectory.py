@@ -18,24 +18,46 @@ class Trajectory:
     Indexing gives a :class:`~pylj.configuration.Configuration`; slicing
     gives a ``Trajectory``.
 
+    A molecular dynamics trajectory carries the time of each frame. A Monte
+    Carlo trajectory has no times.
+
     Args:
         frames: Configurations to start with, in order.
+        times: The time of each frame, in seconds, or ``None`` for an
+            untimed trajectory.
+
+    Raises:
+        ValueError: If ``times`` is given and is not one per frame.
     """
 
-    def __init__(self, frames: Iterable[Configuration] = ()) -> None:
+    def __init__(
+        self, frames: Iterable[Configuration] = (), times: Iterable[float] | None = None
+    ) -> None:
         self._frames: list[Configuration] = []
-        for one in frames:
-            self.append(one)
+        self._times: list[float] | None = None if times is None else []
+        frames = list(frames)
+        if times is None:
+            for one in frames:
+                self.append(one)
+            return
+        times = list(times)
+        if len(times) != len(frames):
+            raise ValueError(f"times has length {len(times)} and frames has length {len(frames)}")
+        for one, time in zip(frames, times, strict=True):
+            self.append(one, time)
 
-    def append(self, configuration: Configuration) -> None:
+    def append(self, configuration: Configuration, time: float | None = None) -> None:
         """Adds a frame to the end.
 
         Args:
             configuration: The frame to add.
+            time: The time of the frame, in seconds. Required on a timed
+                trajectory and not accepted on an untimed one.
 
         Raises:
             ValueError: If the frame's box or number of atoms differs from
-                the first frame's.
+                the first frame's, or ``time`` is given to an untimed
+                trajectory or withheld from a timed one.
         """
         if self._frames:
             first = self._frames[0]
@@ -49,6 +71,15 @@ class Trajectory:
                     f"The frame has {configuration.number_of_atoms} atoms but the trajectory "
                     f"has {first.number_of_atoms}"
                 )
+        if not self._frames and time is not None:
+            self._times = []
+        if self._times is None:
+            if time is not None:
+                raise ValueError("The trajectory has no times, but this frame has one")
+        elif time is None:
+            raise ValueError("The trajectory has a time for every frame, but this frame has none")
+        else:
+            self._times.append(float(time))
         self._frames.append(configuration)
 
     def __len__(self) -> int:
@@ -65,8 +96,16 @@ class Trajectory:
 
     def __getitem__(self, index: int | slice) -> "Configuration | Trajectory":
         if isinstance(index, slice):
-            return Trajectory(self._frames[index])
+            times = None if self._times is None else self._times[index]
+            return Trajectory(self._frames[index], times)
         return self._frames[index]
+
+    @property
+    def times(self) -> NDArray[np.float64] | None:
+        """The time of each frame, in seconds, or ``None`` if untimed."""
+        if self._times is None:
+            return None
+        return np.array(self._times)
 
     @property
     def positions(self) -> NDArray[np.float64]:
