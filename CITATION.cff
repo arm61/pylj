@@ -19,7 +19,6 @@ authors:
 title: pylj
 version: 2.0.0b1
 doi: 10.5281/zenodo.1212791
-date-released: 2026-09-08
 references:
   - type: article
     journal: "Journal of Open Source Education"
