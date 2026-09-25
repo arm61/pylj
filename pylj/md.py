@@ -11,7 +11,7 @@ from pylj.configuration import MDConfiguration
 from pylj.constants import BOLTZMANN
 from pylj.model import Model
 from pylj.placement import place
-from pylj.potentials import check_positive_finite
+from pylj.potentials import check_non_negative_finite, check_positive_finite
 from pylj.simulation import Samples, Simulation, _empty
 from pylj.trajectory import Trajectory
 
@@ -214,8 +214,9 @@ class MDSimulation(Simulation):
             bath_temperature: The desired temperature, in kelvin.
 
         Raises:
-            ValueError: If the bath temperature is not positive and finite,
-                the atoms are at rest, or the simulation has diverged.
+            ValueError: If the bath temperature is negative or not finite,
+                the atoms are at rest and the bath temperature is above
+                zero, or the simulation has diverged.
         """
         self.configuration = heat_bath(self.configuration, bath_temperature)
 
@@ -364,12 +365,15 @@ def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConf
         The configuration with the velocities rescaled.
 
     Raises:
-        ValueError: If the bath temperature is not positive and finite, the
-            atoms are at rest, or the current temperature is not finite.
+        ValueError: If the bath temperature is negative or not finite, the
+            atoms are at rest and the bath temperature is above zero, or the
+            current temperature is not finite.
     """
-    check_positive_finite("bath_temperature", bath_temperature)
+    check_non_negative_finite("bath_temperature", bath_temperature)
     current = configuration.temperature()
     if current == 0:
+        if bath_temperature == 0:
+            return configuration
         raise ValueError("Cannot rescale velocities: the atoms are at rest.")
     if not (np.isfinite(current) and current > 0):
         raise ValueError(

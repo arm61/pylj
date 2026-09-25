@@ -10,7 +10,7 @@ from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
 from pylj.model import Model
 from pylj.placement import place
-from pylj.potentials import check_positive_finite
+from pylj.potentials import check_non_negative_finite
 from pylj.simulation import Samples, Simulation, _empty
 
 
@@ -72,6 +72,8 @@ def accept(
         )
     if energy_change <= 0:
         return True
+    if temperature == 0:
+        return False
     if rng is None:
         rng = np.random.default_rng()
     return bool(rng.random() < np.exp(-energy_change / (BOLTZMANN * temperature)))
@@ -95,7 +97,7 @@ class MCSimulation(Simulation):
         samples: The :class:`MCSamples` record that ``sample`` appends to.
 
     Raises:
-        ValueError: If the temperature is not positive and finite.
+        ValueError: If the temperature is negative or not finite.
     """
 
     samples: MCSamples
@@ -109,7 +111,7 @@ class MCSimulation(Simulation):
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> None:
-        check_positive_finite("temperature", temperature)
+        check_non_negative_finite("temperature", temperature)
         super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         self.temperature = temperature
         self.energy = configuration.potential_energy(self.model, self.cut_off)

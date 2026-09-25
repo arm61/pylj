@@ -19,6 +19,17 @@ def check_positive_finite(name: str, value: float) -> None:
         raise ValueError(f"{name} must be positive and finite, not {value}")
 
 
+def check_non_negative_finite(name: str, value: float) -> None:
+    """Raises ``ValueError`` unless ``value`` is zero or positive, and finite.
+
+    Args:
+        name: The name of the parameter, for the error message.
+        value: The value to check.
+    """
+    if not (np.isfinite(value) and value >= 0):
+        raise ValueError(f"{name} must be non-negative and finite, not {value}")
+
+
 @dataclass(frozen=True)
 class Species:
     """An atom species.
@@ -131,8 +142,7 @@ class Buckingham(PairPotential):
     def __init__(self, *, a: float, b: float, c: float):
         check_positive_finite("a", a)
         check_positive_finite("b", b)
-        if not (np.isfinite(c) and c >= 0):
-            raise ValueError("c must be non-negative and finite")
+        check_non_negative_finite("c", c)
         self.a = a
         self.b = b
         self.c = c
