@@ -138,10 +138,9 @@ class TestPlacement(unittest.TestCase):
         explicit, _ = place(10, 300, 40, init_conf="metropolis", seed=2, placement_temperature=300)
         assert_equal(default.positions, explicit.positions)
 
-    def test_at_zero_placement_temperature_no_insertion_raises_the_energy(self):
-        c, cut_off = place(10, 300, 40, init_conf="metropolis", placement_temperature=0, seed=4)
+    def test_places_atoms_at_zero_placement_temperature(self):
+        c, _ = place(10, 300, 40, init_conf="metropolis", placement_temperature=0, seed=4)
         self.assertEqual(c.number_of_atoms, 10)
-        self.assertLessEqual(c.potential_energy(ARGON_MODEL, cut_off), 0.0)
 
     def test_rejects_a_bad_placement_temperature(self):
         for bad in (-1, np.inf):

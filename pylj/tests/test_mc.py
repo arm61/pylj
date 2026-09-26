@@ -140,6 +140,13 @@ class TestConstructor(unittest.TestCase):
         self.assertGreater(a.accepted, 0)
         assert_equal(a.configuration.velocities, md_simulation.configuration.velocities)
 
+    def test_rejects_a_negative_or_infinite_temperature(self):
+        c = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=4, temperature=100, box=20
+        ).configuration
+        for temperature in (-300, np.inf):
+            with self.assertRaisesRegex(ValueError, "temperature must be non-negative"):
+                MCSimulation(c, ARGON_MODEL, temperature)
 
 
 class TestMoves(unittest.TestCase):

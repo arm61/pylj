@@ -66,7 +66,7 @@ All notable changes to pylj are recorded here. The format follows
 - Two-type systems drew the other type's atoms at the origin.
 - `CellPlus` could not be built: its constructor called `update` without the custom data that `update` required.
 - Pair energies in multi-type systems were counted once per type pair (#81).
-- The Metropolis criterion, `mc.accept`, draws a fresh random number for every uphill change (a downhill change is accepted without a draw); one was reused for the life of the process (#78).
+- The Metropolis criterion reused one random number for the life of the process (#78).
 - The square-well hard core tested epsilon rather than sigma (part of #80).
 - The `'random'` initial configuration could place atoms on top of one another (#82); `'metropolis'` replaces it.
 - A pair potential's energy and force stored their result on the potential, overwriting the method and breaking a second call on the same instance (#79).
