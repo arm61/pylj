@@ -10,7 +10,7 @@ from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
 from pylj.model import Model
 from pylj.placement import place
-from pylj.potentials import check_non_negative_finite
+from pylj.potentials import check_non_negative_finite, check_positive_finite
 from pylj.simulation import Samples, Simulation, _empty
 
 
@@ -87,17 +87,22 @@ class MCSimulation(Simulation):
         model: The model.
         temperature: The temperature of the simulation, in kelvin.
         cut_off: The cut-off, in metres; see :class:`Simulation`.
+        max_displacement: The largest distance an atom is moved along each
+            axis in one step, in metres.
         seed: Seed for the random number generator.
 
     Attributes:
         temperature: The temperature, in kelvin.
+        max_displacement: The largest distance an atom is moved along each
+            axis in one step, in metres.
         energy: The total pair energy of the current configuration, in
             joules.
         accepted: The number of moves accepted so far.
         samples: The :class:`MCSamples` record that ``sample`` appends to.
 
     Raises:
-        ValueError: If the temperature is negative or not finite.
+        ValueError: If the temperature is negative or not finite, or the
+            maximum displacement is not positive and finite.
     """
 
     samples: MCSamples
@@ -109,11 +114,14 @@ class MCSimulation(Simulation):
         temperature: float,
         *,
         cut_off: float | None = None,
+        max_displacement: float = 0.5e-10,
         seed: int | None = None,
     ) -> None:
         check_non_negative_finite("temperature", temperature)
+        check_positive_finite("max_displacement", max_displacement)
         super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         self.temperature = temperature
+        self.max_displacement = max_displacement
         self.energy = configuration.potential_energy(self.model, self.cut_off)
         self.accepted = 0
         self.samples = MCSamples()
@@ -129,6 +137,7 @@ class MCSimulation(Simulation):
         init_conf: str = "square",
         placement_temperature: float | None = None,
         max_strain: float = 0.05,
+        max_displacement: float = 0.5,
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> Self:
@@ -153,6 +162,8 @@ class MCSimulation(Simulation):
             max_strain: How far a triangular lattice may sit from
                 ``sqrt(3) / 2``, as a fraction of that ratio; used when
                 ``init_conf`` is ``'triangular'``.
+            max_displacement: The largest distance an atom is moved along
+                each axis in one step, in Angstrom.
             cut_off: The cut-off, in Angstrom; by default
                 :data:`~pylj.simulation.DEFAULT_CUT_OFF` Angstrom or half the
                 box, whichever is smaller.
@@ -179,20 +190,28 @@ class MCSimulation(Simulation):
             cut_off=cut_off,
             rng=rng,
         )
-        simulation = cls(configuration, model, temperature, cut_off=cut_off_metres)
+        simulation = cls(
+            configuration,
+            model,
+            temperature,
+            cut_off=cut_off_metres,
+            max_displacement=max_displacement * 1e-10,
+        )
         simulation.rng = rng
         return simulation
 
     def propose(self) -> Proposal:
-        """Proposes moving one atom to a random position.
+        """Proposes moving one atom, chosen at random, by a random distance of up
+        to ``max_displacement`` along each axis.
 
         Returns:
             The proposal.
         """
         configuration = self.configuration
         atom = int(self.rng.integers(configuration.number_of_atoms))
-        trial = self.rng.uniform(0, configuration.box, size=2)
         current = configuration.positions[atom]
+        displacement = self.rng.uniform(-self.max_displacement, self.max_displacement, size=2)
+        trial = (current + displacement) % configuration.box
         species_index = int(configuration.species_index[atom])
         others = configuration.without(atom)
         energy_change = others.insertion_energy(

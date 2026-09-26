@@ -122,6 +122,16 @@ class TestInitialise(unittest.TestCase):
         )
         self.assertEqual(a.configuration.number_of_atoms, 56)
 
+    def test_takes_the_maximum_displacement_in_angstrom(self):
+        a = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=4, temperature=300, box=20, max_displacement=0.3
+        )
+        self.assertAlmostEqual(a.max_displacement * 1e10, 0.3)
+
+    def test_the_maximum_displacement_defaults_to_half_an_angstrom(self):
+        a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=300, box=20)
+        self.assertAlmostEqual(a.max_displacement * 1e10, 0.5)
+
     def test_one_atom_is_allowed(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=1, temperature=300, box=20)
         self.assertEqual(a.energy, 0.0)
@@ -147,6 +157,14 @@ class TestConstructor(unittest.TestCase):
         for temperature in (-300, np.inf):
             with self.assertRaisesRegex(ValueError, "temperature must be non-negative"):
                 MCSimulation(c, ARGON_MODEL, temperature)
+
+    def test_rejects_a_non_positive_or_infinite_maximum_displacement(self):
+        c = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=4, temperature=100, box=20
+        ).configuration
+        for bad in (0.0, -1e-10, np.inf):
+            with self.assertRaisesRegex(ValueError, "max_displacement must be positive"):
+                MCSimulation(c, ARGON_MODEL, 100, max_displacement=bad)
 
 
 class TestMoves(unittest.TestCase):
@@ -218,6 +236,18 @@ class TestMoves(unittest.TestCase):
         trial = proposal.positions[moved][0]
         self.assertTrue(np.all((0 <= trial) & (trial < a.configuration.box)))
 
+    def test_propose_moves_an_atom_by_at_most_the_maximum_displacement(self):
+        a = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, max_displacement=0.3, seed=1
+        )
+        c = a.configuration
+        steps = np.array(
+            [minimum_image(a.propose().positions - c.positions, c.box) for _ in range(200)]
+        )
+        steps = np.abs(steps) * 1e10
+        self.assertTrue(np.all(steps <= 0.3 + 1e-9))
+        self.assertGreater(steps.max(), 0.25)
+
     def test_propose_energy_change_matches_a_full_recompute(self):
         # The oracle: apply the proposal to a copy and recompute every pair.
         # The mixture checks the moving atom's own species is used, so
@@ -260,7 +290,7 @@ class TestMoves(unittest.TestCase):
 
     def test_step_proposes_decides_and_counts(self):
         a = MCSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, seed=1
+            ARGON_MODEL, number_of_atoms=16, temperature=300, box=20, seed=1
         )
         for _ in range(100):
             a.step()
