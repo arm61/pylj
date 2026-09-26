@@ -4,11 +4,12 @@ import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
 from pylj import mc
+from pylj.configuration import Configuration
 from pylj.constants import BOLTZMANN
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.pairwise import minimum_image
-from pylj.tests.argon import ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
 
 
 def total_energy(sim):
@@ -226,15 +227,22 @@ class TestMoves(unittest.TestCase):
         assert_equal(a.configuration.positions, position)
         self.assertEqual(a.energy, energy)
 
-    def test_propose_moves_exactly_one_atom_inside_the_box(self):
+    def test_propose_moves_exactly_one_atom(self):
         a = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, seed=1
         )
         proposal = a.propose()
         moved = np.any(proposal.positions != a.configuration.positions, axis=1)
         self.assertEqual(moved.sum(), 1)
-        trial = proposal.positions[moved][0]
-        self.assertTrue(np.all((0 <= trial) & (trial < a.configuration.box)))
+
+    def test_propose_wraps_a_move_across_the_edge_of_the_box(self):
+        # One atom at the origin, so a move in a negative direction crosses
+        # an edge and comes back in at the far side.
+        c = Configuration(np.zeros((1, 2)), (ARGON,), np.zeros(1, dtype=np.int64), 20e-10)
+        a = MCSimulation(c, ARGON_MODEL, 300, seed=1)
+        trials = np.array([a.propose().positions[0] for _ in range(100)])
+        self.assertTrue(np.all((0 <= trials) & (trials < c.box)))
+        self.assertTrue(np.any(trials > c.box / 2))
 
     def test_propose_moves_an_atom_by_at_most_the_maximum_displacement(self):
         a = MCSimulation.initialise(
@@ -244,9 +252,10 @@ class TestMoves(unittest.TestCase):
         steps = np.array(
             [minimum_image(a.propose().positions - c.positions, c.box) for _ in range(200)]
         )
-        steps = np.abs(steps) * 1e10
-        self.assertTrue(np.all(steps <= 0.3 + 1e-9))
+        steps = steps * 1e10
+        self.assertTrue(np.all(np.abs(steps) <= 0.3 + 1e-9))
         self.assertGreater(steps.max(), 0.25)
+        self.assertLess(steps.min(), -0.25)
 
     def test_propose_energy_change_matches_a_full_recompute(self):
         # The oracle: apply the proposal to a copy and recompute every pair.
