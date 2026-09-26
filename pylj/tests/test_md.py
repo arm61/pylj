@@ -140,9 +140,13 @@ class TestInitialise(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at least two atoms"):
             MDSimulation.initialise(ARGON_MODEL, number_of_atoms=1, temperature=300, box=8)
 
-    def test_rejects_a_non_positive_or_infinite_temperature(self):
-        for temperature in (0, -10, np.inf):
-            with self.assertRaisesRegex(ValueError, "temperature must be positive"):
+    def test_starts_at_rest_at_zero_temperature(self):
+        a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=0, box=12)
+        assert_equal(a.configuration.velocities, 0.0)
+
+    def test_rejects_a_negative_or_infinite_temperature(self):
+        for temperature in (-10, np.inf):
+            with self.assertRaisesRegex(ValueError, "temperature must be non-negative"):
                 MDSimulation.initialise(
                     ARGON_MODEL, number_of_atoms=2, temperature=temperature, box=8
                 )
@@ -403,10 +407,18 @@ class TestHeatBath(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "diverged"):
                 md.heat_bath(two_argon([[bad, 0.0], [1.0, 0.0]]), 250.0)
 
-    def test_raises_for_a_non_positive_bath_temperature(self):
+    def test_a_bath_at_zero_stops_the_atoms(self):
+        c = md.heat_bath(two_argon([[3e2, 0.0], [-3e2, 0.0]]), 0.0)
+        assert_equal(c.velocities, 0.0)
+
+    def test_a_bath_at_zero_leaves_atoms_at_rest(self):
+        c = md.heat_bath(two_argon(np.zeros((2, 2))), 0.0)
+        assert_equal(c.velocities, 0.0)
+
+    def test_raises_for_a_negative_or_non_finite_bath_temperature(self):
         c = two_argon([[3e2, 0.0], [-3e2, 0.0]])
-        for bad in (0.0, -5.0, np.nan, np.inf):
-            with self.assertRaises(ValueError):
+        for bad in (-5.0, np.nan, np.inf):
+            with self.assertRaisesRegex(ValueError, "bath_temperature must be non-negative"):
                 md.heat_bath(c, bad)
 
 

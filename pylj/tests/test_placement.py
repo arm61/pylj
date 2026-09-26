@@ -138,9 +138,13 @@ class TestPlacement(unittest.TestCase):
         explicit, _ = place(10, 300, 40, init_conf="metropolis", seed=2, placement_temperature=300)
         assert_equal(default.positions, explicit.positions)
 
+    def test_places_atoms_at_zero_placement_temperature(self):
+        c, _ = place(10, 300, 40, init_conf="metropolis", placement_temperature=0, seed=4)
+        self.assertEqual(c.number_of_atoms, 10)
+
     def test_rejects_a_bad_placement_temperature(self):
-        for bad in (0, -1, np.inf):
-            with self.assertRaisesRegex(ValueError, "placement_temperature must be positive"):
+        for bad in (-1, np.inf):
+            with self.assertRaisesRegex(ValueError, "placement_temperature must be non-negative"):
                 place(2, 300, 8, placement_temperature=bad)
 
 
@@ -181,9 +185,13 @@ class TestPlace(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "at least one atom"):
             place(0, 300, 20)
 
-    def test_rejects_a_non_positive_or_infinite_temperature(self):
-        for temperature in (0, -10, np.inf):
-            with self.assertRaisesRegex(ValueError, "temperature must be positive"):
+    def test_places_a_lattice_at_zero_temperature(self):
+        c, _ = place(4, 0, 12)
+        self.assertEqual(c.number_of_atoms, 4)
+
+    def test_rejects_a_negative_or_infinite_temperature(self):
+        for temperature in (-10, np.inf):
+            with self.assertRaisesRegex(ValueError, "temperature must be non-negative"):
                 place(2, temperature, 8)
 
     def test_place_builds_a_triangular_lattice(self):

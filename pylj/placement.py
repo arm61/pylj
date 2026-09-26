@@ -7,7 +7,7 @@ import numpy as np
 
 from pylj.configuration import Configuration
 from pylj.model import Model
-from pylj.potentials import Species, check_positive_finite
+from pylj.potentials import Species, check_non_negative_finite, check_positive_finite
 from pylj.simulation import _resolve_cut_off
 
 #: The smallest box, in Angstrom. Below this the cell cannot hold more
@@ -318,8 +318,8 @@ def place(
         The configuration and the cut-off, both in metres.
 
     Raises:
-        ValueError: If no atoms are requested, a temperature is not positive
-            and finite, the box is below :data:`SMALLEST_BOX` Angstrom, the
+        ValueError: If no atoms are requested, a temperature is negative or
+            not finite, the box is below :data:`SMALLEST_BOX` Angstrom, the
             cut-off exceeds half the box, ``init_conf`` is unknown,
             ``max_strain`` is not positive and finite or is above
             :data:`MOST_STRAIN`, no triangular lattice within ``max_strain``
@@ -328,10 +328,10 @@ def place(
     """
     if number_of_atoms < 1:
         raise ValueError("A simulation needs at least one atom")
-    check_positive_finite("temperature", temperature)
+    check_non_negative_finite("temperature", temperature)
     if placement_temperature is None:
         placement_temperature = temperature
-    check_positive_finite("placement_temperature", placement_temperature)
+    check_non_negative_finite("placement_temperature", placement_temperature)
     if box < SMALLEST_BOX:
         raise ValueError(
             f"box must be at least {SMALLEST_BOX} Angstrom: below that the cell cannot "

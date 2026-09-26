@@ -3,12 +3,12 @@ import unittest
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
 
-from pylj import mc, placement
+from pylj import mc
 from pylj.constants import BOLTZMANN
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.pairwise import minimum_image
-from pylj.tests.argon import ARGON_MODEL, LARGER, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
+from pylj.tests.argon import ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
 
 
 def total_energy(sim):
@@ -54,6 +54,11 @@ class TestAccept(unittest.TestCase):
     def test_takes_a_change_of_minus_infinity(self):
         self.assertTrue(mc.accept(-np.inf, 300))
 
+    def test_at_zero_temperature_takes_only_changes_that_do_not_raise_the_energy(self):
+        self.assertTrue(mc.accept(-1e-21, 0.0))
+        self.assertTrue(mc.accept(0.0, 0.0))
+        self.assertFalse(mc.accept(1e-21, 0.0))
+
     def test_refuses_an_energy_change_that_is_not_a_number(self):
         with self.assertRaisesRegex(ValueError, "not a number"):
             mc.accept(np.nan, 300)
@@ -76,9 +81,9 @@ class TestInitialise(unittest.TestCase):
         assert_almost_equal(a.energy, total_energy(a))
         self.assertNotEqual(a.energy, 0.0)
 
-    def test_rejects_a_non_positive_or_infinite_temperature(self):
-        for temperature in (0, -300, np.inf):
-            with self.assertRaisesRegex(ValueError, "temperature must be positive"):
+    def test_rejects_a_negative_or_infinite_temperature(self):
+        for temperature in (-300, np.inf):
+            with self.assertRaisesRegex(ValueError, "temperature must be non-negative"):
                 MCSimulation.initialise(
                     ARGON_MODEL, number_of_atoms=4, temperature=temperature, box=8
                 )
@@ -135,15 +140,24 @@ class TestConstructor(unittest.TestCase):
         self.assertGreater(a.accepted, 0)
         assert_equal(a.configuration.velocities, md_simulation.configuration.velocities)
 
-    def test_validates_the_temperature_before_the_configuration(self):
-        # The configuration holds a species that ARGON_MODEL knows nothing
-        # about, so if the species check ran first it would raise instead.
-        c = placement.place_square(4, (LARGER,), 40e-10)
-        with self.assertRaisesRegex(ValueError, "temperature must be positive"):
-            MCSimulation(c, ARGON_MODEL, -1)
+    def test_rejects_a_negative_or_infinite_temperature(self):
+        c = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=4, temperature=100, box=20
+        ).configuration
+        for temperature in (-300, np.inf):
+            with self.assertRaisesRegex(ValueError, "temperature must be non-negative"):
+                MCSimulation(c, ARGON_MODEL, temperature)
 
 
 class TestMoves(unittest.TestCase):
+    def test_at_zero_temperature_the_energy_never_rises(self):
+        a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=9, temperature=0, box=20, seed=1)
+        for _ in range(300):
+            a.step()
+            a.sample()
+        self.assertGreater(a.accepted, 0)
+        self.assertTrue(np.all(np.diff(a.samples.potential_energy) <= 0))
+
     def test_a_step_with_no_defined_energy_change_raises(self):
         # Every position open to the atom is inside a hard core, so the
         # change is inf - inf.
