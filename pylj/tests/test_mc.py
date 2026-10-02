@@ -9,7 +9,7 @@ from pylj.constants import BOLTZMANN
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.pairwise import minimum_image
-from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL_MODEL
+from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL, WELL_MODEL
 
 
 def total_energy(sim):
@@ -21,7 +21,7 @@ class TestAccept(unittest.TestCase):
     def test_takes_a_downhill_change_without_drawing(self):
         rng = np.random.default_rng(3)
         untouched = np.random.default_rng(3)
-        self.assertTrue(mc.accept(-1e-20, 300, rng=rng))
+        self.assertTrue(mc.accept(-1.0, 300, rng=rng))
         self.assertTrue(mc.accept(0.0, 300, rng=rng))
         self.assertEqual(rng.random(), untouched.random())
 
@@ -56,9 +56,9 @@ class TestAccept(unittest.TestCase):
         self.assertTrue(mc.accept(-np.inf, 300))
 
     def test_at_zero_temperature_takes_only_changes_that_do_not_raise_the_energy(self):
-        self.assertTrue(mc.accept(-1e-21, 0.0))
+        self.assertTrue(mc.accept(-1.0, 0.0))
         self.assertTrue(mc.accept(0.0, 0.0))
-        self.assertFalse(mc.accept(1e-21, 0.0))
+        self.assertFalse(mc.accept(1.0, 0.0))
 
     def test_refuses_an_energy_change_that_is_not_a_number(self):
         with self.assertRaisesRegex(ValueError, "not a number"):
@@ -70,10 +70,10 @@ class TestInitialise(unittest.TestCase):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=2, temperature=300, box=8)
         c = a.configuration
         self.assertEqual(c.number_of_atoms, 2)
-        assert_almost_equal(c.box, 8e-10)
-        assert_almost_equal(c.positions * 1e10, [[2, 2], [2, 6]])
+        assert_almost_equal(c.box, 8.0)
+        assert_almost_equal(c.positions, [[2, 2], [2, 6]])
         assert_almost_equal(a.temperature, 300)
-        assert_almost_equal(a.cut_off * 1e10, 4.0)
+        assert_almost_equal(a.cut_off, 4.0)
         self.assertEqual(a.steps, 0)
         self.assertEqual(a.accepted, 0)
 
@@ -127,13 +127,13 @@ class TestInitialise(unittest.TestCase):
         a = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=4, temperature=300, box=20, max_displacement=0.3
         )
-        self.assertAlmostEqual(a.max_displacement * 1e10, 0.3)
+        self.assertAlmostEqual(a.max_displacement, 0.3)
 
     def test_the_maximum_displacement_defaults_to_half_an_angstrom(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=300, box=20)
-        self.assertAlmostEqual(a.max_displacement * 1e10, 0.5)
+        self.assertAlmostEqual(a.max_displacement, 0.5)
         b = MCSimulation(a.configuration, ARGON_MODEL, 300)
-        self.assertAlmostEqual(b.max_displacement * 1e10, 0.5)
+        self.assertAlmostEqual(b.max_displacement, 0.5)
 
     def test_one_atom_is_allowed(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=1, temperature=300, box=20)
@@ -165,7 +165,7 @@ class TestConstructor(unittest.TestCase):
         c = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=4, temperature=100, box=20
         ).configuration
-        for bad in (0.0, -1e-10, np.inf):
+        for bad in (0.0, -1.0, np.inf):
             with self.assertRaisesRegex(ValueError, "max_displacement must be positive"):
                 MCSimulation(c, ARGON_MODEL, 100, max_displacement=bad)
 
@@ -194,7 +194,7 @@ class TestMoves(unittest.TestCase):
         # diagonal ones 5.66 Angstrom away, beyond it, so 18 pairs sit at
         # -epsilon. The cut-off, half the box, is 6 Angstrom.
         a = MCSimulation.initialise(WELL_MODEL, number_of_atoms=9, temperature=300, box=12, seed=2)
-        assert_almost_equal(a.energy * 1e21, -27.0)
+        assert_almost_equal(a.energy, -18 * WELL.epsilon)
         overlaps = 0
         for _ in range(50):
             proposal = a.propose()
@@ -206,7 +206,7 @@ class TestMoves(unittest.TestCase):
             if accepted:
                 a.apply(proposal)
         self.assertGreater(overlaps, 0)
-        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
+        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
 
     def test_proposals_compare_by_identity(self):
         a = MCSimulation.initialise(
@@ -241,7 +241,7 @@ class TestMoves(unittest.TestCase):
         # One atom 0.2 Angstrom from a corner, so a move of more than that in
         # a negative direction crosses an edge and comes back in at the far
         # side.
-        c = Configuration(np.full((1, 2), 0.2e-10), (ARGON,), np.zeros(1, dtype=np.int64), 20e-10)
+        c = Configuration(np.full((1, 2), 0.2), (ARGON,), np.zeros(1, dtype=np.int64), 20.0)
         a = MCSimulation(c, ARGON_MODEL, 300, seed=1)
         trials = np.array([a.propose().positions[0] for _ in range(100)])
         self.assertTrue(np.all((0 <= trials) & (trials < c.box)))
@@ -255,7 +255,6 @@ class TestMoves(unittest.TestCase):
         steps = np.array(
             [minimum_image(a.propose().positions - c.positions, c.box) for _ in range(200)]
         )
-        steps = steps * 1e10
         self.assertTrue(np.all(np.abs(steps) <= 0.3 + 1e-9))
         self.assertGreater(steps.max(), 0.25)
         self.assertLess(steps.min(), -0.25)
@@ -271,7 +270,7 @@ class TestMoves(unittest.TestCase):
                 proposal = a.propose()
                 trial = a.configuration.replace(positions=proposal.positions)
                 expected = trial.potential_energy(a.model, a.cut_off) - total_energy(a)
-                np.testing.assert_allclose(proposal.energy_change, expected, rtol=1e-9, atol=1e-33)
+                np.testing.assert_allclose(proposal.energy_change, expected, rtol=1e-9, atol=1e-9)
                 moved = np.any(proposal.positions != a.configuration.positions, axis=1)
                 moved_species.add(int(a.configuration.species_index[moved][0]))
                 a.apply(proposal)
@@ -289,7 +288,7 @@ class TestMoves(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no longer the current one"):
             a.apply(second)
         assert_equal(a.configuration.positions, first.positions)
-        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
+        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
 
     def test_apply_updates_the_positions_and_the_energy(self):
         a = MCSimulation.initialise(
@@ -298,7 +297,7 @@ class TestMoves(unittest.TestCase):
         proposal = a.propose()
         a.apply(proposal)
         assert_equal(a.configuration.positions, proposal.positions)
-        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
+        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
 
     def test_step_proposes_decides_and_counts(self):
         a = MCSimulation.initialise(
@@ -309,7 +308,7 @@ class TestMoves(unittest.TestCase):
         self.assertEqual(a.steps, 100)
         self.assertGreater(a.accepted, 0)
         self.assertLess(a.accepted, 100)
-        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-33)
+        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
 
     def test_sample_sets_the_exact_energy_and_records_it(self):
         a = MCSimulation.initialise(
@@ -351,7 +350,7 @@ class TestMoves(unittest.TestCase):
         # position of a pair of uniformly placed atoms is uniform over
         # the box, so the mean pair energy is the Boltzmann average of the
         # minimum-image pair energy over the box, which quadrature gives.
-        box, cut_off, temperature = 12e-10, 6e-10, 300
+        box, cut_off, temperature = 12.0, 6.0, 300
         r = np.linspace(-box / 2, box / 2, 601)
         x, y = np.meshgrid(r, r)
         separation = minimum_image(np.stack([x, y], axis=-1), box)
