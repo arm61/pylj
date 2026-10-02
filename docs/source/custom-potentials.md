@@ -35,7 +35,7 @@ class SoftSphere(PairPotential):
         return 12 * self.epsilon * (self.sigma / dr) ** 12 / dr
 ```
 
-`energies(dr)` takes an array of pair separations in metres and returns the pair energy of each in joules. `forces(dr)` returns the radial force in newtons, minus the derivative of the energy with respect to the separation, so positive where the pair repels and negative where it attracts. A potential with no finite force, such as `SquareWell`, raises `ValueError` from `forces` and can drive only Monte Carlo. The constructor takes whatever parameters the potential needs; the built-in potentials use keyword-only parameters named after the physical quantities.
+`energies(dr)` takes an array of pair separations in Angstrom and returns the pair energy of each in kJ/mol. `forces(dr)` returns the radial force in kJ/mol per Angstrom, minus the derivative of the energy with respect to the separation, so positive where the pair repels and negative where it attracts. A potential with no finite force, such as `SquareWell`, raises `ValueError` from `forces` and can drive only Monte Carlo. The constructor takes whatever parameters the potential needs; the built-in potentials use keyword-only parameters named after the physical quantities.
 
 `min_separation` is the separation below which the formula gives unphysical energies. It is a class attribute and defaults to `0.0`, meaning the formula is physical at every separation. A configuration gives a pair closer than it infinite energy, so placement and Monte Carlo never accept such a pair, and raises `ValueError` if asked for its forces. `Buckingham` sets it to the top of its short-range barrier in its constructor.
 
@@ -48,7 +48,7 @@ from pylj.model import Model
 from pylj.potentials import Species
 
 argon = Species(mass=39.948, name="argon")
-soft = SoftSphere(epsilon=1.577e-21, sigma=3.372e-10)
+soft = SoftSphere(epsilon=0.9497, sigma=3.372)
 model = Model.single(argon, soft)
 simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=300, box=30, seed=0)
 viewer = sample.JustCell(simulation, diameter=3.4)
@@ -66,9 +66,9 @@ A mixture is a `Model` with more species and one entry for each species with its
 from pylj.potentials import LennardJones
 
 xenon = Species(mass=131.293, name="xenon")
-lj_argon = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
-lj_xenon = LennardJones(epsilon=3.05e-21, sigma=3.98e-10)
-lj_cross = LennardJones(epsilon=2.19e-21, sigma=3.68e-10)
+lj_argon = LennardJones(epsilon=0.9497, sigma=3.372)
+lj_xenon = LennardJones(epsilon=1.8367, sigma=3.98)
+lj_cross = LennardJones(epsilon=1.3189, sigma=3.68)
 mixture = Model(
     (argon, xenon),
     {(argon, argon): lj_argon, (xenon, xenon): lj_xenon, (argon, xenon): lj_cross},

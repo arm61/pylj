@@ -28,7 +28,7 @@ from pylj.model import Model
 from pylj.potentials import LennardJones, Species
 
 argon = Species(mass=39.948, name="argon")
-lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
+lj = LennardJones(epsilon=0.9497, sigma=3.372)
 model = Model.single(argon, lj)
 simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=300, box=40, seed=1)
 viewer = sample.Interactions(simulation)
