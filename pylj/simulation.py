@@ -19,23 +19,22 @@ DEFAULT_CUT_OFF = 15
 
 
 def _resolve_cut_off(box: float, cut_off: float | None) -> float:
-    """Resolves the cut-off to metres.
+    """Resolves the cut-off.
 
-    A ``cut_off`` of ``None`` becomes :data:`DEFAULT_CUT_OFF` Angstrom, or
-    half the box if that is smaller.
+    A ``cut_off`` of ``None`` becomes :data:`DEFAULT_CUT_OFF`, or half the
+    box if that is smaller.
 
     Raises:
         ValueError: If a given cut-off is not positive and finite, or is
             larger than half the box.
     """
     if cut_off is None:
-        return min(DEFAULT_CUT_OFF * 1e-10, box / 2)
+        return min(DEFAULT_CUT_OFF, box / 2)
     check_positive_finite("cut_off", cut_off)
     if cut_off > box / 2:
         raise ValueError(
-            f"The cut-off of {cut_off * 1e10:.1f} Angstrom exceeds half the box of "
-            f"{box * 1e10:.1f} Angstrom; the minimum image convention needs a cut-off of at "
-            "most half the box."
+            f"The cut-off of {cut_off:.1f} Angstrom exceeds half the box of {box:.1f} "
+            "Angstrom; the minimum image convention needs a cut-off of at most half the box."
         )
     return cut_off
 
@@ -79,17 +78,17 @@ class Samples:
 class Simulation(ABC):
     """The base class molecular dynamics and Monte Carlo share.
 
-    The constructor takes a configuration that is already built, in SI
-    units; the ``initialise`` method of either subclass builds one from a
-    model and a number of atoms instead.
+    The constructor takes a configuration that is already built; the
+    ``initialise`` method of either subclass builds one from a model and a
+    number of atoms instead.
 
     Args:
         configuration: The starting configuration.
         model: The model.
-        cut_off: The separation, in metres, beyond which a pair's energy
+        cut_off: The separation, in Angstrom, beyond which a pair's energy
             and force are zero. By default :data:`DEFAULT_CUT_OFF` Angstrom
-            or half the box,
-            whichever is smaller; it may not exceed half the box.
+            or half the box, whichever is smaller; it may not exceed half the
+            box.
         seed: Seed for the random number generator; the same seed
             reproduces the run, and without one the run differs each time.
 

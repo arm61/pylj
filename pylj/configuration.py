@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pylj import pairwise
-from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+from pylj.constants import BOLTZMANN, KJ_PER_MOL
 from pylj.model import Model
 from pylj.potentials import Species
 from pylj.scattering import check_q_max, default_q_max, shell_average, wavevectors
@@ -19,11 +19,11 @@ class PairData:
     """The result of :meth:`Configuration.pairs`.
 
     Attributes:
-        distances: The minimum-image distance between each pair, in metres.
+        distances: The minimum-image distance between each pair, in Angstrom.
         separations: The minimum-image separation of each pair, ``r_i - r_j``
-            with ``i < j``, shape ``(M, 2)``, in metres.
-        energies: The energy of each pair, in joules.
-        radial_forces: The radial force on each pair, in newtons, positive
+            with ``i < j``, shape ``(M, 2)``, in Angstrom.
+        energies: The energy of each pair, in kJ/mol.
+        radial_forces: The radial force on each pair, in kJ/mol/Angstrom, positive
             where repulsive; ``None`` if it was not evaluated.
     """
 
@@ -34,7 +34,7 @@ class PairData:
 
     @property
     def virial(self) -> float:
-        """The sum over pairs of the radial force times the distance, in joules."""
+        """The sum over pairs of the radial force times the distance, in kJ/mol."""
         return float(np.sum(_radial_forces(self) * self.distances))
 
 
@@ -54,11 +54,11 @@ class Configuration:
     """A single configuration of atoms and the simulation cell.
 
     Attributes:
-        positions: The position of each atom, shape ``(N, 2)``, in metres.
+        positions: The position of each atom, shape ``(N, 2)``, in Angstrom.
         species: The distinct species, indexed by ``species_index``.
         species_index: The index in ``species`` of each atom's species,
             shape ``(N,)``.
-        box: The side length of the square periodic box, in metres.
+        box: The side length of the square periodic box, in Angstrom.
 
     Raises:
         ValueError: If the array shapes disagree, ``species`` is empty, an
@@ -96,9 +96,8 @@ class Configuration:
 
     @property
     def masses(self) -> NDArray[np.float64]:
-        """Atomic masses, in kilograms."""
-        masses = np.array([one.mass for one in self.species], dtype=float) * ATOMIC_MASS_UNIT
-        return masses[self.species_index]
+        """Atomic masses, in atomic mass units."""
+        return np.array([one.mass for one in self.species], dtype=float)[self.species_index]
 
     def replace(self, **changes: Any) -> Self:
         """Returns a copy with the given fields replaced."""
@@ -129,7 +128,7 @@ class Configuration:
 
         Args:
             model: The model.
-            cut_off: The cut-off, in metres.
+            cut_off: The cut-off, in Angstrom.
             forces: Whether to evaluate the radial forces.
 
         Returns:
@@ -151,8 +150,8 @@ class Configuration:
                     raise ValueError(
                         f"A pair of {self.species[type_1].name or 'atoms'} and "
                         f"{self.species[type_2].name or 'atoms'} is "
-                        f"{distances[forbidden].min() * 1e10:.2f} Angstrom apart, closer than the "
-                        f"{potential.min_separation * 1e10:.2f} Angstrom below which "
+                        f"{distances[forbidden].min():.2f} Angstrom apart, closer than the "
+                        f"{potential.min_separation:.2f} Angstrom below which "
                         f"{type(potential).__name__} is unphysical: the simulation has collapsed."
                     )
                 energies[forbidden] = np.inf
@@ -165,11 +164,11 @@ class Configuration:
         return PairData(distances, separations, energies, radial_forces)
 
     def potential_energy(self, model: Model, cut_off: float) -> float:
-        """Computes the total pair energy, in joules."""
+        """Computes the total pair energy, in kJ/mol."""
         return float(self.pairs(model, cut_off).energies.sum())
 
     def forces(self, model: Model, cut_off: float) -> NDArray[np.float64]:
-        """Computes the net force on each atom, shape ``(N, 2)``, in newtons."""
+        """Computes the net force on each atom, shape ``(N, 2)``, in kJ/mol/Angstrom."""
         pairs = self.pairs(model, cut_off, forces=True)
         radial = _radial_forces(pairs)
         i, j = np.triu_indices(self.number_of_atoms, 1)
@@ -183,7 +182,7 @@ class Configuration:
 
     def virial(self, model: Model, cut_off: float) -> float:
         """Computes the sum over pairs of the radial force times the distance,
-        in joules."""
+        in kJ/mol."""
         return self.pairs(model, cut_off, forces=True).virial
 
     def insertion_energy(
@@ -197,13 +196,13 @@ class Configuration:
         in the configuration.
 
         Args:
-            position: The ``(x, y)`` position of the added atom, in metres.
+            position: The ``(x, y)`` position of the added atom, in Angstrom.
             species_index: The index in ``species`` of the added atom's species.
             model: The model.
-            cut_off: The cut-off, in metres.
+            cut_off: The cut-off, in Angstrom.
 
         Returns:
-            The sum of its pair energies, in joules; zero for an empty
+            The sum of its pair energies, in kJ/mol; zero for an empty
             configuration.
         """
         separations = pairwise.minimum_image(
@@ -229,12 +228,12 @@ class Configuration:
 
         Args:
             bins: The number of bins.
-            r_max: The largest distance binned, in metres. By default half
+            r_max: The largest distance binned, in Angstrom. By default half
                 the box, beyond which the ideal-gas normalisation no longer
                 holds.
 
         Returns:
-            The bin centres, in metres, and g(r) in each bin.
+            The bin centres, in Angstrom, and g(r) in each bin.
             Returns zero everywhere for a configuration containing one atom.
         """
         if r_max is None:
@@ -263,11 +262,11 @@ class Configuration:
         species.
 
         Args:
-            q_max: The largest wavevector magnitude, in 1/m; the default
+            q_max: The largest wavevector magnitude, in 1/Angstrom; the default
                 comes from :func:`~pylj.scattering.default_q_max`.
 
         Returns:
-            The wavevector magnitudes, in 1/m, and S(q) at each magnitude.
+            The wavevector magnitudes, in 1/Angstrom, and S(q) at each magnitude.
 
         Raises:
             ValueError: If ``q_max`` is below ``2 pi / L``.
@@ -285,9 +284,9 @@ class MDConfiguration(Configuration):
 
     Attributes:
         velocities: The velocity of each atom, shape ``(N, 2)``, in
-            metres per second.
+            Angstrom per picosecond.
         unwrapped: The position of each atom without periodic wrapping,
-            shape ``(N, 2)``, in metres.
+            shape ``(N, 2)``, in Angstrom.
 
     Raises:
         ValueError: If ``velocities`` or ``unwrapped`` is not the shape of
@@ -307,8 +306,8 @@ class MDConfiguration(Configuration):
                 )
 
     def kinetic_energy(self) -> float:
-        """Computes the total kinetic energy, in joules."""
-        return float(0.5 * np.sum(self.masses * np.sum(self.velocities**2, axis=1)))
+        """Computes the total kinetic energy, in kJ/mol."""
+        return float(0.5 * np.sum(self.masses * np.sum(self.velocities**2, axis=1)) / KJ_PER_MOL)
 
     def temperature(self) -> float:
         """Computes the instantaneous temperature, in kelvin.
@@ -332,7 +331,7 @@ class MDConfiguration(Configuration):
             initial: The configuration to measure the displacement from.
 
         Returns:
-            The mean squared displacement, in metres squared.
+            The mean squared displacement, in Angstrom squared.
         """
         displacement = self.unwrapped - initial.unwrapped
         return float(np.mean(np.sum(displacement**2, axis=1)))

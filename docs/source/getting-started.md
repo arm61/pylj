@@ -21,11 +21,11 @@ from pylj.model import Model
 from pylj.potentials import LennardJones, Species
 
 argon = Species(mass=39.948, name="argon")
-lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
+lj = LennardJones(epsilon=0.9497, sigma=3.372)
 model = Model.single(argon, lj)
 ```
 
-`Species` takes the mass in atomic mass units. `LennardJones` takes the well depth in joules and the zero-crossing separation in metres. A `Model` is the species and the potential between each pair of them; `Model.single` builds it for one species.
+`Species` takes the mass in atomic mass units. `LennardJones` takes the well depth in kJ/mol and the zero-crossing separation in Angstrom. A `Model` is the species and the potential between each pair of them; `Model.single` builds it for one species.
 
 ## Molecular dynamics
 

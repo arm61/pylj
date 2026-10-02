@@ -29,7 +29,7 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
     Args:
         number_of_atoms: The number of atoms.
         species: The species, assigned to the atoms in turn.
-        box: The side length of the box, in metres.
+        box: The side length of the box, in Angstrom.
 
     Returns:
         The configuration.
@@ -117,7 +117,7 @@ def place_triangular(
     Args:
         number_of_atoms: The number of atoms.
         species: The species, assigned to the atoms in turn.
-        box: The side length of the box, in metres.
+        box: The side length of the box, in Angstrom.
         max_strain: How far the ratio of columns to rows may sit from
             ``sqrt(3) / 2``, as a fraction of that ratio, up to
             :data:`MOST_STRAIN`.
@@ -234,9 +234,9 @@ def place_metropolis(
 
     Args:
         number_of_atoms: The number of atoms.
-        box: The side length of the box, in metres.
+        box: The side length of the box, in Angstrom.
         model: The model.
-        cut_off: The cut-off, in metres.
+        cut_off: The cut-off, in Angstrom.
         placement_temperature: The temperature of the acceptance, in kelvin.
         rng: The generator to draw trial positions and acceptances from.
 
@@ -268,7 +268,7 @@ def place_metropolis(
         else:
             raise ValueError(
                 f"Could not place atom {i + 1} of {number_of_atoms} in a "
-                f"{box * 1e10:.1f} Angstrom box at a placement temperature of "
+                f"{box:.1f} Angstrom box at a placement temperature of "
                 f"{placement_temperature:g} K after {PLACEMENT_ATTEMPTS} attempts; "
                 "reduce the number of atoms or use a larger box; for a soft "
                 "potential, raising placement_temperature tolerates closer contacts."
@@ -289,10 +289,6 @@ def place(
     rng: np.random.Generator,
 ) -> tuple[Configuration, float]:
     """Builds the initial configuration for a simulation.
-
-    Takes the box and cut-off in Angstrom, as
-    :meth:`~pylj.md.MDSimulation.initialise` and
-    :meth:`~pylj.mc.MCSimulation.initialise` do, and places the atoms.
 
     Args:
         number_of_atoms: The number of atoms.
@@ -315,7 +311,7 @@ def place(
         rng: The generator for Metropolis placement.
 
     Returns:
-        The configuration and the cut-off, both in metres.
+        The configuration and the cut-off.
 
     Raises:
         ValueError: If no atoms are requested, a temperature is negative or
@@ -337,18 +333,17 @@ def place(
             f"box must be at least {SMALLEST_BOX} Angstrom: below that the cell cannot "
             "hold more than one atom."
         )
-    box_m = box * 1e-10
-    cut_off_m = _resolve_cut_off(box_m, None if cut_off is None else cut_off * 1e-10)
+    cut_off = _resolve_cut_off(box, cut_off)
     if init_conf == "square":
-        configuration = place_square(number_of_atoms, model.species, box_m)
+        configuration = place_square(number_of_atoms, model.species, box)
     elif init_conf == "triangular":
-        configuration = place_triangular(number_of_atoms, model.species, box_m, max_strain)
+        configuration = place_triangular(number_of_atoms, model.species, box, max_strain)
     elif init_conf == "metropolis":
         configuration = place_metropolis(
             number_of_atoms,
-            box_m,
+            box,
             model,
-            cut_off_m,
+            cut_off,
             placement_temperature,
             rng,
         )
@@ -356,4 +351,4 @@ def place(
         raise ValueError(
             "init_conf must be 'square', 'triangular' or 'metropolis'"
         )
-    return configuration, cut_off_m
+    return configuration, cut_off

@@ -262,7 +262,7 @@ class Scattering(Viewer):
             one per species; by default the separation at the minimum of
             each species' own pair energy.
         q_max: The largest wavevector magnitude drawn in the structure
-            factor, in 1/m; by default the one that follows the density.
+            factor, in 1/Angstrom; by default the one that follows the density.
     """
 
     def __init__(

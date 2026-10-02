@@ -13,15 +13,15 @@ simulation = MDSimulation.initialise(
     init_conf="square",
     placement_temperature=None,
     max_strain=0.05,
-    timestep=1e-14,
+    timestep=0.01,
     cut_off=None,
     seed=None,
 )
 ```
 
-`model`, a `Model` of the species and the potential between each pair of them, is the one positional argument; the rest are given by keyword. Three are required: `number_of_atoms`; `temperature`, in kelvin; and `box`, the side of the square periodic box in Angstrom. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, `"triangular"` on a triangular one, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `max_strain` applies only to the triangular lattice, described below. `timestep` is in seconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
+`model`, a `Model` of the species and the potential between each pair of them, is the one positional argument; the rest are given by keyword. Three are required: `number_of_atoms`; `temperature`, in kelvin; and `box`, the side of the square periodic box in Angstrom. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, `"triangular"` on a triangular one, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `max_strain` applies only to the triangular lattice, described below. `timestep` is in picoseconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
 
-The constructors take a ready configuration instead: `MDSimulation(configuration, model, cut_off=None, timestep=1e-14, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, cut_off=None, max_displacement=0.5e-10, seed=None)` with a `Configuration`, all in SI units. `MDSimulation` starts from a copy with the centre of mass at rest; `md.at_rest(configuration)` returns that copy on its own.
+The constructors take a ready configuration instead: `MDSimulation(configuration, model, *, cut_off=None, timestep=0.01, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, *, cut_off=None, max_displacement=0.5, seed=None)` with a `Configuration`. `MDSimulation` starts from a copy with the centre of mass at rest; `md.at_rest(configuration)` returns that copy on its own.
 
 ### A triangular lattice
 
@@ -33,7 +33,7 @@ At the default the counts up to 300 that fit are 30, 56, 90, 120, 168, 224, 270 
 
 ## The configuration
 
-`simulation.configuration` is the current state. `positions` is an `(N, 2)` array in metres, `box` the side in metres, `species` and `species_index` name each atom's species, and `masses` is in kilograms. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocities` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()`, `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest, and `msd(initial)`.
+`simulation.configuration` is the current state. `positions` is an `(N, 2)` array in Angstrom, `box` the side in Angstrom, `species` and `species_index` name each atom's species, and `masses` is in atomic mass units. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocities` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()`, `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest, and `msd(initial)`.
 
 A configuration is never changed in place. `replace(**changes)` returns a copy with some arrays changed.
 
@@ -43,13 +43,13 @@ A configuration is never changed in place. `replace(**changes)` returns a copy w
 
 `heat_bath(bath_temperature)` rescales the velocities so that the instantaneous temperature is `bath_temperature`.
 
-`sample()` records the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy`, `kinetic_energy` and `msd`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in newtons per metre. All are in SI units.
+`sample()` records the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy`, `kinetic_energy` and `msd`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in kJ/mol per Angstrom squared.
 
 `step()` raises `ValueError` if an atom moves further than half the cut-off in one step, which means the timestep is too long or the run has diverged.
 
 ## Monte Carlo
 
-`temperature` is the temperature the acceptance rule uses, and `max_displacement` the largest distance a move shifts an atom along each axis, in metres; `MCSimulation.initialise` takes `max_displacement` in Angstrom, 0.5 by default. `energy` is the running potential energy and `accepted` the number of accepted moves.
+`temperature` is the temperature the acceptance rule uses, and `max_displacement` the largest distance a move shifts an atom along each axis, in Angstrom, 0.5 by default. `energy` is the running potential energy and `accepted` the number of accepted moves.
 
 `step()` is `propose()`, `mc.accept()` and `apply()`:
 
@@ -96,13 +96,13 @@ Molecular dynamics manages a few thousand steps a second for twenty-five atoms, 
 
 ## Trajectory
 
-`sample()` also records the current configuration in `simulation.trajectory`, one frame per sample. A frame is a `Configuration`, so `simulation.trajectory[-1].positions` is the last sampled positions, and `simulation.trajectory.positions` is every frame's, an array of shape `(frames, N, 2)`. Slicing gives a trajectory, so `simulation.trajectory[100:]` is the run after the first hundred frames. A molecular dynamics frame carries the time it was sampled at, and `simulation.trajectory.times` is the array of them in seconds; a Monte Carlo trajectory has no times. `restart()` starts an empty trajectory.
+`sample()` also records the current configuration in `simulation.trajectory`, one frame per sample. A frame is a `Configuration`, so `simulation.trajectory[-1].positions` is the last sampled positions, and `simulation.trajectory.positions` is every frame's, an array of shape `(frames, N, 2)`. Slicing gives a trajectory, so `simulation.trajectory[100:]` is the run after the first hundred frames. A molecular dynamics frame carries the time it was sampled at, and `simulation.trajectory.times` is the array of them in picoseconds; a Monte Carlo trajectory has no times. `restart()` starts an empty trajectory.
 
 A configuration is kept only if it was sampled, so memory grows with the number of samples and not with the number of steps. A molecular dynamics frame takes about fifty bytes per atom: a hundred atoms sampled a thousand times is five megabytes, and sampled a hundred thousand times is half a gigabyte.
 
-Three analyses are computed on demand, from one frame or averaged over a trajectory. `rdf(bins=100, r_max=None)` returns the bin centres in metres and g(r), which is one where the atoms are spread as evenly as an ideal gas; `r_max` defaults to half the box. `structure_factor(q_max=None)` returns the wavevector magnitudes in inverse metres and S(q) at each, which is one where the atoms are spread as evenly as an ideal gas. S(q) is evaluated at the wavevectors `2 pi (h, k) / L` commensurate with the box, for integer `h` and `k` not both zero. The amplitude of a wavevector is the sum of `exp(i q . r)` over the atoms, and S(q) is the square of its modulus divided by the number of atoms. Wavevectors of equal magnitude are averaged together, so the result holds one value per magnitude. `q_max` defaults to six times `2 pi sqrt(N) / L`, the wavevector that matches the mean spacing between the atoms, which grows as the square root of the density. How far a nearest neighbour sits is set by the potential instead, so a dilute configuration is drawn up to a smaller multiple of its first peak, where its S(q) is close to one throughout. Two runs at different densities are drawn over different ranges; give both the same `q_max` to compare them directly.
+Three analyses are computed on demand, from one frame or averaged over a trajectory. `rdf(bins=100, r_max=None)` returns the bin centres in Angstrom and g(r), which is one where the atoms are spread as evenly as an ideal gas; `r_max` defaults to half the box. `structure_factor(q_max=None)` returns the wavevector magnitudes in inverse Angstrom and S(q) at each, which is one where the atoms are spread as evenly as an ideal gas. S(q) is evaluated at the wavevectors `2 pi (h, k) / L` commensurate with the box, for integer `h` and `k` not both zero. The amplitude of a wavevector is the sum of `exp(i q . r)` over the atoms, and S(q) is the square of its modulus divided by the number of atoms. Wavevectors of equal magnitude are averaged together, so the result holds one value per magnitude. `q_max` defaults to six times `2 pi sqrt(N) / L`, the wavevector that matches the mean spacing between the atoms, which grows as the square root of the density. How far a nearest neighbour sits is set by the potential instead, so a dilute configuration is drawn up to a smaller multiple of its first peak, where its S(q) is close to one throughout. Two runs at different densities are drawn over different ranges; give both the same `q_max` to compare them directly.
 
-`msd(max_lag=None)` is for a molecular dynamics trajectory. It returns the lag times in seconds, from one frame interval up to `max_lag`, and the mean squared displacement at each in metres squared, averaged over every pair of frames that lag apart. Short lags are averaged over many origins and long lags over few, so the curve is smooth at the start and jagged at the end. Fit the diffusion coefficient over a window of lags that is short compared with the run; in two dimensions the mean squared displacement is `4 D t`.
+`msd(max_lag=None)` is for a molecular dynamics trajectory. It returns the lag times in picoseconds, from one frame interval up to `max_lag`, and the mean squared displacement at each in Angstrom squared, averaged over every pair of frames that lag apart. Short lags are averaged over many origins and long lags over few, so the curve is smooth at the start and jagged at the end. Fit the diffusion coefficient over a window of lags that is short compared with the run; in two dimensions the mean squared displacement is `4 D t`.
 
 ```python
 import numpy as np
@@ -111,11 +111,11 @@ r, gr = simulation.configuration.rdf()   # the configuration now
 r, gr = simulation.trajectory[100:].rdf()  # averaged over the run after equilibration
 q, s = simulation.trajectory.structure_factor()
 lag, msd = simulation.trajectory.msd()
-window = (lag >= 5e-12) & (lag <= 50e-12)
+window = (lag >= 5) & (lag <= 50)
 slope, intercept = np.polyfit(lag[window], msd[window], 1)
-D = slope / 4
+D = slope / 4  # Angstrom^2/ps
 ```
 
 ## Units
 
-`initialise` takes `box`, `cut_off` and `max_displacement` in Angstrom and `temperature` in kelvin, and the viewers take a drawn `diameter` in Angstrom. Potentials take SI units and `Species` takes atomic mass units. Every quantity a simulation reports is in SI units.
+pylj takes and reports every quantity in Angstrom, picoseconds, kJ/mol, atomic mass units and kelvin, so velocities are in Angstrom per picosecond, forces in kJ/mol per Angstrom, the two-dimensional pressure in kJ/mol per Angstrom squared, and a diffusion coefficient from the mean squared displacement in Angstrom squared per picosecond. A mass times a velocity squared is in amu Angstrom^2/ps^2; `pylj.constants.KJ_PER_MOL`, about 100, is one kJ/mol in those units.

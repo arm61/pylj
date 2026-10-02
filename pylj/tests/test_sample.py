@@ -42,9 +42,9 @@ from pylj.tests.argon import ARGON, ARGON_MODEL, LJ_ARGON, MIXTURE_MODEL, WELL, 
 NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering]
 
 SERIES_PANES = {
-    TemperaturePane: ("temperature", "Temperature / K", 1.0),
-    PressurePane: ("pressure", "Pressure / N m$^{-1}$", 1.0),
-    MSDPane: ("msd", "MSD / Angstrom$^2$", 1e20),
+    TemperaturePane: ("temperature", "Temperature / K"),
+    PressurePane: ("pressure", "Pressure / kJ mol$^{-1}$ Angstrom$^{-2}$"),
+    MSDPane: ("msd", "MSD / Angstrom$^2$"),
 }
 
 
@@ -143,14 +143,14 @@ def test_cell_pane_draws_periodic_images_of_atoms_at_the_edges():
     # In a 20 Angstrom box with a 4 Angstrom drawn diameter: an atom at
     # x = 0.5 overhangs the left edge and is drawn again at x = 20.5; one in
     # the corner is drawn four times; one in the middle once.
-    position = np.array([[0.5e-10, 10e-10], [0.5e-10, 0.5e-10], [10e-10, 10e-10]])
-    configuration = Configuration(position, (ARGON,), np.zeros(3, dtype=np.int64), 20e-10)
+    position = np.array([[0.5, 10.0], [0.5, 0.5], [10.0, 10.0]])
+    configuration = Configuration(position, (ARGON,), np.zeros(3, dtype=np.int64), 20.0)
     simulation = MCSimulation(configuration, ARGON_MODEL, 100)
     fig, ax = environment(1)
     pane = CellPane(diameter=4.0)
     pane.setup(ax, simulation)
     pane.update(ax, simulation)
-    drawn = sorted(zip(ax.lines[0].get_xdata() * 1e10, ax.lines[0].get_ydata() * 1e10, strict=True))
+    drawn = sorted(zip(ax.lines[0].get_xdata(), ax.lines[0].get_ydata(), strict=True))
     assert_allclose(
         drawn,
         [
@@ -175,7 +175,7 @@ def test_cell_pane_marker_matches_the_drawn_diameter(box_length):
     pane = CellPane(diameter=4.0)
     pane.setup(ax, simulation)
     pane.update(ax, simulation)
-    assert_allclose(pane.diameters, [4e-10])
+    assert_allclose(pane.diameters, [4.0])
 
     def drawn_and_true_diameter_px():
         origin, edge = ax.transData.transform([(0, 0), (pane.diameters[0], 0)])
@@ -203,7 +203,7 @@ def test_cell_pane_default_diameter_is_per_species():
     fig, ax = environment(1)
     pane = CellPane()
     pane.setup(ax, simulation)
-    assert_allclose(pane.diameters, [2 ** (1 / 6) * 3.372e-10, 2 ** (1 / 6) * 5.0e-10], rtol=2e-3)
+    assert_allclose(pane.diameters, [2 ** (1 / 6) * 3.372, 2 ** (1 / 6) * 5.0], rtol=2e-3)
     plt.close(fig)
 
 
@@ -212,7 +212,7 @@ def test_cell_pane_takes_one_diameter_per_species():
     fig, ax = environment(1)
     pane = CellPane(diameter=[3.0, 5.0])
     pane.setup(ax, simulation)
-    assert_allclose(pane.diameters, [3e-10, 5e-10])
+    assert_allclose(pane.diameters, [3.0, 5.0])
     plt.close(fig)
 
 
@@ -233,7 +233,6 @@ def test_cell_pane_default_diameter_for_a_square_well_is_the_hard_core():
         ([3.0], "one per species"),
         (0.0, "positive"),
         (float("nan"), "positive"),
-        (3.4e-10, "Angstrom"),
     ],
 )
 def test_cell_pane_rejects_a_bad_diameter(diameter, message):
@@ -251,11 +250,11 @@ def test_cell_pane_default_needs_a_potential_minimum():
     class Unbounded(PairPotential):
         def energies(self, dr):
             dr = np.asarray(dr, dtype=float)
-            return 1e-21 * ((3e-10 / dr) ** 12 - 1e-3 * dr / 3e-10)
+            return 1.0 * ((3.0 / dr) ** 12 - 1e-3 * dr / 3.0)
 
         def forces(self, dr):
             dr = np.asarray(dr, dtype=float)
-            return 1e-21 * (12 * (3e-10 / dr) ** 12 / dr + 1e-3 / 3e-10)
+            return 1.0 * (12 * (3.0 / dr) ** 12 / dr + 1e-3 / 3.0)
 
     model = Model.single(ARGON, Unbounded())
     simulation = MDSimulation.initialise(model, number_of_atoms=4, temperature=100, box=20)
@@ -273,7 +272,7 @@ def test_named_viewers_take_a_diameter(drawing_display):
         MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20),
         diameter=4.0,
     )
-    assert_allclose(viewer.panes[0].diameters, [4e-10])
+    assert_allclose(viewer.panes[0].diameters, [4.0])
 
 
 @pytest.mark.parametrize("pane_cls", list(SERIES_PANES) + [EnergyPane])
@@ -288,11 +287,11 @@ def test_time_panes_handle_empty_and_sparse_samples(pane_cls):
     run_md_loop(simulation, steps=9, every=3)
     pane.update(ax, simulation)
     fig.canvas.draw()
-    assert_allclose(ax.lines[0].get_xdata(), np.array([3, 6, 9]) * simulation.timestep * 1e12)
+    assert_allclose(ax.lines[0].get_xdata(), np.array([3, 6, 9]) * simulation.timestep)
     assert ax.get_xlabel() == "Time / ps"
     if pane_cls in SERIES_PANES:
-        attribute, ylabel, scale = SERIES_PANES[pane_cls]
-        assert_allclose(ax.lines[0].get_ydata(), getattr(simulation.samples, attribute) * scale)
+        attribute, ylabel = SERIES_PANES[pane_cls]
+        assert_allclose(ax.lines[0].get_ydata(), getattr(simulation.samples, attribute))
         assert ax.get_ylabel() == ylabel
     if pane_cls is MSDPane:
         assert ax.get_ylim()[0] == 0
@@ -309,7 +308,7 @@ def test_energy_pane_md_plots_the_total_energy():
     potential = c.potential_energy(simulation.model, simulation.cut_off)
     assert_allclose(ax.lines[0].get_ydata()[-1], potential + c.kinetic_energy())
     assert_allclose(ax.lines[0].get_ydata(), simulation.samples.total_energy)
-    assert_allclose(ax.lines[0].get_xdata(), simulation.samples.step * simulation.timestep * 1e12)
+    assert_allclose(ax.lines[0].get_xdata(), simulation.samples.step * simulation.timestep)
     assert ax.get_xlabel() == "Time / ps"
     plt.close(fig)
 
@@ -325,7 +324,7 @@ def test_energy_pane_refuses_a_simulation_that_records_no_energy():
         def sample(self):
             self.samples.add(step=self.steps)
 
-    bare = Bare(place_square(4, (ARGON,), 20e-10), ARGON_MODEL)
+    bare = Bare(place_square(4, (ARGON,), 20.0), ARGON_MODEL)
     fig, ax = environment(1)
     pane = EnergyPane()
     pane.setup(ax, bare)
@@ -367,7 +366,7 @@ def test_rdf_pane_average_is_the_trajectory_mean():
     pane.average(ax, simulation)
     r, gr = simulation.trajectory.rdf(bins=RDFPane.BINS)
     assert_allclose(ax.lines[0].get_ydata(), gr)
-    assert_allclose(ax.lines[0].get_xdata(), r * 1e10)
+    assert_allclose(ax.lines[0].get_xdata(), r)
     plt.close(fig)
 
 
@@ -377,7 +376,7 @@ def test_rdf_pane_x_values_are_the_bin_centres():
     pane = RDFPane()
     pane.setup(ax, simulation)
     pane.update(ax, simulation)
-    dr = simulation.configuration.box / 2 / RDFPane.BINS * 1e10
+    dr = simulation.configuration.box / 2 / RDFPane.BINS
     r = ax.lines[0].get_xdata()
     assert r.size == RDFPane.BINS
     assert_allclose(r[0], dr / 2)

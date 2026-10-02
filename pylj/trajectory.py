@@ -23,7 +23,7 @@ class Trajectory:
 
     Args:
         frames: Configurations to start with, in order.
-        times: The time of each frame, in seconds, or ``None`` for an
+        times: The time of each frame, in picoseconds, or ``None`` for an
             untimed trajectory.
 
     Raises:
@@ -51,7 +51,7 @@ class Trajectory:
 
         Args:
             configuration: The frame to add.
-            time: The time of the frame, in seconds. Required on a timed
+            time: The time of the frame, in picoseconds. Required on a timed
                 trajectory and not accepted on an untimed one.
 
         Raises:
@@ -63,8 +63,8 @@ class Trajectory:
             first = self._frames[0]
             if configuration.box != first.box:
                 raise ValueError(
-                    f"The frame's box is {configuration.box} m but the trajectory's "
-                    f"is {first.box} m"
+                    f"The frame's box is {configuration.box} Angstrom but the trajectory's "
+                    f"is {first.box} Angstrom"
                 )
             if configuration.number_of_atoms != first.number_of_atoms:
                 raise ValueError(
@@ -100,14 +100,14 @@ class Trajectory:
 
     @property
     def times(self) -> NDArray[np.float64] | None:
-        """The time of each frame, in seconds, or ``None`` if untimed."""
+        """The time of each frame, in picoseconds, or ``None`` if untimed."""
         if self._times is None:
             return None
         return np.array(self._times)
 
     @property
     def positions(self) -> NDArray[np.float64]:
-        """The positions of every frame, shape ``(frames, N, 2)``, in metres."""
+        """The positions of every frame, shape ``(frames, N, 2)``, in Angstrom."""
         if not self._frames:
             return np.empty((0, 0, 2))
         return np.stack([one.positions for one in self._frames])
@@ -125,11 +125,11 @@ class Trajectory:
 
         Args:
             bins: The number of bins.
-            r_max: The largest distance binned, in metres; by default half
+            r_max: The largest distance binned, in Angstrom; by default half
                 the box.
 
         Returns:
-            The bin centres, in metres, and the mean g(r) in each bin.
+            The bin centres, in Angstrom, and the mean g(r) in each bin.
 
         Raises:
             ValueError: If the trajectory has no frames.
@@ -147,12 +147,12 @@ class Trajectory:
         evaluated on that one set.
 
         Args:
-            q_max: The largest wavevector magnitude, in 1/m; the default
+            q_max: The largest wavevector magnitude, in 1/Angstrom; the default
                 comes from :func:`~pylj.scattering.default_q_max` for the
                 first frame.
 
         Returns:
-            The wavevector magnitudes, in 1/m, and the mean S(q) at each
+            The wavevector magnitudes, in 1/Angstrom, and the mean S(q) at each
             magnitude.
 
         Raises:
@@ -180,13 +180,13 @@ class Trajectory:
         pairs and over atoms.
 
         Args:
-            max_lag: The longest lag returned, in seconds. By default the
+            max_lag: The longest lag returned, in picoseconds. By default the
                 whole run.
 
         Returns:
-            The lag times, in seconds, from one frame interval up to
+            The lag times, in picoseconds, from one frame interval up to
             ``max_lag``, and the mean squared displacement at each, in
-            metres squared.
+            Angstrom squared.
 
         Raises:
             ValueError: If the trajectory has no times, fewer than two
@@ -207,7 +207,7 @@ class Trajectory:
         if max_lag is not None:
             if max_lag < spacing:
                 raise ValueError(
-                    f"max_lag of {max_lag:g} s is below the frame spacing of {spacing:g} s"
+                    f"max_lag of {max_lag:g} ps is below the frame spacing of {spacing:g} ps"
                 )
             # The ratio can land a hair under a whole number, so nudge it up
             # before flooring, at the price of admitting a lag within a part

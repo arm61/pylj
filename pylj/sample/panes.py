@@ -118,7 +118,7 @@ class Pane:
 
 
 def _potential_minimum(potential: PairPotential) -> float:
-    """Return the separation at the minimum of a pair potential, in metres.
+    """Return the separation at the minimum of a pair potential, in Angstrom.
 
     The energy is evaluated on a logarithmic grid of separations from 0.1 to 50
     Angstrom. The search starts at the highest energy on that grid and takes
@@ -133,13 +133,13 @@ def _potential_minimum(potential: PairPotential) -> float:
         potential: The pair potential.
 
     Returns:
-        The separation at the energy minimum, in metres.
+        The separation at the energy minimum, in Angstrom.
 
     Raises:
         ValueError: If the energy has no minimum between the barrier and 50
             Angstrom, as for a purely repulsive potential.
     """
-    r = np.logspace(-11, np.log10(5e-9), 4000)
+    r = np.logspace(-1, np.log10(50), 4000)
     energy = np.asarray(potential.energies(r), dtype=float)
     barrier = int(np.argmax(energy))
     well = barrier + int(np.argmin(energy[barrier:]))
@@ -154,7 +154,7 @@ def _potential_minimum(potential: PairPotential) -> float:
 def _drawn_diameters(
     simulation: Simulation, diameter: float | Iterable[float] | None
 ) -> list[float]:
-    """Return the drawn diameter of each species, in metres.
+    """Return the drawn diameter of each species, in Angstrom.
 
     Args:
         simulation: The simulation being visualised.
@@ -169,9 +169,7 @@ def _drawn_diameters(
 
     Raises:
         ValueError: If the number of diameters differs from the number of
-            species, a diameter is not positive and finite, or a diameter is
-            below 0.01. A value that small is almost certainly in metres,
-            given where an Angstrom-sized diameter would fall.
+            species, or a diameter is not positive and finite.
     """
     species = simulation.configuration.species
     if diameter is None:
@@ -187,12 +185,7 @@ def _drawn_diameters(
     for value in values:
         if not (np.isfinite(value) and value > 0):
             raise ValueError(f"Every diameter must be positive and finite, but got {value}")
-        if value < 0.01:
-            raise ValueError(
-                f"The diameter is in Angstrom, and {value} looks like a value in metres. "
-                "An Angstrom is 1e-10 metres."
-            )
-    return [value * 1e-10 for value in values]
+    return values
 
 
 def _with_periodic_images(
@@ -205,9 +198,9 @@ def _with_periodic_images(
     the edge appears at the opposite edge, where it belongs.
 
     Args:
-        positions: The atom positions, shape ``(N, 2)``, in metres.
-        box: The side length of the box, in metres.
-        radius: The drawn radius of the atoms, in metres.
+        positions: The atom positions, shape ``(N, 2)``, in Angstrom.
+        box: The side length of the box, in Angstrom.
+        radius: The drawn radius of the atoms, in Angstrom.
 
     Returns:
         The positions followed by the images, shape ``(N + images, 2)``.
@@ -236,13 +229,13 @@ class CellPane(Pane):
     Args:
         diameter: Drawn diameter of the atoms, in Angstrom: one value
             for every species, or one per species in the order of
-            ``Configuration.species``. Each value must be positive and at
-            least 0.01, as smaller values are metres mistaken for Angstrom.
+            ``Configuration.species``. Each value must be positive and
+            finite.
 
     Attributes:
-        diameters: The drawn diameter of each species, in metres, set by
+        diameters: The drawn diameter of each species, in Angstrom, set by
             ``setup``.
-        box: The side length of the box the axes span, in metres, set by
+        box: The side length of the box the axes span, in Angstrom, set by
             ``setup``.
     """
 
@@ -286,8 +279,6 @@ class _SeriesPane(Pane):
         attribute: Name of the ``MDSamples`` attribute holding the sample
             array to plot on the y axis.
         ylabel: Label for the y axis.
-        scale: Factor the sample values are multiplied by before plotting,
-            to convert from SI to the unit named in ``ylabel``.
         y_from_zero: Whether the y axis should start at zero rather than
             below the minimum of the data.
     """
@@ -295,7 +286,6 @@ class _SeriesPane(Pane):
     needs_md = True
     attribute: str
     ylabel: str
-    scale: float = 1.0
     y_from_zero: bool = False
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
@@ -305,8 +295,8 @@ class _SeriesPane(Pane):
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set
-        x = simulation.samples.step * simulation.timestep * 1e12
-        y = getattr(simulation.samples, self.attribute) * self.scale
+        x = simulation.samples.step * simulation.timestep
+        y = getattr(simulation.samples, self.attribute)
         ax.lines[0].set_data(x, y)
         _fit_axes(ax, x, y, y_from_zero=self.y_from_zero)
 
@@ -322,7 +312,7 @@ class PressurePane(_SeriesPane):
     """Instantaneous two-dimensional pressure against time."""
 
     attribute = "pressure"
-    ylabel = "Pressure / N m$^{-1}$"
+    ylabel = "Pressure / kJ mol$^{-1}$ Angstrom$^{-2}$"
 
 
 class MSDPane(_SeriesPane):
@@ -330,7 +320,6 @@ class MSDPane(_SeriesPane):
 
     attribute = "msd"
     ylabel = "MSD / Angstrom$^2$"
-    scale = 1e20
     y_from_zero = True
 
 
@@ -350,7 +339,7 @@ def _energy_series(
         TypeError: If the simulation records no energy.
     """
     if isinstance(simulation, MDSimulation):
-        time = simulation.samples.step * simulation.timestep * 1e12
+        time = simulation.samples.step * simulation.timestep
         return time, simulation.samples.total_energy
     if isinstance(simulation, MCSimulation):
         return simulation.samples.step, simulation.samples.potential_energy
@@ -369,7 +358,7 @@ class EnergyPane(Pane):
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_ylabel("Energy / J")
+        ax.set_ylabel("Energy / kJ mol$^{-1}$")
         xlabel = "Time / ps" if isinstance(simulation, MDSimulation) else "Step"
         ax.set_xlabel(xlabel)
 
@@ -390,7 +379,7 @@ class RDFPane(Pane):
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
-        ax.set_xlim(0, simulation.configuration.box / 2 * 1e10)
+        ax.set_xlim(0, simulation.configuration.box / 2)
         ax.set_ylabel("g(r)")
         ax.set_xlabel("r / Angstrom")
 
@@ -420,7 +409,6 @@ class RDFPane(Pane):
             # that, and there is then no curve to draw.
             ax.lines[0].set_data([], [])
             return
-        r = r * 1e10
         ax.lines[0].set_data(r, gr)
         _fit_axes(ax, r, gr, y_from_zero=True)
 
@@ -436,7 +424,7 @@ class ScatteringPane(Pane):
     it averaged over the frames the simulation has sampled.
 
     Args:
-        q_max: The largest wavevector magnitude to draw, in 1/m; by default
+        q_max: The largest wavevector magnitude to draw, in 1/Angstrom; by default
             the one
             :meth:`~pylj.configuration.Configuration.structure_factor`
             chooses, which follows the density. Give two runs the same
@@ -449,7 +437,7 @@ class ScatteringPane(Pane):
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
         ax.set_ylabel("S(q)")
-        ax.set_xlabel("q / m$^{-1}$")
+        ax.set_xlabel("q / Angstrom$^{-1}$")
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         self._draw(ax, *simulation.configuration.structure_factor(self.q_max))
@@ -490,7 +478,7 @@ class MaxwellBoltzmannPane(Pane):
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.step([], [], where="post", color=LINE_COLOUR)
         ax.set_ylabel("PDF")
-        ax.set_xlabel("Speed / m s$^{-1}$")
+        ax.set_xlabel("Speed / Angstrom ps$^{-1}$")
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
         assert isinstance(simulation, MDSimulation)  # needs_md is set

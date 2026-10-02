@@ -19,7 +19,7 @@ class MCSamples(Samples):
     """The record a Monte Carlo simulation appends to at each sample.
 
     Attributes:
-        potential_energy: The total pair energy, in joules.
+        potential_energy: The total pair energy, in kJ/mol.
     """
 
     potential_energy: NDArray[np.float64] = field(default_factory=_empty)
@@ -32,9 +32,9 @@ class Proposal:
 
     Attributes:
         positions: The proposed position of every atom, shape ``(N, 2)``,
-            in metres.
+            in Angstrom.
         energy_change: The change in energy under the proposed move, in
-            joules.
+            kJ/mol.
         source: The configuration the proposal was made from.
     """
 
@@ -53,7 +53,7 @@ def accept(
 
     Args:
         energy_change: The change in energy under the proposed move, in
-            joules.
+            kJ/mol.
         temperature: The temperature the acceptance is judged at, in kelvin.
         rng: The generator to draw from; pass the simulation's ``rng`` for
             a reproducible run. By default an unseeded generator is used.
@@ -86,17 +86,17 @@ class MCSimulation(Simulation):
         configuration: The starting configuration.
         model: The model.
         temperature: The temperature of the simulation, in kelvin.
-        cut_off: The cut-off, in metres; see :class:`Simulation`.
+        cut_off: The cut-off, in Angstrom; see :class:`Simulation`.
         max_displacement: The largest distance an atom is moved along each
-            axis in one step, in metres.
+            axis in one step, in Angstrom.
         seed: Seed for the random number generator.
 
     Attributes:
         temperature: The temperature, in kelvin.
         max_displacement: The largest distance an atom is moved along each
-            axis in one step, in metres.
+            axis in one step, in Angstrom.
         energy: The total pair energy of the current configuration, in
-            joules.
+            kJ/mol.
         accepted: The number of moves accepted so far.
         samples: The :class:`MCSamples` record that ``sample`` appends to.
 
@@ -114,7 +114,7 @@ class MCSimulation(Simulation):
         temperature: float,
         *,
         cut_off: float | None = None,
-        max_displacement: float = 0.5e-10,
+        max_displacement: float = 0.5,
         seed: int | None = None,
     ) -> None:
         check_non_negative_finite("temperature", temperature)
@@ -179,7 +179,7 @@ class MCSimulation(Simulation):
                 constructor rejects.
         """
         rng = np.random.default_rng(seed)
-        configuration, cut_off_metres = place(
+        configuration, cut_off = place(
             number_of_atoms,
             temperature,
             box,
@@ -194,8 +194,8 @@ class MCSimulation(Simulation):
             configuration,
             model,
             temperature,
-            cut_off=cut_off_metres,
-            max_displacement=max_displacement * 1e-10,
+            cut_off=cut_off,
+            max_displacement=max_displacement,
         )
         simulation.rng = rng
         return simulation

@@ -11,17 +11,17 @@ MOST_WAVEVECTORS = 1_000_000
 
 
 def default_q_max(number_of_atoms: int, box: float) -> float:
-    """Chooses the default largest wavevector magnitude, in 1/m.
+    """Chooses the default largest wavevector magnitude, in 1/Angstrom.
 
     ``2 pi sqrt(N) / L`` matches the mean spacing between ``N`` atoms in a
     box of side ``L``; the default is six times it.
 
     Args:
         number_of_atoms: The number of atoms.
-        box: The side length of the square box, in metres.
+        box: The side length of the square box, in Angstrom.
 
     Returns:
-        The wavevector magnitude, in 1/m.
+        The wavevector magnitude, in 1/Angstrom.
     """
     return 6 * 2 * np.pi * np.sqrt(number_of_atoms) / box
 
@@ -30,8 +30,8 @@ def check_q_max(q_max: float, box: float) -> None:
     """Checks a wavevector magnitude against the box and the wavevector limit.
 
     Args:
-        q_max: The largest wavevector magnitude, in 1/m.
-        box: The side length of the square box, in metres.
+        q_max: The largest wavevector magnitude, in 1/Angstrom.
+        box: The side length of the square box, in Angstrom.
 
     Raises:
         ValueError: If ``q_max`` is below ``2 pi / L``, or needs more than
@@ -40,17 +40,16 @@ def check_q_max(q_max: float, box: float) -> None:
     smallest = 2 * np.pi / box
     if q_max < smallest:
         raise ValueError(
-            f"q_max of {q_max:g} 1/m is below {smallest:g} 1/m, the smallest wavevector a box "
-            f"of {box * 1e10:.1f} Angstrom has. q_max is in 1/m, and one inverse Angstrom is "
-            "1e10 1/m, so a value meant in inverse Angstrom lands far below the box."
+            f"q_max of {q_max:g} 1/Angstrom is below {smallest:g} 1/Angstrom, the smallest "
+            f"wavevector a box of {box:.1f} Angstrom has."
         )
     across = 2 * int(np.floor(q_max / smallest)) + 1
     if across**2 > MOST_WAVEVECTORS:
         largest = smallest * (np.sqrt(MOST_WAVEVECTORS) - 1) / 2
         raise ValueError(
-            f"q_max of {q_max:g} 1/m needs {across**2} wavevectors, above the limit of "
-            f"{MOST_WAVEVECTORS}. A box of {box * 1e10:.1f} Angstrom reaches {largest:g} 1/m "
-            "within it. q_max is in 1/m, and one inverse Angstrom is 1e10 1/m."
+            f"q_max of {q_max:g} 1/Angstrom needs {across**2} wavevectors, above the limit of "
+            f"{MOST_WAVEVECTORS}. A box of {box:.1f} Angstrom reaches {largest:g} 1/Angstrom "
+            "within it."
         )
 
 
@@ -65,11 +64,11 @@ def wavevectors(
     make up a shell.
 
     Args:
-        box: The side length of the square box, in metres.
-        q_max: The largest magnitude to return, in 1/m.
+        box: The side length of the square box, in Angstrom.
+        q_max: The largest magnitude to return, in 1/Angstrom.
 
     Returns:
-        The distinct magnitudes in increasing order, in 1/m; the pair of
+        The distinct magnitudes in increasing order, in 1/Angstrom; the pair of
         integers ``(h, k)`` of each wavevector, of shape ``(M, 2)``; and,
         for each wavevector, the position in that list of magnitudes of the
         shell it belongs to.
@@ -102,8 +101,8 @@ def _phase_rows(
     evaluated.
 
     Args:
-        coordinate: One coordinate of each atom, in metres.
-        unit: The smallest wavevector of the box, in 1/m.
+        coordinate: One coordinate of each atom, in Angstrom.
+        unit: The smallest wavevector of the box, in 1/Angstrom.
         limit: The largest ``h`` to return.
 
     Returns:
@@ -127,8 +126,8 @@ def shell_average(
     and the wavevectors of a shell are averaged together.
 
     Args:
-        positions: The atom positions, shape ``(N, 2)``, in metres.
-        box: The side length of the square box, in metres.
+        positions: The atom positions, shape ``(N, 2)``, in Angstrom.
+        box: The side length of the square box, in Angstrom.
         index: The pair of integers of each wavevector, shape ``(M, 2)``.
         shell: The index of the shell each wavevector belongs to.
 

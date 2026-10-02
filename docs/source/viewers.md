@@ -27,7 +27,7 @@ A viewer is a figure that redraws when `update(simulation)` is called. Eight are
 - `Phase`: positions, total energy, mean squared displacement and the radial distribution function.
 - `Scattering`: positions, the radial distribution function, mean squared displacement and the structure factor.
 
-`MaxBolt`, `Interactions`, `Phase` and `Scattering` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot, and `Scattering` an optional `q_max` in inverse metres, which fixes the range of its structure factor so that two runs can be drawn over the same axis. `average(simulation)` replaces the latest curve with the mean over the trajectory, the frames `sample()` has recorded, on the radial distribution function and scattering panes; the other panes it leaves alone. Axes are in Angstrom, picoseconds and otherwise SI units.
+`MaxBolt`, `Interactions`, `Phase` and `Scattering` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot, and `Scattering` an optional `q_max` in inverse Angstrom, which fixes the range of its structure factor so that two runs can be drawn over the same axis. `average(simulation)` replaces the latest curve with the mean over the trajectory, the frames `sample()` has recorded, on the radial distribution function and scattering panes; the other panes it leaves alone.
 
 A viewer is for watching a run. For a plot to keep, take the arrays from `simulation.samples` or `simulation.trajectory` and use matplotlib.
 
@@ -44,7 +44,7 @@ from pylj.potentials import LennardJones, Species
 from pylj.sample import CellPane, TemperaturePane, Viewer
 
 argon = Species(mass=39.948, name="argon")
-lj = LennardJones(epsilon=1.577e-21, sigma=3.372e-10)
+lj = LennardJones(epsilon=0.9497, sigma=3.372)
 model = Model.single(argon, lj)
 simulation = MDSimulation.initialise(model, number_of_atoms=16, temperature=300, box=30, seed=0)
 viewer = Viewer(simulation, [CellPane(), TemperaturePane()])
@@ -76,10 +76,10 @@ class FirstAtomPane(Pane):
     def setup(self, ax, simulation):
         ax.plot([], [])
         ax.set_xlabel("Time / ps")
-        ax.set_ylabel("x velocity / m s$^{-1}$")
+        ax.set_ylabel("x velocity / Angstrom ps$^{-1}$")
 
     def update(self, ax, simulation):
-        self.times.append(simulation.time * 1e12)
+        self.times.append(simulation.time)
         self.velocities.append(simulation.configuration.velocities[0, 0])
         ax.lines[0].set_data(self.times, self.velocities)
         ax.relim()
@@ -110,7 +110,7 @@ for _ in range(2000):
 
 r, gr = simulation.trajectory[50:].rdf()
 fig, ax = plt.subplots(figsize=(4, 3))
-ax.plot(r * 1e10, gr)
+ax.plot(r, gr)
 ax.set_xlabel("r / Angstrom")
 ax.set_ylabel("g(r)")
 ```

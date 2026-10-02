@@ -9,18 +9,18 @@ from pylj.tests.argon import ARGON
 from pylj.trajectory import Trajectory
 
 
-def frame(box: float = 20e-10, atoms: int = 4):
+def frame(box: float = 20.0, atoms: int = 4):
     return placement.place_square(atoms, (ARGON,), box)
 
 
 def moved(configuration):
     """The same frame with one atom shifted, so the pair distances differ."""
     position = configuration.positions.copy()
-    position[0] += [3e-10, 1e-10]
+    position[0] += [3.0, 1.0]
     return configuration.replace(positions=position)
 
 
-def md_frame(unwrapped, box=20e-10):
+def md_frame(unwrapped, box=20.0):
     """An argon MDConfiguration at rest with the given unwrapped positions."""
     unwrapped = np.asarray(unwrapped, dtype=float)
     return MDConfiguration(
@@ -60,7 +60,7 @@ class TestTrajectory(unittest.TestCase):
     def test_rejects_a_frame_from_a_different_system(self):
         trajectory = Trajectory([frame()])
         with self.assertRaisesRegex(ValueError, "box"):
-            trajectory.append(frame(box=30e-10))
+            trajectory.append(frame(box=30.0))
         with self.assertRaisesRegex(ValueError, "atoms"):
             trajectory.append(frame(atoms=9))
 
@@ -95,7 +95,7 @@ class TestTrajectory(unittest.TestCase):
     def test_structure_factor_refuses_a_q_max_below_the_box(self):
         trajectory = Trajectory([frame()])
         with self.assertRaisesRegex(ValueError, "smallest wavevector"):
-            trajectory.structure_factor(q_max=8.0)
+            trajectory.structure_factor(q_max=0.1)
 
 
 class TestTimes(unittest.TestCase):
@@ -104,10 +104,10 @@ class TestTimes(unittest.TestCase):
         self.assertIsNone(Trajectory().times)
 
     def test_times_are_kept_in_order(self):
-        trajectory = Trajectory([frame(), frame()], times=[0.0, 1e-13])
-        assert_allclose(trajectory.times, [0.0, 1e-13])
-        trajectory.append(frame(), 2e-13)
-        assert_allclose(trajectory.times, [0.0, 1e-13, 2e-13])
+        trajectory = Trajectory([frame(), frame()], times=[0.0, 0.1])
+        assert_allclose(trajectory.times, [0.0, 0.1])
+        trajectory.append(frame(), 0.2)
+        assert_allclose(trajectory.times, [0.0, 0.1, 0.2])
 
     def test_a_slice_keeps_its_times(self):
         trajectory = Trajectory([frame(), frame(), frame()], times=[0.0, 1.0, 2.0])
@@ -134,7 +134,7 @@ class TestTimes(unittest.TestCase):
 
 class TestMSD(unittest.TestCase):
     def test_averages_over_every_origin(self):
-        # One atom at x = 0, 1, 3 m. Lag 1 has origins at 0 and 1 with
+        # One atom at x = 0, 1, 3 Angstrom. Lag 1 has origins at 0 and 1 with
         # displacements 1 and 2, so (1 + 4) / 2; lag 2 has one origin, 3.
         # A single origin would give 1 at lag 1.
         frames = [md_frame([[x, 0.0]]) for x in (0.0, 1.0, 3.0)]
@@ -143,7 +143,7 @@ class TestMSD(unittest.TestCase):
         assert_allclose(msd, [2.5, 9.0])
 
     def test_constant_velocity_gives_v_squared_t_squared(self):
-        # Two atoms moving at (1, 2) and (-3, 0) m/s, sampled every 0.5 s:
+        # Two atoms moving at (1, 2) and (-3, 0) Angstrom/ps, sampled every 0.5 ps:
         # every origin gives the same displacement, |v|^2 lag^2, and the
         # mean over atoms is (5 + 9) / 2 = 7 lag^2.
         velocity = np.array([[1.0, 2.0], [-3.0, 0.0]])
@@ -163,11 +163,12 @@ class TestMSD(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "max_lag"):
             trajectory.msd(max_lag=1.0)
         # An exact multiple of the spacing includes that lag, even where the
-        # division lands a hair under the integer in floating point.
+        # division lands a hair under the integer in floating point: 0.7 / 0.1
+        # is 6.999999999999999.
         frames = [md_frame([[float(x), 0.0]]) for x in range(30)]
-        trajectory = Trajectory(frames, times=np.arange(30) * 1e-14)
-        lag, _ = trajectory.msd(max_lag=23e-14)
-        self.assertEqual(lag.size, 23)
+        trajectory = Trajectory(frames, times=np.arange(30) * 0.1)
+        lag, _ = trajectory.msd(max_lag=0.7)
+        self.assertEqual(lag.size, 7)
 
     def test_refuses_what_it_cannot_measure(self):
         frames = [md_frame([[float(x), 0.0]]) for x in range(3)]
