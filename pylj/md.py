@@ -175,7 +175,7 @@ class MDSimulation(Simulation):
                     species_index=placed.species_index,
                     box=placed.box,
                     velocities=velocities,
-                    unwrapped=placed.positions.copy(),
+                    unwrapped=placed.positions,
                 )
             ),
             temperature,
@@ -244,9 +244,7 @@ class MDSimulation(Simulation):
         """
         new = super().restart()
         new.trajectory = Trajectory(times=[])
-        new.configuration = self.configuration.replace(
-            unwrapped=self.configuration.positions.copy()
-        )
+        new.configuration = self.configuration.replace(unwrapped=self.configuration.positions)
         new.initial_configuration = new.configuration
         new.forces = self.forces.copy()
         return new

@@ -18,8 +18,8 @@ def two_argon(velocity, box=8.0):
         species=(ARGON,),
         species_index=np.zeros(2, dtype=np.int64),
         box=box,
-        velocities=np.asarray(velocity, dtype=float),
-        unwrapped=position.copy(),
+        velocities=velocity,
+        unwrapped=position,
     )
 
 
@@ -332,10 +332,10 @@ class TestVelocityVerlet(unittest.TestCase):
         a = MDSimulation.initialise(
             ARGON_MODEL, number_of_atoms=25, temperature=100, box=20, timestep=10, seed=0
         )
-        before = a.configuration.positions.copy()
+        before = a.configuration
         with self.assertRaisesRegex(ValueError, "half the cut-off"):
             a.step()
-        assert_equal(a.configuration.positions, before)
+        self.assertIs(a.configuration, before)
         self.assertEqual(a.steps, 0)
 
     def test_refuses_a_step_whose_displacement_is_not_a_number(self):
@@ -489,6 +489,8 @@ class TestRestart(unittest.TestCase):
     def test_starts_a_fresh_record_from_the_current_state(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=300, box=12)
         self.run_and_sample(a, 5)
+        # As if every atom had crossed the boundary once.
+        a.configuration = a.configuration.replace(unwrapped=a.configuration.unwrapped + 12.0)
         production = a.restart()
         self.assertIsNot(production, a)
         self.assertIsInstance(production, MDSimulation)

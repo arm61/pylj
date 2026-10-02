@@ -222,11 +222,9 @@ class TestMoves(unittest.TestCase):
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, seed=1
         )
         before = a.configuration
-        position = before.positions.copy()
         energy = a.energy
         a.propose()
         self.assertIs(a.configuration, before)
-        assert_equal(a.configuration.positions, position)
         self.assertEqual(a.energy, energy)
 
     def test_propose_moves_exactly_one_atom(self):

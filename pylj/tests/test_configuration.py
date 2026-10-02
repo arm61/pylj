@@ -1,3 +1,5 @@
+import copy
+import pickle
 import unittest
 
 import numpy as np
@@ -25,10 +27,9 @@ from pylj.tests.argon import (
 
 def configuration(position, species=(ARGON,), species_index=None, box=30.0):
     """A Configuration from positions in Angstrom, argon unless told otherwise."""
-    position = np.asarray(position, dtype=float)
     if species_index is None:
-        species_index = np.zeros(position.shape[0], dtype=np.int64)
-    return Configuration(position, tuple(species), np.asarray(species_index), box)
+        species_index = np.zeros(len(position), dtype=np.int64)
+    return Configuration(position, species, species_index, box)
 
 
 def three_atoms(species_index=(0, 0, 0)):
@@ -42,9 +43,8 @@ def three_atoms(species_index=(0, 0, 0)):
 
 class TestConfiguration(unittest.TestCase):
     def test_compares_by_identity_not_by_array_contents(self):
-        # A dataclass with array fields cannot compare field by field: numpy
-        # equality gives an array, not a truth value. Two configurations are
-        # equal only when they are the same object.
+        # numpy equality gives an array, not a truth value, so configurations
+        # and pair data are equal only when they are the same object.
         c = three_atoms()
         self.assertEqual(c, c)
         self.assertNotEqual(c, c.replace())
@@ -86,6 +86,32 @@ class TestConfiguration(unittest.TestCase):
         c = three_atoms()
         with self.assertRaises(AttributeError):
             c.box = 1.0  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            c.positions = c.positions + 1.0  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            c.cut_off = 10.0  # type: ignore[attr-defined]
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            c.positions[0] += 1.0
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            c.species_index[0] = 1
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            c.masses[0] = 80.0
+
+    def test_keeps_its_own_copy_of_the_arrays(self):
+        positions = np.array([[1.0, 0.0], [5.0, 0.0]])
+        species_index = np.array([0, 1])
+        c = configuration(positions, species=(ARGON, LARGER), species_index=species_index)
+        positions[0] = 9.0
+        species_index[0] = 1
+        assert_equal(c.positions[0], [1.0, 0.0])
+        assert_equal(c.species_index, [0, 1])
+
+    def test_accepts_lists(self):
+        c = Configuration([[1, 0], [5, 0]], [ARGON], [0, 0], 30)
+        self.assertEqual(c.positions.dtype, np.float64)
+        self.assertEqual(c.species, (ARGON,))
+        assert_equal(c.species_index, [0, 0])
+        self.assertEqual(c.potential_energy(ARGON_MODEL, 15.0), LJ_ARGON.energies(4.0))
 
     def test_replace_gives_a_validated_copy(self):
         c = three_atoms()
@@ -379,27 +405,66 @@ class TestStructureFactor(unittest.TestCase):
 
 def md_configuration(position, velocity, box=8.0):
     """An argon MDConfiguration whose unwrapped positions start at the positions."""
-    position = np.asarray(position, dtype=float)
     return MDConfiguration(
         positions=position,
         species=(ARGON,),
-        species_index=np.zeros(position.shape[0], dtype=np.int64),
+        species_index=np.zeros(len(position), dtype=np.int64),
         box=box,
-        velocities=np.asarray(velocity, dtype=float),
-        unwrapped=position.copy(),
+        velocities=velocity,
+        unwrapped=position,
     )
 
 
 class TestMDConfiguration(unittest.TestCase):
-    def test_rejects_velocities_of_the_wrong_shape(self):
+    def test_rejects_velocities_or_unwrapped_positions_of_the_wrong_shape(self):
         with self.assertRaisesRegex(ValueError, "velocities"):
             md_configuration(np.zeros((2, 2)), np.zeros((3, 2)))
+        c = md_configuration(np.zeros((2, 2)), np.zeros((2, 2)))
+        with self.assertRaisesRegex(ValueError, "unwrapped"):
+            c.replace(unwrapped=np.zeros((3, 2)))
 
-    def test_is_a_configuration(self):
-        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)))
-        self.assertIsInstance(c, Configuration)
-        self.assertEqual(c.without(0).number_of_atoms, 1)
-        assert_equal(c.without(0).velocities.shape, (1, 2))
+    def test_is_immutable(self):
+        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], [[1.0, 0.0], [-1.0, 0.0]])
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            c.velocities *= 2
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            c.unwrapped[0] += 1.0
+        with self.assertRaises(AttributeError):
+            c.velocities = c.velocities * 2  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            c.temperature = 150  # type: ignore[method-assign, assignment]
+
+    def test_keeps_its_own_copy_of_the_arrays(self):
+        position = np.array([[2.0, 2.0], [2.0, 6.0]])
+        velocity = np.array([[1.0, 0.0], [-1.0, 0.0]])
+        c = md_configuration(position, velocity)
+        position[0] = 9.0
+        velocity[0] = 9.0
+        assert_equal(c.unwrapped[0], [2.0, 2.0])
+        assert_equal(c.velocities[0], [1.0, 0.0])
+
+    def test_stays_immutable_when_pickled_or_deep_copied(self):
+        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], [[1.0, 0.0], [-1.0, 0.0]])
+        for copied in (pickle.loads(pickle.dumps(c)), copy.deepcopy(c)):
+            with self.assertRaisesRegex(ValueError, "read-only"):
+                copied.positions[0] += 1.0
+            with self.assertRaisesRegex(ValueError, "read-only"):
+                copied.velocities *= 2
+
+    def test_without_drops_one_atom_from_every_array(self):
+        c = md_configuration(
+            [[2.0, 2.0], [2.0, 6.0], [4.0, 4.0]], [[1.0, 0.0], [0.0, 1.0], [-1.0, -1.0]]
+        )
+        c = c.replace(
+            species=(ARGON, LARGER),
+            species_index=[0, 1, 0],
+            unwrapped=c.positions + [[10.0, 0.0], [20.0, 0.0], [30.0, 0.0]],
+        )
+        rest = c.without(1)
+        assert_equal(rest.positions, [[2.0, 2.0], [4.0, 4.0]])
+        assert_equal(rest.species_index, [0, 0])
+        assert_equal(rest.velocities, [[1.0, 0.0], [-1.0, -1.0]])
+        assert_equal(rest.unwrapped, [[12.0, 2.0], [34.0, 4.0]])
 
     def test_kinetic_energy_and_temperature(self):
         # Two atoms with equal and opposite velocities of 1 Angstrom/ps in x
