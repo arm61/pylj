@@ -364,7 +364,8 @@ class TestMoves(unittest.TestCase):
         contribution[inside] = energy[inside] * weight[inside]
         expected = contribution.sum() / weight.sum()
         # A 2 Angstrom step decorrelates successive samples enough for the
-        # mean to land within 5 per cent whatever the seed.
+        # mean to land within 5 per cent for all but about one seed in a
+        # hundred.
         a = MCSimulation.initialise(
             ARGON_MODEL,
             number_of_atoms=2,

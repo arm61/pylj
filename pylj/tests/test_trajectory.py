@@ -134,7 +134,7 @@ class TestTimes(unittest.TestCase):
 
 class TestMSD(unittest.TestCase):
     def test_averages_over_every_origin(self):
-        # One atom at x = 0, 1, 3 m. Lag 1 has origins at 0 and 1 with
+        # One atom at x = 0, 1, 3 Angstrom. Lag 1 has origins at 0 and 1 with
         # displacements 1 and 2, so (1 + 4) / 2; lag 2 has one origin, 3.
         # A single origin would give 1 at lag 1.
         frames = [md_frame([[x, 0.0]]) for x in (0.0, 1.0, 3.0)]
@@ -143,7 +143,7 @@ class TestMSD(unittest.TestCase):
         assert_allclose(msd, [2.5, 9.0])
 
     def test_constant_velocity_gives_v_squared_t_squared(self):
-        # Two atoms moving at (1, 2) and (-3, 0) m/s, sampled every 0.5 s:
+        # Two atoms moving at (1, 2) and (-3, 0) Angstrom/ps, sampled every 0.5 ps:
         # every origin gives the same displacement, |v|^2 lag^2, and the
         # mean over atoms is (5 + 9) / 2 = 7 lag^2.
         velocity = np.array([[1.0, 2.0], [-3.0, 0.0]])

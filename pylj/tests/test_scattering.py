@@ -94,9 +94,10 @@ class TestWavevectorRange(unittest.TestCase):
         self.assertEqual(len(index), 4 + 4 + 4 + 8 + 4 + 4 + 8 + 8)
 
     def test_an_exact_multiple_keeps_its_outermost_shell(self):
-        box = 20.0
+        # At a 30 Angstrom box, 11 * unit / unit is 10.999999999999998.
+        box = 30.0
         unit = 2 * np.pi / box
-        for multiple in (3, 5, 7, 10):
+        for multiple in (3, 5, 7, 11):
             with self.subTest(multiple=multiple):
                 q, _, _ = wavevectors(box, multiple * unit)
                 assert_allclose(q.max(), multiple * unit)

@@ -46,7 +46,7 @@ for _ in range(2000):
 
 ```python
 simulation.samples.temperature.mean()  # K
-simulation.samples.pressure.mean()     # N/m, the two-dimensional pressure
+simulation.samples.pressure.mean()     # kJ/mol/Angstrom^2, the two-dimensional pressure
 ```
 
 The same model runs under Monte Carlo:

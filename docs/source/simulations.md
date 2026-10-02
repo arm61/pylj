@@ -21,7 +21,7 @@ simulation = MDSimulation.initialise(
 
 `model`, a `Model` of the species and the potential between each pair of them, is the one positional argument; the rest are given by keyword. Three are required: `number_of_atoms`; `temperature`, in kelvin; and `box`, the side of the square periodic box in Angstrom. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, `"triangular"` on a triangular one, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `max_strain` applies only to the triangular lattice, described below. `timestep` is in picoseconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
 
-The constructors take a ready configuration instead: `MDSimulation(configuration, model, cut_off=None, timestep=0.01, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, cut_off=None, max_displacement=0.5, seed=None)` with a `Configuration`, in the same units as `initialise`. `MDSimulation` starts from a copy with the centre of mass at rest; `md.at_rest(configuration)` returns that copy on its own.
+The constructors take a ready configuration instead: `MDSimulation(configuration, model, *, cut_off=None, timestep=0.01, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, *, cut_off=None, max_displacement=0.5, seed=None)` with a `Configuration`. `MDSimulation` starts from a copy with the centre of mass at rest; `md.at_rest(configuration)` returns that copy on its own.
 
 ### A triangular lattice
 
@@ -118,4 +118,4 @@ D = slope / 4  # Angstrom^2/ps
 
 ## Units
 
-pylj takes and reports every quantity in Angstrom, picoseconds, kJ/mol, atomic mass units and kelvin, so velocities are in Angstrom per picosecond, forces in kJ/mol per Angstrom, the two-dimensional pressure in kJ/mol per Angstrom squared, and a diffusion coefficient from the mean squared displacement in Angstrom squared per picosecond.
+pylj takes and reports every quantity in Angstrom, picoseconds, kJ/mol, atomic mass units and kelvin, so velocities are in Angstrom per picosecond, forces in kJ/mol per Angstrom, the two-dimensional pressure in kJ/mol per Angstrom squared, and a diffusion coefficient from the mean squared displacement in Angstrom squared per picosecond. A mass times a velocity squared is in amu Angstrom^2/ps^2; `pylj.constants.KJ_PER_MOL`, about 100, is one kJ/mol in those units.

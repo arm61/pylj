@@ -63,8 +63,8 @@ class Trajectory:
             first = self._frames[0]
             if configuration.box != first.box:
                 raise ValueError(
-                    f"The frame's box is {configuration.box} m but the trajectory's "
-                    f"is {first.box} m"
+                    f"The frame's box is {configuration.box} Angstrom but the trajectory's "
+                    f"is {first.box} Angstrom"
                 )
             if configuration.number_of_atoms != first.number_of_atoms:
                 raise ValueError(
@@ -207,7 +207,7 @@ class Trajectory:
         if max_lag is not None:
             if max_lag < spacing:
                 raise ValueError(
-                    f"max_lag of {max_lag:g} s is below the frame spacing of {spacing:g} s"
+                    f"max_lag of {max_lag:g} ps is below the frame spacing of {spacing:g} ps"
                 )
             # The ratio can land a hair under a whole number, so nudge it up
             # before flooring, at the price of admitting a lag within a part

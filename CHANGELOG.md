@@ -41,7 +41,7 @@ All notable changes to pylj are recorded here. The format follows
 - Viewers are built before their display is opened, and a viewer whose panes need molecular dynamics samples refuses a Monte Carlo simulation.
 - `sample.environment(panes, size)` returns the figure and its axes, `(fig, axes)`, and leaves displaying the figure to the viewer; it returned `(fig, ax, hfig)` and displayed the figure itself.
 - Viewers and panes take a simulation and read its `configuration` and `samples`; the radial distribution pane computes the pair distances when it draws. The scattering pane plots the structure factor S(q) against the wavevectors commensurate with the box; 1.5.2 plotted an intensity from the Debye sum `sin(qr) / (qr)` over pair distances, labelled `I(q)`. The energy pane plots the total energy, potential plus kinetic, for a molecular dynamics simulation; the `Interactions` viewer shows it in place of the force pane.
-- The radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins; the pressure axis is labelled in kJ mol^-1 Angstrom^-2.
+- The radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins.
 - `JustCell` no longer takes a `scale` argument.
 - Initial velocities and computed temperatures use CODATA constants; they move by up to 4e-5 relative.
 - Pair distances and forces are computed with vectorised NumPy. `pairwise.dist(positions, box)` takes `(N, 2)` positions and returns the distances and the `(M, 2)` separations; `pairwise.calculate_pressure(virial, box, kinetic_energy)` is the instantaneous virial pressure, `(2 K + sum(f r)) / (2 L^2)`.
@@ -57,8 +57,7 @@ All notable changes to pylj are recorded here. The format follows
 - The scattering pane shows its y axis, so the level S(q) = 1 can be read.
 - `ScatteringPane` and the `Scattering` viewer take `q_max`, the largest wavevector magnitude drawn, so two runs can be drawn over the same axis.
 - The cell pane draws an atom that overhangs an edge of the box again at the opposite edge, where the periodic boundary puts the overhanging part; atoms were previously clipped at the edge.
-- Pane axis labels use the same font size as the tick labels and read `Time / ps`, `Temperature / K`, `g(r)` and so on; a series held constant by the thermostat is shown with a one per cent margin rather than magnified rounding error, and no axis offset is printed.
-- The radial distribution function pane plots r in Angstrom and the molecular dynamics series panes plot time in picoseconds, with the mean squared displacement in Angstrom squared; the panes previously used metres and seconds.
+- Pane axis labels use the same font size as the tick labels, and a series held constant by the thermostat is shown with a margin of one per cent of its value.
 - The `Phase`, `RDF` and `Scattering` viewers no longer keep a history of what they have drawn. `Viewer.average(simulation)`, on every viewer, and `Pane.average(ax, simulation)` draw the mean over the simulation's trajectory.
 
 ### Fixed

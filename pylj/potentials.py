@@ -53,7 +53,8 @@ class PairPotential(ABC):
     """The interface every pair potential implements.
 
     Both ``energies`` and ``forces`` take an array of separations ``dr``,
-    in Angstrom, and return an array of the same shape.
+    in Angstrom, and return an array of the same shape: energies in kJ/mol
+    and forces in kJ/mol per Angstrom.
 
     Attributes:
         min_separation: The separation, in Angstrom, below which the potential

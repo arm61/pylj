@@ -87,8 +87,8 @@ class Simulation(ABC):
         model: The model.
         cut_off: The separation, in Angstrom, beyond which a pair's energy
             and force are zero. By default :data:`DEFAULT_CUT_OFF` Angstrom
-            or half the box,
-            whichever is smaller; it may not exceed half the box.
+            or half the box, whichever is smaller; it may not exceed half the
+            box.
         seed: Seed for the random number generator; the same seed
             reproduces the run, and without one the run differs each time.
 
