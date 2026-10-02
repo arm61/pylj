@@ -27,13 +27,13 @@ class TestPairwise(unittest.TestCase):
         )
 
     def test_species_pairs_yields_each_unordered_pair_once(self):
-        # Atoms of species 0, 1, 0: pairs (0, 1), (0, 2), (1, 2) are
-        # 0-1, 0-0 and 1-0, so the unordered pair (0, 1) covers the first
-        # and the last.
-        pairs = list(pairwise.species_pairs(np.array([0, 1, 0])))
-        self.assertEqual([(a, b) for _, a, b in pairs], [(0, 0), (0, 1)])
-        assert_equal(pairs[0][0], [False, True, False])
-        assert_equal(pairs[1][0], [True, False, True])
+        # Atoms of species 1, 0, 1: pairs (0, 1), (0, 2), (1, 2) are
+        # 1-0, 1-1 and 0-1, so the unordered pair (0, 1) covers the first
+        # and the last. Species 0 has one atom, so no pair is 0-0.
+        pairs = list(pairwise.species_pairs(np.array([1, 0, 1])))
+        self.assertEqual([(a, b) for _, a, b in pairs], [(0, 1), (1, 1)])
+        assert_equal(pairs[0][0], [True, False, True])
+        assert_equal(pairs[1][0], [False, True, False])
 
     def test_calculate_pressure(self):
         # The kinetic term K / L^2 plus the virial sum(f r) / (2 L^2).
