@@ -49,6 +49,9 @@ def _radial_forces(pairs: PairData) -> NDArray[np.float64]:
     return pairs.radial_forces
 
 
+_AtomPairs = tuple[NDArray[np.intp], NDArray[np.intp], list[tuple[NDArray[np.bool_], int, int]]]
+
+
 def _read_only(array: NDArray[Any]) -> NDArray[Any]:
     """Returns a read-only view of ``array``."""
     view = array.view()
@@ -76,7 +79,7 @@ class Configuration:
             species, or the box is not positive and finite.
     """
 
-    __slots__ = ("_positions", "_species", "_species_index", "_box")
+    __slots__ = ("_positions", "_species", "_species_index", "_box", "_atom_pairs_cache")
 
     def __init__(
         self,
@@ -109,6 +112,7 @@ class Configuration:
         self._species = species
         self._species_index = species_index
         self._box = box
+        self._atom_pairs_cache: _AtomPairs | None = None
 
     @property
     def positions(self) -> NDArray[np.float64]:
@@ -149,7 +153,12 @@ class Configuration:
             "species_index": self.species_index,
             "box": self.box,
         }
-        return type(self)(**(arguments | changes))
+        replaced = type(self)(**(arguments | changes))
+        if "species_index" not in changes:
+            # The pairs of atoms and the species they join depend only on
+            # species_index, so a copy with the same species shares them.
+            replaced._atom_pairs_cache = self._atom_pairs_cache
+        return replaced
 
     def without(self, index: int) -> Self:
         """Returns a copy of this Configuration with one atom removed.
@@ -164,6 +173,14 @@ class Configuration:
             positions=np.delete(self.positions, index, axis=0),
             species_index=np.delete(self.species_index, index),
         )
+
+    def _atom_pairs(self) -> _AtomPairs:
+        """Returns the indices ``i < j`` of every pair of atoms and the pairs
+        grouped by the species they join, building them on first use."""
+        if self._atom_pairs_cache is None:
+            i, j = np.triu_indices(self.number_of_atoms, 1)
+            self._atom_pairs_cache = (i, j, list(pairwise.species_pairs(self.species_index)))
+        return self._atom_pairs_cache
 
     def pairs(self, model: Model, cut_off: float, *, forces: bool = False) -> PairData:
         """Evaluates the energy and optionally forces for each pair of atoms.
@@ -184,10 +201,12 @@ class Configuration:
             ValueError: If forces are requested and a pair is closer than
                 its potential's ``min_separation``.
         """
-        distances, separations = pairwise.dist(self.positions, self.box)
+        i, j, by_species = self._atom_pairs()
+        separations = pairwise.minimum_image(self.positions[i] - self.positions[j], self.box)
+        distances = np.linalg.norm(separations, axis=1)
         energies = np.zeros(distances.size)
         radial_forces = np.zeros(distances.size) if forces else None
-        for mask, type_1, type_2 in pairwise.species_pairs(self.species_index):
+        for mask, type_1, type_2 in by_species:
             potential = model.potential(self.species[type_1], self.species[type_2])
             energies[mask] = potential.energies(distances[mask])
             forbidden = mask & (distances < potential.min_separation)
@@ -217,7 +236,7 @@ class Configuration:
         """Computes the net force on each atom, shape ``(N, 2)``, in kJ/mol/Angstrom."""
         pairs = self.pairs(model, cut_off, forces=True)
         radial = _radial_forces(pairs)
-        i, j = np.triu_indices(self.number_of_atoms, 1)
+        i, j, _ = self._atom_pairs()
         # Each pair's radial force acts along its separation, pushing
         # atom i one way and atom j the other.
         pair_forces = (radial / pairs.distances)[:, None] * pairs.separations

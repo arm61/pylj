@@ -267,6 +267,26 @@ class TestConfiguration(unittest.TestCase):
             0.0,
         )
 
+    def test_a_copy_evaluates_its_own_positions_and_species(self):
+        # A copy's pairs match a configuration built afresh, whether its
+        # positions or its species changed, after the original has been
+        # evaluated.
+        c = three_atoms([0, 1, 0])
+        c.forces(MIXTURE_MODEL, 15.0)
+        moved = c.positions + [[0.5, 0.0], [0.0, 0.0], [0.0, 0.5]]
+        for changes in ({"positions": moved}, {"species_index": [1, 0, 0]}):
+            copied = c.replace(**changes)
+            fresh = configuration(
+                changes.get("positions", c.positions),
+                species=c.species,
+                species_index=changes.get("species_index", c.species_index),
+            )
+            assert_allclose(
+                copied.pairs(MIXTURE_MODEL, 15.0).energies,
+                fresh.pairs(MIXTURE_MODEL, 15.0).energies,
+            )
+            assert_allclose(copied.forces(MIXTURE_MODEL, 15.0), fresh.forces(MIXTURE_MODEL, 15.0))
+
     def test_pairs_evaluates_each_potential_only_on_its_own_pairs(self):
         # GaussianCore is finite and non-zero at zero separation, so this
         # would fail if a potential were handed distances belonging to other
