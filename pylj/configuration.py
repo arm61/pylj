@@ -1,6 +1,6 @@
 """Atom configurations."""
 
-import dataclasses
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Self
 
@@ -49,11 +49,21 @@ def _radial_forces(pairs: PairData) -> NDArray[np.float64]:
     return pairs.radial_forces
 
 
-@dataclass(frozen=True, eq=False)
+def _read_only(values: ArrayLike, dtype: type | None = None) -> NDArray[Any]:
+    """Returns a read-only copy of ``values`` as an array."""
+    array = np.array(values, dtype=dtype)
+    array.flags.writeable = False
+    return array
+
+
 class Configuration:
     """A single configuration of atoms and the simulation cell.
 
-    Attributes:
+    A configuration cannot be changed once it is made: its arrays are
+    read-only copies of the ones it was given. ``replace`` makes a new
+    configuration with some of them changed.
+
+    Args:
         positions: The position of each atom, shape ``(N, 2)``, in Angstrom.
         species: The distinct species, indexed by ``species_index``.
         species_index: The index in ``species`` of each atom's species,
@@ -66,12 +76,17 @@ class Configuration:
             species, or the box is not positive and finite.
     """
 
-    positions: NDArray[np.float64]
-    species: tuple[Species, ...]
-    species_index: NDArray[np.int64]
-    box: float
-
-    def __post_init__(self) -> None:
+    def __init__(
+        self,
+        positions: ArrayLike,
+        species: Sequence[Species],
+        species_index: ArrayLike,
+        box: float,
+    ) -> None:
+        self._positions = _read_only(positions, float)
+        self._species = tuple(species)
+        self._species_index = _read_only(species_index)
+        self._box = box
         if self.positions.ndim != 2 or self.positions.shape[1] != 2:
             raise ValueError(f"positions must have shape (N, 2), not {self.positions.shape}")
         n = self.positions.shape[0]
@@ -91,7 +106,28 @@ class Configuration:
             raise ValueError(f"box must be positive and finite, not {self.box}")
 
     @property
+    def positions(self) -> NDArray[np.float64]:
+        """The position of each atom, shape ``(N, 2)``, in Angstrom."""
+        return self._positions
+
+    @property
+    def species(self) -> tuple[Species, ...]:
+        """The distinct species, indexed by ``species_index``."""
+        return self._species
+
+    @property
+    def species_index(self) -> NDArray[np.int64]:
+        """The index in ``species`` of each atom's species, shape ``(N,)``."""
+        return self._species_index
+
+    @property
+    def box(self) -> float:
+        """The side length of the square periodic box, in Angstrom."""
+        return self._box
+
+    @property
     def number_of_atoms(self) -> int:
+        """The number of atoms."""
         return self.positions.shape[0]
 
     @property
@@ -100,8 +136,14 @@ class Configuration:
         return np.array([one.mass for one in self.species], dtype=float)[self.species_index]
 
     def replace(self, **changes: Any) -> Self:
-        """Returns a copy with the given fields replaced."""
-        return dataclasses.replace(self, **changes)
+        """Returns a copy with the given attributes replaced."""
+        arguments: dict[str, Any] = {
+            "positions": self.positions,
+            "species": self.species,
+            "species_index": self.species_index,
+            "box": self.box,
+        }
+        return type(self)(**(arguments | changes))
 
     def without(self, index: int) -> Self:
         """Returns a copy of this Configuration with one atom removed.
@@ -112,12 +154,10 @@ class Configuration:
         Returns:
             The configuration without that atom.
         """
-        arrays: dict[str, Any] = {
-            field.name: np.delete(getattr(self, field.name), index, axis=0)
-            for field in dataclasses.fields(self)
-            if isinstance(getattr(self, field.name), np.ndarray)
-        }
-        return dataclasses.replace(self, **arrays)
+        return self.replace(
+            positions=np.delete(self.positions, index, axis=0),
+            species_index=np.delete(self.species_index, index),
+        )
 
     def pairs(self, model: Model, cut_off: float, *, forces: bool = False) -> PairData:
         """Evaluates the energy and optionally forces for each pair of atoms.
@@ -278,11 +318,12 @@ class Configuration:
         return q, shell_average(self.positions, self.box, index, shell)
 
 
-@dataclass(frozen=True, eq=False)
 class MDConfiguration(Configuration):
     """A configuration with atom velocities and unwrapped positions.
 
-    Attributes:
+    It takes the arguments of :class:`Configuration`, followed by these two.
+
+    Args:
         velocities: The velocity of each atom, shape ``(N, 2)``, in
             Angstrom per picosecond.
         unwrapped: The position of each atom without periodic wrapping,
@@ -290,20 +331,60 @@ class MDConfiguration(Configuration):
 
     Raises:
         ValueError: If ``velocities`` or ``unwrapped`` is not the shape of
-            ``positions``.
+            ``positions``, or for any of the reasons a :class:`Configuration`
+            raises.
     """
 
-    velocities: NDArray[np.float64]
-    unwrapped: NDArray[np.float64]
-
-    def __post_init__(self) -> None:
-        super().__post_init__()
-        for name in ("velocities", "unwrapped"):
-            if getattr(self, name).shape != self.positions.shape:
+    def __init__(
+        self,
+        positions: ArrayLike,
+        species: Sequence[Species],
+        species_index: ArrayLike,
+        box: float,
+        velocities: ArrayLike,
+        unwrapped: ArrayLike,
+    ) -> None:
+        super().__init__(positions, species, species_index, box)
+        self._velocities = _read_only(velocities, float)
+        self._unwrapped = _read_only(unwrapped, float)
+        for name, array in (("velocities", self.velocities), ("unwrapped", self.unwrapped)):
+            if array.shape != self.positions.shape:
                 raise ValueError(
                     f"{name} must have the shape of positions, {self.positions.shape}, "
-                    f"not {getattr(self, name).shape}"
+                    f"not {array.shape}"
                 )
+
+    @property
+    def velocities(self) -> NDArray[np.float64]:
+        """The velocity of each atom, shape ``(N, 2)``, in Angstrom per picosecond."""
+        return self._velocities
+
+    @property
+    def unwrapped(self) -> NDArray[np.float64]:
+        """The position of each atom without periodic wrapping, shape ``(N, 2)``,
+        in Angstrom."""
+        return self._unwrapped
+
+    def replace(self, **changes: Any) -> Self:
+        """Returns a copy with the given attributes replaced."""
+        arguments: dict[str, Any] = {"velocities": self.velocities, "unwrapped": self.unwrapped}
+        return super().replace(**(arguments | changes))
+
+    def without(self, index: int) -> Self:
+        """Returns a copy of this MDConfiguration with one atom removed.
+
+        Args:
+            index: The index of the atom to remove.
+
+        Returns:
+            The configuration without that atom.
+        """
+        return self.replace(
+            positions=np.delete(self.positions, index, axis=0),
+            species_index=np.delete(self.species_index, index),
+            velocities=np.delete(self.velocities, index, axis=0),
+            unwrapped=np.delete(self.unwrapped, index, axis=0),
+        )
 
     def kinetic_energy(self) -> float:
         """Computes the total kinetic energy, in kJ/mol."""

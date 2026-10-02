@@ -18,8 +18,8 @@ def two_argon(velocity, box=8.0):
         species=(ARGON,),
         species_index=np.zeros(2, dtype=np.int64),
         box=box,
-        velocities=np.asarray(velocity, dtype=float),
-        unwrapped=position.copy(),
+        velocities=velocity,
+        unwrapped=position,
     )
 
 
