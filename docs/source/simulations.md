@@ -21,7 +21,7 @@ simulation = MDSimulation.initialise(
 
 `model`, a `Model` of the species and the potential between each pair of them, is the one positional argument; the rest are given by keyword. Three are required: `number_of_atoms`; `temperature`, in kelvin; and `box`, the side of the square periodic box in Angstrom. `init_conf` selects the starting positions: `"square"` places the atoms on a square lattice, `"triangular"` on a triangular one, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `max_strain` applies only to the triangular lattice, described below. `timestep` is in seconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
 
-The constructors take a ready configuration instead: `MDSimulation(configuration, model, cut_off=None, timestep=1e-14, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, cut_off=None, seed=None)` with a `Configuration`, all in SI units. `MDSimulation` starts from a copy with the centre of mass at rest; `md.at_rest(configuration)` returns that copy on its own.
+The constructors take a ready configuration instead: `MDSimulation(configuration, model, cut_off=None, timestep=1e-14, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, cut_off=None, max_displacement=0.5e-10, seed=None)` with a `Configuration`, all in SI units. `MDSimulation` starts from a copy with the centre of mass at rest; `md.at_rest(configuration)` returns that copy on its own.
 
 ### A triangular lattice
 
@@ -49,7 +49,7 @@ A configuration is never changed in place. `replace(**changes)` returns a copy w
 
 ## Monte Carlo
 
-`temperature` is the temperature the acceptance rule uses. `energy` is the running potential energy and `accepted` the number of accepted moves.
+`temperature` is the temperature the acceptance rule uses, and `max_displacement` the largest distance a move shifts an atom along each axis, in metres; `MCSimulation.initialise` takes `max_displacement` in Angstrom, 0.5 by default. `energy` is the running potential energy and `accepted` the number of accepted moves.
 
 `step()` is `propose()`, `mc.accept()` and `apply()`:
 
@@ -61,7 +61,7 @@ if mc.accept(proposal.energy_change, simulation.temperature, rng=simulation.rng)
     simulation.apply(proposal)
 ```
 
-`propose()` moves one atom, chosen at random, to a uniform random position in the box, and returns a `Proposal` holding the trial positions, the energy change the move would cause and the configuration it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` makes the proposal the current configuration and adds its energy change to `energy`; it raises `ValueError` if the proposal was made from a configuration that is no longer current.
+`propose()` moves one atom, chosen at random, by a random distance of up to `max_displacement` along each axis, and returns a `Proposal` holding the trial positions, the energy change the move would cause and the configuration it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` makes the proposal the current configuration and adds its energy change to `energy`; it raises `ValueError` if the proposal was made from a configuration that is no longer current.
 
 `sample()` records the configuration in `trajectory`, recomputes the energy exactly and appends `step` and `potential_energy` to `samples`, an `MCSamples`.
 
@@ -118,4 +118,4 @@ D = slope / 4
 
 ## Units
 
-`initialise` takes `box` and `cut_off` in Angstrom and `temperature` in kelvin, and the viewers take a drawn `diameter` in Angstrom. Potentials take SI units and `Species` takes atomic mass units. Every quantity a simulation reports is in SI units.
+`initialise` takes `box`, `cut_off` and `max_displacement` in Angstrom and `temperature` in kelvin, and the viewers take a drawn `diameter` in Angstrom. Potentials take SI units and `Species` takes atomic mass units. Every quantity a simulation reports is in SI units.
