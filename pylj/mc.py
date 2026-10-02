@@ -241,7 +241,7 @@ class MCSimulation(Simulation):
         self.energy += proposal.energy_change
 
     def step(self) -> None:
-        """Proposes a move and accept or reject it by the Metropolis criterion."""
+        """Proposes a move and accepts or rejects it by the Metropolis criterion."""
         proposal = self.propose()
         if accept(proposal.energy_change, self.temperature, rng=self.rng):
             self.apply(proposal)

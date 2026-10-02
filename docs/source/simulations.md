@@ -49,7 +49,7 @@ A configuration is never changed in place. `replace(**changes)` returns a copy w
 
 ## Monte Carlo
 
-`temperature` is the temperature the acceptance rule uses, and `max_displacement` the largest distance a move shifts an atom along each axis; `MCSimulation.initialise` takes `max_displacement` in Angstrom, 0.5 by default. `energy` is the running potential energy and `accepted` the number of accepted moves.
+`temperature` is the temperature the acceptance rule uses, and `max_displacement` the largest distance a move shifts an atom along each axis, in metres; `MCSimulation.initialise` takes `max_displacement` in Angstrom, 0.5 by default. `energy` is the running potential energy and `accepted` the number of accepted moves.
 
 `step()` is `propose()`, `mc.accept()` and `apply()`:
 

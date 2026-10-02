@@ -132,6 +132,8 @@ class TestInitialise(unittest.TestCase):
     def test_the_maximum_displacement_defaults_to_half_an_angstrom(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=300, box=20)
         self.assertAlmostEqual(a.max_displacement * 1e10, 0.5)
+        b = MCSimulation(a.configuration, ARGON_MODEL, 300)
+        self.assertAlmostEqual(b.max_displacement * 1e10, 0.5)
 
     def test_one_atom_is_allowed(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=1, temperature=300, box=20)
@@ -236,9 +238,10 @@ class TestMoves(unittest.TestCase):
         self.assertEqual(moved.sum(), 1)
 
     def test_propose_wraps_a_move_across_the_edge_of_the_box(self):
-        # One atom at the origin, so a move in a negative direction crosses
-        # an edge and comes back in at the far side.
-        c = Configuration(np.zeros((1, 2)), (ARGON,), np.zeros(1, dtype=np.int64), 20e-10)
+        # One atom 0.2 Angstrom from a corner, so a move of more than that in
+        # a negative direction crosses an edge and comes back in at the far
+        # side.
+        c = Configuration(np.full((1, 2), 0.2e-10), (ARGON,), np.zeros(1, dtype=np.int64), 20e-10)
         a = MCSimulation(c, ARGON_MODEL, 300, seed=1)
         trials = np.array([a.propose().positions[0] for _ in range(100)])
         self.assertTrue(np.all((0 <= trials) & (trials < c.box)))
@@ -299,7 +302,7 @@ class TestMoves(unittest.TestCase):
 
     def test_step_proposes_decides_and_counts(self):
         a = MCSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=16, temperature=300, box=20, seed=1
+            ARGON_MODEL, number_of_atoms=16, temperature=300, box=16, seed=1
         )
         for _ in range(100):
             a.step()
@@ -361,8 +364,15 @@ class TestMoves(unittest.TestCase):
         inside = weight > 0
         contribution[inside] = energy[inside] * weight[inside]
         expected = contribution.sum() / weight.sum()
+        # A 2 Angstrom step decorrelates successive samples enough for the
+        # mean to land within 5 per cent whatever the seed.
         a = MCSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=2, temperature=temperature, box=12, seed=0
+            ARGON_MODEL,
+            number_of_atoms=2,
+            temperature=temperature,
+            box=12,
+            max_displacement=2,
+            seed=0,
         )
         energies = []
         for _ in range(40000):
