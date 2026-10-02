@@ -1,3 +1,5 @@
+import copy
+import pickle
 import unittest
 
 import numpy as np
@@ -90,15 +92,21 @@ class TestConfiguration(unittest.TestCase):
             c.positions[0] += 1.0
         with self.assertRaisesRegex(ValueError, "read-only"):
             c.species_index[0] = 1
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            c.masses[0] = 80.0
 
     def test_keeps_its_own_copy_of_the_arrays(self):
         positions = np.array([[1.0, 0.0], [5.0, 0.0]])
-        c = configuration(positions)
+        species_index = np.array([0, 1])
+        c = configuration(positions, species=(ARGON, LARGER), species_index=species_index)
         positions[0] = 9.0
+        species_index[0] = 1
         assert_equal(c.positions[0], [1.0, 0.0])
+        assert_equal(c.species_index, [0, 1])
 
     def test_accepts_lists(self):
-        c = Configuration([[1.0, 0.0], [5.0, 0.0]], [ARGON], [0, 0], 30)
+        c = Configuration([[1, 0], [5, 0]], [ARGON], [0, 0], 30)
+        self.assertEqual(c.positions.dtype, np.float64)
         self.assertEqual(c.species, (ARGON,))
         assert_equal(c.species_index, [0, 0])
         self.assertEqual(c.potential_energy(ARGON_MODEL, 15.0), LJ_ARGON.energies(4.0))
@@ -422,17 +430,35 @@ class TestMDConfiguration(unittest.TestCase):
         with self.assertRaises(AttributeError):
             c.velocities = c.velocities * 2  # type: ignore[misc]
 
-    def test_is_a_configuration(self):
-        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)))
-        self.assertIsInstance(c, Configuration)
+    def test_keeps_its_own_copy_of_the_arrays(self):
+        position = np.array([[2.0, 2.0], [2.0, 6.0]])
+        velocity = np.array([[1.0, 0.0], [-1.0, 0.0]])
+        c = md_configuration(position, velocity)
+        position[0] = 9.0
+        velocity[0] = 9.0
+        assert_equal(c.unwrapped[0], [2.0, 2.0])
+        assert_equal(c.velocities[0], [1.0, 0.0])
+
+    def test_stays_immutable_when_pickled_or_deep_copied(self):
+        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], [[1.0, 0.0], [-1.0, 0.0]])
+        for copied in (pickle.loads(pickle.dumps(c)), copy.deepcopy(c)):
+            with self.assertRaisesRegex(ValueError, "read-only"):
+                copied.positions[0] += 1.0
+            with self.assertRaisesRegex(ValueError, "read-only"):
+                copied.velocities *= 2
 
     def test_without_drops_one_atom_from_every_array(self):
         c = md_configuration(
             [[2.0, 2.0], [2.0, 6.0], [4.0, 4.0]], [[1.0, 0.0], [0.0, 1.0], [-1.0, -1.0]]
         )
-        c = c.replace(unwrapped=c.positions + [[10.0, 0.0], [20.0, 0.0], [30.0, 0.0]])
+        c = c.replace(
+            species=(ARGON, LARGER),
+            species_index=[0, 1, 0],
+            unwrapped=c.positions + [[10.0, 0.0], [20.0, 0.0], [30.0, 0.0]],
+        )
         rest = c.without(1)
         assert_equal(rest.positions, [[2.0, 2.0], [4.0, 4.0]])
+        assert_equal(rest.species_index, [0, 0])
         assert_equal(rest.velocities, [[1.0, 0.0], [-1.0, -1.0]])
         assert_equal(rest.unwrapped, [[12.0, 2.0], [34.0, 4.0]])
 
