@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 
 from pylj import pairwise
 from pylj.configuration import MDConfiguration
-from pylj.constants import BOLTZMANN
+from pylj.constants import BOLTZMANN, KJ_PER_MOL
 from pylj.model import Model
 from pylj.placement import place
 from pylj.potentials import check_non_negative_finite, check_positive_finite
@@ -22,11 +22,11 @@ class MDSamples(Samples):
 
     Attributes:
         temperature: The instantaneous temperature, in kelvin.
-        pressure: The pressure, in newtons per metre.
-        potential_energy: The total pair energy, in joules.
-        kinetic_energy: The total kinetic energy, in joules.
+        pressure: The pressure, in kJ/mol per Angstrom squared.
+        potential_energy: The total pair energy, in kJ/mol.
+        kinetic_energy: The total kinetic energy, in kJ/mol.
         msd: The mean squared displacement from the initial configuration,
-            in metres squared.
+            in Angstrom squared.
     """
 
     temperature: NDArray[np.float64] = field(default_factory=_empty)
@@ -37,7 +37,7 @@ class MDSamples(Samples):
 
     @property
     def total_energy(self) -> NDArray[np.float64]:
-        """The potential plus the kinetic energy at each sample, in joules."""
+        """The potential plus the kinetic energy at each sample, in kJ/mol."""
         return self.potential_energy + self.kinetic_energy
 
 
@@ -49,15 +49,15 @@ class MDSimulation(Simulation):
             simulation starts from a copy with the centre of mass at rest;
             see :func:`at_rest`.
         model: The model.
-        cut_off: The cut-off, in metres; see :class:`Simulation`.
-        timestep: The length of each integration step, in seconds.
+        cut_off: The cut-off, in Angstrom; see :class:`Simulation`.
+        timestep: The length of each integration step, in picoseconds.
         seed: Seed for the random number generator.
 
     Attributes:
         configuration: The current configuration.
         forces: The net force on each atom at the current
-            configuration, shape ``(N, 2)``, in newtons.
-        timestep: The length of each step, in seconds.
+            configuration, shape ``(N, 2)``, in kJ/mol/Angstrom.
+        timestep: The length of each step, in picoseconds.
         initial_configuration: The configuration the mean squared
             displacement is measured from.
         samples: The :class:`MDSamples` record that ``sample`` appends to.
@@ -76,7 +76,7 @@ class MDSimulation(Simulation):
         model: Model,
         *,
         cut_off: float | None = None,
-        timestep: float = 1e-14,
+        timestep: float = 0.01,
         seed: int | None = None,
     ) -> None:
         if not isinstance(configuration, MDConfiguration):
@@ -104,7 +104,7 @@ class MDSimulation(Simulation):
         init_conf: str = "square",
         placement_temperature: float | None = None,
         max_strain: float = 0.05,
-        timestep: float = 1e-14,
+        timestep: float = 0.01,
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> Self:
@@ -131,7 +131,7 @@ class MDSimulation(Simulation):
             max_strain: How far a triangular lattice may sit from
                 ``sqrt(3) / 2``, as a fraction of that ratio; used when
                 ``init_conf`` is ``'triangular'``.
-            timestep: The length of each integration step, in seconds.
+            timestep: The length of each integration step, in picoseconds.
             cut_off: The cut-off, in Angstrom; by default
                 :data:`~pylj.simulation.DEFAULT_CUT_OFF` Angstrom or half the
                 box, whichever is smaller.
@@ -153,7 +153,7 @@ class MDSimulation(Simulation):
                 "undefined for a single atom."
             )
         rng = np.random.default_rng(seed)
-        placed, cut_off_metres = place(
+        placed, cut_off = place(
             number_of_atoms,
             temperature,
             box,
@@ -165,7 +165,7 @@ class MDSimulation(Simulation):
             rng=rng,
         )
         masses = placed.masses
-        thermal_speed = np.sqrt(BOLTZMANN * temperature / masses)
+        thermal_speed = np.sqrt(BOLTZMANN * temperature * KJ_PER_MOL / masses)
         velocities = rng.normal(0.0, thermal_speed[:, None], size=(number_of_atoms, 2))
         configuration = heat_bath(
             at_rest(
@@ -180,13 +180,13 @@ class MDSimulation(Simulation):
             ),
             temperature,
         )
-        simulation = cls(configuration, model, cut_off=cut_off_metres, timestep=timestep)
+        simulation = cls(configuration, model, cut_off=cut_off, timestep=timestep)
         simulation.rng = rng
         return simulation
 
     @property
     def time(self) -> float:
-        """The simulated time, in seconds."""
+        """The simulated time, in picoseconds."""
         return self.steps * self.timestep
 
     def integrate(self) -> None:
@@ -265,10 +265,10 @@ def velocity_verlet(
     Args:
         configuration: The configuration at time t.
         forces: The net force on each atom at that configuration, shape
-            ``(N, 2)``, in newtons.
-        timestep: The length of the step, in seconds.
+            ``(N, 2)``, in kJ/mol/Angstrom.
+        timestep: The length of the step, in picoseconds.
         model: The model.
-        cut_off: The cut-off, in metres.
+        cut_off: The cut-off, in Angstrom.
 
     Returns:
         The configuration at time t + dt and the forces at it.
@@ -278,18 +278,18 @@ def velocity_verlet(
             one step.
     """
     masses = configuration.masses[:, None]
-    accelerations = forces / masses
+    accelerations = forces / masses * KJ_PER_MOL
     positions, unwrapped = update_positions(configuration, accelerations, timestep)
     furthest = float(np.linalg.norm(unwrapped - configuration.unwrapped, axis=1).max())
     if not furthest < cut_off / 2:
         raise ValueError(
-            f"An atom moved {furthest * 1e10:.3g} Angstrom in a single step of "
-            f"{timestep:.3g} s, more than half the cut-off of {cut_off * 1e10:.3g} Angstrom: "
+            f"An atom moved {furthest:.3g} Angstrom in a single step of {timestep:.3g} ps, "
+            f"more than half the cut-off of {cut_off:.3g} Angstrom: "
             "the timestep is too long, or the simulation has diverged."
         )
     moved = configuration.replace(positions=positions, unwrapped=unwrapped)
     next_forces = moved.forces(model, cut_off)
-    next_accelerations = next_forces / masses
+    next_accelerations = next_forces / masses * KJ_PER_MOL
     velocities = update_velocities(
         configuration.velocities, accelerations, next_accelerations, timestep
     )
@@ -304,8 +304,8 @@ def update_positions(
     Args:
         configuration: The configuration to advance.
         accelerations: The acceleration of each atom, shape ``(N, 2)``,
-            in metres per second squared.
-        timestep: The length of the step, in seconds.
+            in Angstrom per picosecond squared.
+        timestep: The length of the step, in picoseconds.
 
     Returns:
         The new positions, wrapped into the box, and the new unwrapped
@@ -325,11 +325,11 @@ def update_velocities(
     """Advances the velocities by one timestep.
 
     Args:
-        velocities: The velocity of each atom, shape ``(N, 2)``, in metres
-            per second.
+        velocities: The velocity of each atom, shape ``(N, 2)``, in
+            Angstrom per picosecond.
         accelerations: The accelerations at the start of the step.
         next_accelerations: The accelerations at the end of the step.
-        timestep: The length of the step, in seconds.
+        timestep: The length of the step, in picoseconds.
 
     Returns:
         The new velocities.

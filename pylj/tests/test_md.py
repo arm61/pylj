@@ -5,14 +5,14 @@ from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 
 from pylj import md, pairwise, placement
 from pylj.configuration import MDConfiguration
-from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+from pylj.constants import BOLTZMANN, KJ_PER_MOL
 from pylj.md import MDSimulation
 from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL, WELL_MODEL
 
 
-def two_argon(velocity, box=8e-10):
+def two_argon(velocity, box=8.0):
     """Two argon atoms at (2, 2) and (2, 6) Angstrom with the given velocities."""
-    position = np.array([[2e-10, 2e-10], [2e-10, 6e-10]])
+    position = np.array([[2.0, 2.0], [2.0, 6.0]])
     return MDConfiguration(
         positions=position,
         species=(ARGON,),
@@ -24,7 +24,7 @@ def two_argon(velocity, box=8e-10):
 
 
 def drift_speed(configuration):
-    """The speed of the centre of mass, in m/s."""
+    """The speed of the centre of mass, in Angstrom per picosecond."""
     masses = configuration.masses[:, None]
     return float(
         np.linalg.norm((masses * configuration.velocities).sum(axis=0) / masses.sum())
@@ -38,16 +38,16 @@ def kinetic_plus_potential(sim):
 
 
 class TestInitialise(unittest.TestCase):
-    def test_square_lattice_in_a_converted_box(self):
+    def test_square_lattice_in_the_box(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=2, temperature=300, box=8)
         c = a.configuration
         self.assertIsInstance(c, MDConfiguration)
         self.assertEqual(c.number_of_atoms, 2)
-        assert_almost_equal(c.box, 8e-10)
-        assert_almost_equal(c.positions * 1e10, [[2, 2], [2, 6]])
+        assert_almost_equal(c.box, 8.0)
+        assert_almost_equal(c.positions, [[2, 2], [2, 6]])
         assert_almost_equal(c.unwrapped, c.positions)
-        assert_almost_equal(a.cut_off * 1e10, 4.0)
-        assert_almost_equal(a.timestep, 1e-14)
+        assert_almost_equal(a.cut_off, 4.0)
+        assert_almost_equal(a.timestep, 0.01)
         self.assertEqual(a.steps, 0)
         self.assertEqual(a.time, 0.0)
 
@@ -58,7 +58,7 @@ class TestInitialise(unittest.TestCase):
 
     def test_velocities_have_no_net_momentum(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=25, temperature=100, box=40)
-        thermal_speed = np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
+        thermal_speed = np.sqrt(BOLTZMANN * 100 * KJ_PER_MOL / ARGON.mass)
         momentum = a.configuration.velocities.sum(axis=0)
         self.assertLess(abs(momentum[0]), 1e-12 * thermal_speed)
         self.assertLess(abs(momentum[1]), 1e-12 * thermal_speed)
@@ -72,8 +72,8 @@ class TestInitialise(unittest.TestCase):
         # masses the total momentum is zero and the temperature exact.
         a = MDSimulation.initialise(MIXTURE_MODEL, number_of_atoms=24, temperature=100, box=60)
         c = a.configuration
-        assert_allclose(c.masses[:4], np.array([39.948, 80.0, 39.948, 80.0]) * ATOMIC_MASS_UNIT)
-        momentum_scale = ARGON.mass * np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
+        assert_allclose(c.masses[:4], [39.948, 80.0, 39.948, 80.0])
+        momentum_scale = ARGON.mass * np.sqrt(BOLTZMANN * 100 * KJ_PER_MOL / ARGON.mass)
         momentum = (c.masses[:, None] * c.velocities).sum(axis=0)
         self.assertLess(abs(momentum[0]), 1e-12 * momentum_scale)
         self.assertLess(abs(momentum[1]), 1e-12 * momentum_scale)
@@ -89,7 +89,7 @@ class TestInitialise(unittest.TestCase):
         ).configuration
         for index, species in enumerate((ARGON, LARGER)):
             speeds_squared = np.sum(c.velocities[c.species_index == index] ** 2, axis=1)
-            expected = 2 * BOLTZMANN * 100 / (species.mass * ATOMIC_MASS_UNIT)
+            expected = 2 * BOLTZMANN * 100 * KJ_PER_MOL / species.mass
             assert_allclose(speeds_squared.mean(), expected, rtol=0.1)
 
     def test_refuses_a_potential_with_no_force(self):
@@ -131,10 +131,10 @@ class TestInitialise(unittest.TestCase):
 
     def test_passes_the_timestep_and_cut_off_through(self):
         a = MDSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=2, temperature=300, box=40, timestep=2e-15, cut_off=10
+            ARGON_MODEL, number_of_atoms=2, temperature=300, box=40, timestep=0.002, cut_off=10
         )
-        assert_almost_equal(a.timestep, 2e-15)
-        assert_almost_equal(a.cut_off * 1e10, 10)
+        assert_almost_equal(a.timestep, 0.002)
+        assert_almost_equal(a.cut_off, 10)
 
     def test_one_atom_raises(self):
         with self.assertRaisesRegex(ValueError, "at least two atoms"):
@@ -179,14 +179,14 @@ class TestInitialise(unittest.TestCase):
 
 class TestConstructor(unittest.TestCase):
     def test_refuses_a_configuration_without_velocities(self):
-        c = placement.place_square(2, (ARGON,), 8e-10)
+        c = placement.place_square(2, (ARGON,), 8.0)
         self.assertNotIsInstance(c, MDConfiguration)
         with self.assertRaisesRegex(TypeError, "MDConfiguration"):
             MDSimulation(c, ARGON_MODEL)
 
     def test_refuses_a_bad_timestep(self):
-        c = two_argon([[3e2, 0.0], [-3e2, 0.0]])
-        for bad in (0.0, -1e-14, np.nan):
+        c = two_argon([[3.0, 0.0], [-3.0, 0.0]])
+        for bad in (0.0, -0.01, np.nan):
             with self.assertRaisesRegex(ValueError, "timestep must be positive"):
                 MDSimulation(c, ARGON_MODEL, timestep=bad)
 
@@ -198,12 +198,12 @@ class TestConstructor(unittest.TestCase):
     def test_takes_a_ready_configuration(self):
         # Already at rest, so the constructor's at_rest call leaves its
         # velocities and positions unchanged.
-        c = two_argon([[3e2, 0.0], [-3e2, 0.0]])
-        a = MDSimulation(c, ARGON_MODEL, timestep=2e-15, seed=5)
+        c = two_argon([[3.0, 0.0], [-3.0, 0.0]])
+        a = MDSimulation(c, ARGON_MODEL, timestep=0.002, seed=5)
         assert_allclose(a.configuration.velocities, c.velocities)
         assert_allclose(a.configuration.positions, c.positions)
         self.assertIs(a.configuration, a.initial_configuration)
-        assert_almost_equal(a.timestep, 2e-15)
+        assert_almost_equal(a.timestep, 0.002)
         assert_allclose(a.forces, c.forces(a.model, a.cut_off))
 
 
@@ -239,46 +239,50 @@ class TestStep(unittest.TestCase):
 
 class TestVelocityVerlet(unittest.TestCase):
     def test_advances_the_unwrapped_positions(self):
-        # A y velocity of 3e4 m/s moves each atom by 3 Angstrom in one
-        # 1e-14 s step, so the second atom crosses the boundary of the 8
+        # A y velocity of 300 Angstrom/ps moves each atom by 3 Angstrom in
+        # one 0.01 ps step, so the second atom crosses the boundary of the 8
         # Angstrom box: its wrapped position comes back in and its unwrapped
         # one does not. The forces are zeroed so the motion is the drift.
-        c = two_argon([[0.0, 3e4], [0.0, 3e4]])
-        moved, forces = md.velocity_verlet(c, np.zeros((2, 2)), 1e-14, ARGON_MODEL, 15e-10)
-        assert_almost_equal(moved.unwrapped * 1e10, [[2, 5], [2, 9]])
-        assert_almost_equal(moved.positions * 1e10, [[2, 5], [2, 1]])
-        assert_allclose(forces, moved.forces(ARGON_MODEL, 15e-10))
+        c = two_argon([[0.0, 300.0], [0.0, 300.0]])
+        moved, forces = md.velocity_verlet(c, np.zeros((2, 2)), 0.01, ARGON_MODEL, 15.0)
+        assert_almost_equal(moved.unwrapped, [[2, 5], [2, 9]])
+        assert_almost_equal(moved.positions, [[2, 5], [2, 1]])
+        assert_allclose(forces, moved.forces(ARGON_MODEL, 15.0))
 
     def test_matches_the_hand_computed_step(self):
         # A pair 4 Angstrom apart, inside the cut-off, one atom drifting
         # in x: the attraction acts along y, so the positions advance by
         # v dt + a dt^2 / 2 and the velocities by the mean acceleration
         # times dt, with the forces at the new positions evaluated afresh.
-        c = two_argon([[1e3, 0.0], [0.0, 0.0]], box=40e-10)
-        cut_off = 15e-10
+        # A force in kJ/mol/Angstrom over a mass in amu, times KJ_PER_MOL,
+        # is an acceleration in Angstrom/ps^2.
+        c = two_argon([[10.0, 0.0], [0.0, 0.0]], box=40.0)
+        cut_off, dt = 15.0, 0.01
         forces = c.forces(ARGON_MODEL, cut_off)
-        moved, next_forces = md.velocity_verlet(c, forces, 1e-14, ARGON_MODEL, cut_off)
-        accelerations = forces / c.masses[:, None]
-        expected_position = c.positions + c.velocities * 1e-14 + 0.5 * accelerations * 1e-28
+        moved, next_forces = md.velocity_verlet(c, forces, dt, ARGON_MODEL, cut_off)
+        accelerations = forces / c.masses[:, None] * KJ_PER_MOL
+        expected_position = c.positions + c.velocities * dt + 0.5 * accelerations * dt**2
         assert_allclose(moved.positions, expected_position)
         expected_forces = c.replace(positions=expected_position).forces(ARGON_MODEL, cut_off)
         assert_allclose(next_forces, expected_forces)
-        next_accelerations = expected_forces / c.masses[:, None]
-        expected_velocity = c.velocities + 0.5 * (accelerations + next_accelerations) * 1e-14
+        next_accelerations = expected_forces / c.masses[:, None] * KJ_PER_MOL
+        expected_velocity = c.velocities + 0.5 * (accelerations + next_accelerations) * dt
         assert_allclose(moved.velocities, expected_velocity)
         self.assertNotEqual(moved.velocities[0, 1], 0.0)
 
     def test_update_positions_wraps_the_position_and_not_the_unwrapped_one(self):
-        c = two_argon([[1e4, 3e4], [1e4, 3e4]])
-        position, unwrapped = md.update_positions(c, np.zeros((2, 2)), 1e-14)
-        assert_almost_equal(position * 1e10, [[3, 5], [3, 1]])
-        assert_almost_equal(unwrapped * 1e10, [[3, 5], [3, 9]])
+        c = two_argon([[100.0, 300.0], [100.0, 300.0]])
+        position, unwrapped = md.update_positions(c, np.zeros((2, 2)), 0.01)
+        assert_almost_equal(position, [[3, 5], [3, 1]])
+        assert_almost_equal(unwrapped, [[3, 5], [3, 9]])
 
     def test_update_velocities_uses_the_mean_acceleration(self):
-        velocity = np.full((2, 2), 1e-10)
-        updated = md.update_velocities(velocity, np.full((2, 2), 1e4), np.full((2, 2), 2e4), 1e-14)
-        assert_almost_equal(updated * 1e10, np.full((2, 2), 2.5))
-        assert_almost_equal(velocity * 1e10, np.full((2, 2), 1.0))
+        velocity = np.full((2, 2), 1.0)
+        updated = md.update_velocities(
+            velocity, np.full((2, 2), 100.0), np.full((2, 2), 200.0), 0.01
+        )
+        assert_almost_equal(updated, np.full((2, 2), 2.5))
+        assert_almost_equal(velocity, np.full((2, 2), 1.0))
 
     def test_conserves_energy_to_second_order(self):
         # The cut-off is moved beyond every minimum-image separation so that
@@ -286,13 +290,13 @@ class TestVelocityVerlet(unittest.TestCase):
         # error, which is second order in the timestep: halving the
         # timestep over the same simulated time cuts the drift by about
         # four. The mixture checks that each species is moved with its own
-        # mass. Measured for argon: 1.6e-4 at 1e-14 s, 3.9e-5 at 5e-15 s;
+        # mass. Measured for argon: 1.6e-4 at 0.01 ps, 3.9e-5 at 0.005 ps;
         # for the mixture: 3.0e-3 and 7.6e-4.
         def worst_drift(model, box, timestep, steps):
             a = MDSimulation.initialise(
                 model, number_of_atoms=25, temperature=100, box=box, timestep=timestep, seed=0
             )
-            a.cut_off = 1e-8
+            a.cut_off = 100.0
             a.forces = a.configuration.forces(a.model, a.cut_off)
             initial = kinetic_plus_potential(a)
             drift = 0.0
@@ -302,8 +306,8 @@ class TestVelocityVerlet(unittest.TestCase):
             return drift
 
         for model, box, limit in ((ARGON_MODEL, 20, 5e-4), (MIXTURE_MODEL, 30, 5e-3)):
-            coarse = worst_drift(model, box, 1e-14, 200)
-            fine = worst_drift(model, box, 5e-15, 400)
+            coarse = worst_drift(model, box, 0.01, 200)
+            fine = worst_drift(model, box, 0.005, 400)
             self.assertLess(coarse, limit)
             self.assertLess(fine, coarse / 3)
 
@@ -311,11 +315,7 @@ class TestVelocityVerlet(unittest.TestCase):
         # The pair forces are equal and opposite, so the total momentum,
         # zero after initialisation, stays zero to rounding. With two
         # masses only the mass-weighted sum is conserved.
-        momentum_scale = (
-            ARGON.mass
-            * ATOMIC_MASS_UNIT
-            * np.sqrt(BOLTZMANN * 100 / (ARGON.mass * ATOMIC_MASS_UNIT))
-        )
+        momentum_scale = ARGON.mass * np.sqrt(BOLTZMANN * 100 * KJ_PER_MOL / ARGON.mass)
         for model, box in ((ARGON_MODEL, 20), (MIXTURE_MODEL, 30)):
             a = MDSimulation.initialise(model, number_of_atoms=25, temperature=100, box=box, seed=0)
             for _ in range(200):
@@ -330,7 +330,7 @@ class TestVelocityVerlet(unittest.TestCase):
         # Angstrom in one step; the integrator refuses rather than continue
         # from a configuration that is no longer meaningful.
         a = MDSimulation.initialise(
-            ARGON_MODEL, number_of_atoms=25, temperature=100, box=20, timestep=1e-11, seed=0
+            ARGON_MODEL, number_of_atoms=25, temperature=100, box=20, timestep=10, seed=0
         )
         before = a.configuration.positions.copy()
         with self.assertRaisesRegex(ValueError, "half the cut-off"):
@@ -352,8 +352,8 @@ class TestMSD(unittest.TestCase):
         self.assertEqual(a.configuration.msd(a.initial_configuration), 0.0)
 
     def test_with_sparse_sampling(self):
-        # The atoms move in opposite directions at 1e4 m/s, 1 Angstrom per
-        # step, so each crosses the periodic boundary of the 8 Angstrom box
+        # The atoms move in opposite directions at 100 Angstrom/ps, 1 Angstrom
+        # per step, so each crosses the periodic boundary of the 8 Angstrom box
         # several times in 60 steps with no sampling in between. Their y
         # separation is 4 Angstrom, which is exactly the cut-off, so the
         # pair is inside it only when their minimum-image x separation
@@ -362,7 +362,7 @@ class TestMSD(unittest.TestCase):
         # oracle accumulates the minimum-image displacement between
         # consecutive steps, which is exact while an atom moves less than
         # half a box per step.
-        a = MDSimulation(two_argon([[1e4, 0.0], [-1e4, 0.0]]), ARGON_MODEL)
+        a = MDSimulation(two_argon([[100.0, 0.0], [-100.0, 0.0]]), ARGON_MODEL)
         box = a.configuration.box
         total = np.zeros((2, 2))
         for _ in range(60):
@@ -370,10 +370,10 @@ class TestMSD(unittest.TestCase):
             a.step()
             displacement = a.configuration.positions - before
             total += displacement - box * np.round(displacement / box)
-        self.assertGreater(total[0, 0], 5e-10)
-        self.assertLess(total[1, 0], -5e-10)
+        self.assertGreater(total[0, 0], 5.0)
+        self.assertLess(total[1, 0], -5.0)
         expected = np.mean(np.sum(total**2, axis=1))
-        assert_almost_equal(a.configuration.msd(a.initial_configuration) * 1e20, expected * 1e20)
+        assert_almost_equal(a.configuration.msd(a.initial_configuration), expected)
 
 
 class TestHeatBath(unittest.TestCase):
@@ -408,7 +408,7 @@ class TestHeatBath(unittest.TestCase):
                 md.heat_bath(two_argon([[bad, 0.0], [1.0, 0.0]]), 250.0)
 
     def test_a_bath_at_zero_stops_the_atoms(self):
-        c = md.heat_bath(two_argon([[3e2, 0.0], [-3e2, 0.0]]), 0.0)
+        c = md.heat_bath(two_argon([[3.0, 0.0], [-3.0, 0.0]]), 0.0)
         assert_equal(c.velocities, 0.0)
 
     def test_a_bath_at_zero_leaves_atoms_at_rest(self):
@@ -416,7 +416,7 @@ class TestHeatBath(unittest.TestCase):
         assert_equal(c.velocities, 0.0)
 
     def test_raises_for_a_negative_or_non_finite_bath_temperature(self):
-        c = two_argon([[3e2, 0.0], [-3e2, 0.0]])
+        c = two_argon([[3.0, 0.0], [-3.0, 0.0]])
         for bad in (-5.0, np.nan, np.inf):
             with self.assertRaisesRegex(ValueError, "bath_temperature must be non-negative"):
                 md.heat_bath(c, bad)
@@ -535,12 +535,12 @@ class TestAtRest(unittest.TestCase):
         configuration = MDSimulation.initialise(
             MIXTURE_MODEL, number_of_atoms=8, temperature=100, box=20, seed=1
         ).configuration
-        return configuration.replace(velocities=configuration.velocities + [10.0, -4.0])
+        return configuration.replace(velocities=configuration.velocities + [0.1, -0.04])
 
     def test_removes_the_drift(self):
         moving = self.drifting()
-        self.assertGreater(drift_speed(moving), 1.0)
-        self.assertLess(drift_speed(md.at_rest(moving)), 1e-9)
+        self.assertGreater(drift_speed(moving), 0.01)
+        self.assertLess(drift_speed(md.at_rest(moving)), 1e-11)
 
     def test_leaves_the_positions_alone(self):
         moving = self.drifting()
@@ -559,7 +559,7 @@ class TestAtRest(unittest.TestCase):
         total_mass = moving.masses.sum()
         assert_allclose(
             moving.kinetic_energy() - md.at_rest(moving).kinetic_energy(),
-            0.5 * total_mass * speed**2,
+            0.5 * total_mass * speed**2 / KJ_PER_MOL,
         )
 
     def test_is_idempotent(self):
@@ -569,8 +569,8 @@ class TestAtRest(unittest.TestCase):
 
     def test_the_constructor_sets_the_centre_of_mass_at_rest(self):
         moving = self.drifting()
-        simulation = md.MDSimulation(moving, MIXTURE_MODEL, timestep=1e-14)
-        self.assertLess(drift_speed(simulation.configuration), 1e-9)
+        simulation = md.MDSimulation(moving, MIXTURE_MODEL, timestep=0.01)
+        self.assertLess(drift_speed(simulation.configuration), 1e-11)
 
     def test_dropping_an_atom_leaves_the_simulation_at_rest(self):
         # Removing an atom takes its momentum with it, so the rest drift.
@@ -578,9 +578,9 @@ class TestAtRest(unittest.TestCase):
             ARGON_MODEL, number_of_atoms=16, temperature=100, box=25, seed=1
         )
         vacancy = started.configuration.without(0)
-        self.assertGreater(drift_speed(vacancy), 0.5)
-        simulation = md.MDSimulation(vacancy, ARGON_MODEL, timestep=1e-14)
-        self.assertLess(drift_speed(simulation.configuration), 1e-9)
+        self.assertGreater(drift_speed(vacancy), 0.005)
+        simulation = md.MDSimulation(vacancy, ARGON_MODEL, timestep=0.01)
+        self.assertLess(drift_speed(simulation.configuration), 1e-11)
 
     def test_initialise_still_reports_its_target_temperature(self):
         simulation = MDSimulation.initialise(
