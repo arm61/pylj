@@ -5,7 +5,7 @@ from numpy.testing import assert_allclose, assert_almost_equal, assert_equal
 
 from pylj import placement
 from pylj.configuration import Configuration, MDConfiguration
-from pylj.constants import ATOMIC_MASS_UNIT, BOLTZMANN
+from pylj.constants import BOLTZMANN, KJ_PER_MOL
 from pylj.model import Model
 from pylj.potentials import PairPotential
 from pylj.scattering import default_q_max
@@ -18,12 +18,13 @@ from pylj.tests.argon import (
     LJ_ARGON,
     LJ_ARGON_LARGER,
     MIXTURE_MODEL,
+    WELL,
     WELL_MODEL,
 )
 
 
-def configuration(position, species=(ARGON,), species_index=None, box=30e-10):
-    """A Configuration from positions in metres, argon unless told otherwise."""
+def configuration(position, species=(ARGON,), species_index=None, box=30.0):
+    """A Configuration from positions in Angstrom, argon unless told otherwise."""
     position = np.asarray(position, dtype=float)
     if species_index is None:
         species_index = np.zeros(position.shape[0], dtype=np.int64)
@@ -33,7 +34,7 @@ def configuration(position, species=(ARGON,), species_index=None, box=30e-10):
 def three_atoms(species_index=(0, 0, 0)):
     """Three atoms at (1, 0), (5, 0) and (0, 5) Angstrom in a 30 Angstrom box."""
     return configuration(
-        [[1e-10, 0.0], [5e-10, 0.0], [0.0, 5e-10]],
+        [[1.0, 0.0], [5.0, 0.0], [0.0, 5.0]],
         species=(ARGON, LARGER),
         species_index=species_index,
     )
@@ -48,15 +49,15 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(c, c)
         self.assertNotEqual(c, c.replace())
         self.assertNotEqual(
-            c.pairs(ARGON_MODEL, 15e-10),
-            c.pairs(ARGON_MODEL, 15e-10),
+            c.pairs(ARGON_MODEL, 15.0),
+            c.pairs(ARGON_MODEL, 15.0),
         )
 
     def test_holds_positions_species_and_box(self):
         c = three_atoms([0, 1, 0])
         self.assertEqual(c.number_of_atoms, 3)
-        assert_allclose(c.masses, np.array([39.948, 80.0, 39.948]) * ATOMIC_MASS_UNIT)
-        self.assertEqual(c.box, 30e-10)
+        assert_allclose(c.masses, [39.948, 80.0, 39.948])
+        self.assertEqual(c.box, 30.0)
 
     def test_rejects_positions_that_are_not_n_by_2(self):
         with self.assertRaisesRegex(ValueError, r"\(N, 2\)"):
@@ -77,7 +78,7 @@ class TestConfiguration(unittest.TestCase):
             configuration(np.zeros((0, 2)), species=())
 
     def test_rejects_a_bad_box(self):
-        for bad in (0.0, -1e-9, np.inf):
+        for bad in (0.0, -1.0, np.inf):
             with self.assertRaisesRegex(ValueError, "box must be positive"):
                 configuration(np.zeros((2, 2)), box=bad)
 
@@ -88,9 +89,9 @@ class TestConfiguration(unittest.TestCase):
 
     def test_replace_gives_a_validated_copy(self):
         c = three_atoms()
-        moved = c.replace(positions=c.positions + 1e-10)
-        assert_almost_equal(moved.positions, c.positions + 1e-10)
-        assert_almost_equal(c.positions[0], [1e-10, 0.0])
+        moved = c.replace(positions=c.positions + 1.0)
+        assert_almost_equal(moved.positions, c.positions + 1.0)
+        assert_almost_equal(c.positions[0], [1.0, 0.0])
         with self.assertRaisesRegex(ValueError, r"\(N, 2\)"):
             c.replace(positions=np.zeros(3))
 
@@ -98,7 +99,7 @@ class TestConfiguration(unittest.TestCase):
         c = three_atoms([0, 1, 0])
         rest = c.without(1)
         self.assertEqual(rest.number_of_atoms, 2)
-        assert_almost_equal(rest.positions, [[1e-10, 0.0], [0.0, 5e-10]])
+        assert_almost_equal(rest.positions, [[1.0, 0.0], [0.0, 5.0]])
         assert_equal(rest.species_index, [0, 0])
 
     def test_pairs_evaluates_each_pair_on_its_own_potential_and_applies_the_cut_off(self):
@@ -106,8 +107,8 @@ class TestConfiguration(unittest.TestCase):
         # argon-larger, argon-argon and larger-argon; a 6 Angstrom cut-off
         # drops the last.
         c = three_atoms([0, 1, 0])
-        pairs = c.pairs(MIXTURE_MODEL, 6e-10, forces=True)
-        assert_almost_equal(pairs.distances * 1e10, [4.0, np.sqrt(26), np.sqrt(50)])
+        pairs = c.pairs(MIXTURE_MODEL, 6.0, forces=True)
+        assert_almost_equal(pairs.distances, [4.0, np.sqrt(26), np.sqrt(50)])
         expected = [
             LJ_ARGON_LARGER.energies(pairs.distances[0]),
             LJ_ARGON.energies(pairs.distances[1]),
@@ -122,24 +123,24 @@ class TestConfiguration(unittest.TestCase):
 
     def test_pairs_needs_no_force_from_the_potential(self):
         c = three_atoms()
-        pairs = c.pairs(WELL_MODEL, 15e-10)
-        assert_almost_equal(pairs.energies * 1e21, [-1.5, 0.0, 0.0])
+        pairs = c.pairs(WELL_MODEL, 15.0)
+        assert_almost_equal(pairs.energies, [-WELL.epsilon, 0.0, 0.0])
         self.assertIsNone(pairs.radial_forces)
         with self.assertRaisesRegex(ValueError, "Monte Carlo"):
-            c.pairs(WELL_MODEL, 15e-10, forces=True)
+            c.pairs(WELL_MODEL, 15.0, forces=True)
 
     def test_potential_energy_is_the_sum_of_the_pair_energies(self):
         # Pairs at 4, sqrt(26) and sqrt(50) Angstrom, all argon.
         c = three_atoms()
-        expected = LJ_ARGON.energies(np.array([4e-10, np.sqrt(26) * 1e-10, np.sqrt(50) * 1e-10]))
-        assert_allclose(c.potential_energy(ARGON_MODEL, 15e-10), expected.sum(), rtol=1e-12)
+        expected = LJ_ARGON.energies(np.array([4.0, np.sqrt(26), np.sqrt(50)]))
+        assert_allclose(c.potential_energy(ARGON_MODEL, 15.0), expected.sum(), rtol=1e-12)
 
     def test_insertion_energy_is_the_energy_the_atom_adds(self):
         # The same minimum image, species lookup and cut-off on both paths:
         # inserting an atom into a mixture raises the total pair energy
         # by exactly its insertion energy, at a cut-off that drops pairs.
         rng = np.random.default_rng(1)
-        n, box, cut_off = 8, 30e-10, 9e-10
+        n, box, cut_off = 8, 30.0, 9.0
         species_index = np.array([0, 1, 0, 1, 0, 1, 0, 1])
         full = configuration(
             rng.uniform(0, box, (n, 2)),
@@ -161,7 +162,7 @@ class TestConfiguration(unittest.TestCase):
         # force on each atom and the virial. Full-box positions exercise
         # the minimum image; the cut-off is large so no pair is zeroed.
         rng = np.random.default_rng(0)
-        n, box = 8, 30e-10
+        n, box = 8, 30.0
         species_index = np.array([0, 0, 1, 1, 0, 1, 0, 1])
         c = configuration(
             rng.uniform(0, box, (n, 2)),
@@ -183,12 +184,12 @@ class TestConfiguration(unittest.TestCase):
                 reference[a] += force * separation / dr
                 reference[b] -= force * separation / dr
                 virial += force * dr
-        assert_allclose(c.forces(MIXTURE_MODEL, 1e-8), reference, rtol=1e-12)
-        assert_allclose(c.virial(MIXTURE_MODEL, 1e-8), virial, rtol=1e-12)
+        assert_allclose(c.forces(MIXTURE_MODEL, 100.0), reference, rtol=1e-12)
+        assert_allclose(c.virial(MIXTURE_MODEL, 100.0), virial, rtol=1e-12)
 
     def test_forces_are_equal_and_opposite_for_a_pair(self):
-        c = configuration([[0.0, 0.0], [4e-10, 0.0]])
-        force = c.forces(ARGON_MODEL, 15e-10)
+        c = configuration([[0.0, 0.0], [4.0, 0.0]])
+        force = c.forces(ARGON_MODEL, 15.0)
         assert_allclose(force[0], -force[1])
         self.assertNotEqual(force[0, 0], 0.0)
         self.assertEqual(force[0, 1], 0.0)
@@ -199,11 +200,11 @@ class TestConfiguration(unittest.TestCase):
         # the self potential for the second. A third, at y = 20 Angstrom in
         # the 30 Angstrom box, is 10 Angstrom away and beyond the cut-off.
         c = three_atoms([1, 0, 0]).replace(
-            positions=np.array([[4e-10, 0.0], [0.0, 5e-10], [0.0, 20e-10]])
+            positions=np.array([[4.0, 0.0], [0.0, 5.0], [0.0, 20.0]])
         )
-        energy = c.insertion_energy((0.0, 0.0), 0, MIXTURE_MODEL, 6e-10)
+        energy = c.insertion_energy((0.0, 0.0), 0, MIXTURE_MODEL, 6.0)
         expected = (
-            LJ_ARGON_LARGER.energies(np.array([4e-10]))[0] + LJ_ARGON.energies(np.array([5e-10]))[0]
+            LJ_ARGON_LARGER.energies(np.array([4.0]))[0] + LJ_ARGON.energies(np.array([5.0]))[0]
         )
         assert_allclose(energy, expected, rtol=1e-12)
 
@@ -211,32 +212,32 @@ class TestConfiguration(unittest.TestCase):
         # A neighbour at x = 29 Angstrom in a 30 Angstrom box is 1 Angstrom
         # away across the boundary, and one at 8 Angstrom is beyond a 6
         # Angstrom cut-off.
-        c = configuration([[29e-10, 0.0], [8e-10, 0.0]])
-        energy = c.insertion_energy((0.0, 0.0), 0, ARGON_MODEL, 6e-10)
-        assert_allclose(energy, LJ_ARGON.energies(np.array([1e-10]))[0], rtol=1e-12)
+        c = configuration([[29.0, 0.0], [8.0, 0.0]])
+        energy = c.insertion_energy((0.0, 0.0), 0, ARGON_MODEL, 6.0)
+        assert_allclose(energy, LJ_ARGON.energies(np.array([1.0]))[0], rtol=1e-12)
 
     def test_pairs_forbid_a_separation_where_the_potential_is_unphysical(self):
         # Two argon 0.5 Angstrom apart, inside the Buckingham barrier: the
         # formula there is a deep negative number, but the pair is forbidden,
         # so the energy is infinite and asking for the force raises.
-        c = configuration([[0.0, 0.0], [0.5e-10, 0.0]])
-        self.assertLess(BUCKINGHAM_ARGON.energies(np.array([0.5e-10]))[0], 0.0)
-        self.assertEqual(c.pairs(BUCKINGHAM_MODEL, 15e-10).energies[0], np.inf)
-        self.assertEqual(c.potential_energy(BUCKINGHAM_MODEL, 15e-10), np.inf)
+        c = configuration([[0.0, 0.0], [0.5, 0.0]])
+        self.assertLess(BUCKINGHAM_ARGON.energies(np.array([0.5]))[0], 0.0)
+        self.assertEqual(c.pairs(BUCKINGHAM_MODEL, 15.0).energies[0], np.inf)
+        self.assertEqual(c.potential_energy(BUCKINGHAM_MODEL, 15.0), np.inf)
         with self.assertRaisesRegex(ValueError, "unphysical"):
-            c.forces(BUCKINGHAM_MODEL, 15e-10)
+            c.forces(BUCKINGHAM_MODEL, 15.0)
         with self.assertRaisesRegex(ValueError, "collapsed"):
-            c.virial(BUCKINGHAM_MODEL, 15e-10)
+            c.virial(BUCKINGHAM_MODEL, 15.0)
 
     def test_insertion_energy_forbids_a_separation_where_the_potential_is_unphysical(self):
         c = configuration([[0.0, 0.0]])
-        energy = c.insertion_energy((0.5e-10, 0.0), 0, BUCKINGHAM_MODEL, 15e-10)
+        energy = c.insertion_energy((0.5, 0.0), 0, BUCKINGHAM_MODEL, 15.0)
         self.assertEqual(energy, np.inf)
 
     def test_insertion_energy_with_no_atoms_is_zero(self):
         empty = configuration(np.zeros((0, 2)))
         self.assertEqual(
-            empty.insertion_energy((1e-10, 1e-10), 0, ARGON_MODEL, 15e-10),
+            empty.insertion_energy((1.0, 1.0), 0, ARGON_MODEL, 15.0),
             0.0,
         )
 
@@ -263,7 +264,7 @@ class TestConfiguration(unittest.TestCase):
             (ARGON, LARGER): GaussianCore(a=2.0, b=3.0),
         }
         c = three_atoms([0, 1, 0])
-        pairs = c.pairs(Model((ARGON, LARGER), potentials), 15e-10, forces=True)
+        pairs = c.pairs(Model((ARGON, LARGER), potentials), 15.0, forces=True)
         # pairs (0, 1), (0, 2), (1, 2) are argon-larger, argon-argon, larger-argon
         kinds = [(ARGON, LARGER), (ARGON, ARGON), (ARGON, LARGER)]
         by_pair = list(zip(pairs.distances, kinds, strict=True))
@@ -273,28 +274,28 @@ class TestConfiguration(unittest.TestCase):
         assert_almost_equal(pairs.radial_forces, expected_force)
 
 
-def two_atoms(distance, box=20e-10):
-    """Two argon atoms the given distance apart along x, in metres."""
-    return configuration([[1e-10, 1e-10], [1e-10 + distance, 1e-10]], box=box)
+def two_atoms(distance, box=20.0):
+    """Two argon atoms the given distance apart along x, in Angstrom."""
+    return configuration([[1.0, 1.0], [1.0 + distance, 1.0]], box=box)
 
 
 class TestRDF(unittest.TestCase):
     def test_two_atoms_fill_one_bin_near_their_distance(self):
-        c = two_atoms(4e-10)
+        c = two_atoms(4.0)
         r, gr = c.rdf(bins=50)
         dr = c.box / 2 / 50
         self.assertEqual(r.size, 50)
         assert_allclose(r, np.arange(50) * dr + dr / 2)
         self.assertEqual(np.count_nonzero(gr), 1)
         (i,) = np.nonzero(gr)
-        self.assertLess(abs(r[i] - 4e-10), dr)
+        self.assertLess(abs(r[i] - 4.0), dr)
 
     def test_r_max_sets_the_range(self):
-        r, gr = two_atoms(4e-10).rdf(bins=10, r_max=5e-10)
-        assert_allclose(r[-1], 5e-10 - 0.25e-10)
+        r, gr = two_atoms(4.0).rdf(bins=10, r_max=5.0)
+        assert_allclose(r[-1], 5.0 - 0.25)
 
     def test_single_atom_gives_zeros(self):
-        c = configuration([[1e-10, 1e-10]], box=20e-10)
+        c = configuration([[1.0, 1.0]], box=20.0)
         r, gr = c.rdf(bins=10)
         self.assertEqual(r.size, 10)
         assert_allclose(gr, 0.0)
@@ -303,35 +304,35 @@ class TestRDF(unittest.TestCase):
         rng = np.random.default_rng(0)
         n = 3000
         c = Configuration(
-            positions=rng.uniform(0, 20e-10, size=(n, 2)),
+            positions=rng.uniform(0, 20.0, size=(n, 2)),
             species=(ARGON,),
             species_index=np.zeros(n, dtype=int),
-            box=20e-10,
+            box=20.0,
         )
         _, gr = c.rdf(bins=10)
         assert_allclose(gr, 1.0, atol=0.03)
 
     def test_pairs_are_measured_across_the_periodic_boundary(self):
-        c = two_atoms(18e-10)
+        c = two_atoms(18.0)
         r, gr = c.rdf(bins=50)
         (i,) = np.nonzero(gr)
-        self.assertLess(abs(r[i] - 2e-10), c.box / 2 / 50)
+        self.assertLess(abs(r[i] - 2.0), c.box / 2 / 50)
 
 
 class TestStructureFactor(unittest.TestCase):
     def test_two_atoms_match_the_shell_average_by_hand(self):
-        box = 20e-10
-        c = configuration(np.array([[0.0, 0.0], [4e-10, 0.0]]), box=box)
+        box = 20.0
+        c = configuration(np.array([[0.0, 0.0], [4.0, 0.0]]), box=box)
         q, s = c.structure_factor(q_max=3 * 2 * np.pi / box)
         wavevector = 2 * np.pi / box * np.array([[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]])
         expected = np.mean(
-            [abs(1 + np.exp(1j * np.dot(w, [4e-10, 0.0]))) ** 2 / 2 for w in wavevector]
+            [abs(1 + np.exp(1j * np.dot(w, [4.0, 0.0]))) ** 2 / 2 for w in wavevector]
         )
         assert_allclose(s[0], expected)
 
     def test_is_never_negative(self):
         rng = np.random.default_rng(0)
-        c = configuration(rng.uniform(0, 30e-10, size=(50, 2)))
+        c = configuration(rng.uniform(0, 30.0, size=(50, 2)))
         _, s = c.structure_factor()
         self.assertTrue((s >= 0).all())
 
@@ -339,8 +340,8 @@ class TestStructureFactor(unittest.TestCase):
         # A hundred atoms on a square lattice in a 40 Angstrom box sit 4
         # Angstrom apart, so every peak falls at 2 pi / 4 Angstrom times the
         # square root of a whole number.
-        spacing = 4e-10
-        c = placement.place_square(100, (ARGON,), 40e-10)
+        spacing = 4.0
+        c = placement.place_square(100, (ARGON,), 40.0)
         q, s = c.structure_factor()
         peaks = q[s > 0.5 * s.max()]
         self.assertGreater(peaks.size, 5)
@@ -349,34 +350,34 @@ class TestStructureFactor(unittest.TestCase):
 
     def test_uncorrelated_atoms_give_one(self):
         rng = np.random.default_rng(0)
-        c = configuration(rng.uniform(0, 40e-10, size=(400, 2)), box=40e-10)
+        c = configuration(rng.uniform(0, 40.0, size=(400, 2)), box=40.0)
         _, s = c.structure_factor()
         assert_allclose(s.mean(), 1.0, atol=0.05)
 
     def test_q_max_sets_the_largest_magnitude(self):
-        box = 20e-10
+        box = 20.0
         q_max = 4 * 2 * np.pi / box
-        q, _ = configuration(np.array([[0.0, 0.0], [4e-10, 0.0]]), box=box).structure_factor(q_max)
+        q, _ = configuration(np.array([[0.0, 0.0], [4.0, 0.0]]), box=box).structure_factor(q_max)
         self.assertLessEqual(q.max(), q_max)
         self.assertGreater(q.max(), 0.9 * q_max)
 
     def test_the_default_range_follows_the_density(self):
-        sparse = placement.place_square(25, (ARGON,), 40e-10)
-        dense = placement.place_square(100, (ARGON,), 40e-10)
+        sparse = placement.place_square(25, (ARGON,), 40.0)
+        dense = placement.place_square(100, (ARGON,), 40.0)
         q_sparse, _ = sparse.structure_factor()
         q_dense, _ = dense.structure_factor()
-        self.assertLessEqual(q_sparse.max(), default_q_max(25, 40e-10))
-        self.assertLessEqual(q_dense.max(), default_q_max(100, 40e-10))
+        self.assertLessEqual(q_sparse.max(), default_q_max(25, 40.0))
+        self.assertLessEqual(q_dense.max(), default_q_max(100, 40.0))
         # Four times the atoms in the same box doubles the range.
         assert_allclose(q_dense.max() / q_sparse.max(), 2.0, rtol=0.02)
 
     def test_refuses_a_q_max_below_the_box(self):
-        c = placement.place_square(4, (ARGON,), 40e-10)
+        c = placement.place_square(4, (ARGON,), 40.0)
         with self.assertRaisesRegex(ValueError, "smallest wavevector"):
-            c.structure_factor(q_max=8.0)
+            c.structure_factor(q_max=0.1)
 
 
-def md_configuration(position, velocity, box=8e-10):
+def md_configuration(position, velocity, box=8.0):
     """An argon MDConfiguration whose unwrapped positions start at the positions."""
     position = np.asarray(position, dtype=float)
     return MDConfiguration(
@@ -395,35 +396,35 @@ class TestMDConfiguration(unittest.TestCase):
             md_configuration(np.zeros((2, 2)), np.zeros((3, 2)))
 
     def test_is_a_configuration(self):
-        c = md_configuration([[2e-10, 2e-10], [2e-10, 6e-10]], np.zeros((2, 2)))
+        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)))
         self.assertIsInstance(c, Configuration)
         self.assertEqual(c.without(0).number_of_atoms, 1)
         assert_equal(c.without(0).velocities.shape, (1, 2))
 
     def test_kinetic_energy_and_temperature(self):
-        # Two atoms with equal and opposite velocities of 1e-10 m/s in x
-        # and y: kinetic energy m (vx^2 + vy^2), divided by (N - 1) k_B with
-        # N - 1 = 1 for the two atoms.
-        c = md_configuration([[2e-10, 2e-10], [2e-10, 6e-10]], [[1e-10, 1e-10], [-1e-10, -1e-10]])
-        expected = 39.948 * ATOMIC_MASS_UNIT * 2e-20
+        # Two atoms with equal and opposite velocities of 1 Angstrom/ps in x
+        # and y: kinetic energy m (vx^2 + vy^2) in amu Angstrom^2/ps^2,
+        # divided by KJ_PER_MOL for kJ/mol, then by (N - 1) k_B with N - 1 = 1.
+        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], [[1.0, 1.0], [-1.0, -1.0]])
+        expected = 39.948 * 2 / KJ_PER_MOL
         assert_allclose(c.kinetic_energy(), expected)
         assert_allclose(c.temperature(), expected / BOLTZMANN)
 
     def test_temperature_is_undefined_for_one_atom(self):
         # Two atoms at rest are 0 K; one atom is 0/0.
         self.assertEqual(
-            md_configuration([[2e-10, 2e-10], [2e-10, 6e-10]], np.zeros((2, 2))).temperature(),
+            md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2))).temperature(),
             0.0,
         )
-        c = md_configuration([[2e-10, 2e-10]], [[1.0, 0.0]])
+        c = md_configuration([[2.0, 2.0]], [[1.0, 0.0]])
         with self.assertRaisesRegex(ValueError, "undefined for a single atom"):
             c.temperature()
 
     def test_msd_uses_the_unwrapped_positions(self):
         # Displacements of (1, 1) and (5, 1) Angstrom give (2 + 26) / 2 = 14
         # Angstrom^2, from unwrapped positions that have left the box.
-        start = md_configuration([[2e-10, 2e-10], [2e-10, 6e-10]], np.zeros((2, 2)))
-        displacement = np.array([[1e-10, 1e-10], [5e-10, 1e-10]])
+        start = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)))
+        displacement = np.array([[1.0, 1.0], [5.0, 1.0]])
         moved = start.replace(unwrapped=start.unwrapped + displacement)
-        assert_almost_equal(moved.msd(start) * 1e20, 14)
+        assert_almost_equal(moved.msd(start), 14)
         self.assertEqual(start.msd(start), 0.0)

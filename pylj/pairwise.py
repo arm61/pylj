@@ -32,8 +32,8 @@ def minimum_image(separations: NDArray[np.float64], box: float) -> NDArray[np.fl
     """Wraps separations to the nearest periodic image.
 
     Args:
-        separations: Separation vectors, shape ``(..., 2)``, in metres.
-        box: The side length of the square periodic box, in metres.
+        separations: Separation vectors, shape ``(..., 2)``, in Angstrom.
+        box: The side length of the square periodic box, in Angstrom.
 
     Returns:
         The separations with each component brought into ``[-box / 2,
@@ -49,12 +49,12 @@ def dist(
 
     Args:
         positions: The position of each atom, shape ``(N, 2)``, in
-            metres.
-        box: The side length of the square periodic box, in metres.
+            Angstrom.
+        box: The side length of the square periodic box, in Angstrom.
 
     Returns:
         The distance between each pair, shape ``(M,)``, and the separation
-        ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in metres. Each of
+        ``r_i - r_j`` of each pair, shape ``(M, 2)``, both in Angstrom. Each of
         the ``M = N (N - 1) / 2`` pairs appears once, ordered by the lower
         atom index and then the higher.
     """
@@ -71,11 +71,11 @@ def calculate_pressure(virial: float, box: float, kinetic_energy: float) -> floa
 
     Args:
         virial: The sum over pairs of the radial force times the distance,
-            in joules.
-        box: The side length of the square periodic box, in metres.
-        kinetic_energy: The total kinetic energy, in joules.
+            in kJ/mol.
+        box: The side length of the square periodic box, in Angstrom.
+        kinetic_energy: The total kinetic energy, in kJ/mol.
 
     Returns:
-        The pressure, in newtons per metre.
+        The pressure, in kJ/mol per Angstrom squared.
     """
     return (2 * kinetic_energy + virial) / (2 * box * box)
