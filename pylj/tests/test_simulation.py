@@ -24,7 +24,7 @@ class Counting(simulation.Simulation):
 
 
 class TestSimulation(unittest.TestCase):
-    def build(self, box=40e-10, **kwargs):
+    def build(self, box=40.0, **kwargs):
         c = placement.place_square(4, (ARGON,), box)
         return Counting(c, ARGON_MODEL, **kwargs)
 
@@ -54,21 +54,21 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(samples.step.size, 0)
 
     def test_cut_off_defaults_to_15_angstrom_or_half_the_box(self):
-        assert_almost_equal(self.build().cut_off * 1e10, 15)
-        assert_almost_equal(self.build(box=20e-10).cut_off * 1e10, 10)
-        assert_almost_equal(self.build(cut_off=12e-10).cut_off * 1e10, 12)
+        assert_almost_equal(self.build().cut_off, 15)
+        assert_almost_equal(self.build(box=20.0).cut_off, 10)
+        assert_almost_equal(self.build(cut_off=12.0).cut_off, 12)
 
     def test_refuses_a_cut_off_beyond_half_the_box(self):
         with self.assertRaisesRegex(ValueError, "exceeds half the box"):
-            self.build(cut_off=25e-10)
+            self.build(cut_off=25.0)
 
     def test_refuses_a_configuration_species_outside_the_model(self):
-        c = placement.place_square(4, (LARGER,), 40e-10)
+        c = placement.place_square(4, (LARGER,), 40.0)
         with self.assertRaisesRegex(ValueError, "larger.*not in the model"):
             Counting(c, ARGON_MODEL)
 
     def test_accepts_a_configuration_using_some_of_the_model_species(self):
-        c = placement.place_square(4, (ARGON,), 40e-10)
+        c = placement.place_square(4, (ARGON,), 40.0)
         self.assertIs(Counting(c, MIXTURE_MODEL).model, MIXTURE_MODEL)
 
     def test_step_and_sample_are_abstract(self):
@@ -76,7 +76,7 @@ class TestSimulation(unittest.TestCase):
             def sample(self):
                 pass
 
-        c = placement.place_square(4, (ARGON,), 40e-10)
+        c = placement.place_square(4, (ARGON,), 40.0)
         with self.assertRaisesRegex(TypeError, "step"):
             Stepless(c, ARGON_MODEL)
 
