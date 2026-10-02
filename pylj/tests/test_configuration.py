@@ -88,6 +88,8 @@ class TestConfiguration(unittest.TestCase):
             c.box = 1.0  # type: ignore[misc]
         with self.assertRaises(AttributeError):
             c.positions = c.positions + 1.0  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            c.cut_off = 10.0  # type: ignore[attr-defined]
         with self.assertRaisesRegex(ValueError, "read-only"):
             c.positions[0] += 1.0
         with self.assertRaisesRegex(ValueError, "read-only"):
@@ -429,6 +431,8 @@ class TestMDConfiguration(unittest.TestCase):
             c.unwrapped[0] += 1.0
         with self.assertRaises(AttributeError):
             c.velocities = c.velocities * 2  # type: ignore[misc]
+        with self.assertRaises(AttributeError):
+            c.temperature = 150  # type: ignore[method-assign, assignment]
 
     def test_keeps_its_own_copy_of_the_arrays(self):
         position = np.array([[2.0, 2.0], [2.0, 6.0]])

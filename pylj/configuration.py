@@ -76,6 +76,10 @@ class Configuration:
             species, or the box is not positive and finite.
     """
 
+    # The only attributes an instance can hold, so assigning any other
+    # raises AttributeError instead of being accepted silently.
+    __slots__ = ("_positions", "_species", "_species_index", "_box")
+
     def __init__(
         self,
         positions: ArrayLike,
@@ -337,6 +341,8 @@ class MDConfiguration(Configuration):
         ValueError: If ``velocities`` or ``unwrapped`` is not the shape of
             ``positions``.
     """
+
+    __slots__ = ("_velocities", "_unwrapped")
 
     def __init__(
         self,
