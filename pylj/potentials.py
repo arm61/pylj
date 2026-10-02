@@ -53,10 +53,10 @@ class PairPotential(ABC):
     """The interface every pair potential implements.
 
     Both ``energies`` and ``forces`` take an array of separations ``dr``,
-    in metres, and return an array of the same shape.
+    in Angstrom, and return an array of the same shape.
 
     Attributes:
-        min_separation: The separation, in metres, below which the potential
+        min_separation: The separation, in Angstrom, below which the potential
             is unphysical. Zero, the default, means the potential is physical
             at every separation. A configuration treats any pair closer
             than this as forbidden: its energy is infinite, and asking for
@@ -85,8 +85,8 @@ class LennardJones(PairPotential):
         E = 4 \epsilon \left[ (\sigma / r)^{12} - (\sigma / r)^{6} \right]
 
     Args:
-        epsilon: The well depth, in joules.
-        sigma: The separation at which the pair energy is zero, in metres.
+        epsilon: The well depth, in kJ/mol.
+        sigma: The separation at which the pair energy is zero, in Angstrom.
 
     Raises:
         ValueError: If ``epsilon`` or ``sigma`` is not positive and finite.
@@ -125,13 +125,13 @@ class Buckingham(PairPotential):
     ``min_separation`` is the separation at the top of that barrier.
 
     Args:
-        a: The A parameter, an energy scale, in joules.
-        b: The B parameter, an inverse length, in reciprocal metres.
-        c: The C parameter, the dispersion coefficient, in joule metre^6.
+        a: The A parameter, an energy scale, in kJ/mol.
+        b: The B parameter, an inverse length, in reciprocal Angstrom.
+        c: The C parameter, the dispersion coefficient, in kJ/mol Angstrom^6.
 
     Attributes:
         min_separation: The separation of the top of the short-range
-            barrier, in metres; zero when there is no barrier.
+            barrier, in Angstrom; zero when there is no barrier.
 
     Raises:
         ValueError: If ``a`` or ``b`` is not positive and finite, if ``c`` is
@@ -159,7 +159,7 @@ class Buckingham(PairPotential):
 
     def _find_barrier(self) -> float:
         """Locates the top of the short-range barrier."""
-        dr = np.geomspace(1e-13, 1e-8, 4000)
+        dr = np.geomspace(1e-3, 1e2, 4000)
         with np.errstate(over="ignore"):
             barrier = int(np.argmax(self._form(dr)))
         if barrier == 0:
@@ -170,7 +170,7 @@ class Buckingham(PairPotential):
                 "A exp(-B r) is too weak to hold atoms apart at any separation a "
                 "simulation could reach. Increase a or b, or reduce c."
             )
-        return float(brentq(self._slope, dr[barrier - 1], dr[barrier + 1], xtol=1e-16))
+        return float(brentq(self._slope, dr[barrier - 1], dr[barrier + 1]))
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
@@ -191,10 +191,10 @@ class SquareWell(PairPotential):
     finite force, so it is for Monte Carlo, which uses energies only.
 
     Args:
-        epsilon: The well depth, in joules.
-        sigma: The hard-core diameter, in metres.
+        epsilon: The well depth, in kJ/mol.
+        sigma: The hard-core diameter, in Angstrom.
         lambda_: The outer edge of the well, in units of sigma.
-        max_val: The value used in place of the infinite hard core.
+        max_val: The value used in place of the infinite hard core, in kJ/mol.
 
     Raises:
         ValueError: If ``epsilon`` or ``sigma`` is not positive and finite,
