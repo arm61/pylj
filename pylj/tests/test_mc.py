@@ -297,6 +297,20 @@ class TestMoves(unittest.TestCase):
         assert_equal(a.configuration.positions, proposal.positions)
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
 
+    def test_apply_recovers_the_energy_as_hard_core_overlaps_clear(self):
+        # Three atoms inside each other's hard cores make the energy
+        # infinite. Moving one clear changes the energy by minus infinity:
+        # the energy stays infinite while two still overlap, and is zero
+        # once all three are apart.
+        c = Configuration([[5.0, 5.0], [6.0, 5.0], [5.0, 6.0]], (ARGON,), [0, 0, 0], 20.0)
+        a = MCSimulation(c, WELL_MODEL, 300)
+        self.assertEqual(a.energy, np.inf)
+        for atom, clear, expected in ((1, [15.0, 15.0], np.inf), (2, [15.0, 5.0], 0.0)):
+            positions = a.configuration.positions.copy()
+            positions[atom] = clear
+            a.apply(mc.Proposal(positions, -np.inf, a.configuration))
+            self.assertEqual(a.energy, expected)
+
     def test_step_proposes_decides_and_counts(self):
         a = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=16, seed=1
