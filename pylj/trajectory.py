@@ -171,17 +171,21 @@ class Trajectory:
         return q, total / len(self._frames)
 
     def msd(
-        self, max_lag: float | None = None
+        self, max_lag: float | None = None, *, average_origins: bool = True
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-        """Averages the mean squared displacement over time origins.
+        """Computes the mean squared displacement against the time between frames.
 
-        For each lag, the squared displacement of the unwrapped positions
-        between every pair of frames that lag apart is averaged over those
-        pairs and over atoms.
+        For each lag, the squared displacement of each atom's unwrapped
+        position between two frames that lag apart is averaged over the atoms
+        and, by default, over every pair of frames that lag apart.
 
         Args:
             max_lag: The longest lag returned, in picoseconds. By default the
                 whole run.
+            average_origins: Whether to average over every frame as a
+                starting point. If False, every displacement is measured from
+                the first frame, which shows a change during the run that the
+                average would blur.
 
         Returns:
             The lag times, in picoseconds, from one frame interval up to
@@ -216,7 +220,8 @@ class Trajectory:
         unwrapped = np.stack([cast(MDConfiguration, one).unwrapped for one in self._frames])
         msd = np.empty(lags)
         for k in range(1, lags + 1):
-            displacement = unwrapped[k:] - unwrapped[:-k]
+            origins = len(self._frames) - k if average_origins else 1
+            displacement = unwrapped[k : k + origins] - unwrapped[:origins]
             msd[k - 1] = np.mean(np.sum(displacement**2, axis=2))
         return spacing * np.arange(1, lags + 1), msd
 

@@ -142,6 +142,22 @@ class TestMSD(unittest.TestCase):
         assert_allclose(lag, [1.0, 2.0])
         assert_allclose(msd, [2.5, 9.0])
 
+    def test_can_measure_from_the_first_frame_only(self):
+        # The same atom at x = 0, 1, 3 Angstrom: from the first frame the
+        # displacements are 1 and 3, so 1 and 9, where the average over
+        # origins gives 2.5 at lag 1.
+        frames = [md_frame([[x, 0.0]]) for x in (0.0, 1.0, 3.0)]
+        lag, msd = Trajectory(frames, times=[0.0, 1.0, 2.0]).msd(average_origins=False)
+        assert_allclose(lag, [1.0, 2.0])
+        assert_allclose(msd, [1.0, 9.0])
+
+    def test_max_lag_truncates_the_curve_from_the_first_frame(self):
+        frames = [md_frame([[float(x), 0.0]]) for x in range(6)]
+        trajectory = Trajectory(frames, times=np.arange(6) * 2.0)
+        lag, msd = trajectory.msd(max_lag=5.0, average_origins=False)
+        assert_allclose(lag, [2.0, 4.0])
+        assert_allclose(msd, [1.0, 4.0])
+
     def test_constant_velocity_gives_v_squared_t_squared(self):
         # Two atoms moving at (1, 2) and (-3, 0) Angstrom/ps, sampled every 0.5 ps:
         # every origin gives the same displacement, |v|^2 lag^2, and the
