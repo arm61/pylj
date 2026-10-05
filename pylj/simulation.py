@@ -141,16 +141,15 @@ class Simulation(ABC):
     @configuration.setter
     def configuration(self, configuration: Configuration) -> None:
         current = self._configuration
-        if (
-            configuration.number_of_atoms != current.number_of_atoms
-            or configuration.box != current.box
-        ):
+        if configuration.number_of_atoms != current.number_of_atoms:
             raise ValueError(
-                f"The configuration has {configuration.number_of_atoms} atoms in a "
-                f"{configuration.box:g} Angstrom box, but this simulation has "
-                f"{current.number_of_atoms} atoms in a {current.box:g} Angstrom box. A simulation "
-                "keeps the same atoms and box throughout, so build a new simulation from this "
-                "configuration instead."
+                f"The number of atoms has changed from {current.number_of_atoms} to "
+                f"{configuration.number_of_atoms}: build a new simulation from the configuration."
+            )
+        if configuration.box != current.box:
+            raise ValueError(
+                f"The box has changed from {current.box:g} to {configuration.box:g} Angstrom: "
+                "build a new simulation from the configuration."
             )
         self._configuration = configuration
         self._recompute_from_configuration()

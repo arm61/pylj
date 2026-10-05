@@ -250,9 +250,9 @@ class TestAssignConfiguration(unittest.TestCase):
     def test_refuses_a_different_number_of_atoms_or_box(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=90, box=20, seed=1)
         c = a.configuration
-        with self.assertRaisesRegex(ValueError, "15 atoms in a 20 Angstrom box.*16 atoms"):
+        with self.assertRaisesRegex(ValueError, "number of atoms has changed from 16 to 15"):
             a.configuration = c.without(0)
-        with self.assertRaisesRegex(ValueError, "16 atoms in a 14 Angstrom box.*20 Angstrom"):
+        with self.assertRaisesRegex(ValueError, "box has changed from 20 to 14 Angstrom"):
             a.configuration = c.replace(
                 box=14.0, positions=c.positions * 0.7, unwrapped=c.unwrapped * 0.7
             )
