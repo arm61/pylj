@@ -44,7 +44,7 @@ class TestInitialise(unittest.TestCase):
         self.assertIsInstance(c, MDConfiguration)
         self.assertEqual(c.number_of_atoms, 2)
         assert_almost_equal(c.box, 8.0)
-        assert_almost_equal(c.positions, [[2, 2], [2, 6]])
+        assert_almost_equal(c.positions, [[2, 4], [6, 4]])
         assert_almost_equal(c.unwrapped, c.positions)
         assert_almost_equal(a.cut_off, 4.0)
         assert_almost_equal(a.timestep, 0.01)
@@ -52,9 +52,11 @@ class TestInitialise(unittest.TestCase):
         self.assertEqual(a.time, 0.0)
 
     def test_forces_are_valid_after_construction(self):
-        a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=2, temperature=300, box=8)
+        a = MDSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=4, temperature=300, box=12, init_conf="metropolis", seed=0
+        )
         assert_allclose(a.forces, a.configuration.forces(a.model, a.cut_off))
-        self.assertNotEqual(a.forces[0, 1], 0.0)
+        self.assertTrue(np.all(a.forces != 0.0))
 
     def test_velocities_have_no_net_momentum(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=25, temperature=100, box=40)
@@ -290,8 +292,9 @@ class TestVelocityVerlet(unittest.TestCase):
         # error, which is second order in the timestep: halving the
         # timestep over the same simulated time cuts the drift by about
         # four. The mixture checks that each species is moved with its own
-        # mass. Measured for argon: 1.6e-4 at 0.01 ps, 3.9e-5 at 0.005 ps;
-        # for the mixture: 3.0e-3 and 7.6e-4.
+        # mass. The worst drift at 0.01 ps over 20 seeds is 6.1e-4 for argon
+        # and 4.0e-3 for the mixture, and the finer timestep cuts it to at
+        # most 0.26 of that.
         def worst_drift(model, box, timestep, steps):
             a = MDSimulation.initialise(
                 model, number_of_atoms=25, temperature=100, box=box, timestep=timestep, seed=0
@@ -305,7 +308,7 @@ class TestVelocityVerlet(unittest.TestCase):
                 drift = max(drift, abs(kinetic_plus_potential(a) - initial) / abs(initial))
             return drift
 
-        for model, box, limit in ((ARGON_MODEL, 20, 5e-4), (MIXTURE_MODEL, 30, 5e-3)):
+        for model, box, limit in ((ARGON_MODEL, 20, 1e-3), (MIXTURE_MODEL, 30, 1e-2)):
             coarse = worst_drift(model, box, 0.01, 200)
             fine = worst_drift(model, box, 0.005, 400)
             self.assertLess(coarse, limit)

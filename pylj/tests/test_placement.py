@@ -57,11 +57,24 @@ def neighbour_count(configuration):
 
 
 class TestPlacement(unittest.TestCase):
-    def test_square_fills_the_lattice_in_order(self):
-        c = placement.place_square(2, (ARGON,), 8.0)
-        assert_almost_equal(c.positions, [[2, 2], [2, 6]])
-        assert_equal(c.species_index, [0, 0])
-        self.assertEqual(c.box, 8.0)
+    def test_square_spreads_its_columns_and_rows_across_the_box(self):
+        # Six atoms make three columns 4 Angstrom apart and two rows 6
+        # Angstrom apart in a 12 Angstrom box; the second row runs back the
+        # other way.
+        c = placement.place_square(6, (ARGON,), 12.0)
+        assert_almost_equal(c.positions, [[2, 3], [6, 3], [10, 3], [10, 9], [6, 9], [2, 9]])
+        assert_equal(c.species_index, [0] * 6)
+        self.assertEqual(c.box, 12.0)
+
+    def test_square_puts_two_species_on_a_chessboard(self):
+        # Sixteen atoms on a 4 by 4 grid: each of the 32 pairs of nearest
+        # neighbours, 4 Angstrom apart, joins the two species.
+        c = placement.place_square(16, (ARGON, LARGER), 16.0)
+        distance, _ = pairwise.dist(c.positions, c.box)
+        i, j = np.triu_indices(16, 1)
+        neighbours = np.isclose(distance, 4.0)
+        self.assertEqual(neighbours.sum(), 32)
+        self.assertTrue(np.all(c.species_index[i[neighbours]] != c.species_index[j[neighbours]]))
 
     def test_square_assigns_species_in_turn(self):
         c = placement.place_square(5, (ARGON, LARGER), 30.0)
@@ -152,7 +165,7 @@ class TestPlace(unittest.TestCase):
         c, cut_off = place(2, 300, 8)
         assert_almost_equal(c.box, 8)
         assert_almost_equal(cut_off, 4.0)
-        assert_almost_equal(c.positions, [[2, 2], [2, 6]])
+        assert_almost_equal(c.positions, [[2, 4], [6, 4]])
         _, given = place(2, 300, 40, cut_off=10)
         assert_almost_equal(given, 10)
 

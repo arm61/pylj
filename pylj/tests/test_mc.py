@@ -71,7 +71,7 @@ class TestInitialise(unittest.TestCase):
         c = a.configuration
         self.assertEqual(c.number_of_atoms, 2)
         assert_almost_equal(c.box, 8.0)
-        assert_almost_equal(c.positions, [[2, 2], [2, 6]])
+        assert_almost_equal(c.positions, [[2, 4], [6, 4]])
         assert_almost_equal(a.temperature, 300)
         assert_almost_equal(a.cut_off, 4.0)
         self.assertEqual(a.steps, 0)

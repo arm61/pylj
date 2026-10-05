@@ -53,6 +53,7 @@ All notable changes to pylj are recorded here. The format follows
 - A Monte Carlo move displaces one atom, chosen at random, by a random distance of up to `max_displacement` along each axis; it previously moved the atom to a random position anywhere in the box, which at liquid and solid densities is almost always rejected.
 - The Monte Carlo loop proposes a configuration and applies it on acceptance, leaving the configuration untouched otherwise; a trial move costs O(N). `MCSimulation.sample` recomputes the energy exactly before recording.
 - `init_conf` is a keyword argument, `'square'` by default, taking `'square'`, `'triangular'` or `'metropolis'`; an unknown value raises `ValueError`. `'metropolis'` seats atoms by sequential Metropolis insertion, each trial position accepted on its interaction energy with the atoms already placed; it works for any potential, including a hard core.
+- The `'square'` start spreads its columns and rows across the box: `ceil(sqrt(N))` columns and as many rows as the atoms need, in place of a square grid of `ceil(sqrt(N))` sites a side filled a column at a time, which left the spare sites as an empty strip. Alternate rows run in opposite directions, so two species form a chessboard rather than stripes.
 - The radial distribution function pane shows its y axis, so the level g(r) = 1 can be read.
 - The scattering pane shows its y axis, so the level S(q) = 1 can be read.
 - `ScatteringPane` and the `Scattering` viewer take `q_max`, the largest wavevector magnitude drawn, so two runs can be drawn over the same axis.
