@@ -127,23 +127,30 @@ class Simulation(ABC):
     def configuration(self) -> Configuration:
         """The current configuration.
 
-        Assigning one with the same number of atoms replaces it, and the
-        simulation recomputes what it keeps from the configuration: the
-        forces in molecular dynamics, the energy in Monte Carlo.
+        Assigning one with the same number of atoms and the same box
+        replaces it, and the simulation recomputes what it keeps from the
+        configuration: the forces in molecular dynamics, the energy in Monte
+        Carlo.
 
         Raises:
             ValueError: If the assigned configuration has a different
-                number of atoms.
+                number of atoms or a different box.
         """
         return self._configuration
 
     @configuration.setter
     def configuration(self, configuration: Configuration) -> None:
-        if configuration.number_of_atoms != self._configuration.number_of_atoms:
+        current = self._configuration
+        if (
+            configuration.number_of_atoms != current.number_of_atoms
+            or configuration.box != current.box
+        ):
             raise ValueError(
-                f"The configuration has {configuration.number_of_atoms} atoms, but this "
-                f"simulation has {self._configuration.number_of_atoms}, which its trajectory and "
-                "samples follow. Build a new simulation from the configuration instead."
+                f"The configuration has {configuration.number_of_atoms} atoms in a "
+                f"{configuration.box:g} Angstrom box, but this simulation has "
+                f"{current.number_of_atoms} atoms in a {current.box:g} Angstrom box, which its "
+                "trajectory and samples follow. Build a new simulation from the configuration "
+                "instead."
             )
         self._configuration = configuration
         self._recompute_from_configuration()

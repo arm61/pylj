@@ -247,10 +247,15 @@ class TestAssignConfiguration(unittest.TestCase):
         a.configuration = a.configuration.replace(positions=moved)
         assert_allclose(a.forces, a.configuration.forces(a.model, a.cut_off))
 
-    def test_refuses_a_different_number_of_atoms(self):
+    def test_refuses_a_different_number_of_atoms_or_box(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=90, box=20, seed=1)
-        with self.assertRaisesRegex(ValueError, "15 atoms.*16"):
-            a.configuration = a.configuration.without(0)
+        c = a.configuration
+        with self.assertRaisesRegex(ValueError, "15 atoms in a 20 Angstrom box.*16 atoms"):
+            a.configuration = c.without(0)
+        with self.assertRaisesRegex(ValueError, "16 atoms in a 14 Angstrom box.*20 Angstrom"):
+            a.configuration = c.replace(
+                box=14.0, positions=c.positions * 0.7, unwrapped=c.unwrapped * 0.7
+            )
 
 
 class TestVelocityVerlet(unittest.TestCase):
