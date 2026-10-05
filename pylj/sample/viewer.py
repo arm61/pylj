@@ -33,19 +33,25 @@ class Viewer:
         size: Figure size: 'small', 'medium' or 'large'.
 
     Raises:
+        TypeError: If ``simulation`` is not a :class:`~pylj.simulation.Simulation`.
         ValueError: If a pane plots molecular dynamics samples and the
-            simulation is a Monte Carlo one, which records none.
+            simulation is not an :class:`~pylj.md.MDSimulation`.
     """
 
     def __init__(self, simulation: Simulation, panes: list[Pane], size: str = "medium") -> None:
+        if not isinstance(simulation, Simulation):
+            raise TypeError(
+                f"{type(self).__name__} draws a simulation, such as one built by "
+                f"MDSimulation.initialise, not a {type(simulation).__name__}."
+            )
         self.panes = list(panes)
         md_only = [type(pane).__name__ for pane in self.panes if pane.needs_md]
         if md_only and not isinstance(simulation, MDSimulation):
             raise ValueError(
                 f"{type(self).__name__} plots molecular dynamics samples "
-                f"({', '.join(md_only)}), which a Monte Carlo simulation does not record. "
-                "Use JustCell, Energy, RDF or CellPlus with a Monte Carlo simulation, or "
-                "build the simulation with MDSimulation.initialise."
+                f"({', '.join(md_only)}), which {type(simulation).__name__} does not record. "
+                "Use JustCell, Energy, RDF or CellPlus instead, or build the simulation with "
+                "MDSimulation.initialise."
             )
         self.fig, axes = environment(len(self.panes), size)
         self.axes: list[Axes] = [axes] if isinstance(axes, Axes) else list(axes.ravel())

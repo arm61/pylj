@@ -539,6 +539,13 @@ def test_speed_histogram_rejects_an_mc_system(drawing_display):
         MaxBolt(simulation)
 
 
+@pytest.mark.parametrize("viewer_cls", [JustCell, Phase])
+def test_viewer_refuses_something_that_is_not_a_simulation(drawing_display, viewer_cls):
+    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+    with pytest.raises(TypeError, match=f"{viewer_cls.__name__} draws a simulation"):
+        viewer_cls(simulation.configuration)
+
+
 def test_md_only_viewer_is_refused_before_a_figure_is_made(drawing_display):
     plt.close("all")
     simulation = sampled_mc_simulation(steps=1)
@@ -680,7 +687,9 @@ def test_viewer_without_kernel(capsys):
 def test_md_only_message_names_the_offending_panes(drawing_display):
     from pylj.sample import CellPane, TemperaturePane, Viewer
 
-    with pytest.raises(ValueError, match=r"Viewer plots .*\(TemperaturePane\)"):
+    with pytest.raises(
+        ValueError, match=r"Viewer plots .*\(TemperaturePane\), which MCSimulation does not record"
+    ):
         Viewer(sampled_mc_simulation(steps=1), [CellPane(), TemperaturePane()])
 
 
