@@ -41,8 +41,9 @@ class Viewer:
     def __init__(self, simulation: Simulation, panes: list[Pane], size: str = "medium") -> None:
         if not isinstance(simulation, Simulation):
             raise TypeError(
-                f"{type(self).__name__} takes a simulation, such as one built by "
-                f"MDSimulation.initialise, not {type(simulation).__name__}."
+                f"{type(self).__name__} must be given a simulation, such as one built by "
+                f"MDSimulation.initialise, but was given an object of type "
+                f"{type(simulation).__name__}."
             )
         self.panes = list(panes)
         md_only = [type(pane).__name__ for pane in self.panes if pane.needs_md]

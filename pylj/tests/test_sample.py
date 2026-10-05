@@ -542,7 +542,7 @@ def test_speed_histogram_rejects_an_mc_system(drawing_display):
 @pytest.mark.parametrize("viewer_cls", [JustCell, Phase])
 def test_viewer_refuses_something_that_is_not_a_simulation(drawing_display, viewer_cls):
     simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
-    with pytest.raises(TypeError, match=f"{viewer_cls.__name__} takes a simulation"):
+    with pytest.raises(TypeError, match=f"{viewer_cls.__name__} must be given a simulation"):
         viewer_cls(simulation.configuration)
 
 
