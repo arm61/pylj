@@ -1,6 +1,7 @@
 """Vectorised calculations over atom pairs."""
 
 from collections.abc import Iterator
+from itertools import combinations_with_replacement
 
 import numpy as np
 from numpy.typing import NDArray
@@ -24,8 +25,11 @@ def species_pairs(
     i, j = np.triu_indices(species_index.size, 1)
     lower = np.minimum(species_index[i], species_index[j])
     upper = np.maximum(species_index[i], species_index[j])
-    for type_1, type_2 in sorted(set(zip(lower.tolist(), upper.tolist(), strict=True))):
-        yield (lower == type_1) & (upper == type_2), type_1, type_2
+    present = np.unique(species_index).tolist()
+    for type_1, type_2 in combinations_with_replacement(present, 2):
+        mask = (lower == type_1) & (upper == type_2)
+        if mask.any():
+            yield mask, type_1, type_2
 
 
 def minimum_image(separations: NDArray[np.float64], box: float) -> NDArray[np.float64]:
