@@ -35,7 +35,7 @@ At the default the counts up to 300 that fit are 30, 56, 90, 120, 168, 224, 270 
 
 `simulation.configuration` is the current state. `positions` is an `(N, 2)` array in Angstrom, `box` the side in Angstrom, `species` and `species_index` name each atom's species, and `masses` is in atomic mass units. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocities` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()`, `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest, and `msd(initial)`.
 
-A configuration cannot be changed in place: its arrays are read-only. `replace(**changes)` returns a copy with some arrays changed.
+A configuration cannot be changed in place: its arrays are read-only. `replace(**changes)` returns a copy with some arrays changed, and assigning the copy to `simulation.configuration` puts it in the simulation, which recomputes its forces or energy. The copy must have the same number of atoms; to remove one, build a new simulation from `configuration.without(index)`.
 
 ## Molecular dynamics
 

@@ -93,7 +93,6 @@ class Simulation(ABC):
             reproduces the run, and without one the run differs each time.
 
     Attributes:
-        configuration: The current configuration.
         rng: The random number generator for this simulation.
         steps: The number of steps taken.
         samples: The record ``sample`` appends to.
@@ -116,13 +115,42 @@ class Simulation(ABC):
         for one in configuration.species:
             if one not in model.species:
                 raise ValueError(f"The configuration has species {one}, which is not in the model")
-        self.configuration = configuration
+        self._configuration = configuration
         self.model = model
         self.cut_off = _resolve_cut_off(configuration.box, cut_off)
         self.rng = np.random.default_rng(seed)
         self.steps = 0
         self.samples = Samples()
         self.trajectory = Trajectory()
+
+    @property
+    def configuration(self) -> Configuration:
+        """The current configuration.
+
+        Assigning one with the same number of atoms replaces it, and the
+        simulation recomputes what it keeps from the configuration: the
+        forces in molecular dynamics, the energy in Monte Carlo.
+
+        Raises:
+            ValueError: If the assigned configuration has a different
+                number of atoms.
+        """
+        return self._configuration
+
+    @configuration.setter
+    def configuration(self, configuration: Configuration) -> None:
+        if configuration.number_of_atoms != self._configuration.number_of_atoms:
+            raise ValueError(
+                f"The configuration has {configuration.number_of_atoms} atoms, but this "
+                f"simulation has {self._configuration.number_of_atoms}, which its trajectory and "
+                "samples follow. Build a new simulation from the configuration instead."
+            )
+        self._configuration = configuration
+        self._recompute_from_configuration()
+
+    @abstractmethod
+    def _recompute_from_configuration(self) -> None:
+        """Recomputes what the simulation keeps from its configuration."""
 
     @abstractmethod
     def step(self) -> None:

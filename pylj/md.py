@@ -189,11 +189,14 @@ class MDSimulation(Simulation):
         """The simulated time, in picoseconds."""
         return self.steps * self.timestep
 
+    def _recompute_from_configuration(self) -> None:
+        self.forces = self.configuration.forces(self.model, self.cut_off)
+
     def integrate(self) -> None:
         """Moves the configuration one timestep forward with Velocity-Verlet,
         replacing the configuration and the forces.
         """
-        self.configuration, self.forces = velocity_verlet(
+        self._configuration, self.forces = velocity_verlet(
             self.configuration, self.forces, self.timestep, self.model, self.cut_off
         )
 
@@ -218,7 +221,7 @@ class MDSimulation(Simulation):
                 the atoms are at rest and the bath temperature is above
                 zero, or the simulation has diverged.
         """
-        self.configuration = heat_bath(self.configuration, bath_temperature)
+        self._configuration = heat_bath(self.configuration, bath_temperature)
 
     def sample(self) -> None:
         """Records the configuration in the trajectory and measures it into
@@ -246,7 +249,6 @@ class MDSimulation(Simulation):
         new.trajectory = Trajectory(times=[])
         new.configuration = self.configuration.replace(unwrapped=self.configuration.positions)
         new.initial_configuration = new.configuration
-        new.forces = self.forces.copy()
         return new
 
 

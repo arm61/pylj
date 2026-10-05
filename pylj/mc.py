@@ -200,6 +200,9 @@ class MCSimulation(Simulation):
         simulation.rng = rng
         return simulation
 
+    def _recompute_from_configuration(self) -> None:
+        self.energy = self.configuration.potential_energy(self.model, self.cut_off)
+
     def propose(self) -> Proposal:
         """Proposes moving one atom, chosen at random, by a random distance of up
         to ``max_displacement`` along each axis.
@@ -237,7 +240,7 @@ class MCSimulation(Simulation):
                 "one, so its energy change no longer applies. Propose again from the current "
                 "configuration."
             )
-        self.configuration = self.configuration.replace(positions=proposal.positions)
+        self._configuration = self.configuration.replace(positions=proposal.positions)
         self.energy += proposal.energy_change
         if not np.isfinite(self.energy):
             # A hard-core overlap makes the energy infinite, and adding an
