@@ -239,6 +239,10 @@ class MCSimulation(Simulation):
             )
         self.configuration = self.configuration.replace(positions=proposal.positions)
         self.energy += proposal.energy_change
+        if not np.isfinite(self.energy):
+            # A hard-core overlap makes the energy infinite, and adding an
+            # energy change to infinity cannot tell when the overlap clears.
+            self.energy = self.configuration.potential_energy(self.model, self.cut_off)
 
     def step(self) -> None:
         """Proposes a move and accepts or rejects it by the Metropolis criterion."""
