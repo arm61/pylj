@@ -204,7 +204,6 @@ class TestConstructor(unittest.TestCase):
         a = MDSimulation(c, ARGON_MODEL, timestep=0.002, seed=5)
         assert_allclose(a.configuration.velocities, c.velocities)
         assert_allclose(a.configuration.positions, c.positions)
-        self.assertIs(a.configuration, a.initial_configuration)
         assert_almost_equal(a.timestep, 0.002)
         assert_allclose(a.forces, c.forces(a.model, a.cut_off))
 
@@ -368,12 +367,8 @@ class TestVelocityVerlet(unittest.TestCase):
             a.step()
 
 
-class TestMSD(unittest.TestCase):
-    def test_is_zero_before_the_first_step(self):
-        a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=300, box=20)
-        self.assertEqual(a.configuration.msd(a.initial_configuration), 0.0)
-
-    def test_with_sparse_sampling(self):
+class TestUnwrapped(unittest.TestCase):
+    def test_follows_atoms_across_the_boundary(self):
         # The atoms move in opposite directions at 100 Angstrom/ps, 1 Angstrom
         # per step, so each crosses the periodic boundary of the 8 Angstrom box
         # several times in 60 steps with no sampling in between. Their y
@@ -385,6 +380,7 @@ class TestMSD(unittest.TestCase):
         # consecutive steps, which is exact while an atom moves less than
         # half a box per step.
         a = MDSimulation(two_argon([[100.0, 0.0], [-100.0, 0.0]]), ARGON_MODEL)
+        start = a.configuration
         box = a.configuration.box
         total = np.zeros((2, 2))
         for _ in range(60):
@@ -394,8 +390,7 @@ class TestMSD(unittest.TestCase):
             total += displacement - box * np.round(displacement / box)
         self.assertGreater(total[0, 0], 5.0)
         self.assertLess(total[1, 0], -5.0)
-        expected = np.mean(np.sum(total**2, axis=1))
-        assert_almost_equal(a.configuration.msd(a.initial_configuration), expected)
+        assert_allclose(a.configuration.unwrapped - start.unwrapped, total, atol=1e-9)
 
 
 class TestHeatBath(unittest.TestCase):
@@ -451,7 +446,7 @@ class TestSample(unittest.TestCase):
             a.step()
         a.sample()
         assert_equal(a.samples.step, [3])
-        for name in ("temperature", "pressure", "potential_energy", "kinetic_energy", "msd"):
+        for name in ("temperature", "pressure", "potential_energy", "kinetic_energy"):
             self.assertEqual(getattr(a.samples, name).size, 1)
         for _ in range(4):
             a.step()
@@ -479,7 +474,6 @@ class TestSample(unittest.TestCase):
         assert_almost_equal(samples.potential_energy[-1], potential)
         assert_almost_equal(samples.kinetic_energy[-1], c.kinetic_energy())
         assert_almost_equal(samples.total_energy[-1], potential + c.kinetic_energy())
-        self.assertGreater(samples.msd[-1], 0.0)
 
     def test_appends_the_configuration_to_the_trajectory(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
@@ -511,8 +505,6 @@ class TestRestart(unittest.TestCase):
     def test_starts_a_fresh_record_from_the_current_state(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=300, box=12)
         self.run_and_sample(a, 5)
-        # As if every atom had crossed the boundary once.
-        a.configuration = a.configuration.replace(unwrapped=a.configuration.unwrapped + 12.0)
         production = a.restart()
         self.assertIsNot(production, a)
         self.assertIsInstance(production, MDSimulation)
@@ -521,17 +513,11 @@ class TestRestart(unittest.TestCase):
         self.assertIsInstance(production.samples, md.MDSamples)
         self.assertEqual(production.samples.step.size, 0)
         assert_equal(production.configuration.positions, a.configuration.positions)
-        assert_equal(production.configuration.unwrapped, a.configuration.positions)
-        self.assertIs(production.initial_configuration, production.configuration)
-        self.assertEqual(production.configuration.msd(production.initial_configuration), 0.0)
         assert_equal(production.forces, a.forces)
-        # The restarted simulation follows the same trajectory as the source
-        # while its displacement is measured from the restart.
+        # The restarted simulation follows the same trajectory as the source.
         a.step()
         production.step()
         assert_equal(production.configuration.positions, a.configuration.positions)
-        production.sample()
-        self.assertGreater(production.samples.msd[-1], 0.0)
 
     def test_leaves_the_source_alone(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=300, box=12)
@@ -541,7 +527,7 @@ class TestRestart(unittest.TestCase):
         production.step()
         self.assertIs(a.configuration, source)
         self.assertEqual(a.steps, 3)
-        self.assertEqual(a.samples.msd.size, 3)
+        self.assertEqual(a.samples.step.size, 3)
 
     def test_starts_an_empty_trajectory(self):
         a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)

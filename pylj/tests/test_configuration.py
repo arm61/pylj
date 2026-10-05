@@ -503,12 +503,3 @@ class TestMDConfiguration(unittest.TestCase):
         c = md_configuration([[2.0, 2.0]], [[1.0, 0.0]])
         with self.assertRaisesRegex(ValueError, "undefined for a single atom"):
             c.temperature()
-
-    def test_msd_uses_the_unwrapped_positions(self):
-        # Displacements of (1, 1) and (5, 1) Angstrom give (2 + 26) / 2 = 14
-        # Angstrom^2, from unwrapped positions that have left the box.
-        start = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)))
-        displacement = np.array([[1.0, 1.0], [5.0, 1.0]])
-        moved = start.replace(unwrapped=start.unwrapped + displacement)
-        assert_almost_equal(moved.msd(start), 14)
-        self.assertEqual(start.msd(start), 0.0)

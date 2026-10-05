@@ -14,7 +14,6 @@ from pylj.sample.panes import (
     CustomPane,
     EnergyPane,
     MaxwellBoltzmannPane,
-    MSDPane,
     Pane,
     PressurePane,
     RDFPane,
@@ -25,7 +24,7 @@ from pylj.simulation import Simulation
 
 
 class Viewer:
-    """A figure of one, two or four panes that redraws on demand.
+    """A figure of one, two, three or four panes that redraws on demand.
 
     Args:
         simulation: The simulation to visualise.
@@ -51,8 +50,8 @@ class Viewer:
             raise ValueError(
                 f"{type(self).__name__} plots molecular dynamics samples "
                 f"({', '.join(md_only)}), which {type(simulation).__name__} does not record. "
-                "Use JustCell, Energy, RDF or CellPlus instead, or build the simulation with "
-                "MDSimulation.initialise."
+                "Use JustCell, Energy, RDF, CellPlus, Phase or Scattering instead, or build the "
+                "simulation with MDSimulation.initialise."
             )
         self.fig, axes = environment(len(self.panes), size)
         self.axes: list[Axes] = [axes] if isinstance(axes, Axes) else list(axes.ravel())
@@ -239,7 +238,10 @@ class Interactions(Viewer):
 
 
 class Phase(Viewer):
-    """Positions, total energy, mean squared displacement and g(r).
+    """The atom positions, the energy and g(r).
+
+    The energy is the total energy for molecular dynamics and the potential
+    energy for Monte Carlo.
 
     Args:
         simulation: The simulation to visualise.
@@ -255,12 +257,12 @@ class Phase(Viewer):
         size: str = "medium",
         diameter: float | Iterable[float] | None = None,
     ) -> None:
-        panes = [CellPane(diameter), EnergyPane(), MSDPane(), RDFPane()]
+        panes = [CellPane(diameter), EnergyPane(), RDFPane()]
         super().__init__(simulation, panes, size)
 
 
 class Scattering(Viewer):
-    """Positions, g(r), mean squared displacement and the structure factor.
+    """The atom positions, g(r) and the structure factor.
 
     Args:
         simulation: The simulation to visualise.
@@ -279,5 +281,5 @@ class Scattering(Viewer):
         diameter: float | Iterable[float] | None = None,
         q_max: float | None = None,
     ) -> None:
-        panes = [CellPane(diameter), RDFPane(), MSDPane(), ScatteringPane(q_max)]
+        panes = [CellPane(diameter), RDFPane(), ScatteringPane(q_max)]
         super().__init__(simulation, panes, size)

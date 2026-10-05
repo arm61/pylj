@@ -429,17 +429,3 @@ class MDConfiguration(Configuration):
         if self.number_of_atoms < 2:
             raise ValueError("The temperature is undefined for a single atom.")
         return self.kinetic_energy() / ((self.number_of_atoms - 1) * BOLTZMANN)
-
-    def msd(self, initial: "MDConfiguration") -> float:
-        """Computes the mean squared displacement since an earlier configuration.
-
-        Measured from the unwrapped positions.
-
-        Args:
-            initial: The configuration to measure the displacement from.
-
-        Returns:
-            The mean squared displacement, in Angstrom squared.
-        """
-        displacement = self.unwrapped - initial.unwrapped
-        return float(np.mean(np.sum(displacement**2, axis=1)))

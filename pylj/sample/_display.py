@@ -38,12 +38,12 @@ def environment(panes: int, size: str = "medium") -> tuple[Figure, Axes | np.nda
     """Create the figure grid for a viewer.
 
     Args:
-        panes: Number of plots: 1, 2 or 4.
+        panes: Number of plots: 1, 2, 3 or 4.
         size: Overall figure size: 'small', 'medium' or 'large'.
 
     Returns:
         A tuple of the figure and its axes: a single Axes for one pane, a 1-D
-        array for two and a 2-by-2 array for four.
+        array for two or three and a 2-by-2 array for four.
 
     Raises:
         ValueError: If ``panes`` or ``size`` is not one of the allowed values.
@@ -55,8 +55,10 @@ def environment(panes: int, size: str = "medium") -> tuple[Figure, Axes | np.nda
         fig, axes = plt.subplots(figsize=(width, width))
     elif panes == 2:
         fig, axes = plt.subplots(1, 2, figsize=(2 * width, width))
+    elif panes == 3:
+        fig, axes = plt.subplots(1, 3, figsize=(3 * width, width))
     elif panes == 4:
         fig, axes = plt.subplots(2, 2, figsize=(2 * width, 2 * width))
     else:
-        raise ValueError(f"panes must be 1, 2 or 4, not {panes!r}")
+        raise ValueError(f"panes must be 1, 2, 3 or 4, not {panes!r}")
     return fig, axes
