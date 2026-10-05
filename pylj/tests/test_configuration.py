@@ -331,6 +331,9 @@ class TestRDF(unittest.TestCase):
         self.assertEqual(np.count_nonzero(gr), 1)
         (i,) = np.nonzero(gr)
         self.assertLess(abs(r[i] - 4.0), dr)
+        # One pair: the bin's height is the box area over the area of the
+        # bin's ring, 2 pi r dr.
+        assert_allclose(gr[i], c.box**2 / (2 * np.pi * r[i] * dr))
 
     def test_r_max_sets_the_range(self):
         r, gr = two_atoms(4.0).rdf(bins=10, r_max=5.0)
