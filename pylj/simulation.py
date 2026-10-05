@@ -144,12 +144,14 @@ class Simulation(ABC):
         if configuration.number_of_atoms != current.number_of_atoms:
             raise ValueError(
                 f"The number of atoms has changed from {current.number_of_atoms} to "
-                f"{configuration.number_of_atoms}: build a new simulation from the configuration."
+                f"{configuration.number_of_atoms}. To run the {configuration.number_of_atoms}-atom "
+                f"configuration, build a new {type(self).__name__}."
             )
         if configuration.box != current.box:
             raise ValueError(
-                f"The box has changed from {current.box:g} to {configuration.box:g} Angstrom: "
-                "build a new simulation from the configuration."
+                f"The box has changed from {current.box:g} to {configuration.box:g} Angstrom. To "
+                f"run the configuration in the {configuration.box:g} Angstrom box, build a new "
+                f"{type(self).__name__}."
             )
         self._configuration = configuration
         self._recompute_from_configuration()
