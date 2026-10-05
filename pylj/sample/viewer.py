@@ -41,7 +41,7 @@ class Viewer:
     def __init__(self, simulation: Simulation, panes: list[Pane], size: str = "medium") -> None:
         if not isinstance(simulation, Simulation):
             raise TypeError(
-                f"{type(self).__name__} draws a simulation, such as one built by "
+                f"{type(self).__name__} takes a simulation, such as one built by "
                 f"MDSimulation.initialise, not {type(simulation).__name__}."
             )
         self.panes = list(panes)
