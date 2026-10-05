@@ -41,6 +41,8 @@ All notable changes to pylj are recorded here. The format follows
 - Viewers are built before their display is opened, and a viewer whose panes need molecular dynamics samples refuses a Monte Carlo simulation.
 - `sample.environment(panes, size)` returns the figure and its axes, `(fig, axes)`, and leaves displaying the figure to the viewer; it returned `(fig, ax, hfig)` and displayed the figure itself.
 - Viewers and panes take a simulation and read its `configuration` and `samples`, and a viewer given anything else raises `TypeError`; the radial distribution pane computes the pair distances when it draws. The scattering pane plots the structure factor S(q) against the wavevectors commensurate with the box; 1.5.2 plotted an intensity from the Debye sum `sin(qr) / (qr)` over pair distances, labelled `I(q)`. The energy pane plots the total energy, potential plus kinetic, for a molecular dynamics simulation; the `Interactions` viewer shows it in place of the force pane.
+- `Phase` shows the atom positions, the energy and g(r), and `Scattering` shows the atom positions, g(r) and the structure factor, each in three panels side by side.
+- `Phase` and `Scattering` can be used with a Monte Carlo simulation. In 1.5.2 both failed with one, because their mean squared displacement panel had no samples to plot.
 - The radial distribution function is normalised by the ideal-gas shell count with r at bin centres; the speed histogram is drawn in its own bins.
 - `JustCell` no longer takes a `scale` argument.
 - Initial velocities and computed temperatures use CODATA constants; they move by up to 4e-5 relative.
@@ -80,7 +82,7 @@ All notable changes to pylj are recorded here. The format follows
 ### Removed
 
 - The example notebooks under `examples/`, the root `requirements.txt` and `docs/update_docs.sh`; the documentation is built from the `docs` extra.
-- The mean squared displacement panel of the `Phase` and `Scattering` viewers and the `msd_sample` array it drew. `Trajectory.msd()` computes the mean squared displacement after a run, averaged over time origins or from the first frame. `Phase` and `Scattering` have three panels and draw a Monte Carlo simulation too.
+- The mean squared displacement panel of the `Phase` and `Scattering` viewers, and the `msd_sample` array it plotted; `Trajectory.msd()` computes the mean squared displacement after a run.
 - `pylj.util` and `System`; the structured atom array and `particle_dt`, whose `types` field `Configuration.species_index` replaces.
 - `md.initialise`, `mc.initialise`, `md.initialize`, `mc.initialize`, `md.sample` and `mc.sample`; `md.calculate_temperature`, which is a method on the configuration now, and `md.calculate_msd`, which `Trajectory.msd` replaces.
 - `md.compute_force`, `pairwise.compute_force`, `pairwise.update_accelerations` and `pairwise.heat_bath`.

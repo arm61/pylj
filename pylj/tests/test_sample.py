@@ -539,7 +539,9 @@ def test_md_only_viewer_rejects_an_mc_system(drawing_display, viewer_cls):
 
 
 @pytest.mark.parametrize("viewer_cls", [Phase, Scattering])
-def test_phase_and_scattering_draw_a_monte_carlo_simulation(drawing_display, viewer_cls):
+def test_phase_and_scattering_can_be_used_with_a_monte_carlo_simulation(
+    drawing_display, viewer_cls
+):
     viewer = viewer_cls(sampled_mc_simulation(steps=2))
     assert len(viewer.axes) == 3
 
