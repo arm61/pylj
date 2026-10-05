@@ -324,6 +324,9 @@ def test_energy_pane_refuses_a_simulation_that_records_no_energy():
         def sample(self):
             self.samples.add(step=self.steps)
 
+        def _recompute_from_configuration(self):
+            pass
+
     bare = Bare(place_square(4, (ARGON,), 20.0), ARGON_MODEL)
     fig, ax = environment(1)
     pane = EnergyPane()

@@ -311,6 +311,15 @@ class TestMoves(unittest.TestCase):
             a.apply(mc.Proposal(positions, -np.inf, a.configuration))
             self.assertEqual(a.energy, expected)
 
+    def test_assigning_a_configuration_recomputes_the_energy(self):
+        a = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=16, temperature=300, box=20, seed=1
+        )
+        nudge = np.random.default_rng(0).uniform(-0.3, 0.3, size=(16, 2))
+        moved = (a.configuration.positions + nudge) % 20
+        a.configuration = a.configuration.replace(positions=moved)
+        np.testing.assert_allclose(a.energy, total_energy(a))
+
     def test_step_proposes_decides_and_counts(self):
         a = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=16, seed=1

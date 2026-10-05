@@ -93,7 +93,6 @@ class Simulation(ABC):
             reproduces the run, and without one the run differs each time.
 
     Attributes:
-        configuration: The current configuration.
         rng: The random number generator for this simulation.
         steps: The number of steps taken.
         samples: The record ``sample`` appends to.
@@ -116,13 +115,51 @@ class Simulation(ABC):
         for one in configuration.species:
             if one not in model.species:
                 raise ValueError(f"The configuration has species {one}, which is not in the model")
-        self.configuration = configuration
+        self._configuration = configuration
         self.model = model
         self.cut_off = _resolve_cut_off(configuration.box, cut_off)
         self.rng = np.random.default_rng(seed)
         self.steps = 0
         self.samples = Samples()
         self.trajectory = Trajectory()
+
+    @property
+    def configuration(self) -> Configuration:
+        """The current configuration.
+
+        Assigning one with the same number of atoms and the same box
+        replaces it, and the simulation recomputes what it keeps from the
+        configuration: the forces in molecular dynamics, the energy in Monte
+        Carlo.
+
+        Raises:
+            ValueError: If the assigned configuration has a different
+                number of atoms or a different box.
+        """
+        return self._configuration
+
+    @configuration.setter
+    def configuration(self, configuration: Configuration) -> None:
+        current = self._configuration
+        if configuration.number_of_atoms != current.number_of_atoms:
+            raise ValueError(
+                f"The number of atoms has changed from {current.number_of_atoms} to "
+                f"{configuration.number_of_atoms}. To run with the "
+                f"{configuration.number_of_atoms}-atom configuration, build a new "
+                f"{type(self).__name__}."
+            )
+        if configuration.box != current.box:
+            raise ValueError(
+                f"The box has changed from {current.box:g} to {configuration.box:g} Angstrom. To "
+                f"run with the configuration in the {configuration.box:g} Angstrom box, build a "
+                f"new {type(self).__name__}."
+            )
+        self._configuration = configuration
+        self._recompute_from_configuration()
+
+    @abstractmethod
+    def _recompute_from_configuration(self) -> None:
+        """Recomputes what the simulation keeps from its configuration."""
 
     @abstractmethod
     def step(self) -> None:

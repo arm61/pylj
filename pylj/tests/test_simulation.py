@@ -22,6 +22,9 @@ class Counting(simulation.Simulation):
         self.sampled += 1
         self.samples.add(step=self.steps)
 
+    def _recompute_from_configuration(self):
+        pass
+
 
 class TestSimulation(unittest.TestCase):
     def build(self, box=40.0, **kwargs):
@@ -74,6 +77,9 @@ class TestSimulation(unittest.TestCase):
     def test_step_and_sample_are_abstract(self):
         class Stepless(simulation.Simulation):
             def sample(self):
+                pass
+
+            def _recompute_from_configuration(self):
                 pass
 
         c = placement.place_square(4, (ARGON,), 40.0)

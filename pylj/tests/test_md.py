@@ -239,6 +239,25 @@ class TestStep(unittest.TestCase):
         self.assertEqual(a.steps, 0)
 
 
+class TestAssignConfiguration(unittest.TestCase):
+    def test_recomputes_the_forces(self):
+        a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=90, box=20, seed=1)
+        nudge = np.random.default_rng(0).uniform(-0.3, 0.3, size=(16, 2))
+        moved = (a.configuration.positions + nudge) % 20
+        a.configuration = a.configuration.replace(positions=moved)
+        assert_allclose(a.forces, a.configuration.forces(a.model, a.cut_off))
+
+    def test_refuses_a_different_number_of_atoms_or_box(self):
+        a = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=16, temperature=90, box=20, seed=1)
+        c = a.configuration
+        with self.assertRaisesRegex(ValueError, "number of atoms has changed from 16 to 15"):
+            a.configuration = c.without(0)
+        with self.assertRaisesRegex(ValueError, "box has changed from 20 to 14 Angstrom"):
+            a.configuration = c.replace(
+                box=14.0, positions=c.positions * 0.7, unwrapped=c.unwrapped * 0.7
+            )
+
+
 class TestVelocityVerlet(unittest.TestCase):
     def test_advances_the_unwrapped_positions(self):
         # A y velocity of 300 Angstrom/ps moves each atom by 3 Angstrom in
