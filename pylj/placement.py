@@ -20,11 +20,15 @@ PLACEMENT_ATTEMPTS = 1000
 
 
 def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float) -> Configuration:
-    """Places atoms on a square lattice.
+    """Places atoms on a grid of columns and rows that fills the box.
 
-    The lattice has ``ceil(sqrt(number_of_atoms))`` sites along each side of
-    the box, and the atoms fill those sites in order, taking the species in
-    turn. No check is made for overlapping atoms.
+    The grid has ``ceil(sqrt(number_of_atoms))`` columns and as many rows as
+    the atoms need, each spread evenly across the box, so it is square when
+    the number of atoms is a square number. The atoms fill the rows in
+    turn, each row running the opposite way to the one before, and take the
+    species in turn, so two species alternate along the columns as well as
+    the rows. Any sites left over are at the end of the last row. No check
+    is made for overlapping atoms.
 
     Args:
         number_of_atoms: The number of atoms.
@@ -34,10 +38,14 @@ def place_square(number_of_atoms: int, species: tuple[Species, ...], box: float)
     Returns:
         The configuration.
     """
-    m = int(np.ceil(np.sqrt(number_of_atoms)))
-    spacing = box / m
-    sites = [((i + 0.5) * spacing, (j + 0.5) * spacing) for i in range(m) for j in range(m)]
-    positions = np.array(sites[:number_of_atoms], dtype=float).reshape(-1, 2)
+    columns = math.ceil(math.sqrt(number_of_atoms))
+    rows = math.ceil(number_of_atoms / columns)
+    sites = []
+    for row in range(rows):
+        y = (row + 0.5) * box / rows
+        order = range(columns) if row % 2 == 0 else reversed(range(columns))
+        sites += [((column + 0.5) * box / columns, y) for column in order]
+    positions = np.array(sites[:number_of_atoms], dtype=float)
     species_index = np.arange(number_of_atoms) % len(species)
     return Configuration(positions, species, species_index, box)
 
@@ -297,9 +305,10 @@ def place(
             :data:`SMALLEST_BOX`.
         model: The model.
         init_conf: How the atoms are placed. ``'square'`` puts them on a
-            square grid, ``'triangular'`` on a triangular lattice filling the
-            box, which constrains the number of atoms, and ``'metropolis'``
-            inserts them at random positions for a disordered start.
+            grid of columns and rows filling the box, ``'triangular'`` on a
+            triangular lattice filling the box, which constrains the number
+            of atoms, and ``'metropolis'`` inserts them at random positions
+            for a disordered start.
         placement_temperature: The temperature of the Metropolis acceptance
             used by ``'metropolis'``, in kelvin; ``None`` for the run
             temperature.
