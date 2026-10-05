@@ -148,9 +148,9 @@ class Simulation(ABC):
             raise ValueError(
                 f"The configuration has {configuration.number_of_atoms} atoms in a "
                 f"{configuration.box:g} Angstrom box, but this simulation has "
-                f"{current.number_of_atoms} atoms in a {current.box:g} Angstrom box, which its "
-                "trajectory and samples follow. Build a new simulation from the configuration "
-                "instead."
+                f"{current.number_of_atoms} atoms in a {current.box:g} Angstrom box. A simulation "
+                "keeps the same atoms and box throughout, so build a new simulation from this "
+                "configuration instead."
             )
         self._configuration = configuration
         self._recompute_from_configuration()
