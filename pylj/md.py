@@ -121,10 +121,10 @@ class MDSimulation(Simulation):
             box: The side length of the box, in Angstrom, at least
                 :data:`~pylj.placement.SMALLEST_BOX`.
             init_conf: How the atoms are placed. ``'square'`` puts them on a
-                square grid, ``'triangular'`` on a triangular lattice filling
-                the box, which constrains the number of atoms, and
-                ``'metropolis'`` inserts them at random positions for a
-                disordered start.
+                grid of columns and rows filling the box, ``'triangular'`` on
+                a triangular lattice filling the box, which constrains the
+                number of atoms, and ``'metropolis'`` inserts them at random
+                positions for a disordered start.
             placement_temperature: The temperature of the Metropolis
                 acceptance used by ``'metropolis'``, in kelvin; by default
                 the run temperature.
