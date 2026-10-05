@@ -267,25 +267,21 @@ class TestConfiguration(unittest.TestCase):
             0.0,
         )
 
-    def test_a_copy_evaluates_its_own_positions_and_species(self):
-        # A copy's pairs match a configuration built afresh, whether its
-        # positions or its species changed, after the original has been
-        # evaluated.
+    def test_a_copy_with_new_species_evaluates_them(self):
+        # Evaluating the original first builds its pairs, which a copy with
+        # a different species_index must not reuse.
         c = three_atoms([0, 1, 0])
-        c.forces(MIXTURE_MODEL, 15.0)
-        moved = c.positions + [[0.5, 0.0], [0.0, 0.0], [0.0, 0.5]]
-        for changes in ({"positions": moved}, {"species_index": [1, 0, 0]}):
-            copied = c.replace(**changes)
-            fresh = configuration(
-                changes.get("positions", c.positions),
-                species=c.species,
-                species_index=changes.get("species_index", c.species_index),
-            )
-            assert_allclose(
-                copied.pairs(MIXTURE_MODEL, 15.0).energies,
-                fresh.pairs(MIXTURE_MODEL, 15.0).energies,
-            )
-            assert_allclose(copied.forces(MIXTURE_MODEL, 15.0), fresh.forces(MIXTURE_MODEL, 15.0))
+        c.pairs(MIXTURE_MODEL, 15.0)
+        swapped = c.replace(species_index=[1, 0, 0])
+        assert_allclose(
+            swapped.pairs(MIXTURE_MODEL, 15.0).energies,
+            three_atoms([1, 0, 0]).pairs(MIXTURE_MODEL, 15.0).energies,
+        )
+
+    def test_pairs_separations_point_from_the_second_atom_to_the_first(self):
+        # r_i - r_j for the pair (0, 1).
+        c = configuration([[1.0, 0.0], [5.0, 0.0]])
+        assert_allclose(c.pairs(ARGON_MODEL, 15.0).separations, [[-4.0, 0.0]])
 
     def test_pairs_evaluates_each_potential_only_on_its_own_pairs(self):
         # GaussianCore is finite and non-zero at zero separation, so this

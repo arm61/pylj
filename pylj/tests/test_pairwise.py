@@ -29,7 +29,8 @@ class TestPairwise(unittest.TestCase):
     def test_species_pairs_yields_each_unordered_pair_once(self):
         # Atoms of species 1, 0, 1: pairs (0, 1), (0, 2), (1, 2) are
         # 1-0, 1-1 and 0-1, so the unordered pair (0, 1) covers the first
-        # and the last. Species 0 has one atom, so no pair is 0-0.
+        # and the last. Species 0 has one atom, so no pair is 0-0. Starting
+        # with species 1 checks that the species are taken in sorted order.
         pairs = list(pairwise.species_pairs(np.array([1, 0, 1])))
         self.assertEqual([(a, b) for _, a, b in pairs], [(0, 1), (1, 1)])
         assert_equal(pairs[0][0], [True, False, True])

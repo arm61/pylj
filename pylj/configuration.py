@@ -156,7 +156,7 @@ class Configuration:
         replaced = type(self)(**(arguments | changes))
         if "species_index" not in changes:
             # The pairs of atoms and the species they join depend only on
-            # species_index, so a copy with the same species shares them.
+            # species_index, so a copy with the same species_index shares them.
             replaced._atom_pairs_cache = self._atom_pairs_cache
         return replaced
 
