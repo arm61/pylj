@@ -42,7 +42,7 @@ class Viewer:
         if not isinstance(simulation, Simulation):
             raise TypeError(
                 f"{type(self).__name__} draws a simulation, such as one built by "
-                f"MDSimulation.initialise, not a {type(simulation).__name__}."
+                f"MDSimulation.initialise, not {type(simulation).__name__}."
             )
         self.panes = list(panes)
         md_only = [type(pane).__name__ for pane in self.panes if pane.needs_md]
