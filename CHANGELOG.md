@@ -36,7 +36,7 @@ All notable changes to pylj are recorded here. The format follows
 - The documentation is a set of pages on running a simulation, custom potentials and viewers, with the module reference, built with Sphinx and myst-nb (#85, #58).
 - A box below `placement.SMALLEST_BOX`, 4 Angstrom, raises `ValueError` rather than `AttributeError`, and a box above 600 Angstrom is accepted.
 - `md.heat_bath(configuration, bath_temperature)` returns the configuration with its velocities rescaled so that the instantaneous temperature is the bath temperature; it previously took the temperature sample array and rescaled towards its cumulative mean. A negative or non-finite bath temperature, a configuration with a non-finite temperature, or a configuration at rest with a bath temperature above zero, raises `ValueError` (#76).
-- Python 3.11 or later is required. scipy is a dependency; Cython is not.
+- Python 3.12 or later is required. scipy is a dependency; Cython is not.
 - The initialisers compute the initial forces, so the first integration step uses real accelerations.
 - Viewers are built before their display is opened, and a viewer whose panes need molecular dynamics samples refuses a Monte Carlo simulation.
 - `sample.environment(panes, size)` returns the figure and its axes, `(fig, axes)`, and leaves displaying the figure to the viewer; it returned `(fig, ax, hfig)` and displayed the figure itself.

@@ -8,7 +8,7 @@ description = "Simple teaching tool for classical molecular dynamics and Monte C
 readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "Andrew R. McCluskey", email = "arm61@bath.ac.uk"}]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = ["numpy", "scipy", "matplotlib", "ipython"]
 dynamic = ["version"]
 classifiers = [
@@ -18,10 +18,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Physics",
@@ -47,13 +47,11 @@ version = {attr = "pylj.__version__"}
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
-# NumPy's stubs use the type statement, which mypy accepts only for a 3.12 or
-# later target, so type checking targets 3.12 on every supported interpreter.
 [tool.mypy]
 python_version = "3.12"
 packages = ["pylj"]

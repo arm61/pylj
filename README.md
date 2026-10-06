@@ -15,7 +15,7 @@
 pip install pylj
 ```
 
-`pylj` needs Python 3.11 or later. To watch the figures redraw you need a Jupyter notebook; `pip install jupyterlab` provides one. Start each notebook with `%matplotlib inline`.
+`pylj` needs Python 3.12 or later. To watch the figures redraw you need a Jupyter notebook; `pip install jupyterlab` provides one. Start each notebook with `%matplotlib inline`.
 
 ## Example
 
