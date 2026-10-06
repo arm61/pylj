@@ -279,14 +279,11 @@ class _SeriesPane(Pane):
         attribute: Name of the ``MDSamples`` attribute holding the sample
             array to plot on the y axis.
         ylabel: Label for the y axis.
-        y_from_zero: Whether the y axis should start at zero rather than
-            below the minimum of the data.
     """
 
     needs_md = True
     attribute: str
     ylabel: str
-    y_from_zero: bool = False
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
         ax.plot([], [], color=LINE_COLOUR)
@@ -298,7 +295,7 @@ class _SeriesPane(Pane):
         x = simulation.samples.step * simulation.timestep
         y = getattr(simulation.samples, self.attribute)
         ax.lines[0].set_data(x, y)
-        _fit_axes(ax, x, y, y_from_zero=self.y_from_zero)
+        _fit_axes(ax, x, y)
 
 
 class TemperaturePane(_SeriesPane):
@@ -313,14 +310,6 @@ class PressurePane(_SeriesPane):
 
     attribute = "pressure"
     ylabel = "Pressure / kJ mol$^{-1}$ Angstrom$^{-2}$"
-
-
-class MSDPane(_SeriesPane):
-    """Mean squared displacement against time."""
-
-    attribute = "msd"
-    ylabel = "MSD / Angstrom$^2$"
-    y_from_zero = True
 
 
 def _energy_series(

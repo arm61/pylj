@@ -24,10 +24,10 @@ A viewer is a figure that redraws when `update(simulation)` is called. Eight are
 - `RDF`: positions and the radial distribution function.
 - `CellPlus`: positions and one plot of data you supply through `update(simulation, xdata, ydata)`.
 - `Interactions`: positions, temperature, pressure and total energy.
-- `Phase`: positions, total energy, mean squared displacement and the radial distribution function.
-- `Scattering`: positions, the radial distribution function, mean squared displacement and the structure factor.
+- `Phase`: positions, the energy and the radial distribution function.
+- `Scattering`: positions, the radial distribution function and the structure factor.
 
-`MaxBolt`, `Interactions`, `Phase` and `Scattering` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot, and `Scattering` an optional `q_max` in inverse Angstrom, which fixes the range of its structure factor so that two runs can be drawn over the same axis. `average(simulation)` replaces the latest curve with the mean over the trajectory, the frames `sample()` has recorded, on the radial distribution function and scattering panes; the other panes it leaves alone.
+`MaxBolt` and `Interactions` plot quantities only a molecular dynamics run records and raise `ValueError` for a Monte Carlo simulation. Every viewer takes the simulation, an optional `size` of `'small'`, `'medium'` or `'large'`, and an optional `diameter` to draw the atoms at, in Angstrom; `CellPlus` also takes the axis labels of its plot, and `Scattering` an optional `q_max` in inverse Angstrom, which fixes the range of its structure factor so that two runs can be drawn over the same axis. `average(simulation)` replaces the latest curve with the mean over the trajectory, the frames `sample()` has recorded, on the radial distribution function and scattering panes; the other panes it leaves alone.
 
 A viewer is for watching a run. For a plot to keep, take the arrays from `simulation.samples` or `simulation.trajectory` and use matplotlib.
 
@@ -56,7 +56,7 @@ for _ in range(300):
         viewer.update(simulation)
 ```
 
-The panes are `CellPane(diameter=None)`, `EnergyPane`, `TemperaturePane`, `PressurePane`, `MSDPane`, `RDFPane`, `ScatteringPane`, `MaxwellBoltzmannPane` and `CustomPane(xlabel, ylabel)`. A composed viewer takes the drawn diameter on its `CellPane`.
+The panes are `CellPane(diameter=None)`, `EnergyPane`, `TemperaturePane`, `PressurePane`, `RDFPane`, `ScatteringPane`, `MaxwellBoltzmannPane` and `CustomPane(xlabel, ylabel)`. A composed viewer takes the drawn diameter on its `CellPane`.
 
 ## Writing a pane
 

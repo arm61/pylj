@@ -25,15 +25,12 @@ class MDSamples(Samples):
         pressure: The pressure, in kJ/mol per Angstrom squared.
         potential_energy: The total pair energy, in kJ/mol.
         kinetic_energy: The total kinetic energy, in kJ/mol.
-        msd: The mean squared displacement from the initial configuration,
-            in Angstrom squared.
     """
 
     temperature: NDArray[np.float64] = field(default_factory=_empty)
     pressure: NDArray[np.float64] = field(default_factory=_empty)
     potential_energy: NDArray[np.float64] = field(default_factory=_empty)
     kinetic_energy: NDArray[np.float64] = field(default_factory=_empty)
-    msd: NDArray[np.float64] = field(default_factory=_empty)
 
     @property
     def total_energy(self) -> NDArray[np.float64]:
@@ -58,8 +55,6 @@ class MDSimulation(Simulation):
         forces: The net force on each atom at the current
             configuration, shape ``(N, 2)``, in kJ/mol/Angstrom.
         timestep: The length of each step, in picoseconds.
-        initial_configuration: The configuration the mean squared
-            displacement is measured from.
         samples: The :class:`MDSamples` record that ``sample`` appends to.
 
     Raises:
@@ -90,7 +85,6 @@ class MDSimulation(Simulation):
         check_positive_finite("timestep", timestep)
         self.timestep = timestep
         self.forces = configuration.forces(self.model, self.cut_off)
-        self.initial_configuration = configuration
         self.samples = MDSamples()
 
     @classmethod
@@ -236,19 +230,15 @@ class MDSimulation(Simulation):
             pressure=pairwise.calculate_pressure(pairs.virial, configuration.box, kinetic_energy),
             potential_energy=float(pairs.energies.sum()),
             kinetic_energy=kinetic_energy,
-            msd=configuration.msd(self.initial_configuration),
         )
 
     def restart(self) -> Self:
-        """Returns a new simulation continuing from the current configuration,
-        with the mean squared displacement measured from it again.
+        """Returns a new simulation continuing from the current configuration.
 
         See :meth:`Simulation.restart`.
         """
         new = super().restart()
         new.trajectory = Trajectory(times=[])
-        new.configuration = self.configuration.replace(unwrapped=self.configuration.positions)
-        new.initial_configuration = new.configuration
         return new
 
 

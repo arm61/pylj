@@ -33,7 +33,7 @@ At the default the counts up to 300 that fit are 30, 56, 90, 120, 168, 224, 270 
 
 ## The configuration
 
-`simulation.configuration` is the current state. `positions` is an `(N, 2)` array in Angstrom, `box` the side in Angstrom, `species` and `species_index` name each atom's species, and `masses` is in atomic mass units. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocities` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()`, `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest, and `msd(initial)`.
+`simulation.configuration` is the current state. `positions` is an `(N, 2)` array in Angstrom, `box` the side in Angstrom, `species` and `species_index` name each atom's species, and `masses` is in atomic mass units. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocities` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()` and `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest.
 
 A configuration cannot be changed in place: its arrays are read-only. `replace(**changes)` returns a copy with some arrays changed, and assigning the copy to `simulation.configuration` puts it in the simulation, which recomputes its forces or energy. The copy must have the same number of atoms and the same box; for a different one, build a new simulation from it, such as from `configuration.without(index)`.
 
@@ -43,7 +43,7 @@ A configuration cannot be changed in place: its arrays are read-only. `replace(*
 
 `heat_bath(bath_temperature)` rescales the velocities so that the instantaneous temperature is `bath_temperature`.
 
-`sample()` records the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy`, `kinetic_energy` and `msd`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in kJ/mol per Angstrom squared.
+`sample()` records the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy` and `kinetic_energy`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in kJ/mol per Angstrom squared.
 
 `step()` raises `ValueError` if an atom moves further than half the cut-off in one step, which means the timestep is too long or the run has diverged.
 

@@ -30,7 +30,6 @@ from pylj.sample.panes import (
     CustomPane,
     EnergyPane,
     MaxwellBoltzmannPane,
-    MSDPane,
     PressurePane,
     RDFPane,
     ScatteringPane,
@@ -44,7 +43,6 @@ NAMED_VIEWERS = [JustCell, Energy, MaxBolt, RDF, Interactions, Phase, Scattering
 SERIES_PANES = {
     TemperaturePane: ("temperature", "Temperature / K"),
     PressurePane: ("pressure", "Pressure / kJ mol$^{-1}$ Angstrom$^{-2}$"),
-    MSDPane: ("msd", "MSD / Angstrom$^2$"),
 }
 
 
@@ -85,8 +83,8 @@ def with_velocity(simulation, x, y):
 
 
 def test_environment_rejects_other_pane_counts():
-    with pytest.raises(ValueError):
-        environment(3)
+    with pytest.raises(ValueError, match="1, 2, 3 or 4"):
+        environment(5)
 
 
 def test_environment_rejects_unknown_size():
@@ -94,10 +92,16 @@ def test_environment_rejects_unknown_size():
         environment(1, size="huge")
 
 
-@pytest.mark.parametrize("panes, shape", [(1, ()), (2, (2,)), (4, (2, 2))])
+@pytest.mark.parametrize("panes, shape", [(1, ()), (2, (2,)), (3, (3,)), (4, (2, 2))])
 def test_environment_axes_shape(panes, shape):
     fig, axes = environment(panes)
     assert np.shape(axes) == shape
+    plt.close(fig)
+
+
+def test_environment_puts_three_panes_in_a_row():
+    fig, axes = environment(3)
+    assert_allclose(fig.get_size_inches(), [12.0, 4.0])
     plt.close(fig)
 
 
@@ -293,8 +297,6 @@ def test_time_panes_handle_empty_and_sparse_samples(pane_cls):
         attribute, ylabel = SERIES_PANES[pane_cls]
         assert_allclose(ax.lines[0].get_ydata(), getattr(simulation.samples, attribute))
         assert ax.get_ylabel() == ylabel
-    if pane_cls is MSDPane:
-        assert ax.get_ylim()[0] == 0
     plt.close(fig)
 
 
@@ -529,11 +531,19 @@ def test_named_viewer_updates_at_any_sampling_cadence(drawing_display, viewer_cl
     assert drawing_display[0].updates == 6
 
 
-@pytest.mark.parametrize("viewer_cls", [Interactions, Phase, Scattering])
+@pytest.mark.parametrize("viewer_cls", [Interactions])
 def test_md_only_viewer_rejects_an_mc_system(drawing_display, viewer_cls):
     simulation = sampled_mc_simulation(steps=1)
     with pytest.raises(ValueError, match=f"{viewer_cls.__name__} plots"):
         viewer_cls(simulation)
+
+
+@pytest.mark.parametrize("viewer_cls", [Phase, Scattering])
+def test_phase_and_scattering_can_be_used_with_a_monte_carlo_simulation(
+    drawing_display, viewer_cls
+):
+    viewer = viewer_cls(sampled_mc_simulation(steps=2))
+    assert len(viewer.axes) == 3
 
 
 def test_speed_histogram_rejects_an_mc_system(drawing_display):
@@ -730,4 +740,4 @@ def test_scattering_viewer_passes_its_q_max_to_the_pane(drawing_display):
     q_max = 4 * 2 * np.pi / simulation.configuration.box
     viewer = Scattering(simulation, q_max=q_max)
     q, _ = simulation.configuration.structure_factor(q_max)
-    assert_allclose(viewer.axes[3].lines[0].get_xdata(), q)
+    assert_allclose(viewer.axes[2].lines[0].get_xdata(), q)
