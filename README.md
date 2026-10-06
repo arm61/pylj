@@ -36,7 +36,8 @@ simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=300,
 viewer = sample.Interactions(simulation)
 for _ in range(2000):
     simulation.step()
-    simulation.heat_bath(300)
+    if simulation.steps % 50 == 0:
+        simulation.rescale_velocities(300)
     simulation.sample()
     if simulation.steps % 100 == 0:
         viewer.update(simulation)
@@ -44,7 +45,7 @@ for _ in range(2000):
 
 <img src="https://github.com/arm61/pylj/blob/master/docs/readme/interactions.png?raw=true" width="70%"/>
 
-`step()` advances one timestep, `heat_bath()` holds the temperature, and `sample()` records the temperature, pressure and energies in `simulation.samples` as NumPy arrays:
+`step()` advances one timestep, and `sample()` records the temperature, pressure and energies in `simulation.samples` as NumPy arrays:
 
 ```python
 simulation.samples.temperature.mean()  # K

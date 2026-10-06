@@ -1,7 +1,7 @@
 pylj.md
 =======
 
-Molecular dynamics: the Velocity-Verlet integrator, the velocity-rescaling thermostat, and the simulation class that runs them.
+Molecular dynamics: the simulation class, which integrates with Velocity-Verlet and rescales the velocities, and its samples.
 
 .. automodule:: pylj.md
     :members:
