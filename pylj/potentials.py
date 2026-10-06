@@ -1,7 +1,7 @@
 """Atom species and pair potentials."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -55,16 +55,16 @@ class PairPotential(ABC):
     Both ``energies`` and ``forces`` take an array of separations ``dr``,
     in Angstrom, and return an array of the same shape: energies in kJ/mol
     and forces in kJ/mol per Angstrom.
-
-    Attributes:
-        min_separation: The separation, in Angstrom, below which the potential
-            is unphysical. Zero, the default, means the potential is physical
-            at every separation. A configuration treats any pair closer
-            than this as forbidden: its energy is infinite, and asking for
-            its force raises an error.
     """
 
-    min_separation: float = 0.0
+    @property
+    def min_separation(self) -> float:
+        """The separation, in Angstrom, below which the potential is
+        unphysical. Zero, the default, means the potential is physical at
+        every separation. A configuration treats any pair closer than this
+        as forbidden: its energy is infinite, and asking for its force
+        raises an error."""
+        return 0.0
 
     @abstractmethod
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
@@ -79,7 +79,6 @@ class PairPotential(ABC):
         """
 
 
-@dataclass(frozen=True, kw_only=True)
 class LennardJones(PairPotential):
     r"""The 12-6 Lennard-Jones pair potential.
 
@@ -94,12 +93,24 @@ class LennardJones(PairPotential):
         ValueError: If ``epsilon`` or ``sigma`` is not positive and finite.
     """
 
-    epsilon: float
-    sigma: float
+    def __init__(self, *, epsilon: float, sigma: float):
+        check_positive_finite("epsilon", epsilon)
+        check_positive_finite("sigma", sigma)
+        self._epsilon = epsilon
+        self._sigma = sigma
 
-    def __post_init__(self) -> None:
-        check_positive_finite("epsilon", self.epsilon)
-        check_positive_finite("sigma", self.sigma)
+    @property
+    def epsilon(self) -> float:
+        """The well depth, in kJ/mol."""
+        return self._epsilon
+
+    @property
+    def sigma(self) -> float:
+        """The separation at which the pair energy is zero, in Angstrom."""
+        return self._sigma
+
+    def __repr__(self) -> str:
+        return f"LennardJones(epsilon={self.epsilon!r}, sigma={self.sigma!r})"
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
@@ -114,7 +125,6 @@ class LennardJones(PairPotential):
             return 24 * self.epsilon * x * (2 * x - 1) / dr
 
 
-@dataclass(frozen=True, kw_only=True)
 class Buckingham(PairPotential):
     r"""The Buckingham pair potential.
 
@@ -130,26 +140,44 @@ class Buckingham(PairPotential):
         b: The B parameter, an inverse length, in reciprocal Angstrom.
         c: The C parameter, the dispersion coefficient, in kJ/mol Angstrom^6.
 
-    Attributes:
-        min_separation: The separation of the top of the short-range
-            barrier, in Angstrom; zero when there is no barrier.
-
     Raises:
         ValueError: If ``a`` or ``b`` is not positive and finite, if ``c`` is
             negative or not finite, or if the barrier lies beyond 100
             Angstrom.
     """
 
-    a: float
-    b: float
-    c: float
-    min_separation: float = field(init=False, repr=False)
+    def __init__(self, *, a: float, b: float, c: float):
+        check_positive_finite("a", a)
+        check_positive_finite("b", b)
+        check_non_negative_finite("c", c)
+        self._a = a
+        self._b = b
+        self._c = c
+        self._min_separation = self._find_barrier()
 
-    def __post_init__(self) -> None:
-        check_positive_finite("a", self.a)
-        check_positive_finite("b", self.b)
-        check_non_negative_finite("c", self.c)
-        object.__setattr__(self, "min_separation", self._find_barrier())
+    @property
+    def a(self) -> float:
+        """The A parameter, an energy scale, in kJ/mol."""
+        return self._a
+
+    @property
+    def b(self) -> float:
+        """The B parameter, an inverse length, in reciprocal Angstrom."""
+        return self._b
+
+    @property
+    def c(self) -> float:
+        """The C parameter, the dispersion coefficient, in kJ/mol Angstrom^6."""
+        return self._c
+
+    @property
+    def min_separation(self) -> float:
+        """The separation of the top of the short-range barrier, in Angstrom;
+        zero when there is no barrier."""
+        return self._min_separation
+
+    def __repr__(self) -> str:
+        return f"Buckingham(a={self.a!r}, b={self.b!r}, c={self.c!r})"
 
     def _form(self, dr: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.a * np.exp(-self.b * dr) - self.c / dr**6
@@ -183,7 +211,6 @@ class Buckingham(PairPotential):
             return self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
 
 
-@dataclass(frozen=True, kw_only=True)
 class SquareWell(PairPotential):
     r"""The square-well pair potential.
 
@@ -203,23 +230,42 @@ class SquareWell(PairPotential):
             positive.
     """
 
-    epsilon: float
-    sigma: float
-    lambda_: float
-    max_val: float = np.inf
-
-    def __post_init__(self) -> None:
-        check_positive_finite("epsilon", self.epsilon)
-        check_positive_finite("sigma", self.sigma)
-        if not (np.isfinite(self.lambda_) and self.lambda_ > 1):
+    def __init__(self, *, epsilon: float, sigma: float, lambda_: float, max_val: float = np.inf):
+        check_positive_finite("epsilon", epsilon)
+        check_positive_finite("sigma", sigma)
+        if not (np.isfinite(lambda_) and lambda_ > 1):
             raise ValueError(
                 "lambda_ must be greater than 1: the well lies outside the hard core"
             )
-        if not self.max_val > 0:
+        if not max_val > 0:
             raise ValueError(
                 "max_val must be positive: a hard core that lowers the energy would "
                 "draw atoms into it"
             )
+        self._epsilon = epsilon
+        self._sigma = sigma
+        self._lambda = lambda_
+        self._max_val = max_val
+
+    @property
+    def epsilon(self) -> float:
+        """The well depth, in kJ/mol."""
+        return self._epsilon
+
+    @property
+    def sigma(self) -> float:
+        """The hard-core diameter, in Angstrom."""
+        return self._sigma
+
+    @property
+    def lambda_(self) -> float:
+        """The outer edge of the well, in units of sigma."""
+        return self._lambda
+
+    @property
+    def max_val(self) -> float:
+        """The value used in place of the infinite hard core, in kJ/mol."""
+        return self._max_val
 
     def __repr__(self) -> str:
         call = (

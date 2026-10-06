@@ -7,7 +7,7 @@ All notable changes to pylj are recorded here. The format follows
 
 ### Changed
 
-- `LennardJones`, `Buckingham` and `SquareWell` are frozen dataclasses: their parameters cannot be changed once they are built, and two potentials with the same parameters compare equal.
+- The parameters of `LennardJones`, `Buckingham` and `SquareWell` are read-only properties, so a potential cannot be changed once it is built. `PairPotential.min_separation` is a read-only property, zero unless a potential overrides it.
 
 ## 2.0.0b1 - 2026-10-06
 
