@@ -15,9 +15,9 @@ def frame(box: float = 20.0, atoms: int = 4):
 
 def moved(configuration):
     """The same frame with one atom shifted, so the pair distances differ."""
-    position = configuration.positions.copy()
-    position[0] += [3.0, 1.0]
-    return configuration.replace(positions=position)
+    shifted = configuration.copy()
+    shifted.positions[0] += [3.0, 1.0]
+    return shifted
 
 
 def md_frame(unwrapped, box=20.0):
@@ -29,7 +29,7 @@ def md_frame(unwrapped, box=20.0):
         species_index=np.zeros(unwrapped.shape[0], dtype=np.int64),
         box=box,
         velocities=np.zeros_like(unwrapped),
-        unwrapped=unwrapped,
+        images=np.floor(unwrapped / box).astype(np.int64),
     )
 
 

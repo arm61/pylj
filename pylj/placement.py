@@ -268,9 +268,8 @@ def place_metropolis(
             trial = rng.uniform(0, box, size=2)
             energy = placed.insertion_energy(trial, int(species_index[i]), model, cut_off)
             if accept(energy, placement_temperature, rng=rng):
-                placed = placed.replace(
-                    positions=np.vstack([placed.positions, trial]),
-                    species_index=species_index[: i + 1],
+                placed = Configuration(
+                    np.vstack([placed.positions, trial]), species, species_index[: i + 1], box
                 )
                 break
         else:
