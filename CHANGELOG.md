@@ -3,6 +3,12 @@
 All notable changes to pylj are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Changed
+
+- `LennardJones`, `Buckingham` and `SquareWell` are frozen dataclasses: their parameters cannot be changed once they are built, and two potentials with the same parameters compare equal.
+
 ## 2.0.0b1 - 2026-10-06
 
 ### Added

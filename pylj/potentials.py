@@ -1,7 +1,7 @@
 """Atom species and pair potentials."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -79,6 +79,7 @@ class PairPotential(ABC):
         """
 
 
+@dataclass(frozen=True, kw_only=True)
 class LennardJones(PairPotential):
     r"""The 12-6 Lennard-Jones pair potential.
 
@@ -93,14 +94,12 @@ class LennardJones(PairPotential):
         ValueError: If ``epsilon`` or ``sigma`` is not positive and finite.
     """
 
-    def __init__(self, *, epsilon: float, sigma: float):
-        check_positive_finite("epsilon", epsilon)
-        check_positive_finite("sigma", sigma)
-        self.epsilon = epsilon
-        self.sigma = sigma
+    epsilon: float
+    sigma: float
 
-    def __repr__(self) -> str:
-        return f"LennardJones(epsilon={self.epsilon!r}, sigma={self.sigma!r})"
+    def __post_init__(self) -> None:
+        check_positive_finite("epsilon", self.epsilon)
+        check_positive_finite("sigma", self.sigma)
 
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
         dr = np.asarray(dr, dtype=float)
@@ -115,6 +114,7 @@ class LennardJones(PairPotential):
             return 24 * self.epsilon * x * (2 * x - 1) / dr
 
 
+@dataclass(frozen=True, kw_only=True)
 class Buckingham(PairPotential):
     r"""The Buckingham pair potential.
 
@@ -140,17 +140,16 @@ class Buckingham(PairPotential):
             Angstrom.
     """
 
-    def __init__(self, *, a: float, b: float, c: float):
-        check_positive_finite("a", a)
-        check_positive_finite("b", b)
-        check_non_negative_finite("c", c)
-        self.a = a
-        self.b = b
-        self.c = c
-        self.min_separation = self._find_barrier()
+    a: float
+    b: float
+    c: float
+    min_separation: float = field(init=False, repr=False)
 
-    def __repr__(self) -> str:
-        return f"Buckingham(a={self.a!r}, b={self.b!r}, c={self.c!r})"
+    def __post_init__(self) -> None:
+        check_positive_finite("a", self.a)
+        check_positive_finite("b", self.b)
+        check_non_negative_finite("c", self.c)
+        object.__setattr__(self, "min_separation", self._find_barrier())
 
     def _form(self, dr: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.a * np.exp(-self.b * dr) - self.c / dr**6
@@ -184,6 +183,7 @@ class Buckingham(PairPotential):
             return self.a * self.b * np.exp(-self.b * dr) - 6 * self.c / dr**7
 
 
+@dataclass(frozen=True, kw_only=True)
 class SquareWell(PairPotential):
     r"""The square-well pair potential.
 
@@ -203,22 +203,23 @@ class SquareWell(PairPotential):
             positive.
     """
 
-    def __init__(self, *, epsilon: float, sigma: float, lambda_: float, max_val: float = np.inf):
-        check_positive_finite("epsilon", epsilon)
-        check_positive_finite("sigma", sigma)
-        if not (np.isfinite(lambda_) and lambda_ > 1):
+    epsilon: float
+    sigma: float
+    lambda_: float
+    max_val: float = np.inf
+
+    def __post_init__(self) -> None:
+        check_positive_finite("epsilon", self.epsilon)
+        check_positive_finite("sigma", self.sigma)
+        if not (np.isfinite(self.lambda_) and self.lambda_ > 1):
             raise ValueError(
                 "lambda_ must be greater than 1: the well lies outside the hard core"
             )
-        if not max_val > 0:
+        if not self.max_val > 0:
             raise ValueError(
                 "max_val must be positive: a hard core that lowers the energy would "
                 "draw atoms into it"
             )
-        self.epsilon = epsilon
-        self.sigma = sigma
-        self.lambda_ = lambda_
-        self.max_val = max_val
 
     def __repr__(self) -> str:
         call = (
