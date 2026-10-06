@@ -103,7 +103,7 @@ class Simulation(ABC):
     Attributes:
         configuration: The current configuration. Its arrays can be
             changed, or another configuration assigned; the simulation
-            recomputes what it keeps from it before it next uses it.
+            recomputes its forces or energy before it next uses them.
         rng: The random number generator for this simulation.
         steps: The number of steps taken.
         samples: The record ``sample`` appends to.

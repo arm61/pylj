@@ -291,7 +291,7 @@ class TestMoves(unittest.TestCase):
         )
         first, second = a.propose(), a.propose()
         a.apply(first)
-        with self.assertRaisesRegex(ValueError, "no longer the current one"):
+        with self.assertRaisesRegex(ValueError, "positions have changed since this proposal"):
             a.apply(second)
         assert_equal(a.configuration.positions, first.positions)
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
@@ -356,7 +356,7 @@ class TestMoves(unittest.TestCase):
         )
         proposal = a.propose()
         a.configuration.positions[3] += 0.1
-        with self.assertRaisesRegex(ValueError, "no longer the current one"):
+        with self.assertRaisesRegex(ValueError, "positions have changed since this proposal"):
             a.apply(proposal)
 
     def test_steps_never_recompute_the_whole_energy(self):

@@ -243,9 +243,8 @@ class MCSimulation(Simulation):
         """
         if not np.array_equal(proposal.source, self.configuration.positions):
             raise ValueError(
-                "This proposal was made from a configuration that is no longer the current "
-                "one, so its energy change no longer applies. Propose again from the current "
-                "configuration."
+                "The positions have changed since this proposal was made, so its energy "
+                "change no longer applies. Propose again."
             )
         energy = self.energy
         self.configuration.positions = proposal.positions
