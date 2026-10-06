@@ -5,9 +5,25 @@ All notable changes to pylj are recorded here. The format follows
 
 ## Unreleased
 
+### Added
+
+- `Configuration.copy()`, an independent copy of a configuration.
+
 ### Changed
 
 - The parameters of `LennardJones`, `Buckingham` and `SquareWell` are read-only properties, so a potential cannot be changed once it is built. `PairPotential.min_separation` is a read-only property, zero unless a potential overrides it. A potential that set `self.min_separation` in its `__init__` defines it as a class attribute or a property instead.
+- A configuration's attributes and arrays can be changed, and another configuration can be assigned to `simulation.configuration`. Before it next uses its forces or energy, a simulation recomputes them if the positions, species, box, model or cut-off have changed, and raises `ValueError` if the number of atoms or the box has. In 2.0.0b1 a configuration's arrays were read-only, and a change was made with `replace()` and assignment.
+- A simulation runs on its own copy of the configuration it is given, `restart()` gives the new simulation its own copy, and `sample()` records a copy in the trajectory.
+- `MDConfiguration` takes `images`, the number of times each atom has crossed the box along each axis, by default zero, in place of `unwrapped`, and computes `unwrapped` as `positions + images * box`.
+- `MDSimulation.heat_bath(bath_temperature)` is `MDSimulation.rescale_velocities(temperature)`.
+- `MDSimulation.forces` and `MCSimulation.energy` are read-only properties.
+- `mc.Proposal.source` is a copy of the positions the proposal was made from, in place of the configuration, and `MCSimulation.apply()` refuses a proposal whose source differs from the current positions.
+- Configurations and simulations declare `__slots__`, so assigning to a misspelt attribute raises `AttributeError`.
+
+### Removed
+
+- `Configuration.replace()`; `copy()` and assignment replace it.
+- `md.velocity_verlet`, `md.update_positions`, `md.update_velocities`, `md.at_rest` and `md.heat_bath`. `MDSimulation.integrate()` does the Velocity-Verlet step, the `MDSimulation` constructor removes the centre-of-mass drift, and `MDSimulation.rescale_velocities()` rescales the velocities.
 
 ## 2.0.0b1 - 2026-10-06
 
