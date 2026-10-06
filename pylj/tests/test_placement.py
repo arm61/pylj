@@ -84,23 +84,23 @@ class TestPlacement(unittest.TestCase):
         )
 
     def test_metropolis_places_inside_the_box(self):
-        c, _ = place(10, 300, 20, init_conf="metropolis", seed=0)
+        c = place(10, 300, 20, init_conf="metropolis", seed=0)
         self.assertTrue(np.all((0 <= c.positions) & (c.positions < c.box)))
         self.assertEqual(c.number_of_atoms, 10)
 
     def test_metropolis_places_a_hard_core_outside_its_diameter(self):
         # A trial inside the square well's core costs infinite energy and is
         # always rejected, so no pair is closer than sigma.
-        c, cut_off = place(50, 300, 30, init_conf="metropolis", seed=1, model=WELL_MODEL)
-        distance = c.pairs(WELL_MODEL, cut_off).distances
+        c = place(50, 300, 30, init_conf="metropolis", seed=1, model=WELL_MODEL)
+        distance = c.pairs(WELL_MODEL, 15.0).distances
         self.assertGreaterEqual(distance.min(), WELL.sigma)
 
     def test_metropolis_places_a_mixture_with_each_pairs_own_potential(self):
         # Hard cores of three different diameters: no pair may sit inside the
         # core of its own potential. A placement using the wrong potential
         # for a pair lets it inside the true core.
-        c, cut_off = place(30, 300, 40, init_conf="metropolis", seed=0, model=WELL_MIXTURE_MODEL)
-        distance = c.pairs(WELL_MIXTURE_MODEL, cut_off).distances
+        c = place(30, 300, 40, init_conf="metropolis", seed=0, model=WELL_MIXTURE_MODEL)
+        distance = c.pairs(WELL_MIXTURE_MODEL, 15.0).distances
         for mask, type_1, type_2 in pairwise.species_pairs(c.species_index):
             potential = WELL_MIXTURE_MODEL.potential(c.species[type_1], c.species[type_2])
             core = potential.sigma
@@ -110,16 +110,16 @@ class TestPlacement(unittest.TestCase):
         # The Buckingham formula falls to minus infinity inside its barrier,
         # so a trial there would be accepted as downhill; the potential's
         # min_separation makes such a trial cost infinite energy instead.
-        c, cut_off = place(30, 300, 40, init_conf="metropolis", seed=0, model=BUCKINGHAM_MODEL)
-        pairs = c.pairs(BUCKINGHAM_MODEL, cut_off)
+        c = place(30, 300, 40, init_conf="metropolis", seed=0, model=BUCKINGHAM_MODEL)
+        pairs = c.pairs(BUCKINGHAM_MODEL, 15.0)
         self.assertGreater(pairs.distances.min(), BUCKINGHAM_ARGON.min_separation)
         self.assertTrue(np.isfinite(pairs.energies).all())
 
     def test_metropolis_places_a_soft_potential_outside_its_core(self):
         # Lennard-Jones has no hard core, but at 100 K a pair inside 0.8
         # sigma costs over 40 well depths and is never accepted.
-        c, cut_off = place(30, 100, 40, init_conf="metropolis", seed=0)
-        distance = c.pairs(ARGON_MODEL, cut_off).distances
+        c = place(30, 100, 40, init_conf="metropolis", seed=0)
+        distance = c.pairs(ARGON_MODEL, 15.0).distances
         self.assertGreater(distance.min(), 0.8 * LJ_ARGON.sigma)
 
     def test_metropolis_too_dense_raises(self):
@@ -127,9 +127,9 @@ class TestPlacement(unittest.TestCase):
             place(200, 100, 20, init_conf="metropolis", seed=0)
 
     def test_metropolis_seed_reproduces_placement(self):
-        first, _ = place(10, 100, 40, init_conf="metropolis", seed=3)
-        second, _ = place(10, 100, 40, init_conf="metropolis", seed=3)
-        other, _ = place(10, 100, 40, init_conf="metropolis", seed=4)
+        first = place(10, 100, 40, init_conf="metropolis", seed=3)
+        second = place(10, 100, 40, init_conf="metropolis", seed=3)
+        other = place(10, 100, 40, init_conf="metropolis", seed=4)
         assert_equal(first.positions, second.positions)
         self.assertFalse(np.array_equal(first.positions, other.positions))
 
@@ -140,18 +140,18 @@ class TestPlacement(unittest.TestCase):
         # tried), but at 1000 K closer contacts are tolerated.
         with self.assertRaisesRegex(ValueError, "Could not place"):
             place(50, 100, 27, init_conf="metropolis", seed=0, placement_temperature=1.0)
-        hot, _ = place(50, 100, 27, init_conf="metropolis", seed=0, placement_temperature=1000)
+        hot = place(50, 100, 27, init_conf="metropolis", seed=0, placement_temperature=1000)
         self.assertEqual(hot.number_of_atoms, 50)
 
     def test_placement_temperature_defaults_to_the_run_temperature(self):
         # The same seed at the default and at an explicit placement
         # temperature equal to the run temperature gives the same positions.
-        default, _ = place(10, 300, 40, init_conf="metropolis", seed=2)
-        explicit, _ = place(10, 300, 40, init_conf="metropolis", seed=2, placement_temperature=300)
+        default = place(10, 300, 40, init_conf="metropolis", seed=2)
+        explicit = place(10, 300, 40, init_conf="metropolis", seed=2, placement_temperature=300)
         assert_equal(default.positions, explicit.positions)
 
     def test_places_atoms_at_zero_placement_temperature(self):
-        c, _ = place(10, 300, 40, init_conf="metropolis", placement_temperature=0, seed=4)
+        c = place(10, 300, 40, init_conf="metropolis", placement_temperature=0, seed=4)
         self.assertEqual(c.number_of_atoms, 10)
 
     def test_rejects_a_bad_placement_temperature(self):
@@ -161,19 +161,10 @@ class TestPlacement(unittest.TestCase):
 
 
 class TestPlace(unittest.TestCase):
-    def test_returns_the_configuration_and_the_cut_off(self):
-        c, cut_off = place(2, 300, 8)
+    def test_returns_the_configuration(self):
+        c = place(2, 300, 8)
         assert_almost_equal(c.box, 8)
-        assert_almost_equal(cut_off, 4.0)
         assert_almost_equal(c.positions, [[2, 4], [6, 4]])
-        _, given = place(2, 300, 40, cut_off=10)
-        assert_almost_equal(given, 10)
-
-    def test_cut_off_defaults_to_15_angstrom_or_half_the_box(self):
-        _, large = place(2, 300, 40)
-        _, small = place(2, 300, 20)
-        assert_almost_equal(large, 15)
-        assert_almost_equal(small, 10)
 
     def test_refuses_a_cut_off_beyond_half_the_box(self):
         with self.assertRaisesRegex(ValueError, "exceeds half the box"):
@@ -186,7 +177,7 @@ class TestPlace(unittest.TestCase):
     def test_accepts_a_box_too_large_to_draw(self):
         # The viewer cannot usefully draw atoms this far apart, but nothing
         # about the simulation stops it.
-        configuration, _ = place(2, 300, 1000)
+        configuration = place(2, 300, 1000)
         self.assertAlmostEqual(configuration.box, 1000)
 
     def test_refuses_an_unknown_init_conf(self):
@@ -198,7 +189,7 @@ class TestPlace(unittest.TestCase):
             place(0, 300, 20)
 
     def test_places_a_lattice_at_zero_temperature(self):
-        c, _ = place(4, 0, 12)
+        c = place(4, 0, 12)
         self.assertEqual(c.number_of_atoms, 4)
 
     def test_rejects_a_negative_or_infinite_temperature(self):
@@ -207,7 +198,7 @@ class TestPlace(unittest.TestCase):
                 place(2, temperature, 8)
 
     def test_place_builds_a_triangular_lattice(self):
-        c, _ = place(56, 300, 60, init_conf="triangular")
+        c = place(56, 300, 60, init_conf="triangular")
         self.assertAlmostEqual(neighbour_count(c), 6.0, places=6)
 
 
