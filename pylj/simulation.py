@@ -39,6 +39,13 @@ def _resolve_cut_off(box: float, cut_off: float | None) -> float:
     return cut_off
 
 
+def _check_species(configuration: Configuration, model: Model) -> None:
+    """Raises ``ValueError`` if the configuration has a species the model lacks."""
+    for one in configuration.species:
+        if one not in model.species:
+            raise ValueError(f"The configuration has species {one}, which is not in the model")
+
+
 def _empty() -> NDArray[np.float64]:
     return np.array([])
 
@@ -83,7 +90,8 @@ class Simulation(ABC):
     number of atoms instead.
 
     Args:
-        configuration: The starting configuration.
+        configuration: The starting configuration. The simulation runs on
+            its own copy.
         model: The model.
         cut_off: The separation, in Angstrom, beyond which a pair's energy
             and force are zero. By default :data:`DEFAULT_CUT_OFF` Angstrom
@@ -93,6 +101,9 @@ class Simulation(ABC):
             reproduces the run, and without one the run differs each time.
 
     Attributes:
+        configuration: The current configuration. Its arrays can be
+            changed, or another configuration assigned; the simulation
+            recomputes what it keeps from it before it next uses it.
         rng: The random number generator for this simulation.
         steps: The number of steps taken.
         samples: The record ``sample`` appends to.
@@ -104,6 +115,17 @@ class Simulation(ABC):
             or the cut-off exceeds half the box.
     """
 
+    __slots__ = (
+        "configuration",
+        "model",
+        "cut_off",
+        "rng",
+        "steps",
+        "samples",
+        "trajectory",
+        "_kept_for",
+    )
+
     def __init__(
         self,
         configuration: Configuration,
@@ -112,50 +134,63 @@ class Simulation(ABC):
         cut_off: float | None = None,
         seed: int | None = None,
     ) -> None:
-        for one in configuration.species:
-            if one not in model.species:
-                raise ValueError(f"The configuration has species {one}, which is not in the model")
-        self._configuration = configuration
+        _check_species(configuration, model)
+        self.configuration = configuration.copy()
         self.model = model
         self.cut_off = _resolve_cut_off(configuration.box, cut_off)
         self.rng = np.random.default_rng(seed)
         self.steps = 0
         self.samples = Samples()
         self.trajectory = Trajectory()
+        self._recompute_from_configuration()
+        self._keep()
 
-    @property
-    def configuration(self) -> Configuration:
-        """The current configuration.
+    def _keep(self) -> None:
+        """Records the state that the kept forces or energy came from."""
+        c = self.configuration
+        self._kept_for = (
+            c.positions.copy(),
+            c.species_index.copy(),
+            c.species,
+            c.box,
+            self.model,
+            self.cut_off,
+        )
 
-        Assigning one with the same number of atoms and the same box
-        replaces it, and the simulation recomputes what it keeps from the
-        configuration: the forces in molecular dynamics, the energy in Monte
-        Carlo.
+    def _bring_up_to_date(self) -> None:
+        """Recomputes the kept forces or energy if the state they came from has
+        changed.
 
         Raises:
-            ValueError: If the assigned configuration has a different
-                number of atoms or a different box.
+            ValueError: If the number of atoms or the box has changed, or the
+                configuration has a species the model lacks.
         """
-        return self._configuration
-
-    @configuration.setter
-    def configuration(self, configuration: Configuration) -> None:
-        current = self._configuration
-        if configuration.number_of_atoms != current.number_of_atoms:
+        c = self.configuration
+        positions, species_index, species, box, model, cut_off = self._kept_for
+        if (
+            np.array_equal(c.positions, positions)
+            and np.array_equal(c.species_index, species_index)
+            and c.species == species
+            and c.box == box
+            and self.model is model
+            and self.cut_off == cut_off
+        ):
+            return
+        if c.number_of_atoms != len(positions):
             raise ValueError(
-                f"The number of atoms has changed from {current.number_of_atoms} to "
-                f"{configuration.number_of_atoms}. To run with the "
-                f"{configuration.number_of_atoms}-atom configuration, build a new "
+                f"The number of atoms has changed from {len(positions)} to "
+                f"{c.number_of_atoms}. To run with the {c.number_of_atoms}-atom "
+                f"configuration, build a new {type(self).__name__}."
+            )
+        if c.box != box:
+            raise ValueError(
+                f"The box has changed from {box:g} to {c.box:g} Angstrom. To run with the "
+                f"configuration in the {c.box:g} Angstrom box, build a new "
                 f"{type(self).__name__}."
             )
-        if configuration.box != current.box:
-            raise ValueError(
-                f"The box has changed from {current.box:g} to {configuration.box:g} Angstrom. To "
-                f"run with the configuration in the {configuration.box:g} Angstrom box, build a "
-                f"new {type(self).__name__}."
-            )
-        self._configuration = configuration
+        _check_species(c, self.model)
         self._recompute_from_configuration()
+        self._keep()
 
     @abstractmethod
     def _recompute_from_configuration(self) -> None:
@@ -172,10 +207,11 @@ class Simulation(ABC):
     def restart(self) -> Self:
         """Returns a new simulation continuing from the current configuration.
 
-        The new simulation copies the model, the numerical choices and the
-        state of the random number generator, and starts with ``steps`` at
-        zero, no samples and an empty trajectory. This simulation is
-        unchanged. Use it to start a production run after equilibration::
+        The new simulation has its own copy of the configuration and of the
+        state of the random number generator, the same model and numerical
+        choices, ``steps`` at zero, no samples and an empty trajectory. This
+        simulation is unchanged. Use it to start a production run after
+        equilibration::
 
             for _ in range(1000):
                 simulation.step()
@@ -188,6 +224,7 @@ class Simulation(ABC):
             The new simulation.
         """
         new = copy.copy(self)
+        new.configuration = self.configuration.copy()
         new.rng = copy.deepcopy(self.rng)
         new.steps = 0
         new.samples = type(self.samples)()
