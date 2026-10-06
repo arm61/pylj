@@ -1,5 +1,3 @@
-import copy
-import pickle
 import unittest
 
 import numpy as np
@@ -423,68 +421,68 @@ class TestStructureFactor(unittest.TestCase):
             c.structure_factor(q_max=0.1)
 
 
-def md_configuration(position, velocity, box=8.0):
-    """An argon MDConfiguration whose unwrapped positions start at the positions."""
+def md_configuration(position, velocity, box=8.0, images=None):
+    """An argon MDConfiguration, by default with no box crossings."""
     return MDConfiguration(
         positions=position,
         species=(ARGON,),
         species_index=np.zeros(len(position), dtype=np.int64),
         box=box,
         velocities=velocity,
-        unwrapped=position,
+        images=images,
     )
 
 
 class TestMDConfiguration(unittest.TestCase):
-    def test_rejects_velocities_or_unwrapped_positions_of_the_wrong_shape(self):
+    def test_rejects_velocities_or_images_of_the_wrong_shape_or_type(self):
         with self.assertRaisesRegex(ValueError, "velocities"):
             md_configuration(np.zeros((2, 2)), np.zeros((3, 2)))
-        c = md_configuration(np.zeros((2, 2)), np.zeros((2, 2)))
-        with self.assertRaisesRegex(ValueError, "unwrapped"):
-            c.replace(unwrapped=np.zeros((3, 2)))
+        with self.assertRaisesRegex(ValueError, "images"):
+            md_configuration(np.zeros((2, 2)), np.zeros((2, 2)), images=np.zeros((3, 2), int))
+        with self.assertRaisesRegex(ValueError, "images"):
+            md_configuration(np.zeros((2, 2)), np.zeros((2, 2)), images=np.zeros((2, 2)))
 
-    def test_is_immutable(self):
+    def test_images_default_to_zero(self):
+        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)))
+        assert_equal(c.images, 0)
+        self.assertTrue(np.issubdtype(c.images.dtype, np.integer))
+        assert_equal(c.unwrapped, c.positions)
+
+    def test_unwrapped_counts_the_box_crossings(self):
+        c = md_configuration(
+            [[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)), images=[[1, 0], [-2, 3]]
+        )
+        assert_equal(c.unwrapped, [[10.0, 2.0], [-14.0, 30.0]])
+
+    def test_unwrapped_follows_a_change_to_the_positions(self):
+        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)), images=[[1, 0], [0, 0]])
+        c.positions[0] += [0.5, -1.0]
+        assert_equal(c.unwrapped[0], [10.5, 1.0])
+
+    def test_copy_is_independent(self):
         c = md_configuration([[2.0, 2.0], [2.0, 6.0]], [[1.0, 0.0], [-1.0, 0.0]])
-        with self.assertRaisesRegex(ValueError, "read-only"):
-            c.velocities *= 2
-        with self.assertRaisesRegex(ValueError, "read-only"):
-            c.unwrapped[0] += 1.0
-        with self.assertRaises(AttributeError):
-            c.velocities = c.velocities * 2  # type: ignore[misc]
-        with self.assertRaises(AttributeError):
-            c.temperature = 150  # type: ignore[method-assign, assignment]
-
-    def test_keeps_its_own_copy_of_the_arrays(self):
-        position = np.array([[2.0, 2.0], [2.0, 6.0]])
-        velocity = np.array([[1.0, 0.0], [-1.0, 0.0]])
-        c = md_configuration(position, velocity)
-        position[0] = 9.0
-        velocity[0] = 9.0
-        assert_equal(c.unwrapped[0], [2.0, 2.0])
-        assert_equal(c.velocities[0], [1.0, 0.0])
-
-    def test_stays_immutable_when_pickled_or_deep_copied(self):
-        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], [[1.0, 0.0], [-1.0, 0.0]])
-        for copied in (pickle.loads(pickle.dumps(c)), copy.deepcopy(c)):
-            with self.assertRaisesRegex(ValueError, "read-only"):
-                copied.positions[0] += 1.0
-            with self.assertRaisesRegex(ValueError, "read-only"):
-                copied.velocities *= 2
+        copied = c.copy()
+        self.assertIsInstance(copied, MDConfiguration)
+        copied.velocities *= 2
+        copied.images[0] = [1, 1]
+        assert_equal(c.velocities, [[1.0, 0.0], [-1.0, 0.0]])
+        assert_equal(c.images, 0)
 
     def test_without_drops_one_atom_from_every_array(self):
-        c = md_configuration(
-            [[2.0, 2.0], [2.0, 6.0], [4.0, 4.0]], [[1.0, 0.0], [0.0, 1.0], [-1.0, -1.0]]
-        )
-        c = c.replace(
+        c = MDConfiguration(
+            positions=[[2.0, 2.0], [2.0, 6.0], [4.0, 4.0]],
             species=(ARGON, LARGER),
             species_index=[0, 1, 0],
-            unwrapped=c.positions + [[10.0, 0.0], [20.0, 0.0], [30.0, 0.0]],
+            box=8.0,
+            velocities=[[1.0, 0.0], [0.0, 1.0], [-1.0, -1.0]],
+            images=[[1, 0], [2, 0], [3, 0]],
         )
         rest = c.without(1)
         assert_equal(rest.positions, [[2.0, 2.0], [4.0, 4.0]])
         assert_equal(rest.species_index, [0, 0])
         assert_equal(rest.velocities, [[1.0, 0.0], [-1.0, -1.0]])
-        assert_equal(rest.unwrapped, [[12.0, 2.0], [34.0, 4.0]])
+        assert_equal(rest.images, [[1, 0], [3, 0]])
+        assert_equal(rest.unwrapped, [[10.0, 2.0], [28.0, 4.0]])
 
     def test_kinetic_energy_and_temperature(self):
         # Two atoms with equal and opposite velocities of 1 Angstrom/ps in x

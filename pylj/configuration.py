@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import Self
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -50,13 +50,6 @@ def _radial_forces(pairs: PairData) -> NDArray[np.float64]:
 
 
 _AtomPairs = tuple[NDArray[np.intp], NDArray[np.intp], list[tuple[NDArray[np.bool_], int, int]]]
-
-
-def _read_only(array: NDArray[Any]) -> NDArray[Any]:
-    """Returns a read-only view of ``array``."""
-    view = array.view()
-    view.flags.writeable = False
-    return view
 
 
 class Configuration:
@@ -315,22 +308,23 @@ class Configuration:
 
 
 class MDConfiguration(Configuration):
-    """A configuration with atom velocities and unwrapped positions.
+    """A configuration with atom velocities and box crossings.
 
     It takes the arguments of :class:`Configuration`, followed by these two.
 
     Args:
         velocities: The velocity of each atom, shape ``(N, 2)``, in
             Angstrom per picosecond.
-        unwrapped: The position of each atom without periodic wrapping,
-            shape ``(N, 2)``, in Angstrom.
+        images: The number of times each atom has crossed the box along x
+            and along y, shape ``(N, 2)``, negative for crossings in the
+            negative direction. By default zero.
 
     Raises:
-        ValueError: If ``velocities`` or ``unwrapped`` is not the shape of
-            ``positions``.
+        ValueError: If ``velocities`` or ``images`` is not the shape of
+            ``positions``, or ``images`` is not an integer array.
     """
 
-    __slots__ = ("_velocities", "_unwrapped")
+    __slots__ = ("velocities", "images")
 
     def __init__(
         self,
@@ -339,34 +333,40 @@ class MDConfiguration(Configuration):
         species_index: ArrayLike,
         box: float,
         velocities: ArrayLike,
-        unwrapped: ArrayLike,
+        images: ArrayLike | None = None,
     ) -> None:
         super().__init__(positions, species, species_index, box)
         velocities = np.array(velocities, dtype=float)
-        unwrapped = np.array(unwrapped, dtype=float)
-        for name, array in (("velocities", velocities), ("unwrapped", unwrapped)):
+        if images is None:
+            images = np.zeros(self.positions.shape, dtype=np.int64)
+        images = np.array(images)
+        for name, array in (("velocities", velocities), ("images", images)):
             if array.shape != self.positions.shape:
                 raise ValueError(
                     f"{name} must have the shape of positions, {self.positions.shape}, "
                     f"not {array.shape}"
                 )
-        self._velocities = velocities
-        self._unwrapped = unwrapped
-
-    @property
-    def velocities(self) -> NDArray[np.float64]:
-        """The velocity of each atom, shape ``(N, 2)``, in Angstrom per picosecond."""
-        return _read_only(self._velocities)
+        if not np.issubdtype(images.dtype, np.integer):
+            raise ValueError(f"images must be an integer array, not {images.dtype}")
+        self.velocities: NDArray[np.float64] = velocities
+        self.images: NDArray[np.int64] = images
 
     @property
     def unwrapped(self) -> NDArray[np.float64]:
-        """The position of each atom without periodic wrapping, shape ``(N, 2)``, in Angstrom."""
-        return _read_only(self._unwrapped)
+        """The position of each atom without periodic wrapping, shape ``(N, 2)``,
+        in Angstrom: ``positions + images * box``."""
+        return self.positions + self.images * self.box
 
-    def replace(self, **changes: Any) -> Self:
-        """Returns a copy with the given attributes replaced."""
-        arguments: dict[str, Any] = {"velocities": self.velocities, "unwrapped": self.unwrapped}
-        return super().replace(**(arguments | changes))
+    def copy(self) -> Self:
+        """Returns an independent copy, with its own copy of every array."""
+        return type(self)(
+            self.positions,
+            self.species,
+            self.species_index,
+            self.box,
+            self.velocities,
+            self.images,
+        )
 
     def without(self, index: int) -> Self:
         """Returns a copy of this MDConfiguration with one atom removed.
@@ -377,11 +377,13 @@ class MDConfiguration(Configuration):
         Returns:
             The configuration without that atom.
         """
-        return self.replace(
-            positions=np.delete(self.positions, index, axis=0),
-            species_index=np.delete(self.species_index, index),
-            velocities=np.delete(self.velocities, index, axis=0),
-            unwrapped=np.delete(self.unwrapped, index, axis=0),
+        return type(self)(
+            np.delete(self.positions, index, axis=0),
+            self.species,
+            np.delete(self.species_index, index),
+            self.box,
+            np.delete(self.velocities, index, axis=0),
+            np.delete(self.images, index, axis=0),
         )
 
     def kinetic_energy(self) -> float:
