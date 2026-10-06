@@ -5,8 +5,10 @@
 ## Installation
 
 ```bash
-pip install pylj
+pip install --pre pylj
 ```
+
+pylj 2.0 is a beta release, so pip needs `--pre` to install it. Without `--pre`, pip installs the previous release, 1.5.2.
 
 `pylj` needs Python 3.12 or later. To watch the figures redraw you need a Jupyter notebook; start each notebook with `%matplotlib inline`. In a script, a viewer's `fig` is a matplotlib figure that can be saved.
 

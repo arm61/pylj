@@ -1,21 +1,20 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylj"
 description = "Simple teaching tool for classical molecular dynamics and Monte Carlo simulation"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{name = "Andrew R. McCluskey", email = "arm61@bath.ac.uk"}]
 requires-python = ">=3.12"
 dependencies = ["numpy", "scipy", "matplotlib", "ipython"]
 dynamic = ["version"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Framework :: Jupyter",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.12",
