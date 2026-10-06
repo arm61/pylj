@@ -123,6 +123,12 @@ class TestInitialise(unittest.TestCase):
         )
         self.assertEqual(a.configuration.number_of_atoms, 56)
 
+    def test_passes_the_cut_off_through(self):
+        a = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=2, temperature=300, box=40, cut_off=10
+        )
+        assert_almost_equal(a.cut_off, 10)
+
     def test_takes_the_maximum_displacement_in_angstrom(self):
         a = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=4, temperature=300, box=20, max_displacement=0.3
