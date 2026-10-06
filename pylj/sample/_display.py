@@ -16,7 +16,7 @@ class DisplayHandle(Protocol):
     """Anything that can be handed a figure to show."""
 
     def update(self, fig: Figure, /) -> None:
-        """Show ``fig``, replacing whatever was shown before."""
+        """Shows ``fig``, replacing whatever was shown before."""
         ...
 
 
@@ -24,18 +24,18 @@ class _NullHandle:
     """Stands in for the IPython display handle when no kernel is running."""
 
     def update(self, fig: Figure, /) -> None:
-        """Do nothing; there is nowhere to send the figure."""
+        """Does nothing; there is nowhere to send the figure."""
 
 
 def _open_display(fig: Figure) -> DisplayHandle:
-    """Return a handle that pushes ``fig`` to the notebook, or a no-op handle."""
+    """Returns a handle that pushes ``fig`` to the notebook, or a no-op handle."""
     if get_ipython() is None:
         return _NullHandle()
     return display(fig, display_id=True)
 
 
 def environment(panes: int, size: str = "medium") -> tuple[Figure, Axes | np.ndarray]:
-    """Create the figure grid for a viewer.
+    """Creates the figure grid for a viewer.
 
     Args:
         panes: Number of plots: 1, 2, 3 or 4.
