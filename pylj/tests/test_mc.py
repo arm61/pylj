@@ -340,6 +340,16 @@ class TestMoves(unittest.TestCase):
             a.step()
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
 
+    def test_integer_positions_give_the_right_energy(self):
+        # A move writes its trial position, a float, into a copy of the
+        # positions, so positions kept as integers would truncate every
+        # move to whole Angstroms.
+        a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=300, box=12, seed=1)
+        a.configuration.positions = np.array([[2, 2], [7, 2], [2, 7], [7, 7]])
+        for _ in range(300):
+            a.step()
+        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
+
     def test_apply_refuses_a_proposal_made_before_a_hand_change(self):
         a = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, seed=1

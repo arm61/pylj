@@ -96,6 +96,27 @@ class TestConfiguration(unittest.TestCase):
         assert_equal(c.positions[0], [2.0, 1.0])
         self.assertEqual(c.box, 40.0)
 
+    def test_assigned_arrays_are_copied_and_converted(self):
+        c = three_atoms()
+        positions = np.array([[1, 0], [5, 0], [0, 5]])
+        species = [ARGON, LARGER]
+        species_index = [0, 1, 0]
+        c.positions = positions
+        c.species = species
+        c.species_index = species_index
+        positions[0] = 9
+        species[1] = ARGON
+        species_index[0] = 1
+        c.positions[0] += 0.5
+        assert_equal(c.positions[0], [1.5, 0.5])
+        self.assertEqual(c.species, (ARGON, LARGER))
+        assert_equal(c.species_index, [0, 1, 0])
+
+    def test_rejects_an_assigned_species_index_that_is_not_integers(self):
+        c = three_atoms()
+        with self.assertRaisesRegex(ValueError, "species_index must be an integer array"):
+            c.species_index = np.zeros(3)
+
     def test_a_misspelt_attribute_raises(self):
         c = three_atoms()
         with self.assertRaises(AttributeError):
@@ -458,6 +479,20 @@ class TestMDConfiguration(unittest.TestCase):
         c = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)), images=[[1, 0], [0, 0]])
         c.positions[0] += [0.5, -1.0]
         assert_equal(c.unwrapped[0], [10.5, 1.0])
+
+    def test_assigned_arrays_are_copied_and_converted(self):
+        c = md_configuration([[2.0, 2.0], [2.0, 6.0]], np.zeros((2, 2)))
+        velocities = np.array([[1, 0], [-1, 0]])
+        images = np.array([[1, 0], [0, 0]])
+        c.velocities = velocities
+        c.images = images
+        velocities[0] = 9
+        images[0] = 9
+        c.velocities[0] += 0.5
+        assert_equal(c.velocities, [[1.5, 0.5], [-1.0, 0.0]])
+        assert_equal(c.unwrapped[0], [10.0, 2.0])
+        with self.assertRaisesRegex(ValueError, "images must be an integer array"):
+            c.images = np.zeros((2, 2))
 
     def test_copy_is_independent(self):
         c = md_configuration([[2.0, 2.0], [2.0, 6.0]], [[1.0, 0.0], [-1.0, 0.0]])

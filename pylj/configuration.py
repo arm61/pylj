@@ -49,13 +49,27 @@ def _radial_forces(pairs: PairData) -> NDArray[np.float64]:
     return pairs.radial_forces
 
 
+def _integer_array(name: str, value: ArrayLike) -> NDArray[np.int64]:
+    """Returns a copy of ``value`` as an array, which must hold integers.
+
+    Raises:
+        ValueError: If the array does not hold integers.
+    """
+    array = np.array(value)
+    if not np.issubdtype(array.dtype, np.integer):
+        raise ValueError(f"{name} must be an integer array, not {array.dtype}")
+    return array
+
+
 _AtomPairs = tuple[NDArray[np.intp], NDArray[np.intp], list[tuple[NDArray[np.bool_], int, int]]]
 
 
 class Configuration:
     """A single configuration of atoms and the simulation cell.
 
-    The constructor copies the arrays it is given.
+    A configuration keeps its own copy of every array it is given, when it
+    is built or when one of its attributes is assigned, with positions and
+    velocities as floats.
 
     Args:
         positions: The position of each atom, shape ``(N, 2)``, in Angstrom.
@@ -70,7 +84,7 @@ class Configuration:
             species, or the box is not positive and finite.
     """
 
-    __slots__ = ("positions", "species", "species_index", "box", "_atom_pairs_cache")
+    __slots__ = ("_positions", "_species", "_species_index", "box", "_atom_pairs_cache")
 
     def __init__(
         self,
@@ -79,29 +93,54 @@ class Configuration:
         species_index: ArrayLike,
         box: float,
     ) -> None:
-        positions = np.array(positions, dtype=float)
-        species = tuple(species)
-        species_index = np.array(species_index)
-        if positions.ndim != 2 or positions.shape[1] != 2:
-            raise ValueError(f"positions must have shape (N, 2), not {positions.shape}")
-        n = positions.shape[0]
-        integer = np.issubdtype(species_index.dtype, np.integer)
-        if species_index.shape != (n,) or not integer:
+        self.positions = positions
+        self.species = species
+        self.species_index = species_index
+        if self.positions.ndim != 2 or self.positions.shape[1] != 2:
+            raise ValueError(f"positions must have shape (N, 2), not {self.positions.shape}")
+        n = self.positions.shape[0]
+        if self.species_index.shape != (n,):
             raise ValueError(
-                f"species_index must be an integer array of shape ({n},), one entry per "
-                f"atom, not {species_index.dtype} of shape {species_index.shape}"
+                f"species_index must have shape ({n},), one entry per atom, not "
+                f"{self.species_index.shape}"
             )
-        if not species:
+        if not self.species:
             raise ValueError("species must name at least one Species")
-        if n and not (0 <= species_index.min() and species_index.max() < len(species)):
-            raise ValueError(f"species_index must index the {len(species)} species")
+        if n and not (
+            0 <= self.species_index.min() and self.species_index.max() < len(self.species)
+        ):
+            raise ValueError(f"species_index must index the {len(self.species)} species")
         if not (np.isfinite(box) and box > 0):
             raise ValueError(f"box must be positive and finite, not {box}")
-        self.positions: NDArray[np.float64] = positions
-        self.species: tuple[Species, ...] = species
-        self.species_index: NDArray[np.int64] = species_index
         self.box: float = box
         self._atom_pairs_cache: tuple[NDArray[np.int64], _AtomPairs] | None = None
+
+    @property
+    def positions(self) -> NDArray[np.float64]:
+        """The position of each atom, shape ``(N, 2)``, in Angstrom."""
+        return self._positions
+
+    @positions.setter
+    def positions(self, positions: ArrayLike) -> None:
+        self._positions = np.array(positions, dtype=float)
+
+    @property
+    def species(self) -> tuple[Species, ...]:
+        """The distinct species, indexed by ``species_index``."""
+        return self._species
+
+    @species.setter
+    def species(self, species: Sequence[Species]) -> None:
+        self._species = tuple(species)
+
+    @property
+    def species_index(self) -> NDArray[np.int64]:
+        """The index in ``species`` of each atom's species, shape ``(N,)``."""
+        return self._species_index
+
+    @species_index.setter
+    def species_index(self, species_index: ArrayLike) -> None:
+        self._species_index = _integer_array("species_index", species_index)
 
     @property
     def number_of_atoms(self) -> int:
@@ -324,7 +363,7 @@ class MDConfiguration(Configuration):
             ``positions``, or ``images`` is not an integer array.
     """
 
-    __slots__ = ("velocities", "images")
+    __slots__ = ("_velocities", "_images")
 
     def __init__(
         self,
@@ -336,20 +375,33 @@ class MDConfiguration(Configuration):
         images: ArrayLike | None = None,
     ) -> None:
         super().__init__(positions, species, species_index, box)
-        velocities = np.array(velocities, dtype=float)
-        if images is None:
-            images = np.zeros(self.positions.shape, dtype=np.int64)
-        images = np.array(images)
-        for name, array in (("velocities", velocities), ("images", images)):
+        self.velocities = velocities
+        self.images = np.zeros(self.positions.shape, dtype=np.int64) if images is None else images
+        for name, array in (("velocities", self.velocities), ("images", self.images)):
             if array.shape != self.positions.shape:
                 raise ValueError(
                     f"{name} must have the shape of positions, {self.positions.shape}, "
                     f"not {array.shape}"
                 )
-        if not np.issubdtype(images.dtype, np.integer):
-            raise ValueError(f"images must be an integer array, not {images.dtype}")
-        self.velocities: NDArray[np.float64] = velocities
-        self.images: NDArray[np.int64] = images
+
+    @property
+    def velocities(self) -> NDArray[np.float64]:
+        """The velocity of each atom, shape ``(N, 2)``, in Angstrom per picosecond."""
+        return self._velocities
+
+    @velocities.setter
+    def velocities(self, velocities: ArrayLike) -> None:
+        self._velocities = np.array(velocities, dtype=float)
+
+    @property
+    def images(self) -> NDArray[np.int64]:
+        """The number of times each atom has crossed the box along x and along
+        y, shape ``(N, 2)``."""
+        return self._images
+
+    @images.setter
+    def images(self, images: ArrayLike) -> None:
+        self._images = _integer_array("images", images)
 
     @property
     def unwrapped(self) -> NDArray[np.float64]:
