@@ -29,7 +29,7 @@ def _fit_axes(
     x_from_zero: bool = True,
     y_from_zero: bool = False,
 ) -> None:
-    """Fit the axis limits to the data, leaving the limits unchanged when there is no
+    """Fits the axis limits to the data, leaving the limits unchanged when there is no
     data to fit them to.
 
     Args:
@@ -88,7 +88,7 @@ class Pane:
     needs_md: bool = False
 
     def setup(self, ax: Axes, simulation: Simulation) -> None:
-        """Create the artists and static decoration for this pane.
+        """Creates the artists and static decoration for this pane.
 
         Args:
             ax: Axes to draw into.
@@ -97,7 +97,7 @@ class Pane:
         raise NotImplementedError
 
     def update(self, ax: Axes, simulation: Simulation) -> None:
-        """Push the current state of the simulation into the artists.
+        """Pushes the current state of the simulation into the artists.
 
         Args:
             ax: Axes this pane was set up in.
@@ -106,7 +106,7 @@ class Pane:
         raise NotImplementedError
 
     def average(self, ax: Axes, simulation: Simulation) -> None:
-        """Draw the mean over the simulation's trajectory, for panes that have one.
+        """Draws the mean over the simulation's trajectory, for panes that have one.
 
         A pane that draws a running series has nothing to average and leaves
         its axes alone.
@@ -118,7 +118,7 @@ class Pane:
 
 
 def _potential_minimum(potential: PairPotential) -> float:
-    """Return the separation at the minimum of a pair potential, in Angstrom.
+    """Returns the separation at the minimum of a pair potential, in Angstrom.
 
     The energy is evaluated on a logarithmic grid of separations from 0.1 to 50
     Angstrom. The search starts at the highest energy on that grid and takes
@@ -154,7 +154,7 @@ def _potential_minimum(potential: PairPotential) -> float:
 def _drawn_diameters(
     simulation: Simulation, diameter: float | Iterable[float] | None
 ) -> list[float]:
-    """Return the drawn diameter of each species, in Angstrom.
+    """Returns the drawn diameter of each species, in Angstrom.
 
     Args:
         simulation: The simulation being visualised.
@@ -191,7 +191,7 @@ def _drawn_diameters(
 def _with_periodic_images(
     positions: NDArray[np.float64], box: float, radius: float
 ) -> NDArray[np.float64]:
-    """Return the positions with a copy of each atom that overhangs an edge.
+    """Returns the positions with a copy of each atom that overhangs an edge.
 
     An atom whose centre is within ``radius`` of an edge of the box is
     drawn again one box length away, so the part of its disc that hangs over
@@ -315,7 +315,7 @@ class PressurePane(_SeriesPane):
 def _energy_series(
     simulation: Simulation,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return the x and y data of the energy pane.
+    """Returns the x and y data of the energy pane.
 
     Args:
         simulation: The simulation being visualised.
@@ -377,7 +377,7 @@ class RDFPane(Pane):
         self._draw(ax, r, gr)
 
     def average(self, ax: Axes, simulation: Simulation) -> None:
-        """Draw g(r) averaged over the trajectory.
+        """Draws g(r) averaged over the trajectory.
 
         Leaves the curve alone before anything has been sampled.
 
@@ -432,7 +432,7 @@ class ScatteringPane(Pane):
         self._draw(ax, *simulation.configuration.structure_factor(self.q_max))
 
     def average(self, ax: Axes, simulation: Simulation) -> None:
-        """Draw S(q) averaged over the trajectory.
+        """Draws S(q) averaged over the trajectory.
 
         Leaves the curve alone before anything has been sampled.
 
@@ -489,7 +489,7 @@ class CustomPane(Pane):
         self.y = np.array([])
 
     def set_data(self, x: npt.ArrayLike, y: npt.ArrayLike) -> None:
-        """Store the data to draw on the next update.
+        """Stores the data to draw on the next update.
 
         Args:
             x: x data to plot.

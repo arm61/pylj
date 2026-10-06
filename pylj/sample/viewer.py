@@ -68,7 +68,7 @@ class Viewer:
         plt.close(self.fig)
 
     def update(self, simulation: Simulation) -> None:
-        """Redraw every pane from the current state of the simulation.
+        """Redraws every pane from the current state of the simulation.
 
         Args:
             simulation: The simulation to visualise.
@@ -78,7 +78,7 @@ class Viewer:
         self.handle.update(self.fig)
 
     def average(self, simulation: Simulation) -> None:
-        """Draw, on every pane that has one, the mean over the simulation's trajectory.
+        """Draws, on every pane that has one, the mean over the simulation's trajectory.
 
         Args:
             simulation: The simulation to visualise.
@@ -199,7 +199,7 @@ class CellPlus(Viewer):
         xdata: npt.ArrayLike | None = None,
         ydata: npt.ArrayLike | None = None,
     ) -> None:
-        """Redraw the cell and, if given, replace the custom plot's data.
+        """Redraws the cell and, if given, replaces the custom plot's data.
 
         Args:
             simulation: The simulation to visualise.

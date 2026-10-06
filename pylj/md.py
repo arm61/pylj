@@ -195,7 +195,7 @@ class MDSimulation(Simulation):
         )
 
     def step(self) -> None:
-        """Integrates one timestep and advance the clock.
+        """Integrates one timestep and advances the clock.
 
         Raises:
             ValueError: If an atom moves further than half the cut-off in
