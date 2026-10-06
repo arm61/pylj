@@ -434,4 +434,5 @@ class TestMoves(unittest.TestCase):
         a.sample()
         production = a.restart()
         self.assertEqual(len(production.trajectory), 0)
+        self.assertIsNone(production.trajectory.times)
         self.assertEqual(len(a.trajectory), 1)
