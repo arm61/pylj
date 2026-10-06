@@ -62,9 +62,7 @@ def _read_only(array: NDArray[Any]) -> NDArray[Any]:
 class Configuration:
     """A single configuration of atoms and the simulation cell.
 
-    A configuration cannot be changed once it is made: its arrays are
-    read-only copies of the ones it was given. ``replace`` makes a new
-    configuration with some of them changed.
+    The constructor copies the arrays it is given.
 
     Args:
         positions: The position of each atom, shape ``(N, 2)``, in Angstrom.
@@ -79,7 +77,7 @@ class Configuration:
             species, or the box is not positive and finite.
     """
 
-    __slots__ = ("_positions", "_species", "_species_index", "_box", "_atom_pairs_cache")
+    __slots__ = ("positions", "species", "species_index", "box", "_atom_pairs_cache")
 
     def __init__(
         self,
@@ -106,33 +104,11 @@ class Configuration:
             raise ValueError(f"species_index must index the {len(species)} species")
         if not (np.isfinite(box) and box > 0):
             raise ValueError(f"box must be positive and finite, not {box}")
-        # Private copies, which the properties hand out as read-only views. A
-        # read-only flag on the copies themselves would not survive pickling.
-        self._positions = positions
-        self._species = species
-        self._species_index = species_index
-        self._box = box
-        self._atom_pairs_cache: _AtomPairs | None = None
-
-    @property
-    def positions(self) -> NDArray[np.float64]:
-        """The position of each atom, shape ``(N, 2)``, in Angstrom."""
-        return _read_only(self._positions)
-
-    @property
-    def species(self) -> tuple[Species, ...]:
-        """The distinct species, indexed by ``species_index``."""
-        return self._species
-
-    @property
-    def species_index(self) -> NDArray[np.int64]:
-        """The index in ``species`` of each atom's species, shape ``(N,)``."""
-        return _read_only(self._species_index)
-
-    @property
-    def box(self) -> float:
-        """The side length of the square periodic box, in Angstrom."""
-        return self._box
+        self.positions: NDArray[np.float64] = positions
+        self.species: tuple[Species, ...] = species
+        self.species_index: NDArray[np.int64] = species_index
+        self.box: float = box
+        self._atom_pairs_cache: tuple[NDArray[np.int64], _AtomPairs] | None = None
 
     @property
     def number_of_atoms(self) -> int:
@@ -143,22 +119,11 @@ class Configuration:
     def masses(self) -> NDArray[np.float64]:
         """Atomic masses, in atomic mass units."""
         masses = np.array([one.mass for one in self.species], dtype=float)
-        return _read_only(masses[self.species_index])
+        return masses[self.species_index]
 
-    def replace(self, **changes: Any) -> Self:
-        """Returns a copy with the given attributes replaced."""
-        arguments: dict[str, Any] = {
-            "positions": self.positions,
-            "species": self.species,
-            "species_index": self.species_index,
-            "box": self.box,
-        }
-        replaced = type(self)(**(arguments | changes))
-        if "species_index" not in changes:
-            # The pairs of atoms and the species they join depend only on
-            # species_index, so a copy with the same species_index shares them.
-            replaced._atom_pairs_cache = self._atom_pairs_cache
-        return replaced
+    def copy(self) -> Self:
+        """Returns an independent copy, with its own copy of every array."""
+        return type(self)(self.positions, self.species, self.species_index, self.box)
 
     def without(self, index: int) -> Self:
         """Returns a copy of this Configuration with one atom removed.
@@ -169,18 +134,24 @@ class Configuration:
         Returns:
             The configuration without that atom.
         """
-        return self.replace(
-            positions=np.delete(self.positions, index, axis=0),
-            species_index=np.delete(self.species_index, index),
+        return type(self)(
+            np.delete(self.positions, index, axis=0),
+            self.species,
+            np.delete(self.species_index, index),
+            self.box,
         )
 
     def _atom_pairs(self) -> _AtomPairs:
         """Returns the indices ``i < j`` of every pair of atoms and the pairs
-        grouped by the species they join, building them on first use."""
-        if self._atom_pairs_cache is None:
+        grouped by the species they join, rebuilding them when
+        ``species_index`` has changed."""
+        cache = self._atom_pairs_cache
+        if cache is None or not np.array_equal(cache[0], self.species_index):
             i, j = np.triu_indices(self.number_of_atoms, 1)
-            self._atom_pairs_cache = (i, j, list(pairwise.species_pairs(self.species_index)))
-        return self._atom_pairs_cache
+            pairs = (i, j, list(pairwise.species_pairs(self.species_index)))
+            cache = (self.species_index.copy(), pairs)
+            self._atom_pairs_cache = cache
+        return cache[1]
 
     def pairs(self, model: Model, cut_off: float, *, forces: bool = False) -> PairData:
         """Evaluates the energy and optionally forces for each pair of atoms.

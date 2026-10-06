@@ -47,7 +47,7 @@ class TestConfiguration(unittest.TestCase):
         # and pair data are equal only when they are the same object.
         c = three_atoms()
         self.assertEqual(c, c)
-        self.assertNotEqual(c, c.replace())
+        self.assertNotEqual(c, c.copy())
         self.assertNotEqual(
             c.pairs(ARGON_MODEL, 15.0),
             c.pairs(ARGON_MODEL, 15.0),
@@ -82,22 +82,7 @@ class TestConfiguration(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "box must be positive"):
                 configuration(np.zeros((2, 2)), box=bad)
 
-    def test_is_immutable(self):
-        c = three_atoms()
-        with self.assertRaises(AttributeError):
-            c.box = 1.0  # type: ignore[misc]
-        with self.assertRaises(AttributeError):
-            c.positions = c.positions + 1.0  # type: ignore[misc]
-        with self.assertRaises(AttributeError):
-            c.cut_off = 10.0  # type: ignore[attr-defined]
-        with self.assertRaisesRegex(ValueError, "read-only"):
-            c.positions[0] += 1.0
-        with self.assertRaisesRegex(ValueError, "read-only"):
-            c.species_index[0] = 1
-        with self.assertRaisesRegex(ValueError, "read-only"):
-            c.masses[0] = 80.0
-
-    def test_keeps_its_own_copy_of_the_arrays(self):
+    def test_construction_copies_the_arrays(self):
         positions = np.array([[1.0, 0.0], [5.0, 0.0]])
         species_index = np.array([0, 1])
         c = configuration(positions, species=(ARGON, LARGER), species_index=species_index)
@@ -106,20 +91,34 @@ class TestConfiguration(unittest.TestCase):
         assert_equal(c.positions[0], [1.0, 0.0])
         assert_equal(c.species_index, [0, 1])
 
+    def test_arrays_and_attributes_can_be_changed(self):
+        c = three_atoms()
+        c.positions[0] += 1.0
+        c.box = 40.0
+        assert_equal(c.positions[0], [2.0, 1.0])
+        self.assertEqual(c.box, 40.0)
+
+    def test_a_misspelt_attribute_raises(self):
+        c = three_atoms()
+        with self.assertRaises(AttributeError):
+            c.postions = np.zeros((3, 2))  # type: ignore[attr-defined]
+
+    def test_copy_is_independent(self):
+        c = three_atoms()
+        copied = c.copy()
+        copied.positions[0] = 9.0
+        copied.box = 40.0
+        assert_equal(c.positions[0], [1.0, 0.0])
+        self.assertEqual(c.box, 30.0)
+        assert_equal(copied.species_index, c.species_index)
+        self.assertEqual(copied.species, c.species)
+
     def test_accepts_lists(self):
         c = Configuration([[1, 0], [5, 0]], [ARGON], [0, 0], 30)
         self.assertEqual(c.positions.dtype, np.float64)
         self.assertEqual(c.species, (ARGON,))
         assert_equal(c.species_index, [0, 0])
         self.assertEqual(c.potential_energy(ARGON_MODEL, 15.0), LJ_ARGON.energies(4.0))
-
-    def test_replace_gives_a_validated_copy(self):
-        c = three_atoms()
-        moved = c.replace(positions=c.positions + 1.0)
-        assert_almost_equal(moved.positions, c.positions + 1.0)
-        assert_almost_equal(c.positions[0], [1.0, 0.0])
-        with self.assertRaisesRegex(ValueError, r"\(N, 2\)"):
-            c.replace(positions=np.zeros(3))
 
     def test_without_drops_one_atom_from_every_array(self):
         c = three_atoms([0, 1, 0])
@@ -225,8 +224,10 @@ class TestConfiguration(unittest.TestCase):
         # Angstrom and an argon one at 5: the cross potential for the first,
         # the self potential for the second. A third, at y = 20 Angstrom in
         # the 30 Angstrom box, is 10 Angstrom away and beyond the cut-off.
-        c = three_atoms([1, 0, 0]).replace(
-            positions=np.array([[4.0, 0.0], [0.0, 5.0], [0.0, 20.0]])
+        c = configuration(
+            [[4.0, 0.0], [0.0, 5.0], [0.0, 20.0]],
+            species=(ARGON, LARGER),
+            species_index=[1, 0, 0],
         )
         energy = c.insertion_energy((0.0, 0.0), 0, MIXTURE_MODEL, 6.0)
         expected = (
@@ -267,14 +268,14 @@ class TestConfiguration(unittest.TestCase):
             0.0,
         )
 
-    def test_a_copy_with_new_species_evaluates_them(self):
-        # Evaluating the original first builds its pairs, which a copy with
-        # a different species_index must not reuse.
+    def test_a_changed_species_index_is_evaluated(self):
+        # Evaluating first builds the pairs grouped by species, which must
+        # be rebuilt when species_index changes.
         c = three_atoms([0, 1, 0])
         c.pairs(MIXTURE_MODEL, 15.0)
-        swapped = c.replace(species_index=[1, 0, 0])
+        c.species_index = np.array([1, 0, 0])
         assert_allclose(
-            swapped.pairs(MIXTURE_MODEL, 15.0).energies,
+            c.pairs(MIXTURE_MODEL, 15.0).energies,
             three_atoms([1, 0, 0]).pairs(MIXTURE_MODEL, 15.0).energies,
         )
 
