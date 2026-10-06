@@ -35,12 +35,13 @@ class Proposal:
             in Angstrom.
         energy_change: The change in energy under the proposed move, in
             kJ/mol.
-        source: The configuration the proposal was made from.
+        source: A copy of the positions the proposal was made from, shape
+            ``(N, 2)``, in Angstrom.
     """
 
     positions: NDArray[np.float64]
     energy_change: float
-    source: Configuration
+    source: NDArray[np.float64]
 
 
 def accept(
@@ -95,8 +96,6 @@ class MCSimulation(Simulation):
         temperature: The temperature, in kelvin.
         max_displacement: The largest distance an atom is moved along each
             axis in one step, in Angstrom.
-        energy: The total pair energy of the current configuration, in
-            kJ/mol.
         accepted: The number of moves accepted so far.
         samples: The :class:`MCSamples` record that ``sample`` appends to.
 
@@ -106,6 +105,8 @@ class MCSimulation(Simulation):
     """
 
     samples: MCSamples
+
+    __slots__ = ("temperature", "max_displacement", "accepted", "_energy")
 
     def __init__(
         self,
@@ -119,11 +120,10 @@ class MCSimulation(Simulation):
     ) -> None:
         check_non_negative_finite("temperature", temperature)
         check_positive_finite("max_displacement", max_displacement)
-        super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         self.temperature = temperature
         self.max_displacement = max_displacement
-        self.energy = configuration.potential_energy(self.model, self.cut_off)
         self.accepted = 0
+        super().__init__(configuration, model, cut_off=cut_off, seed=seed)
         self.samples = MCSamples()
 
     @classmethod
@@ -201,7 +201,13 @@ class MCSimulation(Simulation):
         return simulation
 
     def _recompute_from_configuration(self) -> None:
-        self.energy = self.configuration.potential_energy(self.model, self.cut_off)
+        self._energy = self.configuration.potential_energy(self.model, self.cut_off)
+
+    @property
+    def energy(self) -> float:
+        """The total pair energy of the current configuration, in kJ/mol."""
+        self._bring_up_to_date()
+        return self._energy
 
     def propose(self) -> Proposal:
         """Proposes moving one atom, chosen at random, by a random distance of up
@@ -220,32 +226,35 @@ class MCSimulation(Simulation):
         energy_change = others.insertion_energy(
             trial, species_index, self.model, self.cut_off
         ) - others.insertion_energy(current, species_index, self.model, self.cut_off)
-        positions = configuration.positions.copy()
+        source = configuration.positions.copy()
+        positions = source.copy()
         positions[atom] = trial
-        return Proposal(positions, energy_change, configuration)
+        return Proposal(positions, energy_change, source)
 
     def apply(self, proposal: Proposal) -> None:
-        """Applies a proposal, replacing the configuration with its positions.
+        """Applies a proposal, moving the atom to its proposed position.
 
         Args:
             proposal: The proposal.
 
         Raises:
-            ValueError: If the proposal was made from a configuration other
-                than the current one.
+            ValueError: If the proposal was made from positions other than
+                the current ones.
         """
-        if proposal.source is not self.configuration:
+        if not np.array_equal(proposal.source, self.configuration.positions):
             raise ValueError(
                 "This proposal was made from a configuration that is no longer the current "
                 "one, so its energy change no longer applies. Propose again from the current "
                 "configuration."
             )
-        self._configuration = self.configuration.replace(positions=proposal.positions)
-        self.energy += proposal.energy_change
-        if not np.isfinite(self.energy):
+        energy = self.energy
+        self.configuration.positions = proposal.positions
+        self._energy = energy + proposal.energy_change
+        if not np.isfinite(self._energy):
             # A hard-core overlap makes the energy infinite, and adding an
             # energy change to infinity cannot tell when the overlap clears.
-            self.energy = self.configuration.potential_energy(self.model, self.cut_off)
+            self._energy = self.configuration.potential_energy(self.model, self.cut_off)
+        self._keep()
 
     def step(self) -> None:
         """Proposes a move and accepts or rejects it by the Metropolis criterion."""
@@ -256,14 +265,16 @@ class MCSimulation(Simulation):
         self.steps += 1
 
     def sample(self) -> None:
-        """Records the configuration in the trajectory and measures it.
+        """Records a copy of the configuration in the trajectory and measures it.
 
         The energy is recomputed from the configuration, so the recorded
         value is exact.
         """
-        self.trajectory.append(self.configuration)
-        self.energy = self.configuration.potential_energy(self.model, self.cut_off)
-        self.samples.add(step=self.steps, potential_energy=self.energy)
+        self._bring_up_to_date()
+        self.trajectory.append(self.configuration.copy())
+        self._energy = self.configuration.potential_energy(self.model, self.cut_off)
+        self._keep()
+        self.samples.add(step=self.steps, potential_energy=self._energy)
 
     def restart(self) -> Self:
         """Returns a new simulation continuing from the current configuration.
