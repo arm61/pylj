@@ -191,5 +191,6 @@ class Simulation(ABC):
         new.rng = copy.deepcopy(self.rng)
         new.steps = 0
         new.samples = type(self.samples)()
-        new.trajectory = Trajectory()
+        # The new trajectory records times only if the old one did.
+        new.trajectory = Trajectory(times=None if self.trajectory.times is None else [])
         return new

@@ -232,15 +232,6 @@ class MDSimulation(Simulation):
             kinetic_energy=kinetic_energy,
         )
 
-    def restart(self) -> Self:
-        """Returns a new simulation continuing from the current configuration.
-
-        See :meth:`Simulation.restart`.
-        """
-        new = super().restart()
-        new.trajectory = Trajectory(times=[])
-        return new
-
 
 def velocity_verlet(
     configuration: MDConfiguration,
