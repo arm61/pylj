@@ -147,7 +147,7 @@ class MDSimulation(Simulation):
                 "undefined for a single atom."
             )
         rng = np.random.default_rng(seed)
-        placed, cut_off = place(
+        placed = place(
             number_of_atoms,
             temperature,
             box,

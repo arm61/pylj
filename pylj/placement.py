@@ -295,7 +295,7 @@ def place(
     max_strain: float,
     cut_off: float | None,
     rng: np.random.Generator,
-) -> tuple[Configuration, float]:
+) -> Configuration:
     """Builds the initial configuration for a simulation.
 
     Args:
@@ -315,12 +315,14 @@ def place(
         max_strain: How far a triangular lattice may sit from
             ``sqrt(3) / 2``, as a fraction of that ratio; used when
             ``init_conf`` is ``'triangular'``.
-        cut_off: The cut-off, in Angstrom; ``None`` for
-            :data:`~pylj.simulation.DEFAULT_CUT_OFF` Angstrom or half the box, whichever is smaller.
+        cut_off: The cut-off for the pair energies of ``'metropolis'``
+            placement, in Angstrom; ``None`` for
+            :data:`~pylj.simulation.DEFAULT_CUT_OFF` Angstrom or half the box,
+            whichever is smaller.
         rng: The generator for Metropolis placement.
 
     Returns:
-        The configuration and the cut-off.
+        The configuration.
 
     Raises:
         ValueError: If no atoms are requested, a temperature is negative or
@@ -360,4 +362,4 @@ def place(
         raise ValueError(
             "init_conf must be 'square', 'triangular' or 'metropolis'"
         )
-    return configuration, cut_off
+    return configuration

@@ -179,7 +179,7 @@ class MCSimulation(Simulation):
                 constructor rejects.
         """
         rng = np.random.default_rng(seed)
-        configuration, cut_off = place(
+        configuration = place(
             number_of_atoms,
             temperature,
             box,
