@@ -232,7 +232,7 @@ class MCSimulation(Simulation):
         return Proposal(positions, energy_change, source)
 
     def apply(self, proposal: Proposal) -> None:
-        """Applies a proposal, moving the atom to its proposed position.
+        """Applies a proposal, replacing the positions with the proposal's.
 
         Args:
             proposal: The proposal.

@@ -68,8 +68,8 @@ class Configuration:
     """A single configuration of atoms and the simulation cell.
 
     A configuration keeps its own copy of every array it is given, when it
-    is built or when one of its attributes is assigned, with positions and
-    velocities as floats.
+    is built or when one of its attributes is assigned, with positions as
+    floats.
 
     Args:
         positions: The position of each atom, shape ``(N, 2)``, in Angstrom.
@@ -349,7 +349,8 @@ class Configuration:
 class MDConfiguration(Configuration):
     """A configuration with atom velocities and box crossings.
 
-    It takes the arguments of :class:`Configuration`, followed by these two.
+    It takes the arguments of :class:`Configuration`, followed by these two,
+    and keeps velocities as floats.
 
     Args:
         velocities: The velocity of each atom, shape ``(N, 2)``, in

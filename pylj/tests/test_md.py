@@ -222,9 +222,9 @@ class TestStep(unittest.TestCase):
                 pass
 
         a = Frozen.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
-        before = a.configuration
+        before = a.configuration.positions.copy()
         a.step()
-        self.assertIs(a.configuration, before)
+        assert_equal(a.configuration.positions, before)
         self.assertEqual(a.steps, 1)
 
     def test_integrate_moves_the_atoms_and_updates_the_forces(self):

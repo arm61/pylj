@@ -61,7 +61,7 @@ if mc.accept(proposal.energy_change, simulation.temperature, rng=simulation.rng)
     simulation.apply(proposal)
 ```
 
-`propose()` moves one atom, chosen at random, by a random distance of up to `max_displacement` along each axis, and returns a `Proposal` holding the trial positions, the energy change the move would cause and a copy of the positions it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` moves the atom to its proposed position and adds the energy change to `energy`; it raises `ValueError` if the positions have changed since the proposal was made.
+`propose()` moves one atom, chosen at random, by a random distance of up to `max_displacement` along each axis, and returns a `Proposal` holding the trial positions, the energy change the move would cause and a copy of the positions it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` replaces the positions with the proposal's and adds the energy change to `energy`; it raises `ValueError` if the positions have changed since the proposal was made.
 
 `sample()` records a copy of the configuration in `trajectory`, recomputes the energy exactly and appends `step` and `potential_energy` to `samples`, an `MCSamples`.
 
