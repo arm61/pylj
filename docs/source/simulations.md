@@ -21,7 +21,7 @@ simulation = MDSimulation.initialise(
 
 `model`, a `Model` of the species and the potential between each pair of them, is the one positional argument; the rest are given by keyword. Three are required: `number_of_atoms`; `temperature`, in kelvin; and `box`, the side of the square periodic box in Angstrom. `init_conf` selects the starting positions. `"square"` places the atoms on a grid of columns and rows that fills the box, which is square when the number of atoms is a square number. `"triangular"` places them on a triangular lattice, and `"metropolis"` inserts them one at a time by Metropolis acceptance at `placement_temperature`, which defaults to `temperature`. `max_strain` applies only to the triangular lattice, described below. `timestep` is in picoseconds and applies to molecular dynamics only. `cut_off` is in Angstrom and defaults to 15 or half the box, whichever is smaller; it may not exceed half the box. `seed` seeds `simulation.rng`, which draws the initial velocities and the Monte Carlo moves.
 
-The constructors take a ready configuration instead: `MDSimulation(configuration, model, *, cut_off=None, timestep=0.01, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, *, cut_off=None, max_displacement=0.5, seed=None)` with a `Configuration`. `MDSimulation` starts from a copy with the centre of mass at rest; `md.at_rest(configuration)` returns that copy on its own.
+The constructors take a ready configuration instead: `MDSimulation(configuration, model, *, cut_off=None, timestep=0.01, seed=None)` with an `MDConfiguration`, and `MCSimulation(configuration, model, temperature, *, cut_off=None, max_displacement=0.5, seed=None)` with a `Configuration`. Each simulation runs on its own copy of the configuration it is given; `MDSimulation` brings the copy's centre of mass to rest.
 
 ### A triangular lattice
 
@@ -33,17 +33,17 @@ At the default the counts up to 300 that fit are 30, 56, 90, 120, 168, 224, 270 
 
 ## The configuration
 
-`simulation.configuration` is the current state. `positions` is an `(N, 2)` array in Angstrom, `box` the side in Angstrom, `species` and `species_index` name each atom's species, and `masses` is in atomic mass units. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocities` and `unwrapped`, the positions without periodic wrapping, and `kinetic_energy()` and `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest.
+`simulation.configuration` is the current state. `positions` is an `(N, 2)` array in Angstrom, `box` the side in Angstrom, `species` and `species_index` name each atom's species, and `masses` is in atomic mass units. `pairs(model, cut_off, forces=False)` evaluates every pair and returns their distances, separations, energies and, if asked, radial forces; `potential_energy`, `forces` and `virial` take the same arguments. An `MDConfiguration` adds `velocities` and `images`, the number of times each atom has crossed the box along x and along y. Its `unwrapped` positions, `positions + images * box`, are the positions without periodic wrapping. It also has `kinetic_energy()` and `temperature()`, which divides the kinetic energy by $(N - 1) k_B$ because the centre of mass is held at rest.
 
-A configuration cannot be changed in place: its arrays are read-only. `replace(**changes)` returns a copy with some arrays changed, and assigning the copy to `simulation.configuration` puts it in the simulation, which recomputes its forces or energy. The copy must have the same number of atoms and the same box; for a different one, build a new simulation from it, such as from `configuration.without(index)`.
+A configuration's arrays can be changed, and another configuration can be assigned to `simulation.configuration`. Before its next step, the simulation recomputes its `forces` or `energy` if the positions, species, box, model or cut-off have changed. If the number of atoms or the box has changed, it raises `ValueError` instead; to run such a configuration, build a new simulation from it, such as from `configuration.without(index)`. `copy()` returns an independent copy of a configuration.
 
 ## Molecular dynamics
 
 `step()` advances the configuration by one timestep with Velocity-Verlet and updates `forces`, the net force on each atom, and `steps`. `time` is `steps * timestep`. `integrate()` is the method `step()` calls; a subclass overrides it to use a different integrator.
 
-`heat_bath(bath_temperature)` rescales the velocities so that the instantaneous temperature is `bath_temperature`.
+`rescale_velocities(temperature)` rescales the velocities so that the instantaneous temperature is `temperature`. Called every step, it holds the temperature fixed; the examples here call it every 50 steps, so that the temperature fluctuates between calls.
 
-`sample()` records the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy` and `kinetic_energy`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in kJ/mol per Angstrom squared.
+`sample()` records a copy of the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy` and `kinetic_energy`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in kJ/mol per Angstrom squared.
 
 `step()` raises `ValueError` if an atom moves further than half the cut-off in one step, which means the timestep is too long or the run has diverged.
 
@@ -61,9 +61,9 @@ if mc.accept(proposal.energy_change, simulation.temperature, rng=simulation.rng)
     simulation.apply(proposal)
 ```
 
-`propose()` moves one atom, chosen at random, by a random distance of up to `max_displacement` along each axis, and returns a `Proposal` holding the trial positions, the energy change the move would cause and the configuration it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` makes the proposal the current configuration and adds its energy change to `energy`; it raises `ValueError` if the proposal was made from a configuration that is no longer current.
+`propose()` moves one atom, chosen at random, by a random distance of up to `max_displacement` along each axis, and returns a `Proposal` holding the trial positions, the energy change the move would cause and a copy of the positions it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` replaces the positions with the proposal's and adds the energy change to `energy`; it raises `ValueError` if the positions have changed since the proposal was made.
 
-`sample()` records the configuration in `trajectory`, recomputes the energy exactly and appends `step` and `potential_energy` to `samples`, an `MCSamples`.
+`sample()` records a copy of the configuration in `trajectory`, recomputes the energy exactly and appends `step` and `potential_energy` to `samples`, an `MCSamples`.
 
 ## Restarting
 
@@ -85,7 +85,8 @@ A loop that only calls `step()` shows nothing until it finishes. Print the step 
 ```python
 for _ in range(20000):
     simulation.step()
-    simulation.heat_bath(300)
+    if simulation.steps % 50 == 0:
+        simulation.rescale_velocities(300)
     if simulation.steps % 2000 == 0:
         print(simulation.steps, simulation.configuration.temperature())
 ```

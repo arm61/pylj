@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 import numpy as np
 from numpy.testing import assert_almost_equal, assert_equal
@@ -152,7 +153,7 @@ class TestConstructor(unittest.TestCase):
             ARGON_MODEL, number_of_atoms=4, temperature=100, box=20
         )
         a = MCSimulation(md_simulation.configuration, ARGON_MODEL, 100)
-        self.assertIs(a.configuration, md_simulation.configuration)
+        assert_equal(a.configuration.positions, md_simulation.configuration.positions)
         for _ in range(20):
             a.step()
         # The velocities are carried, untouched, through the moves.
@@ -227,10 +228,10 @@ class TestMoves(unittest.TestCase):
         a = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, seed=1
         )
-        before = a.configuration
+        before = a.configuration.positions.copy()
         energy = a.energy
         a.propose()
-        self.assertIs(a.configuration, before)
+        assert_equal(a.configuration.positions, before)
         self.assertEqual(a.energy, energy)
 
     def test_propose_moves_exactly_one_atom(self):
@@ -272,7 +273,8 @@ class TestMoves(unittest.TestCase):
             moved_species = set()
             for _ in range(5):
                 proposal = a.propose()
-                trial = a.configuration.replace(positions=proposal.positions)
+                trial = a.configuration.copy()
+                trial.positions = proposal.positions
                 expected = trial.potential_energy(a.model, a.cut_off) - total_energy(a)
                 np.testing.assert_allclose(proposal.energy_change, expected, rtol=1e-9, atol=1e-9)
                 moved = np.any(proposal.positions != a.configuration.positions, axis=1)
@@ -289,7 +291,7 @@ class TestMoves(unittest.TestCase):
         )
         first, second = a.propose(), a.propose()
         a.apply(first)
-        with self.assertRaisesRegex(ValueError, "no longer the current one"):
+        with self.assertRaisesRegex(ValueError, "positions have changed since this proposal"):
             a.apply(second)
         assert_equal(a.configuration.positions, first.positions)
         np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
@@ -314,17 +316,63 @@ class TestMoves(unittest.TestCase):
         for atom, clear, expected in ((1, [15.0, 15.0], np.inf), (2, [15.0, 5.0], 0.0)):
             positions = a.configuration.positions.copy()
             positions[atom] = clear
-            a.apply(mc.Proposal(positions, -np.inf, a.configuration))
+            a.apply(mc.Proposal(positions, -np.inf, a.configuration.positions.copy()))
             self.assertEqual(a.energy, expected)
 
     def test_assigning_a_configuration_recomputes_the_energy(self):
         a = MCSimulation.initialise(
             ARGON_MODEL, number_of_atoms=16, temperature=300, box=20, seed=1
         )
+        moved = a.configuration.copy()
         nudge = np.random.default_rng(0).uniform(-0.3, 0.3, size=(16, 2))
-        moved = (a.configuration.positions + nudge) % 20
-        a.configuration = a.configuration.replace(positions=moved)
+        moved.positions = (moved.positions + nudge) % 20
+        a.configuration = moved
         np.testing.assert_allclose(a.energy, total_energy(a))
+
+    def test_a_hand_change_is_counted_in_the_energy(self):
+        a = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=16, temperature=300, box=20, seed=1
+        )
+        a.configuration.positions[0] += [0.3, -0.2]
+        np.testing.assert_allclose(a.energy, total_energy(a))
+        a.configuration.positions[1] += [0.2, 0.1]
+        for _ in range(20):
+            a.step()
+        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
+
+    def test_integer_positions_give_the_right_energy(self):
+        # A move writes its trial position, a float, into a copy of the
+        # positions, so positions kept as integers would truncate every
+        # move to whole Angstroms.
+        a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=300, box=12, seed=1)
+        a.configuration.positions = np.array([[2, 2], [7, 2], [2, 7], [7, 7]])
+        for _ in range(300):
+            a.step()
+        np.testing.assert_allclose(a.energy, total_energy(a), rtol=1e-9, atol=1e-9)
+
+    def test_apply_refuses_a_proposal_made_before_a_hand_change(self):
+        a = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=16, temperature=300, box=30, seed=1
+        )
+        proposal = a.propose()
+        a.configuration.positions[3] += 0.1
+        with self.assertRaisesRegex(ValueError, "positions have changed since this proposal"):
+            a.apply(proposal)
+
+    def test_steps_never_recompute_the_whole_energy(self):
+        a = MCSimulation.initialise(
+            ARGON_MODEL, number_of_atoms=16, temperature=300, box=16, seed=1
+        )
+        with mock.patch.object(
+            Configuration,
+            "potential_energy",
+            autospec=True,
+            side_effect=Configuration.potential_energy,
+        ) as potential_energy:
+            for _ in range(100):
+                a.step()
+        self.assertGreater(a.accepted, 0)
+        self.assertEqual(potential_energy.call_count, 0)
 
     def test_step_proposes_decides_and_counts(self):
         a = MCSimulation.initialise(
@@ -344,7 +392,7 @@ class TestMoves(unittest.TestCase):
         for _ in range(20):
             a.apply(a.propose())
         # A corrupted running total is replaced by the exact one.
-        a.energy = 1.0
+        a._energy = 1.0
         a.sample()
         self.assertEqual(a.energy, total_energy(a))
         assert_equal(a.samples.potential_energy, [a.energy])
@@ -428,7 +476,8 @@ class TestMoves(unittest.TestCase):
         a.step()
         a.sample()
         self.assertEqual(len(a.trajectory), 2)
-        self.assertIs(a.trajectory[1], a.configuration)
+        self.assertIsNot(a.trajectory[1], a.configuration)
+        assert_equal(a.trajectory[1].positions, a.configuration.positions)
 
     def test_frames_carry_no_time(self):
         a = MCSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)

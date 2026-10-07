@@ -35,7 +35,7 @@ Panes that plot a quantity against time read it from `simulation.samples`, so th
 
 ## Composing a viewer
 
-`Viewer` takes a list of one, two or four panes:
+`Viewer` takes a list of one, two, three or four panes:
 
 ```{code-cell} python
 from pylj.md import MDSimulation
@@ -104,7 +104,8 @@ A pane that needs a quantity the simulation samples, rather than one it can comp
 simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=100, box=30, seed=1)
 for _ in range(2000):
     simulation.step()
-    simulation.heat_bath(100)
+    if simulation.steps % 50 == 0:
+        simulation.rescale_velocities(100)
     if simulation.steps % 10 == 0:
         simulation.sample()
 

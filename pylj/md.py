@@ -43,8 +43,7 @@ class MDSimulation(Simulation):
 
     Args:
         configuration: The starting configuration, with velocities. The
-            simulation starts from a copy with the centre of mass at rest;
-            see :func:`at_rest`.
+            simulation runs on its own copy, with the centre of mass at rest.
         model: The model.
         cut_off: The cut-off, in Angstrom; see :class:`Simulation`.
         timestep: The length of each integration step, in picoseconds.
@@ -52,8 +51,6 @@ class MDSimulation(Simulation):
 
     Attributes:
         configuration: The current configuration.
-        forces: The net force on each atom at the current
-            configuration, shape ``(N, 2)``, in kJ/mol/Angstrom.
         timestep: The length of each step, in picoseconds.
         samples: The :class:`MDSamples` record that ``sample`` appends to.
 
@@ -64,6 +61,8 @@ class MDSimulation(Simulation):
 
     configuration: MDConfiguration
     samples: MDSamples
+
+    __slots__ = ("timestep", "_forces")
 
     def __init__(
         self,
@@ -79,12 +78,11 @@ class MDSimulation(Simulation):
                 "MDSimulation needs an MDConfiguration, which carries velocities; build one "
                 "with MDSimulation.initialise(...) or construct an MDConfiguration."
             )
-        configuration = at_rest(configuration)
-        super().__init__(configuration, model, cut_off=cut_off, seed=seed)
-        self.trajectory = Trajectory(times=[])
         check_positive_finite("timestep", timestep)
         self.timestep = timestep
-        self.forces = configuration.forces(self.model, self.cut_off)
+        super().__init__(configuration, model, cut_off=cut_off, seed=seed)
+        self._remove_drift()
+        self.trajectory = Trajectory(times=[])
         self.samples = MDSamples()
 
     @classmethod
@@ -161,20 +159,15 @@ class MDSimulation(Simulation):
         masses = placed.masses
         thermal_speed = np.sqrt(BOLTZMANN * temperature * KJ_PER_MOL / masses)
         velocities = rng.normal(0.0, thermal_speed[:, None], size=(number_of_atoms, 2))
-        configuration = heat_bath(
-            at_rest(
-                MDConfiguration(
-                    positions=placed.positions,
-                    species=placed.species,
-                    species_index=placed.species_index,
-                    box=placed.box,
-                    velocities=velocities,
-                    unwrapped=placed.positions,
-                )
-            ),
-            temperature,
+        configuration = MDConfiguration(
+            positions=placed.positions,
+            species=placed.species,
+            species_index=placed.species_index,
+            box=placed.box,
+            velocities=velocities,
         )
         simulation = cls(configuration, model, cut_off=cut_off, timestep=timestep)
+        simulation.rescale_velocities(temperature)
         simulation.rng = rng
         return simulation
 
@@ -183,16 +176,56 @@ class MDSimulation(Simulation):
         """The simulated time, in picoseconds."""
         return self.steps * self.timestep
 
+    def _remove_drift(self) -> None:
+        """Subtracts the mass-weighted mean velocity from every atom, so the
+        centre of mass is at rest."""
+        configuration = self.configuration
+        masses = configuration.masses[:, None]
+        drift = (masses * configuration.velocities).sum(axis=0) / masses.sum()
+        configuration.velocities = configuration.velocities - drift
+
     def _recompute_from_configuration(self) -> None:
-        self.forces = self.configuration.forces(self.model, self.cut_off)
+        self._forces = self.configuration.forces(self.model, self.cut_off)
+
+    @property
+    def forces(self) -> NDArray[np.float64]:
+        """The net force on each atom at the current configuration, shape
+        ``(N, 2)``, in kJ/mol/Angstrom."""
+        self._bring_up_to_date()
+        return self._forces
 
     def integrate(self) -> None:
-        """Moves the configuration one timestep forward with Velocity-Verlet,
-        replacing the configuration and the forces.
+        """Moves the atoms one timestep forward with Velocity-Verlet.
+
+        Raises:
+            ValueError: If an atom would move further than half the cut-off
+                in the step, or a pair comes closer than its potential
+                allows.
         """
-        self._configuration, self.forces = velocity_verlet(
-            self.configuration, self.forces, self.timestep, self.model, self.cut_off
+        configuration = self.configuration
+        masses = configuration.masses[:, None]
+        accelerations = self.forces / masses * KJ_PER_MOL
+        displacement = (
+            configuration.velocities * self.timestep + 0.5 * accelerations * self.timestep**2
         )
+        furthest = float(np.linalg.norm(displacement, axis=1).max())
+        if not furthest < self.cut_off / 2:
+            raise ValueError(
+                f"An atom moved {furthest:.3g} Angstrom in a single step of "
+                f"{self.timestep:.3g} ps, more than half the cut-off of {self.cut_off:.3g} "
+                "Angstrom: the timestep is too long, or the simulation has diverged."
+            )
+        moved = configuration.positions + displacement
+        configuration.positions = moved % configuration.box
+        crossings = np.floor(moved / configuration.box).astype(np.int64)
+        configuration.images = configuration.images + crossings
+        forces = configuration.forces(self.model, self.cut_off)
+        next_accelerations = forces / masses * KJ_PER_MOL
+        configuration.velocities = (
+            configuration.velocities + 0.5 * (accelerations + next_accelerations) * self.timestep
+        )
+        self._forces = forces
+        self._keep()
 
     def step(self) -> None:
         """Integrates one timestep and advances the clock.
@@ -204,24 +237,38 @@ class MDSimulation(Simulation):
         self.integrate()
         self.steps += 1
 
-    def heat_bath(self, bath_temperature: float) -> None:
-        """Rescales the velocities to the bath temperature.
+    def rescale_velocities(self, temperature: float) -> None:
+        """Rescales the velocities so the instantaneous temperature equals
+        ``temperature``.
 
         Args:
-            bath_temperature: The desired temperature, in kelvin.
+            temperature: The temperature to rescale to, in kelvin.
 
         Raises:
-            ValueError: If the bath temperature is negative or not finite,
-                the atoms are at rest and the bath temperature is above
-                zero, or the simulation has diverged.
+            ValueError: If ``temperature`` is negative or not finite, the
+                atoms are at rest and ``temperature`` is above zero, or the
+                current temperature is not finite.
         """
-        self._configuration = heat_bath(self.configuration, bath_temperature)
+        check_non_negative_finite("temperature", temperature)
+        configuration = self.configuration
+        current = configuration.temperature()
+        if current == 0:
+            if temperature == 0:
+                return
+            raise ValueError("Cannot rescale velocities: the atoms are at rest.")
+        if not (np.isfinite(current) and current > 0):
+            raise ValueError(
+                f"Cannot rescale velocities: the current temperature is {current}, so the "
+                "simulation has diverged."
+            )
+        configuration.velocities = configuration.velocities * np.sqrt(temperature / current)
 
     def sample(self) -> None:
-        """Records the configuration in the trajectory and measures it into
-        :class:`MDSamples`."""
-        self.trajectory.append(self.configuration, self.time)
+        """Records a copy of the configuration in the trajectory and measures
+        the configuration into :class:`MDSamples`."""
+        self._bring_up_to_date()
         configuration = self.configuration
+        self.trajectory.append(configuration.copy(), self.time)
         kinetic_energy = configuration.kinetic_energy()
         pairs = configuration.pairs(self.model, self.cut_off, forces=True)
         self.samples.add(
@@ -232,135 +279,3 @@ class MDSimulation(Simulation):
             kinetic_energy=kinetic_energy,
         )
 
-
-def velocity_verlet(
-    configuration: MDConfiguration,
-    forces: NDArray[np.float64],
-    timestep: float,
-    model: Model,
-    cut_off: float,
-) -> tuple[MDConfiguration, NDArray[np.float64]]:
-    """Moves a configuration one timestep forward with the Velocity-Verlet
-    integrator.
-
-    Args:
-        configuration: The configuration at time t.
-        forces: The net force on each atom at that configuration, shape
-            ``(N, 2)``, in kJ/mol/Angstrom.
-        timestep: The length of the step, in picoseconds.
-        model: The model.
-        cut_off: The cut-off, in Angstrom.
-
-    Returns:
-        The configuration at time t + dt and the forces at it.
-
-    Raises:
-        ValueError: If an atom moves further than half the cut-off in the
-            one step.
-    """
-    masses = configuration.masses[:, None]
-    accelerations = forces / masses * KJ_PER_MOL
-    positions, unwrapped = update_positions(configuration, accelerations, timestep)
-    furthest = float(np.linalg.norm(unwrapped - configuration.unwrapped, axis=1).max())
-    if not furthest < cut_off / 2:
-        raise ValueError(
-            f"An atom moved {furthest:.3g} Angstrom in a single step of {timestep:.3g} ps, "
-            f"more than half the cut-off of {cut_off:.3g} Angstrom: "
-            "the timestep is too long, or the simulation has diverged."
-        )
-    moved = configuration.replace(positions=positions, unwrapped=unwrapped)
-    next_forces = moved.forces(model, cut_off)
-    next_accelerations = next_forces / masses * KJ_PER_MOL
-    velocities = update_velocities(
-        configuration.velocities, accelerations, next_accelerations, timestep
-    )
-    return moved.replace(velocities=velocities), next_forces
-
-
-def update_positions(
-    configuration: MDConfiguration, accelerations: NDArray[np.float64], timestep: float
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """Advances the positions by one timestep.
-
-    Args:
-        configuration: The configuration to advance.
-        accelerations: The acceleration of each atom, shape ``(N, 2)``,
-            in Angstrom per picosecond squared.
-        timestep: The length of the step, in picoseconds.
-
-    Returns:
-        The new positions, wrapped into the box, and the new unwrapped
-        positions.
-    """
-    displacement = configuration.velocities * timestep + 0.5 * accelerations * timestep**2
-    positions = (configuration.positions + displacement) % configuration.box
-    return positions, configuration.unwrapped + displacement
-
-
-def update_velocities(
-    velocities: NDArray[np.float64],
-    accelerations: NDArray[np.float64],
-    next_accelerations: NDArray[np.float64],
-    timestep: float,
-) -> NDArray[np.float64]:
-    """Advances the velocities by one timestep.
-
-    Args:
-        velocities: The velocity of each atom, shape ``(N, 2)``, in
-            Angstrom per picosecond.
-        accelerations: The accelerations at the start of the step.
-        next_accelerations: The accelerations at the end of the step.
-        timestep: The length of the step, in picoseconds.
-
-    Returns:
-        The new velocities.
-    """
-    return velocities + 0.5 * (accelerations + next_accelerations) * timestep
-
-
-def at_rest(configuration: MDConfiguration) -> MDConfiguration:
-    """Returns the configuration with its centre of mass at rest.
-
-    The mass-weighted mean velocity is subtracted from every atom.
-
-    Args:
-        configuration: The configuration to bring to rest.
-
-    Returns:
-        A copy with the centre of mass at rest.
-    """
-    masses = configuration.masses[:, None]
-    drift = (masses * configuration.velocities).sum(axis=0) / masses.sum()
-    return configuration.replace(velocities=configuration.velocities - drift)
-
-
-def heat_bath(configuration: MDConfiguration, bath_temperature: float) -> MDConfiguration:
-    """Rescales the velocities so the instantaneous temperature equals the
-    bath temperature.
-
-    Args:
-        configuration: The configuration to thermostat.
-        bath_temperature: The desired temperature, in kelvin.
-
-    Returns:
-        The configuration with the velocities rescaled.
-
-    Raises:
-        ValueError: If the bath temperature is negative or not finite, the
-            atoms are at rest and the bath temperature is above zero, or the
-            current temperature is not finite.
-    """
-    check_non_negative_finite("bath_temperature", bath_temperature)
-    current = configuration.temperature()
-    if current == 0:
-        if bath_temperature == 0:
-            return configuration
-        raise ValueError("Cannot rescale velocities: the atoms are at rest.")
-    if not (np.isfinite(current) and current > 0):
-        raise ValueError(
-            f"Cannot rescale velocities: the current temperature is {current}, so the "
-            "simulation has diverged."
-        )
-    return configuration.replace(
-        velocities=configuration.velocities * np.sqrt(bath_temperature / current)
-    )

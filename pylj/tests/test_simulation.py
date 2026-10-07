@@ -12,10 +12,12 @@ class Counting(simulation.Simulation):
     """A simulation whose step and sample only count, for the base class tests."""
 
     def __init__(self, *args, **kwargs):
+        self.recomputed = 0
         super().__init__(*args, **kwargs)
         self.sampled = 0
 
     def step(self):
+        self._bring_up_to_date()
         self.steps += 1
 
     def sample(self):
@@ -23,7 +25,7 @@ class Counting(simulation.Simulation):
         self.samples.add(step=self.steps)
 
     def _recompute_from_configuration(self):
-        pass
+        self.recomputed += 1
 
 
 class TestSimulation(unittest.TestCase):
@@ -86,6 +88,62 @@ class TestSimulation(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "step"):
             Stepless(c, ARGON_MODEL)
 
+    def test_starts_from_a_copy_of_the_configuration(self):
+        c = placement.place_square(4, (ARGON,), 40.0)
+        s = Counting(c, ARGON_MODEL)
+        s.configuration.positions[0] = 1.0
+        self.assertFalse(np.array_equal(c.positions, s.configuration.positions))
+
+    def test_recomputes_only_when_the_state_has_changed(self):
+        s = self.build()
+        self.assertEqual(s.recomputed, 1)  # once, at construction
+        s.step()
+        self.assertEqual(s.recomputed, 1)
+        s.configuration.positions[0] += 0.5
+        s.step()
+        self.assertEqual(s.recomputed, 2)
+        s.step()
+        self.assertEqual(s.recomputed, 2)
+
+    def test_recomputes_for_a_new_configuration_model_species_or_cut_off(self):
+        s = self.build()
+        s.configuration = s.configuration.copy()
+        s.step()
+        self.assertEqual(s.recomputed, 1)  # equal state: nothing to recompute
+        s.model = MIXTURE_MODEL
+        s.step()
+        self.assertEqual(s.recomputed, 2)
+        s.configuration.species = (ARGON, LARGER)
+        s.step()
+        self.assertEqual(s.recomputed, 3)
+        s.configuration.species_index[0] = 1
+        s.step()
+        self.assertEqual(s.recomputed, 4)
+        s.cut_off = 10.0
+        s.step()
+        self.assertEqual(s.recomputed, 5)
+
+    def test_a_changed_number_of_atoms_or_box_raises_at_the_next_step(self):
+        s = self.build()
+        s.configuration = s.configuration.without(0)
+        with self.assertRaisesRegex(ValueError, "number of atoms has changed from 4 to 3"):
+            s.step()
+        s = self.build()
+        s.configuration.box = 50.0
+        with self.assertRaisesRegex(ValueError, "box has changed from 40 to 50 Angstrom"):
+            s.step()
+
+    def test_a_species_outside_the_model_raises_at_the_next_step(self):
+        s = self.build()
+        s.configuration.species = (LARGER,)
+        with self.assertRaisesRegex(ValueError, "larger.*not in the model"):
+            s.step()
+
+    def test_a_misspelt_attribute_raises(self):
+        s = md.MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+        with self.assertRaises(AttributeError):
+            s.timstep = 0.002  # type: ignore[attr-defined]
+
     def test_restart_starts_a_fresh_record_and_shares_the_model(self):
         s = self.build(seed=1)
         for _ in range(3):
@@ -94,7 +152,8 @@ class TestSimulation(unittest.TestCase):
         production = s.restart()
         self.assertIsNot(production, s)
         self.assertIsInstance(production, Counting)
-        self.assertIs(production.configuration, s.configuration)
+        self.assertIsNot(production.configuration, s.configuration)
+        assert_equal(production.configuration.positions, s.configuration.positions)
         self.assertIs(production.model, s.model)
         self.assertEqual(production.steps, 0)
         self.assertIsNot(production.samples, s.samples)

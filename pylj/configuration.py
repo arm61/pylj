@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import Self
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -49,22 +49,27 @@ def _radial_forces(pairs: PairData) -> NDArray[np.float64]:
     return pairs.radial_forces
 
 
+def _integer_array(name: str, value: ArrayLike) -> NDArray[np.int64]:
+    """Returns a copy of ``value`` as an array, which must hold integers.
+
+    Raises:
+        ValueError: If the array does not hold integers.
+    """
+    array = np.array(value)
+    if not np.issubdtype(array.dtype, np.integer):
+        raise ValueError(f"{name} must be an integer array, not {array.dtype}")
+    return array
+
+
 _AtomPairs = tuple[NDArray[np.intp], NDArray[np.intp], list[tuple[NDArray[np.bool_], int, int]]]
-
-
-def _read_only(array: NDArray[Any]) -> NDArray[Any]:
-    """Returns a read-only view of ``array``."""
-    view = array.view()
-    view.flags.writeable = False
-    return view
 
 
 class Configuration:
     """A single configuration of atoms and the simulation cell.
 
-    A configuration cannot be changed once it is made: its arrays are
-    read-only copies of the ones it was given. ``replace`` makes a new
-    configuration with some of them changed.
+    A configuration keeps its own copy of every array it is given, when it
+    is built or when one of its attributes is assigned, with positions as
+    floats.
 
     Args:
         positions: The position of each atom, shape ``(N, 2)``, in Angstrom.
@@ -79,7 +84,7 @@ class Configuration:
             species, or the box is not positive and finite.
     """
 
-    __slots__ = ("_positions", "_species", "_species_index", "_box", "_atom_pairs_cache")
+    __slots__ = ("_positions", "_species", "_species_index", "box", "_atom_pairs_cache")
 
     def __init__(
         self,
@@ -88,51 +93,54 @@ class Configuration:
         species_index: ArrayLike,
         box: float,
     ) -> None:
-        positions = np.array(positions, dtype=float)
-        species = tuple(species)
-        species_index = np.array(species_index)
-        if positions.ndim != 2 or positions.shape[1] != 2:
-            raise ValueError(f"positions must have shape (N, 2), not {positions.shape}")
-        n = positions.shape[0]
-        integer = np.issubdtype(species_index.dtype, np.integer)
-        if species_index.shape != (n,) or not integer:
+        self.positions = positions
+        self.species = species
+        self.species_index = species_index
+        if self.positions.ndim != 2 or self.positions.shape[1] != 2:
+            raise ValueError(f"positions must have shape (N, 2), not {self.positions.shape}")
+        n = self.positions.shape[0]
+        if self.species_index.shape != (n,):
             raise ValueError(
-                f"species_index must be an integer array of shape ({n},), one entry per "
-                f"atom, not {species_index.dtype} of shape {species_index.shape}"
+                f"species_index must have shape ({n},), one entry per atom, not "
+                f"{self.species_index.shape}"
             )
-        if not species:
+        if not self.species:
             raise ValueError("species must name at least one Species")
-        if n and not (0 <= species_index.min() and species_index.max() < len(species)):
-            raise ValueError(f"species_index must index the {len(species)} species")
+        if n and not (
+            0 <= self.species_index.min() and self.species_index.max() < len(self.species)
+        ):
+            raise ValueError(f"species_index must index the {len(self.species)} species")
         if not (np.isfinite(box) and box > 0):
             raise ValueError(f"box must be positive and finite, not {box}")
-        # Private copies, which the properties hand out as read-only views. A
-        # read-only flag on the copies themselves would not survive pickling.
-        self._positions = positions
-        self._species = species
-        self._species_index = species_index
-        self._box = box
-        self._atom_pairs_cache: _AtomPairs | None = None
+        self.box: float = box
+        self._atom_pairs_cache: tuple[NDArray[np.int64], _AtomPairs] | None = None
 
     @property
     def positions(self) -> NDArray[np.float64]:
         """The position of each atom, shape ``(N, 2)``, in Angstrom."""
-        return _read_only(self._positions)
+        return self._positions
+
+    @positions.setter
+    def positions(self, positions: ArrayLike) -> None:
+        self._positions = np.array(positions, dtype=float)
 
     @property
     def species(self) -> tuple[Species, ...]:
         """The distinct species, indexed by ``species_index``."""
         return self._species
 
+    @species.setter
+    def species(self, species: Sequence[Species]) -> None:
+        self._species = tuple(species)
+
     @property
     def species_index(self) -> NDArray[np.int64]:
         """The index in ``species`` of each atom's species, shape ``(N,)``."""
-        return _read_only(self._species_index)
+        return self._species_index
 
-    @property
-    def box(self) -> float:
-        """The side length of the square periodic box, in Angstrom."""
-        return self._box
+    @species_index.setter
+    def species_index(self, species_index: ArrayLike) -> None:
+        self._species_index = _integer_array("species_index", species_index)
 
     @property
     def number_of_atoms(self) -> int:
@@ -143,22 +151,11 @@ class Configuration:
     def masses(self) -> NDArray[np.float64]:
         """Atomic masses, in atomic mass units."""
         masses = np.array([one.mass for one in self.species], dtype=float)
-        return _read_only(masses[self.species_index])
+        return masses[self.species_index]
 
-    def replace(self, **changes: Any) -> Self:
-        """Returns a copy with the given attributes replaced."""
-        arguments: dict[str, Any] = {
-            "positions": self.positions,
-            "species": self.species,
-            "species_index": self.species_index,
-            "box": self.box,
-        }
-        replaced = type(self)(**(arguments | changes))
-        if "species_index" not in changes:
-            # The pairs of atoms and the species they join depend only on
-            # species_index, so a copy with the same species_index shares them.
-            replaced._atom_pairs_cache = self._atom_pairs_cache
-        return replaced
+    def copy(self) -> Self:
+        """Returns an independent copy, with its own copy of every array."""
+        return type(self)(self.positions, self.species, self.species_index, self.box)
 
     def without(self, index: int) -> Self:
         """Returns a copy of this Configuration with one atom removed.
@@ -169,18 +166,24 @@ class Configuration:
         Returns:
             The configuration without that atom.
         """
-        return self.replace(
-            positions=np.delete(self.positions, index, axis=0),
-            species_index=np.delete(self.species_index, index),
+        return type(self)(
+            np.delete(self.positions, index, axis=0),
+            self.species,
+            np.delete(self.species_index, index),
+            self.box,
         )
 
     def _atom_pairs(self) -> _AtomPairs:
         """Returns the indices ``i < j`` of every pair of atoms and the pairs
-        grouped by the species they join, building them on first use."""
-        if self._atom_pairs_cache is None:
+        grouped by the species they join, rebuilding them when
+        ``species_index`` has changed."""
+        cache = self._atom_pairs_cache
+        if cache is None or not np.array_equal(cache[0], self.species_index):
             i, j = np.triu_indices(self.number_of_atoms, 1)
-            self._atom_pairs_cache = (i, j, list(pairwise.species_pairs(self.species_index)))
-        return self._atom_pairs_cache
+            pairs = (i, j, list(pairwise.species_pairs(self.species_index)))
+            cache = (self.species_index.copy(), pairs)
+            self._atom_pairs_cache = cache
+        return cache[1]
 
     def pairs(self, model: Model, cut_off: float, *, forces: bool = False) -> PairData:
         """Evaluates the energy and optionally forces for each pair of atoms.
@@ -344,22 +347,24 @@ class Configuration:
 
 
 class MDConfiguration(Configuration):
-    """A configuration with atom velocities and unwrapped positions.
+    """A configuration with atom velocities and box crossings.
 
-    It takes the arguments of :class:`Configuration`, followed by these two.
+    It takes the arguments of :class:`Configuration`, followed by these two,
+    and keeps velocities as floats.
 
     Args:
         velocities: The velocity of each atom, shape ``(N, 2)``, in
             Angstrom per picosecond.
-        unwrapped: The position of each atom without periodic wrapping,
-            shape ``(N, 2)``, in Angstrom.
+        images: The number of times each atom has crossed the box along x
+            and along y, shape ``(N, 2)``, negative for crossings in the
+            negative direction. By default zero.
 
     Raises:
-        ValueError: If ``velocities`` or ``unwrapped`` is not the shape of
-            ``positions``.
+        ValueError: If ``velocities`` or ``images`` is not the shape of
+            ``positions``, or ``images`` is not an integer array.
     """
 
-    __slots__ = ("_velocities", "_unwrapped")
+    __slots__ = ("_velocities", "_images")
 
     def __init__(
         self,
@@ -368,34 +373,53 @@ class MDConfiguration(Configuration):
         species_index: ArrayLike,
         box: float,
         velocities: ArrayLike,
-        unwrapped: ArrayLike,
+        images: ArrayLike | None = None,
     ) -> None:
         super().__init__(positions, species, species_index, box)
-        velocities = np.array(velocities, dtype=float)
-        unwrapped = np.array(unwrapped, dtype=float)
-        for name, array in (("velocities", velocities), ("unwrapped", unwrapped)):
+        self.velocities = velocities
+        self.images = np.zeros(self.positions.shape, dtype=np.int64) if images is None else images
+        for name, array in (("velocities", self.velocities), ("images", self.images)):
             if array.shape != self.positions.shape:
                 raise ValueError(
                     f"{name} must have the shape of positions, {self.positions.shape}, "
                     f"not {array.shape}"
                 )
-        self._velocities = velocities
-        self._unwrapped = unwrapped
 
     @property
     def velocities(self) -> NDArray[np.float64]:
         """The velocity of each atom, shape ``(N, 2)``, in Angstrom per picosecond."""
-        return _read_only(self._velocities)
+        return self._velocities
+
+    @velocities.setter
+    def velocities(self, velocities: ArrayLike) -> None:
+        self._velocities = np.array(velocities, dtype=float)
+
+    @property
+    def images(self) -> NDArray[np.int64]:
+        """The number of times each atom has crossed the box along x and along
+        y, shape ``(N, 2)``."""
+        return self._images
+
+    @images.setter
+    def images(self, images: ArrayLike) -> None:
+        self._images = _integer_array("images", images)
 
     @property
     def unwrapped(self) -> NDArray[np.float64]:
-        """The position of each atom without periodic wrapping, shape ``(N, 2)``, in Angstrom."""
-        return _read_only(self._unwrapped)
+        """The position of each atom without periodic wrapping, shape ``(N, 2)``,
+        in Angstrom: ``positions + images * box``."""
+        return self.positions + self.images * self.box
 
-    def replace(self, **changes: Any) -> Self:
-        """Returns a copy with the given attributes replaced."""
-        arguments: dict[str, Any] = {"velocities": self.velocities, "unwrapped": self.unwrapped}
-        return super().replace(**(arguments | changes))
+    def copy(self) -> Self:
+        """Returns an independent copy, with its own copy of every array."""
+        return type(self)(
+            self.positions,
+            self.species,
+            self.species_index,
+            self.box,
+            self.velocities,
+            self.images,
+        )
 
     def without(self, index: int) -> Self:
         """Returns a copy of this MDConfiguration with one atom removed.
@@ -406,11 +430,13 @@ class MDConfiguration(Configuration):
         Returns:
             The configuration without that atom.
         """
-        return self.replace(
-            positions=np.delete(self.positions, index, axis=0),
-            species_index=np.delete(self.species_index, index),
-            velocities=np.delete(self.velocities, index, axis=0),
-            unwrapped=np.delete(self.unwrapped, index, axis=0),
+        return type(self)(
+            np.delete(self.positions, index, axis=0),
+            self.species,
+            np.delete(self.species_index, index),
+            self.box,
+            np.delete(self.velocities, index, axis=0),
+            np.delete(self.images, index, axis=0),
         )
 
     def kinetic_energy(self) -> float:

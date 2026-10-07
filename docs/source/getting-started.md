@@ -37,13 +37,14 @@ simulation = MDSimulation.initialise(model, number_of_atoms=16, temperature=300,
 viewer = sample.Interactions(simulation)
 for _ in range(2000):
     simulation.step()
-    simulation.heat_bath(300)
+    if simulation.steps % 50 == 0:
+        simulation.rescale_velocities(300)
     simulation.sample()
     if simulation.steps % 100 == 0:
         viewer.update(simulation)
 ```
 
-`initialise` takes the model, the number of atoms, the temperature in kelvin and the box side in Angstrom. `step()` advances one timestep, `heat_bath()` holds the temperature, `sample()` records the temperature, pressure and energies in `simulation.samples`, and the viewer redraws when asked.
+`initialise` takes the model, the number of atoms, the temperature in kelvin and the box side in Angstrom. `step()` advances one timestep, `sample()` records the temperature, pressure and energies in `simulation.samples`, and the viewer redraws when asked.
 
 ## Monte Carlo
 

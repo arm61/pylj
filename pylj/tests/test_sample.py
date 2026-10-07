@@ -79,7 +79,7 @@ def sampled_mc_simulation(steps: int):
 def with_velocity(simulation, x, y):
     """Set every atom's velocity to (x, y)."""
     velocity = np.tile([x, y], (simulation.configuration.number_of_atoms, 1))
-    simulation.configuration = simulation.configuration.replace(velocities=velocity)
+    simulation.configuration.velocities = velocity
 
 
 def test_environment_rejects_other_pane_counts():
