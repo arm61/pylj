@@ -55,16 +55,16 @@ class PairPotential(ABC):
     Both ``energies`` and ``forces`` take an array of separations ``dr``,
     in Angstrom, and return an array of the same shape: energies in kJ/mol
     and forces in kJ/mol per Angstrom.
-
-    Attributes:
-        min_separation: The separation, in Angstrom, below which the potential
-            is unphysical. Zero, the default, means the potential is physical
-            at every separation. A configuration treats any pair closer
-            than this as forbidden: its energy is infinite, and asking for
-            its force raises an error.
     """
 
-    min_separation: float = 0.0
+    @property
+    def min_separation(self) -> float:
+        """The separation, in Angstrom, below which the potential is
+        unphysical. Zero, the default, means the potential is physical at
+        every separation. A configuration treats any pair closer than this
+        as forbidden: its energy is infinite, and asking for its force
+        raises an error."""
+        return 0.0
 
     @abstractmethod
     def energies(self, dr: ArrayLike) -> NDArray[np.float64]:
@@ -96,8 +96,18 @@ class LennardJones(PairPotential):
     def __init__(self, *, epsilon: float, sigma: float):
         check_positive_finite("epsilon", epsilon)
         check_positive_finite("sigma", sigma)
-        self.epsilon = epsilon
-        self.sigma = sigma
+        self._epsilon = epsilon
+        self._sigma = sigma
+
+    @property
+    def epsilon(self) -> float:
+        """The well depth, in kJ/mol."""
+        return self._epsilon
+
+    @property
+    def sigma(self) -> float:
+        """The separation at which the pair energy is zero, in Angstrom."""
+        return self._sigma
 
     def __repr__(self) -> str:
         return f"LennardJones(epsilon={self.epsilon!r}, sigma={self.sigma!r})"
@@ -130,10 +140,6 @@ class Buckingham(PairPotential):
         b: The B parameter, an inverse length, in reciprocal Angstrom.
         c: The C parameter, the dispersion coefficient, in kJ/mol Angstrom^6.
 
-    Attributes:
-        min_separation: The separation of the top of the short-range
-            barrier, in Angstrom; zero when there is no barrier.
-
     Raises:
         ValueError: If ``a`` or ``b`` is not positive and finite, if ``c`` is
             negative or not finite, or if the barrier lies beyond 100
@@ -144,10 +150,31 @@ class Buckingham(PairPotential):
         check_positive_finite("a", a)
         check_positive_finite("b", b)
         check_non_negative_finite("c", c)
-        self.a = a
-        self.b = b
-        self.c = c
-        self.min_separation = self._find_barrier()
+        self._a = a
+        self._b = b
+        self._c = c
+        self._min_separation = self._find_barrier()
+
+    @property
+    def a(self) -> float:
+        """The A parameter, an energy scale, in kJ/mol."""
+        return self._a
+
+    @property
+    def b(self) -> float:
+        """The B parameter, an inverse length, in reciprocal Angstrom."""
+        return self._b
+
+    @property
+    def c(self) -> float:
+        """The C parameter, the dispersion coefficient, in kJ/mol Angstrom^6."""
+        return self._c
+
+    @property
+    def min_separation(self) -> float:
+        """The separation of the top of the short-range barrier, in Angstrom;
+        zero when there is no barrier."""
+        return self._min_separation
 
     def __repr__(self) -> str:
         return f"Buckingham(a={self.a!r}, b={self.b!r}, c={self.c!r})"
@@ -215,10 +242,30 @@ class SquareWell(PairPotential):
                 "max_val must be positive: a hard core that lowers the energy would "
                 "draw atoms into it"
             )
-        self.epsilon = epsilon
-        self.sigma = sigma
-        self.lambda_ = lambda_
-        self.max_val = max_val
+        self._epsilon = epsilon
+        self._sigma = sigma
+        self._lambda = lambda_
+        self._max_val = max_val
+
+    @property
+    def epsilon(self) -> float:
+        """The well depth, in kJ/mol."""
+        return self._epsilon
+
+    @property
+    def sigma(self) -> float:
+        """The hard-core diameter, in Angstrom."""
+        return self._sigma
+
+    @property
+    def lambda_(self) -> float:
+        """The outer edge of the well, in units of sigma."""
+        return self._lambda
+
+    @property
+    def max_val(self) -> float:
+        """The value used in place of the infinite hard core, in kJ/mol."""
+        return self._max_val
 
     def __repr__(self) -> str:
         call = (

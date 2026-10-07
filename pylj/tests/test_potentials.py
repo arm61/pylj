@@ -212,3 +212,23 @@ class TestSquareWell:
         sw = SquareWell(epsilon=1.0, sigma=3.4, lambda_=1.5)
         assert repr(sw).endswith("lambda_=1.5)")
         assert "max_val" not in repr(sw)
+
+
+@pytest.mark.parametrize(
+    "potential, parameter",
+    [
+        (LennardJones(epsilon=1.0, sigma=3.4), "epsilon"),
+        (LennardJones(epsilon=1.0, sigma=3.4), "sigma"),
+        (Buckingham(a=6.0e4, b=3.0, c=6.0e3), "a"),
+        (Buckingham(a=6.0e4, b=3.0, c=6.0e3), "b"),
+        (Buckingham(a=6.0e4, b=3.0, c=6.0e3), "c"),
+        (Buckingham(a=6.0e4, b=3.0, c=6.0e3), "min_separation"),
+        (SquareWell(epsilon=1.0, sigma=3.0, lambda_=1.5), "epsilon"),
+        (SquareWell(epsilon=1.0, sigma=3.0, lambda_=1.5), "sigma"),
+        (SquareWell(epsilon=1.0, sigma=3.0, lambda_=1.5), "lambda_"),
+        (SquareWell(epsilon=1.0, sigma=3.0, lambda_=1.5), "max_val"),
+    ],
+)
+def test_a_built_potential_is_fixed(potential, parameter):
+    with pytest.raises(AttributeError):
+        setattr(potential, parameter, 2.0)

@@ -3,6 +3,12 @@
 All notable changes to pylj are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Changed
+
+- The parameters of `LennardJones`, `Buckingham` and `SquareWell` are read-only properties, so a potential cannot be changed once it is built. `PairPotential.min_separation` is a read-only property, zero unless a potential overrides it. A potential that set `self.min_separation` in its `__init__` defines it as a class attribute or a property instead.
+
 ## 2.0.0b1 - 2026-10-06
 
 ### Added

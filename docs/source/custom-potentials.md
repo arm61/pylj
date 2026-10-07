@@ -17,14 +17,16 @@ plt.rcParams["figure.dpi"] = 100
 Custom pair potentials can be defined in a few lines of Python. A potential is a subclass of `PairPotential` with two methods:
 
 ```{code-cell} python
+from dataclasses import dataclass
+
 import numpy as np
 from pylj.potentials import PairPotential
 
 
+@dataclass(frozen=True, kw_only=True)
 class SoftSphere(PairPotential):
-    def __init__(self, *, epsilon, sigma):
-        self.epsilon = epsilon
-        self.sigma = sigma
+    epsilon: float
+    sigma: float
 
     def energies(self, dr):
         dr = np.asarray(dr, dtype=float)
@@ -35,9 +37,9 @@ class SoftSphere(PairPotential):
         return 12 * self.epsilon * (self.sigma / dr) ** 12 / dr
 ```
 
-`energies(dr)` takes an array of pair separations in Angstrom and returns the pair energy of each in kJ/mol. `forces(dr)` returns the radial force in kJ/mol per Angstrom, minus the derivative of the energy with respect to the separation, so positive where the pair repels and negative where it attracts. A potential with no finite force, such as `SquareWell`, raises `ValueError` from `forces` and can drive only Monte Carlo. The constructor takes whatever parameters the potential needs; the built-in potentials use keyword-only parameters named after the physical quantities.
+`energies(dr)` takes an array of pair separations in Angstrom and returns the pair energy of each in kJ/mol. `forces(dr)` returns the radial force in kJ/mol per Angstrom, minus the derivative of the energy with respect to the separation, so positive where the pair repels and negative where it attracts. A potential with no finite force, such as `SquareWell`, raises `ValueError` from `forces` and can drive only Monte Carlo. The parameters are the fields of a frozen dataclass, so a potential cannot change once it is built. To change the physics during a run, build a new `Model` and assign it to `simulation.model`.
 
-`min_separation` is the separation below which the formula gives unphysical energies. It is a class attribute and defaults to `0.0`, meaning the formula is physical at every separation. A configuration gives a pair closer than it infinite energy, so placement and Monte Carlo never accept such a pair, and raises `ValueError` if asked for its forces. `Buckingham` sets it to the top of its short-range barrier in its constructor.
+`min_separation` is the separation below which the formula gives unphysical energies. By default it is `0.0`: the formula is physical at every separation. A potential that is unphysical at short range overrides it, as a class attribute such as `min_separation = 1.5`, or as a property computed from its parameters. A configuration gives a pair closer than it infinite energy, so placement and Monte Carlo never accept such a pair, and raises `ValueError` if asked for its forces. `Buckingham` sets it to the top of its short-range barrier when it is built.
 
 A purely repulsive potential has no energy minimum for a viewer to size the atoms by, so the viewer is given a `diameter` in Angstrom:
 
