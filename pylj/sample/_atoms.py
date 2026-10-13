@@ -194,13 +194,7 @@ def _frame_index(count: int, frame: int) -> int:
 
 
 def _frame_titles(trajectory: Trajectory) -> list[str]:
-    """Returns the title of every frame in the trajectory.
-
-    Each title is the time of the frame. Every title has the same number of
-    decimal places. That number is the fewest that writes every time in the
-    trajectory exactly, up to six. A frame without a time is titled with its
-    number instead.
-    """
+    """Returns the title of every frame in the trajectory."""
     times = trajectory.times
     if times is None:
         return [f"Frame {index}" for index in range(len(trajectory))]
