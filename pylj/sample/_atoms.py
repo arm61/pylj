@@ -172,7 +172,7 @@ class _AtomDrawing:
             title: The title of the axes.
         """
         for atoms, discs in self.groups:
-            positions = configuration.positions[atoms]
+            positions = configuration.positions[atoms] % self.box
             drawn = _with_periodic_images(positions, self.box, discs.diameter / 2)
             discs.set_data(drawn[:, 0], drawn[:, 1])
         self.ax.set_title(title, fontsize=12)
@@ -233,14 +233,11 @@ def view(
         index = _frame_index(len(trajectory), frame)
         configuration = trajectory[index]
         title = _frame_titles(trajectory)[index]
+    diameters = _atom_diameters(configuration, simulation.model, diameter)
+    colours = _atom_colours(configuration, colour)
     if ax is None:
         _, ax = plt.subplots(figsize=figsize, layout="tight")
-    drawing = _AtomDrawing(
-        ax,
-        configuration.box,
-        _atom_diameters(configuration, simulation.model, diameter),
-        _atom_colours(configuration, colour),
-    )
+    drawing = _AtomDrawing(ax, configuration.box, diameters, colours)
     drawing.draw(configuration, title)
     return ax
 

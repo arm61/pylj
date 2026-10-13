@@ -165,6 +165,18 @@ def test_view_draws_periodic_images_of_atoms_at_the_edges():
     assert_allclose(drawn_positions(simulation.view(diameter=4.0)), expected)
 
 
+def test_view_draws_an_atom_outside_the_box_at_its_place_inside_it():
+    simulation = positioned([[25.0, 5.0], [-4.0, 14.0]])
+    assert_allclose(drawn_positions(simulation.view(diameter=1.0)), [(5.0, 5.0), (16.0, 14.0)])
+
+
+def test_view_with_a_bad_colour_leaves_no_figure_open():
+    open_before = plt.get_fignums()
+    with pytest.raises(ValueError):
+        positioned(MIDDLE).view(colour=["red", "blue"])
+    assert plt.get_fignums() == open_before
+
+
 def test_view_draws_one_line_per_colour_and_diameter():
     assert len(positioned(MIDDLE).view().lines) == 1
     ax = positioned(MIDDLE).view(diameter=[3, 3, 3, 4], colour=["red", "blue", "blue", "blue"])
