@@ -17,7 +17,6 @@ from pylj.trajectory import Trajectory
 if TYPE_CHECKING:
     from IPython.display import HTML
     from matplotlib.axes import Axes
-    from matplotlib.figure import Figure, SubFigure
     from matplotlib.typing import ColorType
 
 #: The cut-off used when none is given, in Angstrom, or half the box if
@@ -247,30 +246,31 @@ class Simulation(ABC):
         colour: "ColorType | Sequence[ColorType] | None" = None,
         figsize: tuple[float, float] = (4, 4),
         ax: "Axes | None" = None,
-    ) -> "Figure | SubFigure":
-        """Draws the atoms in the box, now or at a recorded frame.
+    ) -> "Axes":
+        """Draws the atoms in the box.
 
-        Each atom is drawn to scale as a disc. An atom that overhangs an edge
-        of the box is drawn again at the opposite edge, since the box is
-        periodic. The title gives the time in picoseconds. For a Monte Carlo
-        simulation it gives the step, or for a recorded frame its number.
+        Each atom is drawn to scale as a disc. The box is periodic, so an atom
+        that overhangs an edge of the box is drawn again at the opposite edge.
+        The title gives the simulated time in picoseconds. Monte Carlo has no
+        time, so for a Monte Carlo simulation the title gives the step. A
+        recorded Monte Carlo frame is titled with its frame number.
 
         Args:
             frame: The index of the frame in ``trajectory`` to draw. By
                 default the current configuration is drawn.
-            diameter: Drawn diameter of the atoms, in Angstrom: one value for
-                every atom, or one per atom. By default each species is drawn
-                at the separation at the minimum of its own pair energy.
-            colour: Colour of the atoms, in any form matplotlib accepts: one
-                colour for every atom, or one per atom. By default each
-                species has its own colour.
+            diameter: The drawn diameter of the atoms, in Angstrom. A single
+                value applies to every atom. A sequence gives one value per
+                atom. By default each species is drawn at the separation at
+                the minimum of its own pair energy.
+            colour: The colour of the atoms, in any form matplotlib accepts. A
+                single colour applies to every atom. A sequence gives one
+                colour per atom. By default each species has its own colour.
             figsize: Width and height of the figure, in inches.
-            ax: Axes to draw into, in place of a new figure. ``figsize`` is
-                then not used.
+            ax: The axes to draw into. By default the atoms are drawn in a
+                new figure of size ``figsize``.
 
         Returns:
-            The figure. A notebook shows it when it is the last line of a
-            cell.
+            The axes the atoms are drawn in.
 
         Raises:
             ValueError: If ``frame`` is given and the trajectory has no
@@ -295,30 +295,33 @@ class Simulation(ABC):
     ) -> "HTML":
         """Animates the frames recorded in ``trajectory``.
 
-        Each frame is drawn as :meth:`view` draws it. A notebook plays the
-        animation with buttons to play, pause and step through it, and a
-        slider. Its size grows with the number of frames, the number of atoms
-        and the number of different colours and diameters: 100 frames of 168
-        atoms of one colour take about 4 MB.
+        Each frame is drawn as :meth:`view` draws it. A notebook shows the
+        animation with a slider and with buttons to play, pause and step
+        through the frames.
+
+        The size of the animation grows with the number of frames, with the
+        number of atoms, and with the number of different pairs of colour and
+        diameter. For example, 100 frames of 168 atoms of one colour take about
+        3 MB.
 
         Args:
-            frames: The frames to animate: a slice, such as
-                ``slice(0, 100)``, or a sequence of indices into
+            frames: The frames to animate, as a slice such as
+                ``slice(0, 100)`` or as a sequence of positions in
                 ``trajectory``. By default every frame is animated.
             fps: Frames per second.
-            diameter: Drawn diameter of the atoms, in Angstrom: one value for
-                every atom, or one per atom. By default each species is drawn
-                at the separation at the minimum of its own pair energy.
-            colour: Colour of the atoms, in any form matplotlib accepts: one
-                colour for every atom, or one per atom. By default each
-                species has its own colour.
+            diameter: The drawn diameter of the atoms, in Angstrom. A single
+                value applies to every atom. A sequence gives one value per
+                atom. By default each species is drawn at the separation at
+                the minimum of its own pair energy.
+            colour: The colour of the atoms, in any form matplotlib accepts. A
+                single colour applies to every atom. A sequence gives one
+                colour per atom. By default each species has its own colour.
             figsize: Width and height of the figure, in inches.
             progress: Whether to show a progress bar while the frames are
                 drawn.
 
         Returns:
-            The animation. A notebook shows it when it is the last line of a
-            cell.
+            The animation.
 
         Raises:
             ValueError: If the trajectory has no frames, ``frames`` selects

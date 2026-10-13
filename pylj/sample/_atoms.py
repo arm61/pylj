@@ -1,5 +1,4 @@
-"""Pictures and animations of the atoms in the box, for Simulation.view and
-Simulation.animate."""
+"""Draws the atoms in the box for Simulation.view and Simulation.animate."""
 
 import base64
 import io
@@ -15,7 +14,7 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.axes import Axes
 from matplotlib.backend_bases import RendererBase
 from matplotlib.colors import is_color_like, to_rgba
-from matplotlib.figure import Figure, SubFigure
+from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.typing import ColorType
 from numpy.typing import NDArray
@@ -40,9 +39,9 @@ def _atom_diameters(
     Args:
         configuration: The configuration to draw.
         model: The model, which gives each species its default diameter.
-        diameter: ``None`` gives each species the separation at the minimum
-            of its own pair energy. A single value applies to every atom, and
-            a sequence gives one value per atom.
+        diameter: ``None`` draws each species at the separation at the
+            minimum of its own pair energy. A single value applies to every
+            atom. A sequence gives one value per atom.
 
     Returns:
         One diameter per atom.
@@ -73,13 +72,14 @@ def _atom_colours(
 
     Args:
         configuration: The configuration to draw.
-        colour: ``None`` gives each species its own colour, the first from
-            matplotlib's colour cycle for the first species and so on. A
-            single matplotlib colour applies to every atom, and a sequence
-            gives one colour per atom.
+        colour: ``None`` gives each species its own colour. The first
+            species takes the first colour in matplotlib's colour cycle, the
+            second species takes the second colour, and so on. A single
+            matplotlib colour applies to every atom. A sequence gives one
+            colour per atom.
 
     Returns:
-        One colour per atom, as red, green, blue and alpha.
+        One colour per atom, as a tuple of red, green, blue and alpha values.
 
     Raises:
         ValueError: If a colour is not one matplotlib recognises, or a
@@ -97,7 +97,9 @@ def _atom_colours(
 
 
 class _Discs(Line2D):
-    """Atoms of one colour and one diameter, drawn as discs to scale with the box.
+    """A line of markers that draws atoms of one colour and one diameter as discs.
+
+    The discs are drawn to scale with the box.
 
     Args:
         diameter: Drawn diameter, in Angstrom.
@@ -114,17 +116,19 @@ class _Discs(Line2D):
 
     def draw(self, renderer: RendererBase) -> None:
         axes = self.axes
-        assert axes is not None  # discs are drawn only once added to an axes
-        # A marker's size is in points, so it is set from the width of the
-        # axes each time the discs are drawn, after the figure's layout has
-        # fixed that width. There are 72 points to the inch.
+        assert axes is not None  # matplotlib draws the discs only after they join an axes
+        # matplotlib sets the size of a marker in points, not in Angstrom.
+        # The size in points that matches the diameter depends on the width of
+        # the axes, and that width is fixed only when the figure is laid out.
+        # The marker size is therefore set here, each time the discs are
+        # drawn. There are 72 points to the inch.
         width_points = axes.bbox.width / axes.figure.dpi * 72
         self.set_markersize(self.diameter / self.box * width_points)
         super().draw(renderer)
 
 
 class _AtomDrawing:
-    """The atoms drawn to scale in the periodic box.
+    """Draws the atoms to scale in the periodic box.
 
     Atoms that share a colour and a diameter are drawn as one line of
     markers. ``draw`` moves the markers to the positions of a configuration.
@@ -136,7 +140,8 @@ class _AtomDrawing:
         colours: Colour of each atom.
 
     Attributes:
-        groups: For each line of markers, the indices of its atoms and the line.
+        groups: One entry for each line of markers. Each entry holds the
+            indices of the atoms in the line, and the line itself.
     """
 
     def __init__(self, ax: Axes, box: float, diameters: list[float], colours: list[RGBA]) -> None:
@@ -174,7 +179,10 @@ class _AtomDrawing:
 
 
 def _frame_index(count: int, frame: int) -> int:
-    """Returns ``frame`` as an index from zero into a trajectory of ``count`` frames.
+    """Returns the position of frame ``frame`` in a trajectory of ``count`` frames.
+
+    Positions count from zero. A negative ``frame`` counts back from the last
+    frame, as a negative index does in a Python list.
 
     Raises:
         IndexError: If the trajectory has no frame ``frame``.
@@ -186,29 +194,25 @@ def _frame_index(count: int, frame: int) -> int:
 
 
 def _frame_title(times: NDArray[np.float64] | None, index: int) -> str:
-    """Returns the title of a recorded frame: its time, or its number if it has no time."""
+    """Returns the title of a recorded frame.
+
+    The title is the time of the frame. A frame without a time is titled with
+    its number instead.
+    """
     if times is None:
         return f"Frame {index}"
     return f"{times[index]:g} ps"
 
 
 def _current_title(simulation: Simulation) -> str:
-    """Returns the title of the current configuration: the time, or the Monte Carlo step."""
+    """Returns the title of the current configuration.
+
+    The title is the simulated time. A Monte Carlo simulation has no time, so
+    the title is the step instead.
+    """
     if isinstance(simulation, MDSimulation):
         return f"{simulation.time:g} ps"
     return f"Step {simulation.steps}"
-
-
-def _new_figure(figsize: tuple[float, float]) -> tuple[Figure, Axes]:
-    """Returns a new figure with one axes, which pyplot does not keep open.
-
-    The figure is made through pyplot, which sets up how a notebook shows
-    figures, and then closed, so pyplot does not show it again at the end of
-    the cell.
-    """
-    fig, ax = plt.subplots(figsize=figsize, layout="tight")
-    plt.close(fig)
-    return fig, ax
 
 
 def view(
@@ -218,8 +222,8 @@ def view(
     colour: ColorType | Sequence[ColorType] | None,
     figsize: tuple[float, float],
     ax: Axes | None,
-) -> Figure | SubFigure:
-    """Draws one configuration; see :meth:`pylj.simulation.Simulation.view`."""
+) -> Axes:
+    """Draws one configuration, as :meth:`pylj.simulation.Simulation.view` describes."""
     if frame is None:
         configuration = simulation.configuration
         title = _current_title(simulation)
@@ -230,7 +234,7 @@ def view(
         configuration = trajectory[index]
         title = _frame_title(trajectory.times, index)
     if ax is None:
-        _, ax = _new_figure(figsize)
+        _, ax = plt.subplots(figsize=figsize, layout="tight")
     drawing = _AtomDrawing(
         ax,
         configuration.box,
@@ -238,16 +242,17 @@ def view(
         _atom_colours(configuration, colour),
     )
     drawing.draw(configuration, title)
-    return ax.figure
+    return ax
 
 
-#: How far above the estimated size an animation may grow while it is built:
-#: later frames can be a little larger than the first.
+#: The factor by which an animation may grow past its estimated size while it
+#: is built. The estimate comes from the first frame, and later frames can be a
+#: little larger than the first.
 _ESTIMATE_MARGIN = 1.1
 
 
 def _frame_indices(trajectory: Trajectory, frames: slice | Iterable[int] | None) -> list[int]:
-    """Returns the indices, from zero, of the frames ``frames`` selects.
+    """Returns the position of each frame that ``frames`` selects, counting from zero.
 
     Raises:
         ValueError: If the trajectory has no frames, or ``frames`` selects none.
@@ -267,10 +272,11 @@ def _frame_indices(trajectory: Trajectory, frames: slice | Iterable[int] | None)
 
 
 def _frame_megabytes(fig: Figure) -> float:
-    """Returns the size of the figure as one frame of an animation, in megabytes.
+    """Returns the size, in megabytes, that the figure takes as one frame of an animation.
 
-    This is the size matplotlib counts against ``animation.embed_limit``: the
-    figure saved in the format ``animation.frame_format`` and encoded in base64.
+    matplotlib saves each frame in the format ``animation.frame_format`` and
+    encodes the saved frame in base64. matplotlib counts the size of the
+    encoded frames against ``animation.embed_limit``.
     """
     buffer = io.BytesIO()
     fig.savefig(buffer, format=matplotlib.rcParams["animation.frame_format"])
@@ -286,13 +292,17 @@ def animate(
     figsize: tuple[float, float],
     progress: bool,
 ) -> HTML:
-    """Animates recorded frames; see :meth:`pylj.simulation.Simulation.animate`."""
+    """Animates recorded frames, as :meth:`pylj.simulation.Simulation.animate` describes."""
     check_positive_finite("fps", fps)
     trajectory = simulation.trajectory
     indices = _frame_indices(trajectory, frames)
     times = trajectory.times
     first = trajectory[indices[0]]
-    fig, ax = _new_figure(figsize)
+    # A notebook shows every figure that pyplot holds at the end of the cell.
+    # This figure is made without pyplot, so that the notebook shows only the
+    # animation.
+    fig = Figure(figsize=figsize, layout="tight")
+    ax = fig.add_subplot()
     drawing = _AtomDrawing(
         ax,
         first.box,
@@ -306,9 +316,10 @@ def animate(
         if estimate > limit:
             raise ValueError(
                 f"The animation of {len(indices)} frames would take about {estimate:.1f} MB, "
-                f"more than matplotlib's animation.embed_limit of {limit:g} MB. Animate fewer "
-                "frames, for example every second one with frames=slice(None, None, 2), or "
-                "raise matplotlib.rcParams['animation.embed_limit'], in MB."
+                f"more than matplotlib's animation.embed_limit of {limit:g} MB. Choose fewer "
+                "frames, for example every second frame with frames=slice(None, None, 2). "
+                "Alternatively, set matplotlib.rcParams['animation.embed_limit'] to a larger "
+                "number of MB."
             )
         matplotlib.rcParams["animation.embed_limit"] = max(limit, _ESTIMATE_MARGIN * estimate)
         with tqdm(total=len(indices), desc="Drawing frames", disable=not progress) as bar:
@@ -329,9 +340,10 @@ def animate(
             player = animation.to_jshtml()
     if player.count('"data:image/svg+xml;base64,') < len(indices):
         raise ValueError(
-            "matplotlib dropped frames from the animation because it grew larger than "
-            "animation.embed_limit. Animate fewer frames, for example every second one with "
-            "frames=slice(None, None, 2), or raise matplotlib.rcParams['animation.embed_limit'], "
-            "in MB."
+            "The animation grew larger than matplotlib's animation.embed_limit while its "
+            "frames were drawn, and matplotlib dropped the frames beyond the limit. Choose "
+            "fewer frames, for example every second frame with frames=slice(None, None, 2). "
+            "Alternatively, set matplotlib.rcParams['animation.embed_limit'] to a larger "
+            "number of MB."
         )
     return HTML(player)

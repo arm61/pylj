@@ -111,16 +111,23 @@ def sampled_mc(frames: int) -> MCSimulation:
     return simulation
 
 
-def drawn_positions(fig):
-    """Every disc drawn in the figure's first axes, sorted."""
-    lines = fig.axes[0].lines
+@pytest.fixture(autouse=True)
+def close_figures():
+    """Closes the figures that view leaves open for pyplot to show."""
+    yield
+    plt.close("all")
+
+
+def drawn_positions(ax):
+    """Returns the position of every disc drawn in the axes, sorted."""
     return sorted(
-        (x, y) for line in lines for x, y in zip(line.get_xdata(), line.get_ydata(), strict=True)
+        (x, y) for line in ax.lines for x, y in zip(line.get_xdata(), line.get_ydata(), strict=True)
     )
 
 
 def drawn_and_true_diameter_px(ax, diameter):
-    """The drawn width of the first line's discs and the width of ``diameter``, in pixels."""
+    """Returns the drawn width of a disc in the first line of markers, and the
+    width of ``diameter`` in the axes, both in pixels."""
     origin, edge = ax.transData.transform([(0, 0), (diameter, 0)])
     return ax.lines[0].get_markersize() * ax.figure.dpi / 72, edge[0] - origin[0]
 
@@ -136,18 +143,19 @@ def test_view_draws_the_current_configuration_or_a_recorded_frame():
 
 def test_view_titles():
     md = sampled_md(3)
-    assert md.view().axes[0].get_title() == "0.15 ps"
-    assert md.view(frame=0).axes[0].get_title() == "0.05 ps"
-    assert md.view(frame=-1).axes[0].get_title() == "0.15 ps"
+    assert md.view().get_title() == "0.15 ps"
+    assert md.view(frame=0).get_title() == "0.05 ps"
+    assert md.view(frame=-1).get_title() == "0.15 ps"
     mc = sampled_mc(2)
-    assert mc.view().axes[0].get_title() == "Step 2"
-    assert mc.view(frame=-1).axes[0].get_title() == "Frame 1"
+    assert mc.view().get_title() == "Step 2"
+    assert mc.view(frame=-1).get_title() == "Frame 1"
 
 
 def test_view_draws_periodic_images_of_atoms_at_the_edges():
-    # With a 4 Angstrom drawn diameter: an atom at x = 0.5 overhangs the left
-    # edge and is drawn again at x = 20.5; one in the corner is drawn four
-    # times; one in the middle once.
+    # The atoms are drawn 4 Angstrom across. The atom at x = 0.5 overhangs the
+    # left edge, so it is drawn again at x = 20.5. The atom in the corner
+    # overhangs two edges and is drawn four times. The atom in the middle is
+    # drawn once.
     simulation = positioned([[0.5, 10.0], [0.5, 0.5], [10.0, 10.0]])
     expected = [(0.5, 0.5), (0.5, 10.0), (0.5, 20.5), (10.0, 10.0)]
     expected += [(20.5, 0.5), (20.5, 10.0), (20.5, 20.5)]
@@ -156,18 +164,16 @@ def test_view_draws_periodic_images_of_atoms_at_the_edges():
 
 def test_view_draws_one_line_per_colour_and_diameter():
     simulation = positioned(MIDDLE)
-    assert len(simulation.view().axes[0].lines) == 1
-    fig = simulation.view(diameter=[3, 3, 3, 4], colour=["red", "red", "blue", "red"])
-    looks = sorted(
-        (line.get_markerfacecolor(), len(line.get_xdata())) for line in fig.axes[0].lines
-    )
+    assert len(simulation.view().lines) == 1
+    ax = simulation.view(diameter=[3, 3, 3, 4], colour=["red", "red", "blue", "red"])
+    looks = sorted((line.get_markerfacecolor(), len(line.get_xdata())) for line in ax.lines)
     assert looks == sorted([(to_rgba("red"), 2), (to_rgba("blue"), 1), (to_rgba("red"), 1)])
 
 
 def test_view_discs_are_drawn_to_scale():
-    fig = positioned(MIDDLE).view(diameter=4.0)
-    fig.canvas.draw()
-    assert_allclose(*drawn_and_true_diameter_px(fig.axes[0], 4.0))
+    ax = positioned(MIDDLE).view(diameter=4.0)
+    ax.figure.canvas.draw()
+    assert_allclose(*drawn_and_true_diameter_px(ax, 4.0))
 
 
 def test_view_discs_stay_to_scale_when_the_figure_is_laid_out_again():
@@ -177,22 +183,19 @@ def test_view_discs_stay_to_scale_when_the_figure_is_laid_out_again():
     fig.subplots_adjust(wspace=0.8)
     fig.canvas.draw()
     assert_allclose(*drawn_and_true_diameter_px(axes[1], 4.0))
-    plt.close(fig)
 
 
-def test_view_draws_into_given_axes_and_returns_their_figure():
-    fig, axes = plt.subplots(1, 3)
-    assert positioned(MIDDLE).view(ax=axes[1]) is fig
+def test_view_draws_into_given_axes_and_returns_them():
+    _, axes = plt.subplots(1, 3)
+    assert positioned(MIDDLE).view(ax=axes[1]) is axes[1]
     assert axes[1].lines
     assert not axes[0].lines
-    plt.close(fig)
 
 
-def test_view_figure_has_the_given_size_and_is_not_left_open():
-    open_before = plt.get_fignums()
-    fig = positioned(MIDDLE).view(figsize=(3, 5))
-    assert_allclose(fig.get_size_inches(), [3, 5])
-    assert plt.get_fignums() == open_before
+def test_view_figure_has_the_given_size_and_is_left_open_for_pyplot_to_show():
+    ax = positioned(MIDDLE).view(figsize=(3, 5))
+    assert_allclose(ax.figure.get_size_inches(), [3, 5])
+    assert ax.figure.number in plt.get_fignums()
 
 
 def test_view_of_a_frame_needs_a_recorded_frame():
@@ -218,7 +221,7 @@ FRAME = re.compile(r'frames\[\d+\] = "data:image/svg\+xml;base64,(.*?)"', re.DOT
 
 
 def frame_titles(player):
-    """The title of every frame in an animation, in order."""
+    """Returns the title of every frame in an animation, in order."""
     titles = []
     for encoded in FRAME.findall(player.data):
         svg = base64.b64decode(encoded.replace("\\\n", "")).decode()
@@ -277,11 +280,12 @@ def test_animate_refuses_an_animation_larger_than_the_embed_limit():
 
 
 def test_animate_never_returns_a_shortened_animation(monkeypatch):
-    # An estimate of zero passes the check before the build, as when the
-    # first frame is much smaller than later ones, so matplotlib drops frames.
+    # A size estimate of zero passes the check made before the build. A small
+    # first frame can underestimate the size in the same way. The build then
+    # grows past the limit, and matplotlib drops frames.
     monkeypatch.setattr(_atoms, "_frame_megabytes", lambda fig: 0.0)
     with matplotlib.rc_context({"animation.embed_limit": 1e-4}):
-        with pytest.raises(ValueError, match="matplotlib dropped frames"):
+        with pytest.raises(ValueError, match="matplotlib dropped the frames"):
             sampled_md(3).animate(progress=False)
 
 
