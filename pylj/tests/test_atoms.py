@@ -295,7 +295,18 @@ def test_animate_draws_atoms_in_the_given_colour():
 def test_animate_has_one_frame_per_recorded_frame_titled_with_its_time():
     player = sampled_md(3).animate(progress=False)
     assert isinstance(player, HTML)
-    assert frame_titles(player) == ["0.05 ps", "0.1 ps", "0.15 ps"]
+    assert frame_titles(player) == ["0.05 ps", "0.10 ps", "0.15 ps"]
+
+
+def test_animate_gives_every_time_the_decimal_places_its_frames_need():
+    simulation = MDSimulation.initialise(
+        ARGON_MODEL, number_of_atoms=4, temperature=100, box=20, seed=0
+    )
+    for _ in range(3):
+        for _ in range(20):
+            simulation.step()
+        simulation.sample()
+    assert frame_titles(simulation.animate(progress=False)) == ["0.2 ps", "0.4 ps", "0.6 ps"]
 
 
 def test_animate_titles_untimed_frames_with_their_number():
@@ -305,9 +316,9 @@ def test_animate_titles_untimed_frames_with_their_number():
 @pytest.mark.parametrize(
     ("frames", "titles"),
     [
-        ([3, 0, -1], ["0.2 ps", "0.05 ps", "0.2 ps"]),
-        (slice(1, None, 2), ["0.1 ps", "0.2 ps"]),
-        (range(2), ["0.05 ps", "0.1 ps"]),
+        ([3, 0, -1], ["0.20 ps", "0.05 ps", "0.20 ps"]),
+        (slice(1, None, 2), ["0.10 ps", "0.20 ps"]),
+        (range(2), ["0.05 ps", "0.10 ps"]),
     ],
 )
 def test_animate_plays_the_selected_frames_in_order(frames, titles):

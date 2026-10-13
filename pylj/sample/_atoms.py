@@ -18,7 +18,6 @@ from matplotlib.colors import is_color_like, to_rgba
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.typing import ColorType
-from numpy.typing import NDArray
 
 from pylj.configuration import Configuration
 from pylj.md import MDSimulation
@@ -194,15 +193,21 @@ def _frame_index(count: int, frame: int) -> int:
     return frame % count
 
 
-def _frame_title(times: NDArray[np.float64] | None, index: int) -> str:
-    """Returns the title of a recorded frame.
+def _frame_titles(trajectory: Trajectory) -> list[str]:
+    """Returns the title of every frame in the trajectory.
 
-    The title is the time of the frame. A frame without a time is titled with
-    its number instead.
+    Each title is the time of the frame. Every title has the same number of
+    decimal places. That number is the fewest that writes every time in the
+    trajectory exactly, up to six. A frame without a time is titled with its
+    number instead.
     """
+    times = trajectory.times
     if times is None:
-        return f"Frame {index}"
-    return f"{times[index]:g} ps"
+        return [f"Frame {index}" for index in range(len(trajectory))]
+    decimals = next(
+        (d for d in range(6) if np.allclose(times, np.round(times, d), rtol=0, atol=1e-9)), 6
+    )
+    return [f"{time:.{decimals}f} ps" for time in times]
 
 
 def _current_title(simulation: Simulation) -> str:
@@ -233,7 +238,7 @@ def view(
         trajectory._check_frames()
         index = _frame_index(len(trajectory), frame)
         configuration = trajectory[index]
-        title = _frame_title(trajectory.times, index)
+        title = _frame_titles(trajectory)[index]
     if ax is None:
         _, ax = plt.subplots(figsize=figsize, layout="tight")
     drawing = _AtomDrawing(
@@ -303,7 +308,7 @@ def animate(
     check_positive_finite("fps", fps)
     trajectory = simulation.trajectory
     indices = _frame_indices(trajectory, frames)
-    times = trajectory.times
+    titles = _frame_titles(trajectory)
     first = trajectory[indices[0]]
     # A notebook shows every figure that pyplot holds at the end of the cell.
     # This figure is made without pyplot, so that the notebook shows only the
@@ -317,7 +322,7 @@ def animate(
         _atom_colours(first, colour),
     )
     with matplotlib.rc_context({"animation.frame_format": "svg", "svg.fonttype": "none"}):
-        drawing.draw(first, _frame_title(times, indices[0]))
+        drawing.draw(first, titles[indices[0]])
         estimate = len(indices) * _frame_megabytes(fig)
         limit = matplotlib.rcParams["animation.embed_limit"]
         if estimate > limit:
@@ -334,7 +339,7 @@ def animate(
         ) as bar:
 
             def draw_frame(index: int) -> tuple[()]:
-                drawing.draw(trajectory[index], _frame_title(times, index))
+                drawing.draw(trajectory[index], titles[index])
                 bar.update()
                 return ()
 
