@@ -3,6 +3,12 @@
 All notable changes to pylj are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Added
+
+- `Simulation.view(frame=None, *, diameter=None, colour=None, figsize=(4, 4), ax=None)`, which draws the atoms of the current configuration, or of a recorded frame, to scale in the periodic box, and returns the figure. `diameter` and `colour` take one value for every atom or one per atom. Given `ax`, it draws into that axes, so several pictures can share one figure.
+
 ## 2.0.0b2 - 2026-10-07
 
 ### Added

@@ -2,8 +2,9 @@
 
 import copy
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, fields
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,6 +13,11 @@ from pylj.configuration import Configuration
 from pylj.model import Model
 from pylj.potentials import check_positive_finite
 from pylj.trajectory import Trajectory
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure, SubFigure
+    from matplotlib.typing import ColorType
 
 #: The cut-off used when none is given, in Angstrom, or half the box if
 #: that is smaller.
@@ -231,3 +237,47 @@ class Simulation(ABC):
         # The new trajectory records times only if the old one did.
         new.trajectory = Trajectory(times=None if self.trajectory.times is None else [])
         return new
+
+    def view(
+        self,
+        frame: int | None = None,
+        *,
+        diameter: float | Iterable[float] | None = None,
+        colour: "ColorType | Sequence[ColorType] | None" = None,
+        figsize: tuple[float, float] = (4, 4),
+        ax: "Axes | None" = None,
+    ) -> "Figure | SubFigure":
+        """Draws the atoms in the box, now or at a recorded frame.
+
+        Each atom is drawn to scale as a disc. An atom that overhangs an edge
+        of the box is drawn again at the opposite edge, since the box is
+        periodic. The title gives the time in picoseconds. For a Monte Carlo
+        simulation it gives the step, or for a recorded frame its number.
+
+        Args:
+            frame: The index of the frame in ``trajectory`` to draw. By
+                default the current configuration is drawn.
+            diameter: Drawn diameter of the atoms, in Angstrom: one value for
+                every atom, or one per atom. By default each species is drawn
+                at the separation at the minimum of its own pair energy.
+            colour: Colour of the atoms, in any form matplotlib accepts: one
+                colour for every atom, or one per atom. By default each
+                species has its own colour.
+            figsize: Width and height of the figure, in inches.
+            ax: Axes to draw into, in place of a new figure. ``figsize`` is
+                then not used.
+
+        Returns:
+            The figure. A notebook shows it when it is the last line of a
+            cell.
+
+        Raises:
+            ValueError: If ``frame`` is given and the trajectory has no
+                frames, a ``diameter`` or ``colour`` sequence does not have
+                one value per atom, or a diameter is not positive and finite.
+            IndexError: If the trajectory has no frame ``frame``.
+        """
+        # Imported here so that importing pylj does not import matplotlib.
+        from pylj.sample._atoms import view
+
+        return view(self, frame, diameter, colour, figsize, ax)
