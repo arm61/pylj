@@ -260,8 +260,10 @@ class Simulation(ABC):
                 default the current configuration is drawn.
             diameter: The drawn diameter of the atoms, in Angstrom. A single
                 value applies to every atom. A sequence gives one value per
-                atom. By default each species is drawn at the separation at
-                the minimum of its own pair energy.
+                atom. By default, an atom is drawn with a diameter equal to
+                half the separation at which two atoms of its species have
+                their lowest pair energy. For Lennard-Jones atoms this
+                diameter is 2^(1/6) sigma / 2.
             colour: The colour of the atoms, in any form matplotlib accepts. A
                 single colour applies to every atom. A sequence gives one
                 colour per atom. By default each species has its own colour.
@@ -302,7 +304,7 @@ class Simulation(ABC):
         The size of the animation grows with the number of frames, with the
         number of atoms, and with the number of different pairs of colour and
         diameter. For example, 100 frames of 168 atoms of one colour and one
-        diameter take about 3 MB.
+        diameter take about 2.7 MB.
 
         Args:
             frames: The frames to animate, as a slice such as
@@ -311,8 +313,10 @@ class Simulation(ABC):
             fps: Frames per second.
             diameter: The drawn diameter of the atoms, in Angstrom. A single
                 value applies to every atom. A sequence gives one value per
-                atom. By default each species is drawn at the separation at
-                the minimum of its own pair energy.
+                atom. By default, an atom is drawn with a diameter equal to
+                half the separation at which two atoms of its species have
+                their lowest pair energy. For Lennard-Jones atoms this
+                diameter is 2^(1/6) sigma / 2.
             colour: The colour of the atoms, in any form matplotlib accepts. A
                 single colour applies to every atom. A sequence gives one
                 colour per atom. By default each species has its own colour.

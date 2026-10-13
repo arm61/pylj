@@ -39,9 +39,10 @@ def _atom_diameters(
     Args:
         configuration: The configuration to draw.
         model: The model, which gives each species its default diameter.
-        diameter: ``None`` draws each species at the separation at the
-            minimum of its own pair energy. A single value applies to every
-            atom. A sequence gives one value per atom.
+        diameter: ``None`` draws an atom with a diameter equal to half the
+            separation at which two atoms of its species have their lowest
+            pair energy. A single value applies to every atom. A sequence
+            gives one value per atom.
 
     Returns:
         One diameter per atom.
@@ -52,7 +53,9 @@ def _atom_diameters(
     """
     atoms = configuration.number_of_atoms
     if diameter is None:
-        defaults = [_potential_minimum(model.potential(one, one)) for one in configuration.species]
+        defaults = [
+            _potential_minimum(model.potential(one, one)) / 2 for one in configuration.species
+        ]
         return [defaults[index] for index in configuration.species_index]
     if isinstance(diameter, Iterable):
         values = [float(value) for value in diameter]
@@ -108,7 +111,7 @@ class _Discs(Line2D):
 
     def __init__(self, diameter: float, colour: RGBA) -> None:
         super().__init__(
-            [], [], linestyle="none", marker="o", markerfacecolor=colour, markeredgecolor="black"
+            [], [], linestyle="none", marker="o", markerfacecolor=colour, markeredgewidth=0
         )
         self.diameter = diameter
 

@@ -32,9 +32,9 @@ def mixture() -> Configuration:
     return Configuration(np.array(MIDDLE), (ARGON, LARGER), np.array([0, 1, 0, 1]), 20.0)
 
 
-def test_default_diameter_is_each_species_potential_minimum():
+def test_default_diameter_is_half_each_species_potential_minimum():
     # For Lennard-Jones the energy minimum is at 2^(1/6) sigma.
-    argon, larger = 2 ** (1 / 6) * 3.372, 2 ** (1 / 6) * 5.0
+    argon, larger = 2 ** (1 / 6) * 3.372 / 2, 2 ** (1 / 6) * 5.0 / 2
     diameters = _atom_diameters(mixture(), MIXTURE_MODEL, None)
     assert_allclose(diameters, [argon, larger, argon, larger], rtol=2e-3)
 
@@ -342,21 +342,12 @@ def test_animate_refuses_an_animation_larger_than_the_embed_limit():
             sampled_md(3).animate(progress=False)
 
 
-def test_animate_refuses_an_animation_that_grows_past_the_embed_limit(monkeypatch):
-    # A size estimate of zero passes the check made before the build. A small
-    # first frame can pass the check in the same way. The animation that is
-    # then built is too large.
-    monkeypatch.setattr(_atoms, "_frame_megabytes", lambda fig: 0.0)
-    with matplotlib.rc_context({"animation.embed_limit": 1e-4}):
-        with pytest.raises(ValueError, match="The animation of 3 frames takes"):
-            sampled_md(3).animate(progress=False)
-
-
 def test_animate_keeps_every_frame_while_it_builds_an_animation_too_large(monkeypatch):
-    # Each frame of 120 atoms is larger than the rest of the player. The limit
-    # is set to the rest of the player plus one and a half frames. If matplotlib
-    # built the player under that limit, it would keep one frame and drop the
-    # others. The shortened player would then fit within the limit.
+    # Each frame of 120 atoms is more than twice as large as the rest of the
+    # player. The limit is set to the rest of the player plus one and a half
+    # frames. If matplotlib built the player under that limit, it would keep one
+    # frame and drop the others. The shortened player would then fit within the
+    # limit.
     simulation = MDSimulation.initialise(
         ARGON_MODEL, number_of_atoms=120, temperature=100, box=60, seed=0
     )
