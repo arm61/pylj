@@ -15,6 +15,7 @@ from pylj.potentials import check_positive_finite
 from pylj.trajectory import Trajectory
 
 if TYPE_CHECKING:
+    from IPython.display import HTML
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure, SubFigure
     from matplotlib.typing import ColorType
@@ -281,3 +282,54 @@ class Simulation(ABC):
         from pylj.sample._atoms import view
 
         return view(self, frame, diameter, colour, figsize, ax)
+
+    def animate(
+        self,
+        frames: slice | Iterable[int] | None = None,
+        *,
+        fps: float = 30,
+        diameter: float | Iterable[float] | None = None,
+        colour: "ColorType | Sequence[ColorType] | None" = None,
+        figsize: tuple[float, float] = (4, 4),
+        progress: bool = True,
+    ) -> "HTML":
+        """Animates the frames recorded in ``trajectory``.
+
+        Each frame is drawn as :meth:`view` draws it. A notebook plays the
+        animation with buttons to play, pause and step through it, and a
+        slider. Its size grows with the number of frames, the number of atoms
+        and the number of different colours and diameters: 100 frames of 168
+        atoms of one colour take about 4 MB.
+
+        Args:
+            frames: The frames to animate: a slice, such as
+                ``slice(0, 100)``, or a sequence of indices into
+                ``trajectory``. By default every frame is animated.
+            fps: Frames per second.
+            diameter: Drawn diameter of the atoms, in Angstrom: one value for
+                every atom, or one per atom. By default each species is drawn
+                at the separation at the minimum of its own pair energy.
+            colour: Colour of the atoms, in any form matplotlib accepts: one
+                colour for every atom, or one per atom. By default each
+                species has its own colour.
+            figsize: Width and height of the figure, in inches.
+            progress: Whether to show a progress bar while the frames are
+                drawn.
+
+        Returns:
+            The animation. A notebook shows it when it is the last line of a
+            cell.
+
+        Raises:
+            ValueError: If the trajectory has no frames, ``frames`` selects
+                none, ``fps`` is not positive and finite, a ``diameter`` or
+                ``colour`` sequence does not have one value per atom, a
+                diameter is not positive and finite, or the animation would
+                be larger than matplotlib's ``animation.embed_limit``.
+            IndexError: If ``frames`` names a frame the trajectory does not
+                have.
+        """
+        # Imported here so that importing pylj does not import matplotlib.
+        from pylj.sample._atoms import animate
+
+        return animate(self, frames, fps, diameter, colour, figsize, progress)

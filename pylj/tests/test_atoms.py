@@ -1,17 +1,22 @@
 """Tests for Simulation.view and Simulation.animate."""
 
+import base64
+import re
 import subprocess
 import sys
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from IPython.display import HTML
 from matplotlib.colors import to_rgba
 from numpy.testing import assert_allclose
 
 from pylj.configuration import Configuration
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
+from pylj.sample import _atoms
 from pylj.sample._atoms import _atom_colours, _atom_diameters
 from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL
 
@@ -207,3 +212,96 @@ def test_the_simulation_modules_do_not_import_matplotlib():
         "sys.exit('matplotlib' in sys.modules)"
     )
     assert subprocess.run([sys.executable, "-c", code]).returncode == 0
+
+
+FRAME = re.compile(r'frames\[\d+\] = "data:image/svg\+xml;base64,(.*?)"', re.DOTALL)
+
+
+def frame_titles(player):
+    """The title of every frame in an animation, in order."""
+    titles = []
+    for encoded in FRAME.findall(player.data):
+        svg = base64.b64decode(encoded.replace("\\\n", "")).decode()
+        titles.append(re.search(r"<text[^>]*>([^<]*)</text>", svg).group(1))
+    return titles
+
+
+def test_animate_has_one_frame_per_recorded_frame_titled_with_its_time():
+    player = sampled_md(3).animate(progress=False)
+    assert isinstance(player, HTML)
+    assert frame_titles(player) == ["0.05 ps", "0.1 ps", "0.15 ps"]
+
+
+def test_animate_titles_untimed_frames_with_their_number():
+    assert frame_titles(sampled_mc(3).animate(progress=False)) == ["Frame 0", "Frame 1", "Frame 2"]
+
+
+@pytest.mark.parametrize(
+    ("frames", "titles"),
+    [
+        ([3, 0, -1], ["0.2 ps", "0.05 ps", "0.2 ps"]),
+        (slice(1, None, 2), ["0.1 ps", "0.2 ps"]),
+        (range(2), ["0.05 ps", "0.1 ps"]),
+    ],
+)
+def test_animate_plays_the_selected_frames_in_order(frames, titles):
+    assert frame_titles(sampled_md(4).animate(frames, progress=False)) == titles
+
+
+def test_animate_needs_a_recorded_frame():
+    simulation = MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20)
+    with pytest.raises(ValueError, match="The trajectory has no frames"):
+        simulation.animate()
+
+
+def test_animate_refuses_a_selection_of_no_frames():
+    with pytest.raises(ValueError, match="selects none of the trajectory's 3 frames"):
+        sampled_md(3).animate(slice(5, None))
+
+
+def test_animate_refuses_a_frame_outside_the_trajectory():
+    with pytest.raises(IndexError, match="Frame 3 is outside the trajectory, which has 3 frames"):
+        sampled_md(3).animate([0, 3])
+
+
+@pytest.mark.parametrize("fps", [0, -1, np.inf, np.nan])
+def test_animate_needs_a_positive_finite_frame_rate(fps):
+    with pytest.raises(ValueError, match="fps must be positive and finite"):
+        sampled_md(3).animate(fps=fps)
+
+
+def test_animate_refuses_an_animation_larger_than_the_embed_limit():
+    with matplotlib.rc_context({"animation.embed_limit": 1e-4}):
+        with pytest.raises(ValueError, match="more than matplotlib's animation.embed_limit"):
+            sampled_md(3).animate(progress=False)
+
+
+def test_animate_never_returns_a_shortened_animation(monkeypatch):
+    # An estimate of zero passes the check before the build, as when the
+    # first frame is much smaller than later ones, so matplotlib drops frames.
+    monkeypatch.setattr(_atoms, "_frame_megabytes", lambda fig: 0.0)
+    with matplotlib.rc_context({"animation.embed_limit": 1e-4}):
+        with pytest.raises(ValueError, match="matplotlib dropped frames"):
+            sampled_md(3).animate(progress=False)
+
+
+def test_animate_shows_progress_unless_asked_not_to(capsys):
+    simulation = sampled_md(3)
+    simulation.animate()
+    assert "3/3" in capsys.readouterr().err
+    simulation.animate(progress=False)
+    assert "3/3" not in capsys.readouterr().err
+
+
+def test_animate_leaves_no_figure_open_and_no_setting_changed():
+    simulation = sampled_md(3)
+    open_before = plt.get_fignums()
+    settings_before = dict(matplotlib.rcParams)
+    simulation.animate(progress=False)
+    with matplotlib.rc_context({"animation.embed_limit": 1e-4}):
+        limited = dict(matplotlib.rcParams)
+        with pytest.raises(ValueError):
+            simulation.animate(progress=False)
+        assert dict(matplotlib.rcParams) == limited
+    assert plt.get_fignums() == open_before
+    assert dict(matplotlib.rcParams) == settings_before

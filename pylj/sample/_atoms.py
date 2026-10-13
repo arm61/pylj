@@ -1,12 +1,17 @@
 """Pictures and animations of the atoms in the box, for Simulation.view and
 Simulation.animate."""
 
+import base64
+import io
 import operator
 from collections.abc import Iterable, Sequence
 from typing import cast
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from IPython.display import HTML
+from matplotlib.animation import FuncAnimation
 from matplotlib.axes import Axes
 from matplotlib.backend_bases import RendererBase
 from matplotlib.colors import is_color_like, to_rgba
@@ -14,6 +19,7 @@ from matplotlib.figure import Figure, SubFigure
 from matplotlib.lines import Line2D
 from matplotlib.typing import ColorType
 from numpy.typing import NDArray
+from tqdm.auto import tqdm
 
 from pylj.configuration import Configuration
 from pylj.md import MDSimulation
@@ -21,6 +27,7 @@ from pylj.model import Model
 from pylj.potentials import check_positive_finite
 from pylj.sample.panes import _potential_minimum, _with_periodic_images
 from pylj.simulation import Simulation
+from pylj.trajectory import Trajectory
 
 RGBA = tuple[float, float, float, float]
 
@@ -232,3 +239,99 @@ def view(
     )
     drawing.draw(configuration, title)
     return ax.figure
+
+
+#: How far above the estimated size an animation may grow while it is built:
+#: later frames can be a little larger than the first.
+_ESTIMATE_MARGIN = 1.1
+
+
+def _frame_indices(trajectory: Trajectory, frames: slice | Iterable[int] | None) -> list[int]:
+    """Returns the indices, from zero, of the frames ``frames`` selects.
+
+    Raises:
+        ValueError: If the trajectory has no frames, or ``frames`` selects none.
+        IndexError: If ``frames`` names a frame the trajectory does not have.
+    """
+    trajectory._check_frames()
+    count = len(trajectory)
+    if frames is None:
+        return list(range(count))
+    if isinstance(frames, slice):
+        indices = list(range(count)[frames])
+    else:
+        indices = [_frame_index(count, frame) for frame in frames]
+    if not indices:
+        raise ValueError(f"frames={frames!r} selects none of the trajectory's {count} frames")
+    return indices
+
+
+def _frame_megabytes(fig: Figure) -> float:
+    """Returns the size of the figure as one frame of an animation, in megabytes.
+
+    This is the size matplotlib counts against ``animation.embed_limit``: the
+    figure saved in the format ``animation.frame_format`` and encoded in base64.
+    """
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format=matplotlib.rcParams["animation.frame_format"])
+    return len(base64.encodebytes(buffer.getvalue())) / 2**20
+
+
+def animate(
+    simulation: Simulation,
+    frames: slice | Iterable[int] | None,
+    fps: float,
+    diameter: float | Iterable[float] | None,
+    colour: ColorType | Sequence[ColorType] | None,
+    figsize: tuple[float, float],
+    progress: bool,
+) -> HTML:
+    """Animates recorded frames; see :meth:`pylj.simulation.Simulation.animate`."""
+    check_positive_finite("fps", fps)
+    trajectory = simulation.trajectory
+    indices = _frame_indices(trajectory, frames)
+    times = trajectory.times
+    first = trajectory[indices[0]]
+    fig, ax = _new_figure(figsize)
+    drawing = _AtomDrawing(
+        ax,
+        first.box,
+        _atom_diameters(first, simulation.model, diameter),
+        _atom_colours(first, colour),
+    )
+    with matplotlib.rc_context({"animation.frame_format": "svg", "svg.fonttype": "none"}):
+        drawing.draw(first, _frame_title(times, indices[0]))
+        estimate = len(indices) * _frame_megabytes(fig)
+        limit = matplotlib.rcParams["animation.embed_limit"]
+        if estimate > limit:
+            raise ValueError(
+                f"The animation of {len(indices)} frames would take about {estimate:.1f} MB, "
+                f"more than matplotlib's animation.embed_limit of {limit:g} MB. Animate fewer "
+                "frames, for example every second one with frames=slice(None, None, 2), or "
+                "raise matplotlib.rcParams['animation.embed_limit'], in MB."
+            )
+        matplotlib.rcParams["animation.embed_limit"] = max(limit, _ESTIMATE_MARGIN * estimate)
+        with tqdm(total=len(indices), desc="Drawing frames", disable=not progress) as bar:
+
+            def draw_frame(index: int) -> tuple[()]:
+                drawing.draw(trajectory[index], _frame_title(times, index))
+                bar.update()
+                return ()
+
+            animation = FuncAnimation(
+                fig,
+                draw_frame,
+                frames=indices,
+                init_func=tuple,
+                interval=1000 / fps,
+                cache_frame_data=False,
+            )
+            player = animation.to_jshtml()
+    if player.count('"data:image/svg+xml;base64,') < len(indices):
+        raise ValueError(
+            "matplotlib dropped frames from the animation because it grew larger than "
+            "animation.embed_limit. Animate fewer frames, for example every second one with "
+            "frames=slice(None, None, 2), or raise matplotlib.rcParams['animation.embed_limit'], "
+            "in MB."
+        )
+    return HTML(player)

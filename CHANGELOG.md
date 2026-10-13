@@ -8,6 +8,7 @@ All notable changes to pylj are recorded here. The format follows
 ### Added
 
 - `Simulation.view(frame=None, *, diameter=None, colour=None, figsize=(4, 4), ax=None)`, which draws the atoms of the current configuration, or of a recorded frame, to scale in the periodic box, and returns the figure. `diameter` and `colour` take one value for every atom or one per atom. Given `ax`, it draws into that axes, so several pictures can share one figure.
+- `Simulation.animate(frames=None, *, fps=30, diameter=None, colour=None, figsize=(4, 4), progress=True)`, which animates the recorded frames, drawn as `view` draws them, with buttons to play, pause and step through them and a slider. It raises `ValueError` for an animation larger than matplotlib's `animation.embed_limit`, rather than letting matplotlib drop frames. pylj now depends on `tqdm`, for the progress bar shown while the frames are drawn.
 
 ## 2.0.0b2 - 2026-10-07
 
