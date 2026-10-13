@@ -175,7 +175,7 @@ class TestPlace(unittest.TestCase):
             place(2, 300, 2)
 
     def test_accepts_a_box_too_large_to_draw(self):
-        # The viewer cannot usefully draw atoms this far apart, but nothing
+        # view() cannot usefully draw atoms this far apart, but nothing
         # about the simulation stops it.
         configuration = place(2, 300, 1000)
         self.assertAlmostEqual(configuration.box, 1000)

@@ -10,6 +10,10 @@ All notable changes to pylj are recorded here. The format follows
 - `Simulation.view(frame=None, *, diameter=None, colour=None, figsize=(4, 4), ax=None)`, which draws the atoms in the box and returns the axes. By default `view` draws the current configuration, and `frame` chooses a recorded frame instead. `diameter` and `colour` each take either a single value for every atom or a sequence with one value per atom. By default, an atom is drawn with a diameter equal to half the separation at which two atoms of its species have their lowest pair energy. For Lennard-Jones atoms this diameter is 2^(1/6) sigma / 2. `ax` chooses the axes to draw into.
 - `Simulation.animate(frames=None, *, fps=30, diameter=None, colour=None, figsize=(4, 4), progress=True)`, which animates the recorded frames. Each frame is drawn as `view` draws it, and a notebook shows the animation with a slider and with buttons to play, pause and step through the frames. If the animation would be larger than matplotlib's `animation.embed_limit`, `animate` raises `ValueError`. While `animate` draws the frames, it shows a progress bar from `tqdm`. pylj now depends on `tqdm`.
 
+### Removed
+
+- `pylj.sample`, with the `Viewer`, the named viewers `JustCell`, `Energy`, `MaxBolt`, `RDF`, `CellPlus`, `Interactions`, `Phase` and `Scattering`, the panes `Pane`, `CellPane`, `TemperaturePane`, `PressurePane`, `EnergyPane`, `RDFPane`, `ScatteringPane`, `MaxwellBoltzmannPane` and `CustomPane`, and `environment`. Code that imports `pylj.sample` now raises `ModuleNotFoundError`. `simulation.view()` and `simulation.animate()` draw the atoms. The temperature, pressure and energies the other viewers plotted are arrays in `simulation.samples`. g(r) and S(q) come from `simulation.trajectory.rdf()` and `simulation.trajectory.structure_factor()`. All of these plot directly with matplotlib.
+
 ## 2.0.0b2 - 2026-10-07
 
 ### Added

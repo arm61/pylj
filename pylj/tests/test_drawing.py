@@ -14,14 +14,23 @@ from IPython.display import HTML
 from matplotlib.colors import to_rgba
 from numpy.testing import assert_allclose
 
+from pylj import _drawing
+from pylj._drawing import _atom_colours, _atom_diameters
 from pylj.configuration import Configuration
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
 from pylj.model import Model
 from pylj.potentials import PairPotential
-from pylj.sample import _atoms
-from pylj.sample._atoms import _atom_colours, _atom_diameters
-from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL
+from pylj.tests.argon import (
+    ARGON,
+    ARGON_MODEL,
+    BUCKINGHAM_ARGON,
+    BUCKINGHAM_MODEL,
+    LARGER,
+    MIXTURE_MODEL,
+    WELL,
+    WELL_MODEL,
+)
 
 # Four atoms well inside a 20 Angstrom box, so none overhangs an edge.
 MIDDLE = [[6.0, 6.0], [14.0, 6.0], [6.0, 14.0], [14.0, 14.0]]
@@ -37,6 +46,24 @@ def test_default_diameter_is_half_each_species_potential_minimum():
     argon, larger = 2 ** (1 / 6) * 3.372 / 2, 2 ** (1 / 6) * 5.0 / 2
     diameters = _atom_diameters(mixture(), MIXTURE_MODEL, None)
     assert_allclose(diameters, [argon, larger, argon, larger], rtol=2e-3)
+
+
+def test_default_diameter_for_a_square_well_is_half_the_hard_core():
+    # The square-well energy steps from an infinite core into the well, so its
+    # lowest energy starts at the hard-core diameter sigma.
+    configuration = Configuration(np.array(MIDDLE), (ARGON,), np.zeros(4, dtype=np.int64), 20.0)
+    diameters = _atom_diameters(configuration, WELL_MODEL, None)
+    assert_allclose(diameters, [WELL.sigma / 2] * 4, rtol=2e-3)
+
+
+def test_default_diameter_for_buckingham_is_half_the_well_beyond_the_barrier():
+    # Below its short-range barrier the Buckingham energy falls to minus
+    # infinity, so the minimum to size the atoms by is the well beyond it.
+    configuration = Configuration(np.array(MIDDLE), (ARGON,), np.zeros(4, dtype=np.int64), 20.0)
+    separation = 2 * _atom_diameters(configuration, BUCKINGHAM_MODEL, None)[0]
+    assert separation > BUCKINGHAM_ARGON.min_separation
+    nearby = BUCKINGHAM_ARGON.energies(np.array([0.99, 1.0, 1.01]) * separation)
+    assert nearby[1] < nearby[0] and nearby[1] < nearby[2]
 
 
 def test_one_diameter_applies_to_every_atom():
@@ -380,7 +407,7 @@ def test_animate_keeps_every_frame_while_it_builds_an_animation_too_large(monkey
     frame = len(simulation.animate([0, 0], progress=False).data) - one
     rest = one - frame
     assert frame > 2 * rest
-    monkeypatch.setattr(_atoms, "_frame_megabytes", lambda fig: 0.0)
+    monkeypatch.setattr(_drawing, "_frame_megabytes", lambda fig: 0.0)
     with matplotlib.rc_context({"animation.embed_limit": (rest + 1.5 * frame) / 2**20}):
         with pytest.raises(ValueError, match="The animation of 3 frames takes"):
             simulation.animate(progress=False)
