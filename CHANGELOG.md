@@ -8,7 +8,7 @@ All notable changes to pylj are recorded here. The format follows
 ### Added
 
 - `Simulation.view(frame=None, *, diameter=None, colour=None, figsize=(4, 4), ax=None)`, which draws the atoms in the box and returns the axes. By default `view` draws the current configuration, and `frame` chooses a recorded frame instead. `diameter` and `colour` each take either a single value for every atom or a sequence with one value per atom. `ax` chooses the axes to draw into.
-- `Simulation.animate(frames=None, *, fps=30, diameter=None, colour=None, figsize=(4, 4), progress=True)`, which animates the recorded frames. Each frame is drawn as `view` draws it, and a notebook shows the animation with a slider and with buttons to play, pause and step through the frames. If the animation would be larger than matplotlib's `animation.embed_limit`, `animate` raises `ValueError`. Without that check, matplotlib would drop the frames beyond the limit. While `animate` draws the frames, it shows a progress bar from `tqdm`. pylj now depends on `tqdm`.
+- `Simulation.animate(frames=None, *, fps=30, diameter=None, colour=None, figsize=(4, 4), progress=True)`, which animates the recorded frames. Each frame is drawn as `view` draws it, and a notebook shows the animation with a slider and with buttons to play, pause and step through the frames. If the animation would be larger than matplotlib's `animation.embed_limit`, `animate` raises `ValueError`. While `animate` draws the frames, it shows a progress bar from `tqdm`. pylj now depends on `tqdm`.
 
 ## 2.0.0b2 - 2026-10-07
 

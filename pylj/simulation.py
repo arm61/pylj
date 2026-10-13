@@ -301,13 +301,13 @@ class Simulation(ABC):
 
         The size of the animation grows with the number of frames, with the
         number of atoms, and with the number of different pairs of colour and
-        diameter. For example, 100 frames of 168 atoms of one colour take about
-        3 MB.
+        diameter. For example, 100 frames of 168 atoms of one colour and one
+        diameter take about 3 MB.
 
         Args:
             frames: The frames to animate, as a slice such as
-                ``slice(0, 100)`` or as a sequence of positions in
-                ``trajectory``. By default every frame is animated.
+                ``slice(0, 100)`` or as a sequence of frame indices. By
+                default every frame is animated.
             fps: Frames per second.
             diameter: The drawn diameter of the atoms, in Angstrom. A single
                 value applies to every atom. A sequence gives one value per

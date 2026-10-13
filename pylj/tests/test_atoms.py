@@ -1,6 +1,7 @@
 """Tests for Simulation.view and Simulation.animate."""
 
 import base64
+import os
 import re
 import subprocess
 import sys
@@ -16,6 +17,8 @@ from numpy.testing import assert_allclose
 from pylj.configuration import Configuration
 from pylj.mc import MCSimulation
 from pylj.md import MDSimulation
+from pylj.model import Model
+from pylj.potentials import PairPotential
 from pylj.sample import _atoms
 from pylj.sample._atoms import _atom_colours, _atom_diameters
 from pylj.tests.argon import ARGON, ARGON_MODEL, LARGER, MIXTURE_MODEL
@@ -163,11 +166,15 @@ def test_view_draws_periodic_images_of_atoms_at_the_edges():
 
 
 def test_view_draws_one_line_per_colour_and_diameter():
-    simulation = positioned(MIDDLE)
-    assert len(simulation.view().lines) == 1
-    ax = simulation.view(diameter=[3, 3, 3, 4], colour=["red", "red", "blue", "red"])
-    looks = sorted((line.get_markerfacecolor(), len(line.get_xdata())) for line in ax.lines)
-    assert looks == sorted([(to_rgba("red"), 2), (to_rgba("blue"), 1), (to_rgba("red"), 1)])
+    assert len(positioned(MIDDLE).view().lines) == 1
+    ax = positioned(MIDDLE).view(diameter=[3, 3, 3, 4], colour=["red", "blue", "blue", "blue"])
+    ax.figure.canvas.draw()
+    assert len(ax.lines) == 3
+    (red,) = [line for line in ax.lines if line.get_markerfacecolor() == to_rgba("red")]
+    assert_allclose(red.get_xydata(), [MIDDLE[0]])
+    (large,) = [line for line in ax.lines if line.get_markersize() > red.get_markersize()]
+    assert_allclose(large.get_xydata(), [MIDDLE[3]])
+    assert large.get_markersize() == pytest.approx(red.get_markersize() * 4 / 3)
 
 
 def test_view_discs_are_drawn_to_scale():
@@ -185,6 +192,14 @@ def test_view_discs_stay_to_scale_when_the_figure_is_laid_out_again():
     assert_allclose(*drawn_and_true_diameter_px(axes[1], 4.0))
 
 
+def test_view_discs_stay_to_scale_when_the_axes_are_zoomed():
+    ax = positioned(MIDDLE).view(diameter=4.0)
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 10)
+    ax.figure.canvas.draw()
+    assert_allclose(*drawn_and_true_diameter_px(ax, 4.0))
+
+
 def test_view_draws_into_given_axes_and_returns_them():
     _, axes = plt.subplots(1, 3)
     assert positioned(MIDDLE).view(ax=axes[1]) is axes[1]
@@ -198,6 +213,21 @@ def test_view_figure_has_the_given_size_and_is_left_open_for_pyplot_to_show():
     assert ax.figure.number in plt.get_fignums()
 
 
+def test_view_of_a_purely_repulsive_potential_asks_for_a_diameter():
+    class Repulsive(PairPotential):
+        def energies(self, dr):
+            return (3.0 / np.asarray(dr, dtype=float)) ** 12
+
+        def forces(self, dr):
+            dr = np.asarray(dr, dtype=float)
+            return 12 * (3.0 / dr) ** 12 / dr
+
+    configuration = Configuration(np.array(MIDDLE), (ARGON,), np.zeros(4, dtype=np.int64), 20.0)
+    simulation = MCSimulation(configuration, Model.single(ARGON, Repulsive()), 100)
+    with pytest.raises(ValueError, match="Pass diameter= to choose the drawn size"):
+        simulation.view()
+
+
 def test_view_of_a_frame_needs_a_recorded_frame():
     with pytest.raises(ValueError, match="The trajectory has no frames"):
         positioned(MIDDLE).view(frame=0)
@@ -207,6 +237,18 @@ def test_view_of_a_frame_needs_a_recorded_frame():
 def test_view_of_a_frame_outside_the_trajectory(frame):
     with pytest.raises(IndexError, match=f"Frame {frame} is outside the trajectory, which has 2"):
         sampled_mc(2).view(frame=frame)
+
+
+def test_view_does_not_import_tqdm():
+    code = (
+        "import sys\n"
+        "from pylj.md import MDSimulation\n"
+        "from pylj.tests.argon import ARGON_MODEL\n"
+        "MDSimulation.initialise(ARGON_MODEL, number_of_atoms=4, temperature=100, box=20).view()\n"
+        "sys.exit('tqdm' in sys.modules)\n"
+    )
+    agg = os.environ | {"MPLBACKEND": "Agg"}
+    assert subprocess.run([sys.executable, "-c", code], env=agg).returncode == 0
 
 
 def test_the_simulation_modules_do_not_import_matplotlib():
@@ -220,13 +262,34 @@ def test_the_simulation_modules_do_not_import_matplotlib():
 FRAME = re.compile(r'frames\[\d+\] = "data:image/svg\+xml;base64,(.*?)"', re.DOTALL)
 
 
+def frame_svgs(player):
+    """Returns every frame of an animation as SVG text, in order."""
+    return [
+        base64.b64decode(encoded.replace("\\\n", "")).decode()
+        for encoded in FRAME.findall(player.data)
+    ]
+
+
 def frame_titles(player):
     """Returns the title of every frame in an animation, in order."""
-    titles = []
-    for encoded in FRAME.findall(player.data):
-        svg = base64.b64decode(encoded.replace("\\\n", "")).decode()
-        titles.append(re.search(r"<text[^>]*>([^<]*)</text>", svg).group(1))
-    return titles
+    return [re.search(r"<text[^>]*>([^<]*)</text>", svg).group(1) for svg in frame_svgs(player)]
+
+
+def test_animate_draws_each_frame_at_its_own_positions():
+    simulation = positioned([[5.0, 10.0]])
+    simulation.sample()
+    simulation.configuration.positions = np.array([[15.0, 10.0]])
+    simulation.sample()
+    first, second = (
+        float(re.search(r'<use [^>]*x="([^"]+)"', svg).group(1))
+        for svg in frame_svgs(simulation.animate(progress=False))
+    )
+    assert first < second
+
+
+def test_animate_draws_atoms_in_the_given_colour():
+    svgs = frame_svgs(sampled_md(3).animate(colour="red", progress=False))
+    assert all("#ff0000" in svg for svg in svgs)
 
 
 def test_animate_has_one_frame_per_recorded_frame_titled_with_its_time():
@@ -279,22 +342,42 @@ def test_animate_refuses_an_animation_larger_than_the_embed_limit():
             sampled_md(3).animate(progress=False)
 
 
-def test_animate_never_returns_a_shortened_animation(monkeypatch):
+def test_animate_refuses_an_animation_that_grows_past_the_embed_limit(monkeypatch):
     # A size estimate of zero passes the check made before the build. A small
-    # first frame can underestimate the size in the same way. The build then
-    # grows past the limit, and matplotlib drops frames.
+    # first frame can pass the check in the same way. The animation that is
+    # then built is too large.
     monkeypatch.setattr(_atoms, "_frame_megabytes", lambda fig: 0.0)
     with matplotlib.rc_context({"animation.embed_limit": 1e-4}):
-        with pytest.raises(ValueError, match="matplotlib dropped the frames"):
+        with pytest.raises(ValueError, match="The animation of 3 frames takes"):
             sampled_md(3).animate(progress=False)
+
+
+def test_animate_keeps_every_frame_while_it_builds_an_animation_too_large(monkeypatch):
+    # Each frame of 120 atoms is larger than the rest of the player. The limit
+    # is set to the rest of the player plus one and a half frames. If matplotlib
+    # built the player under that limit, it would keep one frame and drop the
+    # others. The shortened player would then fit within the limit.
+    simulation = MDSimulation.initialise(
+        ARGON_MODEL, number_of_atoms=120, temperature=100, box=60, seed=0
+    )
+    for _ in range(3):
+        simulation.sample()
+    one = len(simulation.animate([0], progress=False).data)
+    frame = len(simulation.animate([0, 0], progress=False).data) - one
+    rest = one - frame
+    assert frame > 2 * rest
+    monkeypatch.setattr(_atoms, "_frame_megabytes", lambda fig: 0.0)
+    with matplotlib.rc_context({"animation.embed_limit": (rest + 1.5 * frame) / 2**20}):
+        with pytest.raises(ValueError, match="The animation of 3 frames takes"):
+            simulation.animate(progress=False)
 
 
 def test_animate_shows_progress_unless_asked_not_to(capsys):
     simulation = sampled_md(3)
     simulation.animate()
-    assert "3/3" in capsys.readouterr().err
+    assert "Drawing frames" in capsys.readouterr().err
     simulation.animate(progress=False)
-    assert "3/3" not in capsys.readouterr().err
+    assert "Drawing frames" not in capsys.readouterr().err
 
 
 def test_animate_leaves_no_figure_open_and_no_setting_changed():

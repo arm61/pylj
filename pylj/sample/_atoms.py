@@ -2,6 +2,7 @@
 
 import base64
 import io
+import math
 import operator
 from collections.abc import Iterable, Sequence
 from typing import cast
@@ -18,7 +19,6 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.typing import ColorType
 from numpy.typing import NDArray
-from tqdm.auto import tqdm
 
 from pylj.configuration import Configuration
 from pylj.md import MDSimulation
@@ -99,31 +99,29 @@ def _atom_colours(
 class _Discs(Line2D):
     """A line of markers that draws atoms of one colour and one diameter as discs.
 
-    The discs are drawn to scale with the box.
+    The discs are drawn to scale with the axes.
 
     Args:
         diameter: Drawn diameter, in Angstrom.
-        box: Side length of the box, in Angstrom.
         colour: Fill colour.
     """
 
-    def __init__(self, diameter: float, box: float, colour: RGBA) -> None:
+    def __init__(self, diameter: float, colour: RGBA) -> None:
         super().__init__(
             [], [], linestyle="none", marker="o", markerfacecolor=colour, markeredgecolor="black"
         )
         self.diameter = diameter
-        self.box = box
 
     def draw(self, renderer: RendererBase) -> None:
         axes = self.axes
         assert axes is not None  # matplotlib draws the discs only after they join an axes
         # matplotlib sets the size of a marker in points, not in Angstrom.
-        # The size in points that matches the diameter depends on the width of
-        # the axes, and that width is fixed only when the figure is laid out.
-        # The marker size is therefore set here, each time the discs are
-        # drawn. There are 72 points to the inch.
-        width_points = axes.bbox.width / axes.figure.dpi * 72
-        self.set_markersize(self.diameter / self.box * width_points)
+        # The size in points that matches the diameter depends on the limits
+        # and the width of the axes. Both can change between one drawing of
+        # the figure and the next. The marker size is therefore set here, each
+        # time the discs are drawn. There are 72 points to the inch.
+        origin, edge = axes.transData.transform([(0.0, 0.0), (self.diameter, 0.0)])
+        self.set_markersize((edge[0] - origin[0]) / axes.figure.dpi * 72)
         super().draw(renderer)
 
 
@@ -152,7 +150,7 @@ class _AtomDrawing:
             members.setdefault(look, []).append(atom)
         self.groups: list[tuple[list[int], _Discs]] = []
         for (colour, diameter), atoms in members.items():
-            discs = _Discs(diameter, box, colour)
+            discs = _Discs(diameter, colour)
             ax.add_line(discs)
             self.groups.append((atoms, discs))
         ax.set_xlim(0, box)
@@ -179,10 +177,10 @@ class _AtomDrawing:
 
 
 def _frame_index(count: int, frame: int) -> int:
-    """Returns the position of frame ``frame`` in a trajectory of ``count`` frames.
+    """Returns the index of frame ``frame`` in a trajectory of ``count`` frames.
 
-    Positions count from zero. A negative ``frame`` counts back from the last
-    frame, as a negative index does in a Python list.
+    The index counts from zero. A negative ``frame`` counts back from the last
+    frame.
 
     Raises:
         IndexError: If the trajectory has no frame ``frame``.
@@ -245,14 +243,17 @@ def view(
     return ax
 
 
-#: The factor by which an animation may grow past its estimated size while it
-#: is built. The estimate comes from the first frame, and later frames can be a
-#: little larger than the first.
-_ESTIMATE_MARGIN = 1.1
+#: The advice given when an animation is larger than ``animation.embed_limit``.
+_FEWER_FRAMES = (
+    "Choose fewer frames, for example every second frame with frames=slice(None, None, 2). "
+    "Alternatively, set matplotlib.rcParams['animation.embed_limit'] to a larger number of MB."
+)
 
 
 def _frame_indices(trajectory: Trajectory, frames: slice | Iterable[int] | None) -> list[int]:
-    """Returns the position of each frame that ``frames`` selects, counting from zero.
+    """Returns the index of each frame that ``frames`` selects.
+
+    The indices count from zero.
 
     Raises:
         ValueError: If the trajectory has no frames, or ``frames`` selects none.
@@ -293,6 +294,9 @@ def animate(
     progress: bool,
 ) -> HTML:
     """Animates recorded frames, as :meth:`pylj.simulation.Simulation.animate` describes."""
+    # Imported here so that view does not trigger tqdm's warning about ipywidgets.
+    from tqdm.auto import tqdm
+
     check_positive_finite("fps", fps)
     trajectory = simulation.trajectory
     indices = _frame_indices(trajectory, frames)
@@ -316,13 +320,15 @@ def animate(
         if estimate > limit:
             raise ValueError(
                 f"The animation of {len(indices)} frames would take about {estimate:.1f} MB, "
-                f"more than matplotlib's animation.embed_limit of {limit:g} MB. Choose fewer "
-                "frames, for example every second frame with frames=slice(None, None, 2). "
-                "Alternatively, set matplotlib.rcParams['animation.embed_limit'] to a larger "
-                "number of MB."
+                f"more than matplotlib's animation.embed_limit of {limit:g} MB. {_FEWER_FRAMES}"
             )
-        matplotlib.rcParams["animation.embed_limit"] = max(limit, _ESTIMATE_MARGIN * estimate)
-        with tqdm(total=len(indices), desc="Drawing frames", disable=not progress) as bar:
+        # matplotlib drops every frame beyond animation.embed_limit while it
+        # builds an animation. The limit is therefore removed for the build.
+        # The finished animation is checked against the limit below.
+        matplotlib.rcParams["animation.embed_limit"] = math.inf
+        with tqdm(
+            total=len(indices), desc="Drawing frames", disable=not progress, leave=False
+        ) as bar:
 
             def draw_frame(index: int) -> tuple[()]:
                 drawing.draw(trajectory[index], _frame_title(times, index))
@@ -338,12 +344,10 @@ def animate(
                 cache_frame_data=False,
             )
             player = animation.to_jshtml()
-    if player.count('"data:image/svg+xml;base64,') < len(indices):
+    size = len(player) / 2**20
+    if size > limit:
         raise ValueError(
-            "The animation grew larger than matplotlib's animation.embed_limit while its "
-            "frames were drawn, and matplotlib dropped the frames beyond the limit. Choose "
-            "fewer frames, for example every second frame with frames=slice(None, None, 2). "
-            "Alternatively, set matplotlib.rcParams['animation.embed_limit'] to a larger "
-            "number of MB."
+            f"The animation of {len(indices)} frames takes {size:.1f} MB, more than "
+            f"matplotlib's animation.embed_limit of {limit:g} MB. {_FEWER_FRAMES}"
         )
     return HTML(player)
