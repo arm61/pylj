@@ -87,4 +87,13 @@ for _ in range(4000):
         simulation.rescale_velocities(300)
 ```
 
-Molecular dynamics manages a few thousand steps a second for twenty-five atoms, about a thousand for a hundred, and under a hundred for four hundred. Twenty thousand steps of four hundred atoms therefore takes minutes. Monte Carlo manages ten to twenty thousand a second at any of those sizes, because a step moves one atom.
+How long a run takes depends on the computer, but it grows with the number of atoms in a way that can be predicted. A molecular dynamics step evaluates every pair of atoms, so its cost grows roughly with the square of the number of atoms: four times as many atoms make each step about sixteen times slower. A Monte Carlo step moves one atom and evaluates only that atom's pairs, so its cost grows only in proportion to the number of atoms, and below a few hundred atoms it barely changes. Giving every atom one move, though, takes as many Monte Carlo steps as there are atoms, and those steps together cost more than one molecular dynamics step. To estimate a long run, time a short one:
+
+```{code-cell} python
+import time
+
+start = time.perf_counter()
+for _ in range(1000):
+    simulation.step()
+print(f"{1000 / (time.perf_counter() - start):.0f} steps a second")
+```
