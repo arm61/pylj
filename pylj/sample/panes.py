@@ -146,7 +146,7 @@ def _potential_minimum(potential: PairPotential) -> float:
     if well == r.size - 1:
         raise ValueError(
             f"{type(potential).__name__} has no minimum between 0.1 and 50 Angstrom to "
-            "size the atoms by; pass diameter= to the pane or the viewer."
+            "size the atoms by. Pass diameter= to choose the drawn size."
         )
     return float(r[well])
 

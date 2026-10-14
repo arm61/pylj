@@ -2,8 +2,9 @@
 
 import copy
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, fields
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,6 +13,11 @@ from pylj.configuration import Configuration
 from pylj.model import Model
 from pylj.potentials import check_positive_finite
 from pylj.trajectory import Trajectory
+
+if TYPE_CHECKING:
+    from IPython.display import HTML
+    from matplotlib.axes import Axes
+    from matplotlib.typing import ColorType
 
 #: The cut-off used when none is given, in Angstrom, or half the box if
 #: that is smaller.
@@ -231,3 +237,106 @@ class Simulation(ABC):
         # The new trajectory records times only if the old one did.
         new.trajectory = Trajectory(times=None if self.trajectory.times is None else [])
         return new
+
+    def view(
+        self,
+        frame: int | None = None,
+        *,
+        diameter: float | Iterable[float] | None = None,
+        colour: "ColorType | Sequence[ColorType] | None" = None,
+        figsize: tuple[float, float] = (4, 4),
+        ax: "Axes | None" = None,
+    ) -> "Axes":
+        """Draws the atoms in the box.
+
+        Each atom is drawn to scale as a disc. The box is periodic, so an atom
+        that overhangs an edge of the box is drawn again at the opposite edge.
+        The title gives the simulated time in picoseconds. Monte Carlo has no
+        time, so for a Monte Carlo simulation the title gives the step. A
+        recorded Monte Carlo frame is titled with its frame number.
+
+        Args:
+            frame: The index of the frame in ``trajectory`` to draw. By
+                default the current configuration is drawn.
+            diameter: The drawn diameter of the atoms, in Angstrom. A single
+                value applies to every atom. A sequence gives one value per
+                atom. By default, an atom is drawn with a diameter equal to
+                half the separation at which two atoms of its species have
+                their lowest pair energy. For Lennard-Jones atoms this
+                diameter is 2^(1/6) sigma / 2.
+            colour: The colour of the atoms, in any form matplotlib accepts. A
+                single colour applies to every atom. A sequence gives one
+                colour per atom. By default each species has its own colour.
+            figsize: Width and height of the figure, in inches.
+            ax: The axes to draw into. By default the atoms are drawn in a
+                new figure of size ``figsize``.
+
+        Returns:
+            The axes the atoms are drawn in.
+
+        Raises:
+            ValueError: If ``frame`` is given and the trajectory has no
+                frames, a ``diameter`` or ``colour`` sequence does not have
+                one value per atom, or a diameter is not positive and finite.
+            IndexError: If the trajectory has no frame ``frame``.
+        """
+        # Imported here so that importing pylj does not import matplotlib.
+        from pylj.sample._atoms import view
+
+        return view(self, frame, diameter, colour, figsize, ax)
+
+    def animate(
+        self,
+        frames: slice | Iterable[int] | None = None,
+        *,
+        fps: float = 30,
+        diameter: float | Iterable[float] | None = None,
+        colour: "ColorType | Sequence[ColorType] | None" = None,
+        figsize: tuple[float, float] = (4, 4),
+        progress: bool = True,
+    ) -> "HTML":
+        """Animates the frames recorded in ``trajectory``.
+
+        Each frame is drawn as :meth:`view` draws it. A notebook shows the
+        animation with a slider and with buttons to play, pause and step
+        through the frames.
+
+        The size of the animation grows with the number of frames, with the
+        number of atoms, and with the number of different pairs of colour and
+        diameter. For example, 100 frames of 168 atoms of one colour and one
+        diameter take about 2.7 MB.
+
+        Args:
+            frames: The frames to animate, as a slice such as
+                ``slice(0, 100)`` or as a sequence of frame indices. By
+                default every frame is animated.
+            fps: Frames per second.
+            diameter: The drawn diameter of the atoms, in Angstrom. A single
+                value applies to every atom. A sequence gives one value per
+                atom. By default, an atom is drawn with a diameter equal to
+                half the separation at which two atoms of its species have
+                their lowest pair energy. For Lennard-Jones atoms this
+                diameter is 2^(1/6) sigma / 2.
+            colour: The colour of the atoms, in any form matplotlib accepts. A
+                single colour applies to every atom. A sequence gives one
+                colour per atom. By default each species has its own colour.
+            figsize: Width and height of the figure, in inches.
+            progress: Whether to show a progress bar while the frames are
+                drawn.
+
+        Returns:
+            The animation.
+
+        Raises:
+            ValueError: If the trajectory has no frames, ``frames`` selects
+                none, ``fps`` is not positive and finite, a ``diameter`` or
+                ``colour`` sequence does not have one value per atom, a
+                diameter is not positive and finite, or the animation would
+                be larger than matplotlib's ``animation.embed_limit``.
+            IndexError: If ``frames`` names a frame the trajectory does not
+                have.
+        """
+        # Imported here so that importing pylj does not import matplotlib.
+        from pylj.sample._atoms import animate
+
+        return animate(self, frames, fps, diameter, colour, figsize, progress)

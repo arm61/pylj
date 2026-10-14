@@ -9,7 +9,7 @@ readme = "README.md"
 license = "MIT"
 authors = [{name = "Andrew R. McCluskey", email = "arm61@bath.ac.uk"}]
 requires-python = ">=3.12"
-dependencies = ["numpy", "scipy", "matplotlib", "ipython"]
+dependencies = ["numpy", "scipy", "matplotlib", "ipython", "tqdm"]
 dynamic = ["version"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -27,7 +27,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-cov", "ruff", "mypy", "scipy-stubs"]
+dev = ["pytest", "pytest-cov", "ruff", "mypy", "scipy-stubs", "types-tqdm"]
 docs = ["sphinx>=8", "myst-nb>=1.2", "sphinx-book-theme>=1.1", "sphinx-copybutton"]
 
 [project.urls]
