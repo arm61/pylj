@@ -78,4 +78,4 @@ mixture = Model(
 simulation = MDSimulation.initialise(mixture, number_of_atoms=24, temperature=200, box=40, seed=0)
 ```
 
-Atoms are assigned to the species in turn. A missing pair raises `ValueError` and a potential class in place of an instance raises `TypeError`, both when the `Model` is built. `view()` and `animate()` size each species from its own pair energy unless `diameter` is given, as [Simulations](simulations.md) describes.
+Atoms are assigned to the species in turn. A missing pair raises `ValueError` and a potential class in place of an instance raises `TypeError`, both when the `Model` is built. `view()` and `animate()` size each species from its own pair energy unless `diameter` is given, as [Pictures and animations](pictures.md) describes.

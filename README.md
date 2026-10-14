@@ -68,7 +68,7 @@ simulation.view()
 plt.show()
 ```
 
-Custom pair potentials are subclasses of `PairPotential` with an `energies` method and a `forces` method. The [documentation](https://pylj.readthedocs.io/) describes the simulation classes, pictures and animations, custom potentials, and every module.
+Custom pair potentials are subclasses of `PairPotential` with an `energies` method and a `forces` method. The [documentation](https://pylj.readthedocs.io/) describes building, running and sampling a simulation, pictures and animations, custom potentials, units, and every module.
 
 ## Contributing
 
