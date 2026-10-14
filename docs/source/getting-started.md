@@ -30,21 +30,29 @@ model = Model.single(argon, lj)
 ## Molecular dynamics
 
 ```{code-cell} python
-from pylj import sample
+import matplotlib.pyplot as plt
+
 from pylj.md import MDSimulation
 
 simulation = MDSimulation.initialise(model, number_of_atoms=16, temperature=300, box=30, seed=1)
-viewer = sample.Interactions(simulation)
 for _ in range(2000):
     simulation.step()
     if simulation.steps % 50 == 0:
         simulation.rescale_velocities(300)
     simulation.sample()
-    if simulation.steps % 100 == 0:
-        viewer.update(simulation)
+simulation.view()
+plt.show()
 ```
 
-`initialise` takes the model, the number of atoms, the temperature in kelvin and the box side in Angstrom. `step()` advances one timestep, `sample()` records the temperature, pressure and energies in `simulation.samples`, and the viewer redraws when asked.
+`initialise` takes the model, the number of atoms, the temperature in kelvin and the box side in Angstrom. `step()` advances one timestep. `sample()` records the configuration in `simulation.trajectory` and the temperature, pressure and energies in `simulation.samples`. `view()` draws the atoms as the run left them. The samples are NumPy arrays, so they plot directly:
+
+```{code-cell} python
+fig, ax = plt.subplots(figsize=(4, 3))
+ax.plot(simulation.samples.step * simulation.timestep, simulation.samples.temperature)
+ax.set_xlabel("Time / ps")
+ax.set_ylabel("Temperature / K")
+plt.show()
+```
 
 ## Monte Carlo
 
@@ -52,13 +60,12 @@ for _ in range(2000):
 from pylj.mc import MCSimulation
 
 simulation = MCSimulation.initialise(model, number_of_atoms=16, temperature=300, box=20, seed=1)
-viewer = sample.Energy(simulation)
 for _ in range(5000):
     simulation.step()
     if simulation.steps % 10 == 0:
         simulation.sample()
-    if simulation.steps % 500 == 0:
-        viewer.update(simulation)
+simulation.view()
+plt.show()
 ```
 
-`step()` makes one Metropolis move, and `sample()` records the potential energy. [Simulations](simulations.md) describes both classes in full, [Custom potentials](custom-potentials.md) how to add a potential, and [Viewers and panes](viewers.md) the viewers.
+`step()` makes one Metropolis move, and `sample()` records the configuration and the potential energy. [Simulations](simulations.md) describes both classes in full, with `view()` and `animate()`, and [Custom potentials](custom-potentials.md) how to add a potential.

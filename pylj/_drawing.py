@@ -18,16 +18,78 @@ from matplotlib.colors import is_color_like, to_rgba
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.typing import ColorType
+from numpy.typing import NDArray
 
 from pylj.configuration import Configuration
 from pylj.md import MDSimulation
 from pylj.model import Model
-from pylj.potentials import check_positive_finite
-from pylj.sample.panes import _potential_minimum, _with_periodic_images
+from pylj.potentials import PairPotential, check_positive_finite
 from pylj.simulation import Simulation
 from pylj.trajectory import Trajectory
 
 RGBA = tuple[float, float, float, float]
+
+
+def _potential_minimum(potential: PairPotential) -> float:
+    """Returns the separation at the minimum of a pair potential, in Angstrom.
+
+    The energy is evaluated on a logarithmic grid of separations from 0.1 to 50
+    Angstrom. The search starts at the highest energy on that grid and takes
+    the lowest energy beyond it, so that a barrier at short range is stepped
+    over rather than mistaken for the well. For a Lennard-Jones potential the
+    minimum found is at 2^(1/6) sigma, and for a square well it is at the hard-
+    core diameter. For a Buckingham potential the highest point is the barrier
+    that separates the well from the fall to minus infinity at short range, and
+    the minimum lies in the well beyond that barrier.
+
+    Args:
+        potential: The pair potential.
+
+    Returns:
+        The separation at the energy minimum, in Angstrom.
+
+    Raises:
+        ValueError: If the energy has no minimum between the barrier and 50
+            Angstrom, as for a purely repulsive potential.
+    """
+    r = np.logspace(-1, np.log10(50), 4000)
+    energy = np.asarray(potential.energies(r), dtype=float)
+    barrier = int(np.argmax(energy))
+    well = barrier + int(np.argmin(energy[barrier:]))
+    if well == r.size - 1:
+        raise ValueError(
+            f"{type(potential).__name__} has no minimum between 0.1 and 50 Angstrom to "
+            "size the atoms by. Pass diameter= to choose the drawn size."
+        )
+    return float(r[well])
+
+
+def _with_periodic_images(
+    positions: NDArray[np.float64], box: float, radius: float
+) -> NDArray[np.float64]:
+    """Returns the positions with a copy of each atom that overhangs an edge.
+
+    An atom whose centre is within ``radius`` of an edge of the box is
+    drawn again one box length away, so the part of its disc that hangs over
+    the edge appears at the opposite edge, where it belongs.
+
+    Args:
+        positions: The atom positions, shape ``(N, 2)``, in Angstrom.
+        box: The side length of the box, in Angstrom.
+        radius: The drawn radius of the atoms, in Angstrom.
+
+    Returns:
+        The positions followed by the images, shape ``(N + images, 2)``.
+    """
+    images = [positions]
+    for shift_x in (-box, 0.0, box):
+        for shift_y in (-box, 0.0, box):
+            if shift_x == 0.0 and shift_y == 0.0:
+                continue
+            shifted = positions + np.array([shift_x, shift_y])
+            overhangs = np.all((shifted > -radius) & (shifted < box + radius), axis=1)
+            images.append(shifted[overhangs])
+    return np.concatenate(images)
 
 
 def _atom_diameters(

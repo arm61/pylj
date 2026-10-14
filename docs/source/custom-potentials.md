@@ -41,10 +41,11 @@ class SoftSphere(PairPotential):
 
 `min_separation` is the separation below which the formula gives unphysical energies. By default it is `0.0`: the formula is physical at every separation. A potential that is unphysical at short range overrides it, as a class attribute such as `min_separation = 1.5`, or as a property computed from its parameters. A configuration gives a pair closer than it infinite energy, so placement and Monte Carlo never accept such a pair, and raises `ValueError` if asked for its forces. `Buckingham` sets it to the top of its short-range barrier when it is built.
 
-A purely repulsive potential has no energy minimum for a viewer to size the atoms by, so the viewer is given a `diameter` in Angstrom:
+A purely repulsive potential has no energy minimum for `view()` to size the atoms by, so `view()` is given a `diameter` in Angstrom:
 
 ```{code-cell} python
-from pylj import sample
+import matplotlib.pyplot as plt
+
 from pylj.md import MDSimulation
 from pylj.model import Model
 from pylj.potentials import Species
@@ -53,11 +54,10 @@ argon = Species(mass=39.948, name="argon")
 soft = SoftSphere(epsilon=0.9497, sigma=3.372)
 model = Model.single(argon, soft)
 simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=300, box=30, seed=0)
-viewer = sample.JustCell(simulation, diameter=3.4)
 for _ in range(300):
     simulation.step()
-    if simulation.steps % 100 == 0:
-        viewer.update(simulation)
+simulation.view(diameter=1.7)
+plt.show()
 ```
 
 ## Mixtures
@@ -78,4 +78,4 @@ mixture = Model(
 simulation = MDSimulation.initialise(mixture, number_of_atoms=24, temperature=200, box=40, seed=0)
 ```
 
-Atoms are assigned to the species in turn. A missing pair raises `ValueError` and a potential class in place of an instance raises `TypeError`, both when the `Model` is built. The viewers draw each species at the minimum of its own pair potential unless `diameter` is given, as one value or one per species.
+Atoms are assigned to the species in turn. A missing pair raises `ValueError` and a potential class in place of an instance raises `TypeError`, both when the `Model` is built. `view()` and `animate()` size each species from its own pair energy unless `diameter` is given, as [Simulations](simulations.md) describes.

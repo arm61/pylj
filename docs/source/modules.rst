@@ -1,8 +1,8 @@
 Modules
 =======
 
-Students import from ``pylj.md``, ``pylj.mc``, ``pylj.model``, ``pylj.potentials`` and ``pylj.sample``.
-The other modules are the plumbing those five are built on.
+Students import from ``pylj.md``, ``pylj.mc``, ``pylj.model`` and ``pylj.potentials``.
+The other modules are the plumbing those four are built on.
 
 .. toctree::
    :maxdepth: 4
@@ -16,6 +16,5 @@ The other modules are the plumbing those five are built on.
    placement
    potentials
    scattering
-   sample
    simulation
    trajectory

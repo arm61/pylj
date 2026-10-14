@@ -281,7 +281,7 @@ class Simulation(ABC):
             IndexError: If the trajectory has no frame ``frame``.
         """
         # Imported here so that importing pylj does not import matplotlib.
-        from pylj.sample._atoms import view
+        from pylj._drawing import view
 
         return view(self, frame, diameter, colour, figsize, ax)
 
@@ -337,6 +337,6 @@ class Simulation(ABC):
                 have.
         """
         # Imported here so that importing pylj does not import matplotlib.
-        from pylj.sample._atoms import animate
+        from pylj._drawing import animate
 
         return animate(self, frames, fps, diameter, colour, figsize, progress)

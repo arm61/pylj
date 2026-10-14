@@ -7,7 +7,7 @@
 [![Build](https://github.com/arm61/pylj/actions/workflows/ci.yml/badge.svg)](https://github.com/arm61/pylj/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`pylj` runs molecular dynamics and Metropolis Monte Carlo simulations of atoms interacting through pair potentials, in two dimensions, and draws them as they run. It is a teaching code, written in Python and NumPy. Its viewers redraw in a Jupyter notebook; in a script, a viewer's `fig` is a matplotlib figure that can be saved.
+`pylj` runs molecular dynamics and Metropolis Monte Carlo simulations of atoms interacting through pair potentials, in two dimensions, and draws and animates the atoms. It is a teaching code, written in Python and NumPy.
 
 ## Installation
 
@@ -17,14 +17,15 @@ pip install --pre pylj
 
 pylj 2.0 is a beta release, so pip needs `--pre` to install it. Without `--pre`, pip installs the previous release, 1.5.2.
 
-`pylj` needs Python 3.12 or later. To watch the figures redraw you need a Jupyter notebook; `pip install jupyterlab` provides one. Start each notebook with `%matplotlib inline`.
+`pylj` needs Python 3.12 or later.
 
 ## Example
 
-Twenty-five argon atoms at 300 K, run with molecular dynamics and drawn as they go:
+Twenty-five argon atoms at 300 K, run with molecular dynamics and then drawn:
 
 ```python
-from pylj import sample
+import matplotlib.pyplot as plt
+
 from pylj.md import MDSimulation
 from pylj.model import Model
 from pylj.potentials import LennardJones, Species
@@ -33,24 +34,25 @@ argon = Species(mass=39.948, name="argon")
 lj = LennardJones(epsilon=0.9497, sigma=3.372)
 model = Model.single(argon, lj)
 simulation = MDSimulation.initialise(model, number_of_atoms=25, temperature=300, box=40, seed=1)
-viewer = sample.Interactions(simulation)
 for _ in range(2000):
     simulation.step()
     if simulation.steps % 50 == 0:
         simulation.rescale_velocities(300)
     simulation.sample()
-    if simulation.steps % 100 == 0:
-        viewer.update(simulation)
+simulation.view()
+plt.show()
 ```
 
-<img src="https://github.com/arm61/pylj/blob/master/docs/readme/interactions.png?raw=true" width="70%"/>
+<img src="https://github.com/arm61/pylj/blob/master/docs/readme/atoms.png?raw=true" width="40%"/>
 
-`step()` advances one timestep, and `sample()` records the temperature, pressure and energies in `simulation.samples` as NumPy arrays:
+`step()` advances one timestep. `sample()` records the configuration in `simulation.trajectory` and the temperature, pressure and energies in `simulation.samples` as NumPy arrays:
 
 ```python
 simulation.samples.temperature.mean()  # K
 simulation.samples.pressure.mean()     # kJ/mol/Angstrom^2, the two-dimensional pressure
 ```
+
+In a Jupyter notebook, `simulation.animate()` plays the recorded configurations as an animation. In a script, save `simulation.animate().data` to an `.html` file and open it in a web browser.
 
 The same model runs under Monte Carlo:
 
@@ -58,16 +60,15 @@ The same model runs under Monte Carlo:
 from pylj.mc import MCSimulation
 
 simulation = MCSimulation.initialise(model, number_of_atoms=25, temperature=300, box=40, seed=1)
-viewer = sample.Energy(simulation)
 for _ in range(5000):
     simulation.step()
     if simulation.steps % 10 == 0:
         simulation.sample()
-    if simulation.steps % 500 == 0:
-        viewer.update(simulation)
+simulation.view()
+plt.show()
 ```
 
-Custom pair potentials are subclasses of `PairPotential` with an `energies` method and a `forces` method; custom plots are panes composed into a `Viewer`. The [documentation](https://pylj.readthedocs.io/) describes the simulation classes, custom potentials, the viewers, and every module.
+Custom pair potentials are subclasses of `PairPotential` with an `energies` method and a `forces` method. The [documentation](https://pylj.readthedocs.io/) describes the simulation classes, pictures and animations, custom potentials, and every module.
 
 ## Contributing
 
