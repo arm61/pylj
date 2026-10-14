@@ -1,60 +1,10 @@
 # Simulations
 
-## Molecular dynamics
-
-`step()` advances the configuration by one timestep with Velocity-Verlet and updates `forces`, the net force on each atom, and `steps`. `time` is `steps * timestep`. `integrate()` is the method `step()` calls; a subclass overrides it to use a different integrator.
-
-`rescale_velocities(temperature)` rescales the velocities so that the instantaneous temperature is `temperature`. Called every step, it holds the temperature fixed; the examples here call it every 50 steps, so that the temperature fluctuates between calls.
+## Sampling
 
 `sample()` records a copy of the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy` and `kinetic_energy`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in kJ/mol per Angstrom squared.
 
-`step()` raises `ValueError` if an atom moves further than half the cut-off in one step, which means the timestep is too long or the run has diverged.
-
-## Monte Carlo
-
-`temperature` is the temperature the acceptance rule uses, and `max_displacement` the largest distance a move shifts an atom along each axis, in Angstrom, 0.5 by default. `energy` is the running potential energy and `accepted` the number of accepted moves.
-
-`step()` is `propose()`, `mc.accept()` and `apply()`:
-
-```python
-from pylj import mc
-
-proposal = simulation.propose()
-if mc.accept(proposal.energy_change, simulation.temperature, rng=simulation.rng):
-    simulation.apply(proposal)
-```
-
-`propose()` moves one atom, chosen at random, by a random distance of up to `max_displacement` along each axis, and returns a `Proposal` holding the trial positions, the energy change the move would cause and a copy of the positions it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` replaces the positions with the proposal's and adds the energy change to `energy`; it raises `ValueError` if the positions have changed since the proposal was made.
-
 `sample()` records a copy of the configuration in `trajectory`, recomputes the energy exactly and appends `step` and `potential_energy` to `samples`, an `MCSamples`.
-
-## Restarting
-
-`restart()` returns a new simulation that continues from the current configuration with `steps` at zero, an empty `samples` and `trajectory`, and a copy of the random number generator, so that a production run can be recorded separately from equilibration:
-
-```python
-for _ in range(1000):
-    simulation.step()
-production = simulation.restart()
-for _ in range(5000):
-    production.step()
-    production.sample()
-```
-
-## Watching a run
-
-A loop that only calls `step()` shows nothing until it finishes. Print the step count every so often to see it working:
-
-```python
-for _ in range(20000):
-    simulation.step()
-    if simulation.steps % 50 == 0:
-        simulation.rescale_velocities(300)
-    if simulation.steps % 2000 == 0:
-        print(simulation.steps, simulation.configuration.temperature())
-```
-
-Molecular dynamics manages a few thousand steps a second for twenty-five atoms, about a thousand for a hundred, and under a hundred for four hundred. Twenty thousand steps of four hundred atoms therefore takes minutes. Monte Carlo manages ten to twenty thousand a second at any of those sizes, because a step moves one atom.
 
 ## Trajectory
 
