@@ -17,6 +17,7 @@ plt.rcParams["figure.dpi"] = 100
 A run records nothing until `sample()` is called. Each call records the quantities the method measures in `simulation.samples`, and a copy of the configuration in `simulation.trajectory`. Everything on this page is computed from those two records. The examples sample a short molecular dynamics run of liquid argon every ten steps:
 
 ```{code-cell} python
+import matplotlib.pyplot as plt
 import numpy as np
 
 from pylj.md import MDSimulation

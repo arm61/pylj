@@ -19,6 +19,8 @@ Once a run has recorded frames, `view()` and `animate()` show what the atoms wer
 The examples draw a short molecular dynamics run of argon, sampled every five steps:
 
 ```{code-cell} python
+import matplotlib.pyplot as plt
+
 from pylj.md import MDSimulation
 from pylj.model import Model
 from pylj.potentials import LennardJones, Species

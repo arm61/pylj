@@ -17,6 +17,8 @@ plt.rcParams["figure.dpi"] = 100
 A simulation is built from a model and a starting configuration. The model names the species and the pair potential between each pair of them, and the configuration places the atoms in a periodic box. `initialise` builds the configuration from the model and returns a simulation ready to run. The examples on this page use the argon model from [Getting started](getting-started.md):
 
 ```{code-cell} python
+import matplotlib.pyplot as plt
+
 from pylj.md import MDSimulation
 from pylj.model import Model
 from pylj.potentials import LennardJones, Species
