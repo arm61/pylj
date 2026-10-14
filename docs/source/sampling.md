@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["figure.dpi"] = 100
 ```
 
-A run records nothing until `sample()` is called. Each call records the quantities the method measures in `simulation.samples`, and a copy of the configuration in `simulation.trajectory`. Everything on this page is computed from those two records. The examples sample a short molecular dynamics run of liquid argon every ten steps:
+A run records nothing until `sample()` is called. Each call records the quantities the method measures in `simulation.samples`, and a copy of the configuration in `simulation.trajectory`. Everything on this page is computed from those two records. The examples sample a short molecular dynamics run of argon at 300 K every ten steps:
 
 ```{code-cell} python
 import matplotlib.pyplot as plt
@@ -39,7 +39,11 @@ for _ in range(3000):
 
 ## Samples
 
+### Molecular dynamics
+
 `sample()` records a copy of the configuration in `trajectory` and appends one entry to each array of `samples`, an `MDSamples`: `step`, `temperature`, `pressure`, `potential_energy` and `kinetic_energy`, with `total_energy` derived from them. The pressure is the virial pressure, `(2 K + sum(f r)) / (2 L^2)`, in kJ/mol per Angstrom squared.
+
+### Monte Carlo
 
 `sample()` records a copy of the configuration in `trajectory`, recomputes the energy exactly and appends `step` and `potential_energy` to `samples`, an `MCSamples`.
 
@@ -74,7 +78,7 @@ right.set_ylabel("S(q)")
 plt.show()
 ```
 
-`msd(max_lag=None, average_origins=True)` is for a molecular dynamics trajectory. It returns the lag times in picoseconds, from one frame interval up to `max_lag`, and the mean squared displacement at each in Angstrom squared, averaged over every pair of frames that lag apart. Short lags are averaged over many origins and long lags over few, so the curve is smooth at the start and jagged at the end. With `average_origins=False`, every displacement is measured from the first frame instead. The two curves agree when the system stays the same throughout the run. Where they differ, something changed during it, such as melting, and the averaged curve describes neither state. Fit the diffusion coefficient over a window of lags that is short compared with the run; in two dimensions the mean squared displacement is `4 D t`.
+`msd(max_lag=None, *, average_origins=True)` is for a molecular dynamics trajectory. It returns the lag times in picoseconds, from one frame interval up to `max_lag`, and the mean squared displacement at each in Angstrom squared, averaged over every pair of frames that lag apart. Short lags are averaged over many origins and long lags over few, so the curve is smooth at the start and jagged at the end. With `average_origins=False`, every displacement is measured from the first frame instead. The two curves agree when the system stays the same throughout the run. Where they differ, something changed during it, such as melting, and the averaged curve describes neither state. Fit the diffusion coefficient over a window of lags that is short compared with the run; in two dimensions the mean squared displacement is `4 D t`.
 
 ```{code-cell} python
 lag, msd = simulation.trajectory[100:].msd()

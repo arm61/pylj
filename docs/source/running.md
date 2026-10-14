@@ -51,7 +51,7 @@ if mc.accept(proposal.energy_change, simulation.temperature, rng=simulation.rng)
 
 `propose()` moves one atom, chosen at random, by a random distance of up to `max_displacement` along each axis, and returns a `Proposal` holding the trial positions, the energy change the move would cause and a copy of the positions it was made from. `mc.accept(energy_change, temperature, rng=...)` returns `True` for a move that does not raise the energy, and otherwise with probability `exp(-energy_change / (k_B T))`. `apply()` replaces the positions with the proposal's and adds the energy change to `energy`; it raises `ValueError` if the positions have changed since the proposal was made.
 
-`accepted` counts the moves that `apply()` has made, so after a run it gives the fraction of moves the acceptance rule took:
+`accepted` counts the moves that `step()` has accepted, so after a run it gives the fraction of moves the acceptance rule took:
 
 ```{code-cell} python
 simulation = MCSimulation.initialise(model, number_of_atoms=16, temperature=300, box=20, seed=1)
