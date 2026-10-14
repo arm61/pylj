@@ -18,8 +18,9 @@ pylj 2.0 is a beta release, so pip needs `--pre` to install it. Without `--pre`,
 - [Building a simulation](building.md): `initialise`, the starting lattices, and the configuration.
 - [Running a simulation](running.md): molecular dynamics, Monte Carlo, restarting, and how long a run takes.
 - [Samples and the trajectory](sampling.md): what `sample()` records, and g(r), S(q) and the mean squared displacement.
-- [Simulations](simulations.md): building a simulation, the configuration, the two `step()` methods, sampling, restarting, and pictures and animations.
+- [Pictures and animations](pictures.md): `view()` and `animate()`.
 - [Custom potentials](custom-potentials.md): the `PairPotential` interface and mixtures.
+- [Units](units.md): the units pylj takes and reports, and its constants.
 - [Modules](modules.rst): every class, function and argument, with units.
 - [Changelog](changelog.md).
 
@@ -36,8 +37,9 @@ getting-started
 building
 running
 sampling
-simulations
+pictures
 custom-potentials
+units
 ```
 
 ```{toctree}

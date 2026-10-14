@@ -68,4 +68,4 @@ simulation.view()
 plt.show()
 ```
 
-`step()` makes one Metropolis move, and `sample()` records the configuration and the potential energy. [Simulations](simulations.md) describes both classes in full, with `view()` and `animate()`, and [Custom potentials](custom-potentials.md) how to add a potential.
+`step()` makes one Metropolis move, and `sample()` records the configuration and the potential energy. The pages that follow describe each stage in full, from [building a simulation](building.md) to [pictures and animations](pictures.md), and [Custom potentials](custom-potentials.md) describes how to add a potential.
